@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>ORMIA — Officina</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+:root {
+  --bg:      #F5F4F1;
+  --surface: #FFFFFF;
+  --surface2:#F9F8F6;
+  --border:  #E4E2DC;
+  --text:    #1A1917;
+  --text2:   #6B6A65;
+  --text3:   #A09E99;
+  --accent:  #1B4FD8;
+  --accent-light: #EEF2FF;
+  --danger:  #C53030;
+  --success: #276749;
+  --success-light: #F0FFF4;
+  --warning: #92400E;
+  --warning-light: #FFFBEB;
+  --radius:  10px;
+  --radius-lg: 16px;
+  --shadow:  0 2px 8px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text); overflow: hidden; }
+
+/* ── SCREENS ── */
+.screen { position: fixed; inset: 0; display: flex; flex-direction: column; background: var(--bg); transition: transform .28s cubic-bezier(.4,0,.2,1), opacity .28s; }
+.screen.hidden { transform: translateX(100%); opacity: 0; pointer-events: none; }
+.screen.slide-up { transform: translateY(100%); opacity: 0; }
+.screen.slide-up.hidden { transform: translateY(100%); }
+
+/* ── TOPBAR ── */
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 18px;
+  padding-top: calc(14px + env(safe-area-inset-top, 0px));
+  display: flex; align-items: center; gap: 12px;
+  flex-shrink: 0;
+}
+.topbar-back { width: 36px; height: 36px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+.topbar-back svg { width: 18px; height: 18px; }
+.topbar-title { font-size: 16px; font-weight: 700; flex: 1; }
+.topbar-sub { font-size: 12px; color: var(--text3); margin-top: 1px; }
+
+/* ── SCROLL BODY ── */
+.scroll-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px; padding-bottom: calc(16px + var(--safe-bottom)); }
+
+/* ── LOGIN ── */
+.login-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 24px; gap: 0; }
+.login-logo { width: 64px; height: 64px; background: var(--accent); border-radius: 18px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
+.login-logo svg { width: 34px; height: 34px; fill: white; }
+.login-title { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.login-sub { font-size: 14px; color: var(--text3); margin-bottom: 32px; }
+.login-card { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: 24px; width: 100%; max-width: 360px; }
+.login-label { font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 12px; }
+
+/* PIN pad */
+.pin-dots { display: flex; gap: 12px; justify-content: center; margin-bottom: 24px; }
+.pin-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border); background: transparent; transition: background .15s, border-color .15s; }
+.pin-dot.filled { background: var(--accent); border-color: var(--accent); }
+.pin-dot.error  { background: var(--danger); border-color: var(--danger); }
+.pinpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.pin-btn { height: 62px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface2); font-size: 22px; font-family: 'DM Mono', monospace; font-weight: 600; cursor: pointer; transition: background .1s, transform .08s; color: var(--text); display: flex; align-items: center; justify-content: center; user-select: none; }
+.pin-btn:active { background: var(--accent-light); transform: scale(.93); }
+.pin-btn.del { font-size: 16px; color: var(--text3); }
+.pin-btn.zero { grid-column: 2; }
+
+.login-or { text-align: center; font-size: 12px; color: var(--text3); margin: 16px 0; display: flex; align-items: center; gap: 8px; }
+.login-or::before, .login-or::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.badge-input-wrap { display: flex; gap: 8px; }
+.badge-input-wrap input { flex: 1; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); font-family: 'DM Mono', monospace; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; background: var(--surface2); }
+.badge-input-wrap button { padding: 12px 14px; border: none; border-radius: var(--radius); background: var(--accent); color: white; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+
+/* ── USER HEADER (dopo login) ── */
+.user-header { background: var(--accent); color: white; padding: 18px; padding-top: calc(18px + env(safe-area-inset-top, 0px)); flex-shrink: 0; }
+.user-header-top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.user-av { width: 42px; height: 42px; border-radius: 50%; background: rgba(255,255,255,.25); font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.user-name { font-size: 17px; font-weight: 700; }
+.user-role { font-size: 12px; opacity: .75; }
+.logout-btn { margin-left: auto; background: rgba(255,255,255,.2); border: none; color: white; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; }
+
+/* Status del meccanico */
+.mec-status { background: rgba(255,255,255,.15); border-radius: var(--radius); padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
+.mec-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.mec-status-dot.active { background: #86EFAC; animation: pulse 1.5s infinite; }
+.mec-status-dot.idle   { background: rgba(255,255,255,.4); }
+.mec-status-text { font-size: 13px; font-weight: 500; }
+.mec-status-sub  { font-size: 11px; opacity: .7; }
+
+/* ── COMMESSA CARDS ── */
+.com-card { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow); margin-bottom: 10px; overflow: hidden; border: 1px solid var(--border); cursor: pointer; transition: transform .1s, box-shadow .15s; position: relative; }
+.com-card:active { transform: scale(.98); }
+.com-card-bar { height: 4px; }
+.com-card-bar.aperta    { background: var(--accent); }
+.com-card-bar.wip       { background: #D97706; }
+.com-card-body { padding: 14px 16px; }
+.com-num { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 600; color: var(--text3); margin-bottom: 3px; }
+.com-desc { font-size: 15px; font-weight: 700; margin-bottom: 5px; line-height: 1.3; }
+.com-cli { font-size: 13px; color: var(--text2); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.com-targa { background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 2px 7px; font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 700; }
+.com-card-footer { padding: 10px 16px; border-top: 1px solid var(--border); background: var(--surface2); display: flex; align-items: center; justify-content: space-between; }
+.tim-chip { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; color: var(--success); }
+.tim-chip-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); animation: pulse 1.5s infinite; }
+.tim-inactive { font-size: 12px; color: var(--text3); }
+
+/* ── BIG ACTION BUTTONS ── */
+.action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.action-btn { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 14px; display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; transition: background .15s, transform .1s, box-shadow .15s; box-shadow: var(--shadow); text-align: center; }
+.action-btn:active { transform: scale(.96); box-shadow: none; }
+.action-btn.primary { background: var(--accent); border-color: var(--accent); color: white; }
+.action-btn.success { background: var(--success); border-color: var(--success); color: white; }
+.action-btn.danger  { background: var(--danger);  border-color: var(--danger);  color: white; }
+.action-btn.warning { background: #D97706; border-color: #D97706; color: white; }
+.action-btn svg { width: 28px; height: 28px; }
+.action-btn-label { font-size: 13px; font-weight: 700; line-height: 1.2; }
+.action-btn-sub   { font-size: 11px; opacity: .75; }
+
+/* ── FULL-WIDTH BTN ── */
+.full-btn { width: 100%; padding: 16px; border-radius: var(--radius-lg); border: none; font-size: 15px; font-weight: 700; font-family: 'DM Sans', sans-serif; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform .1s, opacity .15s; margin-bottom: 10px; }
+.full-btn:active { transform: scale(.97); }
+.full-btn svg { width: 20px; height: 20px; }
+.full-btn.blue   { background: var(--accent);   color: white; }
+.full-btn.green  { background: var(--success);  color: white; }
+.full-btn.red    { background: var(--danger);   color: white; }
+.full-btn.orange { background: #D97706; color: white; }
+.full-btn.ghost  { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+
+/* ── DETAIL SECTIONS ── */
+.det-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 10px; box-shadow: var(--shadow); }
+.det-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text3); margin-bottom: 10px; }
+.det-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border); }
+.det-row:last-child { border-bottom: none; }
+.det-key { font-size: 13px; color: var(--text2); }
+.det-val { font-size: 13px; font-weight: 500; text-align: right; max-width: 60%; }
+
+/* ── VOCE RICAMBIO ── */
+.ric-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.ric-row:last-child { border-bottom: none; }
+.ric-desc { flex: 1; font-weight: 500; }
+.ric-qta  { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text3); }
+.ric-price{ font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600; }
+
+/* ── SCAN PANEL ── */
+.scan-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 10px; box-shadow: var(--shadow); }
+.scan-title { font-size: 13px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+.scan-input-wrap { display: flex; gap: 8px; margin-bottom: 10px; }
+.scan-input-wrap input { flex: 1; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); font-family: 'DM Mono', monospace; font-size: 14px; text-transform: uppercase; letter-spacing: .5px; background: var(--surface2); }
+.scan-cam-btn { padding: 0 14px; border: none; background: var(--accent); color: white; border-radius: var(--radius); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.scan-cam-btn svg { width: 20px; height: 20px; }
+.found-card { background: var(--accent-light); border: 1px solid #C7D7F8; border-radius: var(--radius); padding: 12px 14px; margin-bottom: 10px; }
+.found-name { font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 2px; }
+.found-meta { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.found-giac { font-size: 12px; margin-top: 4px; }
+.qta-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.qta-row label { font-size: 13px; font-weight: 600; }
+.qta-row input { width: 70px; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 16px; text-align: center; font-family: 'DM Mono', monospace; }
+
+/* ── MODAL CAMERA ── */
+.camera-modal { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; flex-direction: column; }
+.camera-topbar { padding: 16px; padding-top: calc(16px + env(safe-area-inset-top, 0px)); display: flex; align-items: center; gap: 12px; background: rgba(0,0,0,.5); position: absolute; top: 0; left: 0; right: 0; z-index: 2; }
+.camera-close { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.2); border: none; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.camera-close svg { width: 18px; height: 18px; }
+.camera-title { color: white; font-size: 15px; font-weight: 600; }
+#camera-video { width: 100%; height: 100%; object-fit: cover; }
+.camera-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.scan-frame { width: 240px; height: 240px; position: relative; }
+.scan-frame::before, .scan-frame::after,
+.scan-frame > span::before, .scan-frame > span::after {
+  content: ''; position: absolute; width: 30px; height: 30px; border-color: white; border-style: solid;
+}
+.scan-frame::before { top: 0; left: 0; border-width: 3px 0 0 3px; }
+.scan-frame::after  { top: 0; right: 0; border-width: 3px 3px 0 0; }
+.scan-frame > span::before { bottom: 0; left: 0; border-width: 0 0 3px 3px; }
+.scan-frame > span::after  { bottom: 0; right: 0; border-width: 0 3px 3px 0; }
+.scan-line { position: absolute; left: 4px; right: 4px; height: 2px; background: rgba(27,79,216,.8); animation: scanline 2s linear infinite; }
+@keyframes scanline { 0%{top:10%} 50%{top:85%} 100%{top:10%} }
+.camera-hint { position: absolute; bottom: 40px; left: 0; right: 0; text-align: center; color: white; font-size: 13px; opacity: .8; padding: 0 24px; }
+
+/* ── STATO BADGE ── */
+.stato-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+.stato-aperta    { background: var(--accent-light);   color: var(--accent); }
+.stato-wip       { background: var(--warning-light);  color: var(--warning); }
+.stato-chiusa    { background: var(--success-light);  color: var(--success); }
+.stato-fatturata { background: #F0EFFE; color: #5B21B6; }
+
+/* ── EMPTY ── */
+.empty { text-align: center; padding: 60px 24px; }
+.empty svg { width: 48px; height: 48px; color: var(--text3); margin-bottom: 12px; }
+.empty p { font-size: 14px; color: var(--text3); }
+
+/* ── TOAST ── */
+#toast { position: fixed; bottom: calc(24px + var(--safe-bottom)); left: 50%; transform: translateX(-50%) translateY(20px); background: #1A1917; color: white; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 500; z-index: 99999; opacity: 0; transition: opacity .2s, transform .2s; white-space: nowrap; pointer-events: none; max-width: 90vw; text-overflow: ellipsis; overflow: hidden; }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── AUTOCOMPLETE DROPDOWN ── */
+.auto-drop { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-lg); margin-top: 4px; overflow: hidden; max-height: 200px; overflow-y: auto; }
+.auto-item { padding: 12px 14px; border-bottom: 1px solid var(--border); cursor: pointer; }
+.auto-item:last-child { border-bottom: none; }
+.auto-item:active { background: var(--surface2); }
+.auto-item-name { font-size: 13px; font-weight: 600; }
+.auto-item-meta { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-top: 2px; }
+
+/* ── UTILS ── */
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.mt8  { margin-top: 8px; }
+.mt12 { margin-top: 12px; }
+.text-danger { color: var(--danger); }
+.text-success { color: var(--success); }
+.divider { height: 1px; background: var(--border); margin: 12px 0; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════
+     SCREEN: LOGIN
+════════════════════════════════════════════════════ -->
+<div id="screen-login" class="screen">
+  <div class="login-wrap">
+    <div class="login-logo">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+    </div>
+    <div class="login-title">ORMIA Officina</div>
+    <div class="login-sub">Accesso meccanici</div>
+
+    <div class="login-card">
+      <div class="login-label">Inserisci il tuo PIN</div>
+      <div class="pin-dots" id="pin-dots">
+        <div class="pin-dot" id="pd0"></div>
+        <div class="pin-dot" id="pd1"></div>
+        <div class="pin-dot" id="pd2"></div>
+        <div class="pin-dot" id="pd3"></div>
+      </div>
+      <div class="pinpad">
+        <button class="pin-btn" onclick="pinTap('1')">1</button>
+        <button class="pin-btn" onclick="pinTap('2')">2</button>
+        <button class="pin-btn" onclick="pinTap('3')">3</button>
+        <button class="pin-btn" onclick="pinTap('4')">4</button>
+        <button class="pin-btn" onclick="pinTap('5')">5</button>
+        <button class="pin-btn" onclick="pinTap('6')">6</button>
+        <button class="pin-btn" onclick="pinTap('7')">7</button>
+        <button class="pin-btn" onclick="pinTap('8')">8</button>
+        <button class="pin-btn" onclick="pinTap('9')">9</button>
+        <button class="pin-btn del" onclick="pinDel()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 4H8l-7 8 7 8h13a2 2 0 002-2V6a2 2 0 00-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg>
+        </button>
+        <button class="pin-btn zero" onclick="pinTap('0')">0</button>
+      </div>
+
+      <div class="login-or">oppure scansiona badge</div>
+      <div class="badge-input-wrap">
+        <input type="text" id="badge-input" placeholder="Codice badge…" style="text-transform:uppercase"
+          onkeydown="if(event.key==='Enter')loginBadge()">
+        <button onclick="loginBadge()">Accedi</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SCREEN: HOME — lista commesse
+════════════════════════════════════════════════════ -->
+<div id="screen-home" class="screen hidden">
+  <div class="user-header">
+    <div class="user-header-top">
+      <div class="user-av" id="home-av">MR</div>
+      <div>
+        <div class="user-name" id="home-name">Mario Rossi</div>
+        <div class="user-role" id="home-role">Meccanico</div>
+      </div>
+      <button class="logout-btn" onclick="logout()">Esci</button>
+    </div>
+    <div class="mec-status" id="home-status">
+      <div class="mec-status-dot idle" id="home-dot"></div>
+      <div>
+        <div class="mec-status-text" id="home-status-text">Non in lavorazione</div>
+        <div class="mec-status-sub" id="home-status-sub">Seleziona una commessa</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll-body">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:10px">
+      Commesse aperte / in lavorazione
+    </div>
+    <div id="home-list"></div>
+    <div class="empty" id="home-empty" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <p>Nessuna commessa aperta al momento</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SCREEN: DETTAGLIO COMMESSA
+════════════════════════════════════════════════════ -->
+<div id="screen-detail" class="screen hidden">
+  <div class="topbar">
+    <div class="topbar-back" onclick="goHome()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+    </div>
+    <div>
+      <div class="topbar-title" id="det-num">—</div>
+      <div class="topbar-sub" id="det-cli">—</div>
+    </div>
+    <div id="det-stato-badge" style="margin-left:auto"></div>
+  </div>
+
+  <div class="scroll-body">
+
+    <!-- AZIONI PRINCIPALI -->
+    <div id="det-actions" class="action-grid" style="margin-bottom:14px"></div>
+
+    <!-- INFO COMMESSA -->
+    <div class="det-section">
+      <div class="det-section-title">Commessa</div>
+      <div class="det-row"><span class="det-key">Descrizione</span><span class="det-val" id="det-desc">—</span></div>
+      <div class="det-row"><span class="det-key">Data apertura</span><span class="det-val" id="det-data">—</span></div>
+      <div class="det-row"><span class="det-key">Veicolo</span><span class="det-val" id="det-veicolo">—</span></div>
+      <div class="det-row"><span class="det-key">In lavorazione</span><span class="det-val" id="det-mec">—</span></div>
+    </div>
+
+    <!-- RICAMBI -->
+    <div class="det-section">
+      <div class="det-section-title" style="display:flex;justify-content:space-between;align-items:center">
+        Ricambi
+        <button class="full-btn blue" style="width:auto;margin:0;padding:6px 12px;font-size:12px" onclick="goScan()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Aggiungi
+        </button>
+      </div>
+      <div id="det-ricambi-list"><div style="font-size:12px;color:var(--text3);padding:4px 0">Nessun ricambio.</div></div>
+    </div>
+
+    <!-- MANODOPERA -->
+    <div class="det-section">
+      <div class="det-section-title">Manodopera registrata</div>
+      <div id="det-mano-list"><div style="font-size:12px;color:var(--text3);padding:4px 0">Nessuna voce.</div></div>
+    </div>
+
+    <!-- NOTE -->
+    <div class="det-section" id="det-note-wrap" style="display:none">
+      <div class="det-section-title">Note</div>
+      <div id="det-note" style="font-size:13px;color:var(--text2);line-height:1.6"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SCREEN: AGGIUNGI RICAMBIO
+════════════════════════════════════════════════════ -->
+<div id="screen-scan" class="screen hidden">
+  <div class="topbar">
+    <div class="topbar-back" onclick="goDetail()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+    </div>
+    <div>
+      <div class="topbar-title">Aggiungi ricambio</div>
+      <div class="topbar-sub" id="scan-com-num">—</div>
+    </div>
+  </div>
+
+  <div class="scroll-body">
+
+    <!-- SCAN -->
+    <div class="scan-panel">
+      <div class="scan-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="3" height="3"/></svg>
+        Scan barcode / ricerca
+      </div>
+      <div class="scan-input-wrap">
+        <input type="text" id="scan-input" placeholder="Barcode o cerca articolo…"
+          oninput="cercaRicambio(this.value)"
+          onkeydown="if(event.key==='Enter')cercaRicambio(this.value)">
+        <button class="scan-cam-btn" onclick="apriCamera()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </button>
+      </div>
+      <!-- autocomplete -->
+      <div id="scan-drop" style="display:none" class="auto-drop"></div>
+    </div>
+
+    <!-- RISULTATO TROVATO -->
+    <div id="scan-found" style="display:none">
+      <div class="found-card">
+        <div class="found-name" id="scan-prod-name">—</div>
+        <div class="found-meta" id="scan-prod-meta">—</div>
+        <div class="found-giac" id="scan-prod-giac"></div>
+      </div>
+      <div class="qta-row">
+        <label>Quantità:</label>
+        <input type="number" id="scan-qta" value="1" min="1" step="1">
+      </div>
+      <button class="full-btn green" onclick="confermaScan()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Aggiungi alla commessa
+      </button>
+    </div>
+
+    <!-- NOT FOUND — crea nuovo -->
+    <div id="scan-notfound" style="display:none">
+      <div style="font-size:13px;color:var(--danger);margin-bottom:12px;font-weight:500">
+        Prodotto non trovato in magazzino.
+      </div>
+      <div class="det-section">
+        <div class="det-section-title">Crea e aggiungi al magazzino</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Descrizione *</label>
+            <input type="text" id="new-desc" placeholder="Es. Filtro olio Iveco"
+              style="width:100%;padding:12px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Codice interno *</label>
+            <input type="text" id="new-cod" placeholder="Es. ART-0042"
+              style="width:100%;padding:12px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:'DM Mono',monospace">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Quantità</label>
+            <input type="number" id="new-qta" value="1" min="1"
+              style="width:80px;padding:12px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;text-align:center">
+          </div>
+          <button class="full-btn blue" onclick="creaNuovoRicambio()">
+            Crea prodotto e aggiungi
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     CAMERA MODAL
+════════════════════════════════════════════════════ -->
+<div id="camera-modal" style="display:none" class="camera-modal">
+  <div class="camera-topbar">
+    <button class="camera-close" onclick="chiudiCamera()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div class="camera-title">Inquadra il barcode</div>
+  </div>
+  <video id="camera-video" autoplay playsinline muted></video>
+  <div class="camera-overlay">
+    <div class="scan-frame">
+      <span></span>
+      <div class="scan-line"></div>
+    </div>
+  </div>
+  <div class="camera-hint">Avvicina il barcode al centro del mirino</div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════
+// DATI — legge dallo stesso localStorage del gestionale
+// ══════════════════════════════════════════════════
+const LS = {
+  get: (k)     => JSON.parse(localStorage.getItem('officina_'+k) || '[]'),
+  set: (k, v)  => localStorage.setItem('officina_'+k, JSON.stringify(v)),
+};
+
+let mecLogged   = null; // meccanico loggato
+let comSelected = null; // commessa selezionata
+let pinBuffer   = '';
+let scanProdId  = null;
+let cameraStream= null;
+let barcodeDetector = null;
+
+// ══════════════════════════════════════════════════
+// LOGIN — PIN
+// ══════════════════════════════════════════════════
+function pinTap(d) {
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += d;
+  renderPinDots();
+  if (pinBuffer.length === 4) setTimeout(checkPin, 100);
+}
+function pinDel() {
+  pinBuffer = pinBuffer.slice(0,-1);
+  renderPinDots();
+}
+function renderPinDots(err=false) {
+  for (let i=0;i<4;i++) {
+    const el = document.getElementById('pd'+i);
+    el.className = 'pin-dot' + (i < pinBuffer.length ? (err?' error':' filled') : '');
+  }
+}
+function checkPin() {
+  const meccanici = LS.get('meccanici');
+  const found = meccanici.find(m => m.pin === pinBuffer);
+  if (found) { loginOk(found); return; }
+  renderPinDots(true);
+  setTimeout(()=>{ pinBuffer=''; renderPinDots(); }, 700);
+}
+function loginBadge() {
+  const val = document.getElementById('badge-input').value.trim().toUpperCase();
+  if (!val) return;
+  const meccanici = LS.get('meccanici');
+  const found = meccanici.find(m => (m.badge||'').toUpperCase() === val);
+  if (found) { loginOk(found); return; }
+  showToast('Badge non riconosciuto');
+  document.getElementById('badge-input').value = '';
+}
+function loginOk(mec) {
+  mecLogged = mec;
+  // Salva sessione locale
+  localStorage.setItem('ormia_mec_session', JSON.stringify({id: mec.id, ts: Date.now()}));
+  showScreen('screen-home');
+  renderHome();
+}
+function logout() {
+  mecLogged = null;
+  pinBuffer = '';
+  comSelected = null;
+  localStorage.removeItem('ormia_mec_session');
+  renderPinDots();
+  document.getElementById('badge-input').value = '';
+  showScreen('screen-login');
+}
+
+// Ripristina sessione al caricamento
+function restoreSession() {
+  const s = localStorage.getItem('ormia_mec_session');
+  if (!s) return;
+  const sess = JSON.parse(s);
+  // Sessione valida per 8 ore
+  if (Date.now() - sess.ts > 8*3600*1000) { localStorage.removeItem('ormia_mec_session'); return; }
+  const meccanici = LS.get('meccanici');
+  const mec = meccanici.find(m=>m.id===sess.id);
+  if (mec) loginOk(mec);
+}
+
+// ══════════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.toggle('hidden', s.id !== id);
+  });
+}
+function goHome()   { showScreen('screen-home');   renderHome(); }
+function goDetail() { showScreen('screen-detail'); renderDetail(); }
+function goScan()   { showScreen('screen-scan');   renderScanScreen(); }
+
+// ══════════════════════════════════════════════════
+// HOME
+// ══════════════════════════════════════════════════
+function renderHome() {
+  if (!mecLogged) return;
+  const commesse   = LS.get('commesse');
+  const clienti    = LS.get('clienti');
+  const veicoli    = LS.get('veicoli');
+  const timbrature = LS.get('timbrature');
+  const meccanici  = LS.get('meccanici');
+
+  // Aggiorna i dati freschi del meccanico
+  mecLogged = meccanici.find(m=>m.id===mecLogged.id) || mecLogged;
+
+  const initials = mecLogged.nome.split(' ').map(w=>w[0]).join('').substr(0,2).toUpperCase();
+  document.getElementById('home-av').textContent    = initials;
+  document.getElementById('home-name').textContent  = mecLogged.nome;
+  document.getElementById('home-role').textContent  = mecLogged.ruolo||'Meccanico';
+
+  // Stato live
+  const tAperta = timbrature.find(t=>t.mecId===mecLogged.id && !t.uscita);
+  const comAttiva = tAperta ? commesse.find(c=>c.id===tAperta.comId && (c.stato==='aperta'||c.stato==='wip')) : null;
+  const dot  = document.getElementById('home-dot');
+  const stxt = document.getElementById('home-status-text');
+  const ssub = document.getElementById('home-status-sub');
+  if (comAttiva) {
+    dot.className = 'mec-status-dot active';
+    stxt.textContent = 'In lavorazione';
+    const mins = Math.floor((Date.now()-new Date(tAperta.entrata))/60000);
+    const dur  = mins>=60?`${Math.floor(mins/60)}h ${String(mins%60).padStart(2,'0')}m`:`${mins}m`;
+    ssub.textContent = `${comAttiva.numero} · ${dur}`;
+  } else {
+    dot.className = 'mec-status-dot idle';
+    stxt.textContent = 'Non in lavorazione';
+    ssub.textContent = 'Seleziona una commessa';
+  }
+
+  // Lista commesse
+  const attive = commesse.filter(c=>c.stato==='aperta'||c.stato==='wip');
+  attive.sort((a,b)=>{
+    const ord={aperta:0,wip:1}; return (ord[a.stato]||2)-(ord[b.stato]||2) || new Date(b.createdAt)-new Date(a.createdAt);
+  });
+  const list  = document.getElementById('home-list');
+  const empty = document.getElementById('home-empty');
+  if (!attive.length) { list.innerHTML=''; empty.style.display=''; return; }
+  empty.style.display='none';
+  list.innerHTML = attive.map(cm=>{
+    const cl = clienti.find(c=>c.id===cm.clienteId);
+    const v  = veicoli.find(x=>x.id===cm.veicoloId);
+    const mecTim = timbrature.find(t=>t.comId===cm.id&&t.mecId===mecLogged.id&&!t.uscita);
+    const altriTim = [...new Set(timbrature.filter(t=>t.comId===cm.id&&!t.uscita&&t.mecId!==mecLogged.id).map(t=>t.mecId))]
+      .map(mid=>{ const m=meccanici.find(x=>x.id===mid); return m?m.nome.split(' ')[0]:null; }).filter(Boolean);
+    return `<div class="com-card" onclick="selezionaCommessa('${cm.id}')">
+      <div class="com-card-bar ${cm.stato}"></div>
+      <div class="com-card-body">
+        <div class="com-num">${cm.numero||''}</div>
+        <div class="com-desc">${cm.desc}</div>
+        <div class="com-cli">
+          ${cl?`<span>${cl.ragione}</span>`:''}
+          ${v?`<span class="com-targa">${v.targa}</span>`:''} 
+          ${v&&(v.marca||v.modello)?`<span style="color:var(--text3);font-size:12px">${[v.marca,v.modello].filter(Boolean).join(' ')}</span>`:''}
+        </div>
+      </div>
+      <div class="com-card-footer">
+        ${mecTim
+          ? `<span class="tim-chip"><span class="tim-chip-dot"></span>Stai lavorando qui</span>`
+          : `<span class="tim-inactive">Non sei in timbratura</span>`}
+        ${altriTim.length?`<span style="font-size:11px;color:var(--text3)">${altriTim.join(', ')} ${altriTim.length===1?'sta':'stanno'} lavorando</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selezionaCommessa(id) {
+  const commesse = LS.get('commesse');
+  comSelected = commesse.find(c=>c.id===id);
+  showScreen('screen-detail');
+  renderDetail();
+}
+
+// ══════════════════════════════════════════════════
+// DETAIL
+// ══════════════════════════════════════════════════
+function renderDetail() {
+  if (!comSelected || !mecLogged) return;
+  const commesse   = LS.get('commesse');
+  const clienti    = LS.get('clienti');
+  const veicoli    = LS.get('veicoli');
+  const timbrature = LS.get('timbrature');
+  const meccanici  = LS.get('meccanici');
+
+  // Dati freschi
+  comSelected = commesse.find(c=>c.id===comSelected.id) || comSelected;
+  const cm = comSelected;
+  const cl = clienti.find(c=>c.id===cm.clienteId);
+  const v  = veicoli.find(x=>x.id===cm.veicoloId);
+
+  document.getElementById('det-num').textContent = cm.numero||'—';
+  document.getElementById('det-cli').textContent = [cl?.ragione, v?.targa].filter(Boolean).join(' · ') || '—';
+
+  const statoMap = {aperta:'aperta',wip:'wip',chiusa:'chiusa',fatturata:'fatturata'};
+  const statoLabels = {aperta:'Aperta',wip:'In lavorazione',chiusa:'Chiusa',fatturata:'Fatturata'};
+  document.getElementById('det-stato-badge').innerHTML =
+    `<span class="stato-badge stato-${statoMap[cm.stato]||'aperta'}">${statoLabels[cm.stato]||'—'}</span>`;
+
+  document.getElementById('det-desc').textContent = cm.desc||'—';
+  document.getElementById('det-data').textContent = cm.dataApertura ? new Date(cm.dataApertura).toLocaleDateString('it-IT') : '—';
+  document.getElementById('det-veicolo').innerHTML = v
+    ? `${[v.marca,v.modello].filter(Boolean).join(' ')}${v.targa?` <span class="com-targa">${v.targa}</span>`:''}`
+    : '—';
+
+  const mecAttuali = [...new Set(timbrature.filter(t=>t.comId===cm.id&&!t.uscita).map(t=>t.mecId))]
+    .map(mid=>{ const m=meccanici.find(x=>x.id===mid); return m?m.nome:null; }).filter(Boolean);
+  document.getElementById('det-mec').textContent = mecAttuali.length ? mecAttuali.join(', ') : '—';
+
+  // Note
+  const noteWrap = document.getElementById('det-note-wrap');
+  if (cm.note) { noteWrap.style.display=''; document.getElementById('det-note').textContent = cm.note; }
+  else noteWrap.style.display='none';
+
+  // Ricambi
+  const ricList = document.getElementById('det-ricambi-list');
+  if ((cm.vociRic||[]).length) {
+    ricList.innerHTML = cm.vociRic.map(r=>`
+      <div class="ric-row">
+        <span class="ric-desc">${r.desc||'—'}</span>
+        <span class="ric-qta">× ${r.qta||1}</span>
+      </div>`).join('');
+  } else {
+    ricList.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0">Nessun ricambio.</div>';
+  }
+
+  // Manodopera
+  const manoList = document.getElementById('det-mano-list');
+  if ((cm.vociMano||[]).length) {
+    manoList.innerHTML = cm.vociMano.map(r=>`
+      <div class="ric-row">
+        <span class="ric-desc">${r.desc||'—'}</span>
+        <span class="ric-qta">${r.qta||1} h</span>
+      </div>`).join('');
+  } else {
+    manoList.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0">Nessuna voce.</div>';
+  }
+
+  // Azioni
+  const timAperta = timbrature.find(t=>t.comId===cm.id&&t.mecId===mecLogged.id&&!t.uscita);
+  const isChiusa  = cm.stato==='chiusa'||cm.stato==='fatturata';
+  const actions   = document.getElementById('det-actions');
+
+  if (isChiusa) {
+    actions.innerHTML = `<div style="grid-column:span 2;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;text-align:center;font-size:13px;color:var(--text3)">
+      Commessa ${cm.stato} — nessuna azione disponibile
+    </div>`;
+    return;
+  }
+
+  let btns = '';
+  if (!timAperta) {
+    btns += `<button class="action-btn success" onclick="timbra('entrata')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      <span class="action-btn-label">Inizia lavoro</span>
+      <span class="action-btn-sub">Timbra entrata</span>
+    </button>`;
+  } else {
+    btns += `<button class="action-btn danger" onclick="timbra('uscita')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      <span class="action-btn-label">Fine lavoro</span>
+      <span class="action-btn-sub">Timbra uscita</span>
+    </button>`;
+  }
+
+  // Avanza stato
+  if (cm.stato === 'aperta') {
+    btns += `<button class="action-btn warning" onclick="avanzaStato()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span class="action-btn-label">Inizia</span>
+      <span class="action-btn-sub">→ In lavorazione</span>
+    </button>`;
+  } else if (cm.stato === 'wip') {
+    btns += `<button class="action-btn primary" onclick="avanzaStato()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      <span class="action-btn-label">Completa</span>
+      <span class="action-btn-sub">→ Chiudi commessa</span>
+    </button>`;
+  }
+
+  actions.innerHTML = btns;
+}
+
+// ══════════════════════════════════════════════════
+// TIMBRATURA
+// ══════════════════════════════════════════════════
+function timbra(verso) {
+  if (!comSelected || !mecLogged) return;
+  const timbrature = LS.get('timbrature');
+  const commesse   = LS.get('commesse');
+  const ora = new Date().toISOString();
+
+  if (verso === 'entrata') {
+    // Chiudi eventuali timbrature aperte su altre commesse
+    timbrature.filter(t=>t.mecId===mecLogged.id&&!t.uscita&&t.comId!==comSelected.id)
+      .forEach(t=>{ t.uscita=ora; });
+    timbrature.push({ id:genId(), mecId:mecLogged.id, comId:comSelected.id, entrata:ora, uscita:null, createdAt:ora });
+    LS.set('timbrature', timbrature);
+    // Porta commessa in wip se era aperta
+    const ci = commesse.findIndex(c=>c.id===comSelected.id);
+    if (ci>=0 && commesse[ci].stato==='aperta') { commesse[ci].stato='wip'; LS.set('commesse', commesse); }
+    showToast('Timbratura entrata registrata ✓');
+  } else {
+    const t = timbrature.find(x=>x.mecId===mecLogged.id&&x.comId===comSelected.id&&!x.uscita);
+    if (!t) { showToast('Nessuna timbratura aperta su questa commessa'); return; }
+    t.uscita = ora;
+    LS.set('timbrature', timbrature);
+    showToast('Timbratura uscita registrata ✓');
+  }
+
+  // Ricarica dati freschi
+  const commesseFresh = LS.get('commesse');
+  comSelected = commesseFresh.find(c=>c.id===comSelected.id) || comSelected;
+  renderDetail();
+  renderHome();
+}
+
+// ══════════════════════════════════════════════════
+// CAMBIA STATO
+// ══════════════════════════════════════════════════
+function avanzaStato() {
+  if (!comSelected) return;
+  const commesse = LS.get('commesse');
+  const ci = commesse.findIndex(c=>c.id===comSelected.id);
+  if (ci<0) return;
+  const map = {aperta:'wip', wip:'chiusa'};
+  const labels = {aperta:'In lavorazione', wip:'Chiusa'};
+  const nuovo = map[commesse[ci].stato];
+  if (!nuovo) return;
+  if (!confirm(`Portare la commessa a "${labels[commesse[ci].stato]}"?`)) return;
+  const statoVecchio = commesse[ci].stato;
+  commesse[ci].stato = nuovo;
+  LS.set('commesse', commesse);
+  // Se chiusa, chiudi timbrature
+  if (nuovo==='chiusa') {
+    const timbrature = LS.get('timbrature');
+    const ora = new Date().toISOString();
+    timbrature.filter(t=>t.comId===comSelected.id&&!t.uscita).forEach(t=>{ t.uscita=ora; });
+    LS.set('timbrature', timbrature);
+    showToast('Commessa chiusa — timbrature chiuse ✓');
+  } else {
+    showToast(`Stato aggiornato: ${labels[statoVecchio]} ✓`);
+  }
+  comSelected = commesse[ci];
+  renderDetail();
+  renderHome();
+}
+
+// ══════════════════════════════════════════════════
+// SCAN SCREEN
+// ══════════════════════════════════════════════════
+function renderScanScreen() {
+  document.getElementById('scan-com-num').textContent = comSelected?.numero || '—';
+  document.getElementById('scan-input').value = '';
+  document.getElementById('scan-drop').style.display   = 'none';
+  document.getElementById('scan-found').style.display  = 'none';
+  document.getElementById('scan-notfound').style.display = 'none';
+  scanProdId = null;
+  setTimeout(()=>document.getElementById('scan-input').focus(), 200);
+}
+
+function cercaRicambio(val) {
+  const q = val.trim();
+  const drop = document.getElementById('scan-drop');
+  document.getElementById('scan-found').style.display = 'none';
+  document.getElementById('scan-notfound').style.display = 'none';
+  scanProdId = null;
+  if (!q || q.length < 1) { drop.style.display='none'; return; }
+
+  const prodotti = LS.get('prodotti');
+  const qu = q.toUpperCase();
+
+  // Prima: corrispondenza esatta su barcode o codice
+  const esatto = prodotti.find(p=>
+    (p.barcodes||[]).some(b=>(b||'').toUpperCase()===qu) ||
+    (p.barcode||'').toUpperCase()===qu ||
+    (p.codInt||'').toUpperCase()===qu  ||
+    (p.codForn||'').toUpperCase()===qu
+  );
+  if (esatto) { drop.style.display='none'; mostraProdotto(esatto); return; }
+
+  // Poi: ricerca testuale
+  const ql = q.toLowerCase();
+  const filtrati = prodotti.filter(p=>
+    p.desc.toLowerCase().includes(ql) ||
+    (p.codInt||'').toLowerCase().includes(ql) ||
+    (p.codForn||'').toLowerCase().includes(ql) ||
+    (p.barcodes||[]).some(b=>(b||'').toLowerCase().includes(ql)) ||
+    (p.barcode||'').toLowerCase().includes(ql)
+  ).slice(0,8);
+
+  if (!filtrati.length) {
+    drop.style.display='none';
+    if (q.length >= 3) {
+      prepopola(q);
+      document.getElementById('scan-notfound').style.display='';
+    }
+    return;
+  }
+
+  drop.style.display='';
+  drop.innerHTML = filtrati.map(p=>`
+    <div class="auto-item" onclick="mostraProdotto_id('${p.id}')">
+      <div class="auto-item-name">${p.desc}</div>
+      <div class="auto-item-meta">
+        ${[p.codInt, p.codForn?'F:'+p.codForn:''].filter(Boolean).join(' · ')}
+        · Giac: ${p.giacenza} ${p.um||'pz'}
+      </div>
+    </div>`).join('');
+}
+
+function mostraProdotto_id(id) {
+  const prodotti = LS.get('prodotti');
+  const p = prodotti.find(x=>x.id===id);
+  if (p) { document.getElementById('scan-drop').style.display='none'; mostraProdotto(p); }
+}
+
+function mostraProdotto(p) {
+  scanProdId = p.id;
+  document.getElementById('scan-prod-name').textContent = p.desc;
+  document.getElementById('scan-prod-meta').textContent =
+    [p.codInt?'Cod:'+p.codInt:'', p.codForn?'Forn:'+p.codForn:''].filter(Boolean).join(' · ');
+  const giacEl = document.getElementById('scan-prod-giac');
+  const g = p.giacenza||0;
+  giacEl.innerHTML = `Giacenza: <strong style="color:${g<=0?'var(--danger)':g<=(p.scortaMin||1)?'var(--warning)':'var(--success)'}">${g} ${p.um||'pz'}</strong>`;
+  document.getElementById('scan-found').style.display='';
+  document.getElementById('scan-notfound').style.display='none';
+  document.getElementById('scan-qta').value = 1;
+}
+
+function prepopola(testo) {
+  const sembra_cod = /^[A-Z0-9\-\.\/]+$/i.test(testo) && testo.length<=30 && !testo.includes(' ');
+  if (sembra_cod) { document.getElementById('new-cod').value = testo.toUpperCase(); document.getElementById('new-desc').value=''; }
+  else            { document.getElementById('new-desc').value = testo; document.getElementById('new-cod').value=''; }
+  document.getElementById('new-qta').value=1;
+  document.getElementById('new-acq').value='';
+  document.getElementById('new-vend').value='';
+}
+
+function confermaScan() {
+  if (!scanProdId || !comSelected) return;
+  const prodotti   = LS.get('prodotti');
+  const commesse   = LS.get('commesse');
+  const movimenti  = LS.get('movimenti');
+  const pi = prodotti.findIndex(x=>x.id===scanProdId);
+  if (pi<0) return;
+  const qta = parseFloat(document.getElementById('scan-qta').value)||1;
+  if (prodotti[pi].giacenza < qta) {
+    if (!confirm(`Giacenza insufficiente (${prodotti[pi].giacenza} ${prodotti[pi].um||'pz'}). Procedere comunque?`)) return;
+  }
+  prodotti[pi].giacenza -= qta;
+  movimenti.push({ id:genId(), prodId:scanProdId, tipo:'scarico', qta, comId:comSelected.id, note:'Da app meccanico — '+comSelected.numero, data:new Date().toISOString(), createdAt:new Date().toISOString() });
+  const ci = commesse.findIndex(c=>c.id===comSelected.id);
+  if (ci>=0) {
+    if (!commesse[ci].vociRic) commesse[ci].vociRic=[];
+    commesse[ci].vociRic.push({ prodId:scanProdId, desc:prodotti[pi].desc, qta, prezzo:prodotti[pi].prezzoVend||0 });
+    commesse[ci].totale = [...(commesse[ci].vociMano||[]),...(commesse[ci].vociRic||[]),...(commesse[ci].vociExtra||[])]
+      .reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0);
+  }
+  LS.set('prodotti', prodotti);
+  LS.set('movimenti', movimenti);
+  LS.set('commesse', commesse);
+  showToast(`${prodotti[pi].desc} × ${qta} aggiunto ✓`);
+  const commesseFresh = LS.get('commesse');
+  comSelected = commesseFresh.find(c=>c.id===comSelected.id) || comSelected;
+  renderScanScreen();
+}
+
+function creaNuovoRicambio() {
+  const desc = (document.getElementById('new-desc').value||'').trim();
+  const cod  = (document.getElementById('new-cod').value||'').trim().toUpperCase();
+  const acq  = 0;
+  const vend = 0;
+  const qta  = parseFloat(document.getElementById('new-qta').value)||1;
+  if (!desc) { alert('Inserisci la descrizione.'); return; }
+  if (!cod)  { alert('Il codice interno è obbligatorio.'); return; }
+  if (!comSelected) return;
+  const prodotti  = LS.get('prodotti');
+  const commesse  = LS.get('commesse');
+  const movimenti = LS.get('movimenti');
+  if (prodotti.find(p=>(p.codInt||'').toUpperCase()===cod)) { alert(`Codice "${cod}" già esistente.`); return; }
+  const cm = commesse.find(c=>c.id===comSelected.id);
+  if (!cm) return;
+  const np = { id:genId(), createdAt:new Date().toISOString(), desc, codInt:cod, um:'pz', categoria:'Varie', giacenza:0, scortaMin:1, qtaRiordino:10, prezzoAcq:acq, prezzoVend:vend, fornitoreId:'', codForn:'', barcodes:[], note:'' };
+  prodotti.push(np);
+  movimenti.push({ id:genId(), prodId:np.id, tipo:'carico', qta, comId:null, note:'Acquisto per '+cm.numero, data:new Date().toISOString(), createdAt:new Date().toISOString() });
+  np.giacenza += qta;
+  movimenti.push({ id:genId(), prodId:np.id, tipo:'scarico', qta, comId:comSelected.id, note:'Utilizzo in '+cm.numero, data:new Date().toISOString(), createdAt:new Date().toISOString() });
+  np.giacenza -= qta;
+  const ci = commesse.findIndex(c=>c.id===comSelected.id);
+  if (ci>=0) {
+    if (!commesse[ci].vociRic) commesse[ci].vociRic=[];
+    commesse[ci].vociRic.push({ prodId:np.id, desc, qta, prezzo:vend });
+    commesse[ci].totale = [...(commesse[ci].vociMano||[]),...(commesse[ci].vociRic||[]),...(commesse[ci].vociExtra||[])]
+      .reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0);
+  }
+  LS.set('prodotti', prodotti);
+  LS.set('movimenti', movimenti);
+  LS.set('commesse', commesse);
+  showToast(`"${desc}" creato e aggiunto ✓`);
+  const commesseFresh = LS.get('commesse');
+  comSelected = commesseFresh.find(c=>c.id===comSelected.id)||comSelected;
+  goDetail();
+}
+
+// ══════════════════════════════════════════════════
+// CAMERA — BarcodeDetector API
+// ══════════════════════════════════════════════════
+async function apriCamera() {
+  if (!('BarcodeDetector' in window)) {
+    showToast('Fotocamera non supportata — usa il campo testo');
+    return;
+  }
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    const video = document.getElementById('camera-video');
+    video.srcObject = cameraStream;
+    document.getElementById('camera-modal').style.display='flex';
+    barcodeDetector = new BarcodeDetector({ formats: ['ean_13','ean_8','code_128','code_39','qr_code','upc_a','upc_e','itf','data_matrix'] });
+    scanLoop();
+  } catch(e) {
+    showToast('Impossibile accedere alla fotocamera');
+  }
+}
+
+let scanLoopActive = false;
+async function scanLoop() {
+  scanLoopActive = true;
+  const video = document.getElementById('camera-video');
+  while (scanLoopActive && cameraStream) {
+    await new Promise(r=>setTimeout(r,300));
+    if (!video.readyState || video.readyState < 2) continue;
+    try {
+      const results = await barcodeDetector.detect(video);
+      if (results.length > 0) {
+        const code = results[0].rawValue;
+        chiudiCamera();
+        document.getElementById('scan-input').value = code;
+        cercaRicambio(code);
+        return;
+      }
+    } catch(e) {}
+  }
+}
+
+function chiudiCamera() {
+  scanLoopActive = false;
+  if (cameraStream) { cameraStream.getTracks().forEach(t=>t.stop()); cameraStream=null; }
+  document.getElementById('camera-modal').style.display='none';
+}
+
+// ══════════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════════
+function genId() { return Date.now().toString(36) + Math.random().toString(36).substr(2,5); }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2400);
+}
+
+// ══════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════
+restoreSession();
+</script>
+</body>
+</html>
