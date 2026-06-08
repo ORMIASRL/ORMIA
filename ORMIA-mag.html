@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ORMIA — Magazzino</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #F5F4F1; --surface: #FFFFFF; --surface2: #F0EFE9;
+  --border: #E4E2DC; --border2: #D0CEC7;
+  --accent: #1B4FD8; --accent-light: #EEF2FF;
+  --success: #276749; --success-light: #F0FFF4;
+  --danger: #C53030; --danger-light: #FFF5F5;
+  --warning: #D97706; --warning-light: #FFFBEB;
+  --text: #1A1917; --text2: #6B6A65; --text3: #A09E99;
+  --radius: 10px; --radius-lg: 16px;
+  --shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-md: 0 4px 16px rgba(0,0,0,.10);
+}
+html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text); overflow: hidden; }
+
+/* ── SCREENS ── */
+.screen { position: fixed; inset: 0; display: flex; flex-direction: column; background: var(--bg); transition: transform .25s ease; }
+.screen.hidden { transform: translateX(100%); pointer-events: none; }
+
+/* ── TOPBAR ── */
+.topbar {
+  background: var(--accent); color: white;
+  padding: 14px 16px 12px;
+  display: flex; align-items: center; gap: 10px;
+  flex-shrink: 0;
+  padding-top: max(14px, env(safe-area-inset-top));
+}
+.topbar-back { background: none; border: none; color: white; cursor: pointer; padding: 4px; display: flex; align-items: center; }
+.topbar-title { font-size: 16px; font-weight: 700; flex: 1; }
+.topbar-sub { font-size: 11px; opacity: .75; margin-top: 1px; }
+.topbar-badge { background: rgba(255,255,255,.25); border-radius: 20px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
+
+/* ── SCROLL AREA ── */
+.scroll { flex: 1; overflow-y: auto; padding: 12px 14px; -webkit-overflow-scrolling: touch; }
+
+/* ── COMMESSA CARD ── */
+.com-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 14px 16px;
+  margin-bottom: 10px; box-shadow: var(--shadow);
+  cursor: pointer; display: flex; align-items: center; gap: 12px;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .1s;
+}
+.com-card:active { background: var(--surface2); }
+.com-bar { width: 4px; border-radius: 4px; align-self: stretch; flex-shrink: 0; }
+.com-bar.aperta { background: var(--accent); }
+.com-bar.wip { background: var(--warning); }
+.com-bar.chiusa { background: var(--success); }
+.com-bar.fatturata { background: #6366F1; }
+.com-info { flex: 1; min-width: 0; }
+.com-num { font-size: 11px; font-weight: 700; color: var(--text3); font-family: 'DM Mono', monospace; margin-bottom: 3px; }
+.com-targa { display: inline-block; background: var(--text); color: white; font-family: 'DM Mono', monospace; font-weight: 700; font-size: 13px; padding: 2px 8px; border-radius: 5px; letter-spacing: 1px; margin-bottom: 3px; }
+.com-cliente { font-size: 14px; font-weight: 700; }
+.com-desc { font-size: 12px; color: var(--text2); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.com-arrow { color: var(--text3); flex-shrink: 0; }
+
+/* ── SEARCH ── */
+.search-wrap {
+  background: white; border: 1.5px solid var(--border);
+  border-radius: var(--radius); padding: 10px 14px;
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 12px;
+}
+.search-wrap svg { color: var(--text3); flex-shrink: 0; }
+.search-wrap input { border: none; outline: none; flex: 1; font-size: 15px; font-family: 'DM Sans', sans-serif; background: transparent; }
+
+/* ── STATO FILTER ── */
+.stato-row { display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.stato-row::-webkit-scrollbar { display: none; }
+.stato-pill { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; background: var(--surface); border: 1.5px solid var(--border); color: var(--text2); -webkit-tap-highlight-color: transparent; }
+.stato-pill.active { background: var(--accent); border-color: var(--accent); color: white; }
+
+/* ── SCAN AREA ── */
+.scan-area {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg); padding: 14px;
+  margin-bottom: 12px;
+}
+.scan-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text3); margin-bottom: 8px; }
+.scan-input-wrap { display: flex; gap: 8px; }
+.scan-input {
+  flex: 1; padding: 11px 14px;
+  border: 1.5px solid var(--border); border-radius: var(--radius);
+  font-size: 16px; font-family: 'DM Mono', monospace;
+  background: var(--bg); outline: none;
+}
+.scan-input:focus { border-color: var(--accent); background: white; }
+.scan-btn {
+  padding: 0 14px; border-radius: var(--radius);
+  background: var(--accent); color: white;
+  border: none; cursor: pointer; display: flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 600; font-family: 'DM Sans', sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── RISULTATO SCAN ── */
+.scan-result {
+  border-radius: var(--radius); padding: 12px 14px;
+  margin-top: 10px; display: none;
+}
+.scan-result.success { background: var(--success-light); border: 1.5px solid #86EFAC; }
+.scan-result.danger  { background: var(--danger-light);  border: 1.5px solid #FCA5A5; }
+.scan-result.info    { background: var(--accent-light);  border: 1.5px solid #93C5FD; }
+.scan-result-name { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
+.scan-result-meta { font-size: 12px; color: var(--text2); }
+
+/* ── QTÀ E CONFERMA ── */
+.qta-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.qta-btn { width: 36px; height: 36px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--surface2); font-size: 20px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
+.qta-input { width: 60px; text-align: center; padding: 7px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 18px; font-family: 'DM Mono', monospace; font-weight: 700; }
+.btn-conferma {
+  flex: 1; padding: 12px; border-radius: var(--radius);
+  background: var(--success); color: white;
+  border: none; cursor: pointer; font-size: 15px; font-weight: 700;
+  font-family: 'DM Sans', sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-conferma:disabled { background: var(--text3); }
+
+/* ── RICAMBI AGGIUNTI ── */
+.ricambi-list { display: flex; flex-direction: column; gap: 8px; }
+.ric-item {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px 12px;
+  display: flex; align-items: center; gap: 10px;
+}
+.ric-qta { font-family: 'DM Mono', monospace; font-weight: 700; font-size: 14px; color: var(--accent); min-width: 30px; text-align: center; }
+.ric-desc { flex: 1; font-size: 13px; font-weight: 500; }
+.ric-rm { background: none; border: none; color: var(--danger); cursor: pointer; padding: 4px; display: flex; align-items: center; }
+
+/* ── CAMERA ── */
+.camera-wrap { position: relative; border-radius: var(--radius); overflow: hidden; background: #000; aspect-ratio: 4/3; }
+.camera-wrap video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.camera-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.camera-reticle { width: 60%; aspect-ratio: 1; border: 3px solid rgba(255,255,255,.8); border-radius: 12px; }
+.camera-bar { position: absolute; top: 50%; left: 20%; right: 20%; height: 2px; background: rgba(255,100,100,.8); animation: scan 1.5s ease-in-out infinite; }
+@keyframes scan { 0%,100%{top:30%} 50%{top:70%} }
+
+/* ── TABS ── */
+.tab-bar { display: flex; border-bottom: 2px solid var(--border); margin-bottom: 12px; flex-shrink: 0; background: var(--surface); }
+.tab-btn { flex: 1; padding: 11px 8px; border: none; background: none; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text2); font-family: 'DM Sans', sans-serif; border-bottom: 2px solid transparent; margin-bottom: -2px; -webkit-tap-highlight-color: transparent; }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ── NUOVO PRODOTTO ── */
+.new-prod-form { background: var(--surface); border: 1.5px dashed var(--border2); border-radius: var(--radius-lg); padding: 14px; margin-top: 10px; display: none; }
+.new-prod-form.show { display: block; }
+.form-field { margin-bottom: 10px; }
+.form-field label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text3); display: block; margin-bottom: 4px; }
+.form-field input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px; font-family: 'DM Sans', sans-serif; }
+
+/* ── TOAST ── */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: #1A1917; color: white; padding: 12px 24px; border-radius: 20px;
+  font-size: 14px; font-weight: 500; z-index: 9999; white-space: nowrap;
+  opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── EMPTY ── */
+.empty { text-align: center; padding: 48px 24px; color: var(--text3); }
+.empty svg { width: 48px; height: 48px; margin-bottom: 12px; opacity: .4; }
+.empty p { font-size: 14px; }
+
+/* ── BADGE ── */
+.badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+.badge-blue { background: #EEF2FF; color: #1B4FD8; }
+.badge-orange { background: #FEF3C7; color: #92400E; }
+.badge-green { background: #F0FFF4; color: #276749; }
+.badge-gray { background: #F5F4F1; color: #6B6A65; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════
+     SCREEN LOGIN
+════════════════════════════════════════════════ -->
+<div class="screen" id="screen-login">
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;gap:20px">
+    <div style="width:56px;height:56px;background:var(--accent);border-radius:14px;display:flex;align-items:center;justify-content:center">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="width:28px;height:28px"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+    </div>
+    <div style="text-align:center">
+      <div style="font-size:22px;font-weight:800;margin-bottom:4px">ORMIA Magazzino</div>
+      <div style="font-size:14px;color:var(--text2)">Accesso magazziniere</div>
+    </div>
+    <div id="login-loading" style="font-size:13px;color:var(--text3)">Connessione…</div>
+    <div id="login-form" style="display:none;width:100%;max-width:340px;display:flex;flex-direction:column;gap:10px">
+      <div>
+        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);display:block;margin-bottom:4px">Email</label>
+        <input type="email" id="login-email" placeholder="email@officina.it" style="width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;font-family:'DM Sans',sans-serif">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);display:block;margin-bottom:4px">Password</label>
+        <input type="password" id="login-pwd" placeholder="••••••••" style="width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;font-family:'DM Sans',sans-serif" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div id="login-err" style="display:none;font-size:12px;color:var(--danger);padding:8px 12px;background:var(--danger-light);border-radius:8px"></div>
+      <button onclick="doLogin()" style="padding:14px;border-radius:var(--radius);background:var(--accent);color:white;border:none;font-size:16px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer;margin-top:4px">Accedi</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SCREEN HOME — Lista commesse
+════════════════════════════════════════════════ -->
+<div class="screen hidden" id="screen-home">
+  <div class="topbar">
+    <div style="flex:1">
+      <div class="topbar-title">Magazzino</div>
+      <div class="topbar-sub" id="home-sub">Seleziona una commessa</div>
+    </div>
+    <button onclick="doLogout()" style="background:rgba(255,255,255,.2);border:none;color:white;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">Esci</button>
+  </div>
+
+  <div style="padding:12px 14px 0;flex-shrink:0">
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="search-com" placeholder="Cerca commessa, targa, cliente…" oninput="renderCommesse()" style="font-size:15px">
+    </div>
+    <div class="stato-row">
+      <div class="stato-pill active" data-stato="" onclick="setStatoFiltro(this,'')">Tutte</div>
+      <div class="stato-pill" data-stato="aperta" onclick="setStatoFiltro(this,'aperta')">Aperte</div>
+      <div class="stato-pill" data-stato="wip" onclick="setStatoFiltro(this,'wip')">In lavorazione</div>
+      <div class="stato-pill" data-stato="chiusa" onclick="setStatoFiltro(this,'chiusa')">Chiuse</div>
+    </div>
+  </div>
+
+  <div class="scroll" id="list-commesse">
+    <div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 17H7A5 5 0 017 7h2M15 7h2a5 5 0 010 10h-2M11 12h2"/></svg><p>Caricamento…</p></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SCREEN DETTAGLIO — Aggiungi ricambi
+════════════════════════════════════════════════ -->
+<div class="screen hidden" id="screen-detail">
+  <div class="topbar">
+    <button class="topbar-back" onclick="goHome()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:22px;height:22px"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div style="flex:1">
+      <div class="topbar-title" id="det-num">—</div>
+      <div class="topbar-sub" id="det-info">—</div>
+    </div>
+    <span class="topbar-badge" id="det-ric-count">0 ricambi</span>
+  </div>
+
+  <!-- TABS -->
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab-scan" onclick="setTab('scan')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Scansiona
+    </button>
+    <button class="tab-btn" id="tab-lista" onclick="setTab('lista')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      Ricambi aggunti
+    </button>
+  </div>
+
+  <!-- TAB SCAN -->
+  <div class="scroll" id="panel-scan">
+    <!-- BARCODE READER INPUT -->
+    <div class="scan-area">
+      <div class="scan-label">Barcode / Codice prodotto</div>
+      <div class="scan-input-wrap">
+        <input type="text" id="scan-input" class="scan-input" placeholder="Scansiona o digita codice…" autocomplete="off"
+          oninput="onScanInput(this.value)" onkeydown="if(event.key==='Enter')cercaProdotto(this.value)">
+        <button class="scan-btn" onclick="startCamera()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          Fotocamera
+        </button>
+      </div>
+      <!-- Dropdown autocomplete -->
+      <div id="scan-dropdown" style="display:none;margin-top:6px;border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden;background:white"></div>
+    </div>
+
+    <!-- CAMERA -->
+    <div id="camera-section" style="display:none;margin-bottom:12px">
+      <div class="camera-wrap">
+        <video id="camera-video" playsinline muted autoplay></video>
+        <div class="camera-overlay">
+          <div style="text-align:center">
+            <div class="camera-reticle"></div>
+            <div class="camera-bar"></div>
+          </div>
+        </div>
+      </div>
+      <button onclick="stopCamera()" style="width:100%;margin-top:8px;padding:10px;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--surface2);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">
+        Chiudi fotocamera
+      </button>
+    </div>
+
+    <!-- RISULTATO -->
+    <div class="scan-result" id="scan-result">
+      <div class="scan-result-name" id="scan-prod-name">—</div>
+      <div class="scan-result-meta" id="scan-prod-meta">—</div>
+      <div class="qta-row">
+        <button class="qta-btn" onclick="cambiaQta(-1)">−</button>
+        <input type="number" id="scan-qta" class="qta-input" value="1" min="1">
+        <button class="qta-btn" onclick="cambiaQta(+1)">+</button>
+        <button class="btn-conferma" id="btn-conferma" onclick="confermaScan()">
+          ✓ Aggiungi
+        </button>
+      </div>
+    </div>
+
+    <!-- PRODOTTO NON TROVATO -->
+    <div id="scan-notfound" style="display:none;margin-top:8px">
+      <div style="background:var(--warning-light);border:1.5px solid #FDE68A;border-radius:var(--radius);padding:12px 14px;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:700;color:var(--warning);margin-bottom:2px">Prodotto non trovato</div>
+        <div style="font-size:12px;color:var(--text2)">Crea un nuovo prodotto in magazzino</div>
+      </div>
+      <div class="new-prod-form show" id="new-prod-form">
+        <div class="form-field">
+          <label>Descrizione *</label>
+          <input type="text" id="new-desc" placeholder="Es. Filtro olio Mann W713">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-field">
+            <label>Codice interno *</label>
+            <input type="text" id="new-cod" placeholder="ART-0001" style="font-family:'DM Mono',monospace;text-transform:uppercase">
+          </div>
+          <div class="form-field">
+            <label>Quantità</label>
+            <input type="number" id="new-qta" value="1" min="1" style="font-family:'DM Mono',monospace">
+          </div>
+        </div>
+        <button onclick="creaNuovoRicambio()" style="width:100%;padding:12px;border-radius:var(--radius);background:var(--accent);color:white;border:none;font-size:14px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer;margin-top:4px">
+          Crea e aggiungi alla commessa
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB LISTA -->
+  <div class="scroll hidden" id="panel-lista">
+    <div id="lista-ricambi" class="ricambi-list"></div>
+    <div id="empty-ricambi" class="empty" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+      <p>Nessun ricambio aggiunto<br>su questa commessa</p>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════
+// SUPABASE
+// ══════════════════════════════════════════════
+const SUPA_URL = 'https://crcfwmkemnwippplteqm.supabase.co';
+const SUPA_KEY = 'sb_publishable_bzZrugm5WWBaUKkO_mlrLw_dNXKPCM9';
+const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+let _commesse = [], _clienti = [], _veicoli = [], _prodotti = [], _movimenti = [];
+let comSelected = null;
+let scanProdId  = null;
+let statoFiltro = '';
+let cameraStream = null;
+let barcodeDetector = null;
+let tabAttivo = 'scan';
+
+// ── CARICA DATI ──────────────────────────────
+async function loadAll() {
+  const [co, cl, v, p] = await Promise.all([
+    supa.from('commesse').select('*').order('created_at', {ascending: false}),
+    supa.from('clienti').select('*'),
+    supa.from('veicoli').select('*'),
+    supa.from('prodotti').select('*'),
+  ]);
+  _commesse = co.data || [];
+  _clienti  = cl.data || [];
+  _veicoli  = v.data  || [];
+  _prodotti = p.data  || [];
+}
+
+// ── FIX SNAKE_CASE → CAMELCASE ───────────────
+function fixCom(c) { return c ? {...c, clienteId:c.cliente_id, veicoloId:c.veicolo_id, dataApertura:c.data_apertura, vociRic:c.voci_ric||[], vociMano:c.voci_mano||[], vociExtra:c.voci_extra||[], descrizione:c.descrizione||c.desc} : null; }
+function fixProd(p) { return p ? {...p, descrizione:p.descrizione||p.desc, codInt:p.cod_int, codForn:p.cod_forn, prezzoVend:p.prezzo_vend||0, giacenza:p.giacenza||0} : null; }
+function fixVei(v)  { return v ? {...v, clienteId:v.cliente_id} : null; }
+
+function getCommesse() { return _commesse.map(fixCom); }
+function getProdotti()  { return _prodotti.map(fixProd); }
+function getVeicoli()   { return _veicoli.map(fixVei); }
+
+// ── AUTH ─────────────────────────────────────
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pwd   = document.getElementById('login-pwd').value;
+  const errEl = document.getElementById('login-err');
+  errEl.style.display = 'none';
+  if (!email || !pwd) { errEl.textContent = 'Inserisci email e password'; errEl.style.display = ''; return; }
+  const { error } = await supa.auth.signInWithPassword({ email, password: pwd });
+  if (error) { errEl.textContent = 'Email o password errati'; errEl.style.display = ''; return; }
+  await loadAll();
+  showScreen('screen-home');
+  renderCommesse();
+}
+
+async function doLogout() {
+  await supa.auth.signOut();
+  showScreen('screen-login');
+}
+
+async function checkSession() {
+  const { data: { session } } = await supa.auth.getSession();
+  if (session) {
+    await loadAll();
+    showScreen('screen-home');
+    renderCommesse();
+  } else {
+    document.getElementById('login-loading').style.display = 'none';
+    document.getElementById('login-form').style.display = 'flex';
+    document.getElementById('login-form').style.flexDirection = 'column';
+  }
+}
+
+// ── SCREEN NAV ───────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('hidden', s.id !== id));
+}
+function goHome() {
+  stopCamera();
+  comSelected = null; scanProdId = null;
+  showScreen('screen-home');
+  loadAll().then(renderCommesse);
+}
+
+// ── COMMESSE ─────────────────────────────────
+let _statoFiltro = '';
+function setStatoFiltro(el, stato) {
+  _statoFiltro = stato;
+  document.querySelectorAll('.stato-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  renderCommesse();
+}
+
+function renderCommesse() {
+  const q = (document.getElementById('search-com')?.value||'').toLowerCase();
+  const commesse = getCommesse();
+  const filtered = commesse.filter(cm => {
+    const cl = _clienti.find(c=>c.id===cm.clienteId);
+    const v  = getVeicoli().find(x=>x.id===cm.veicoloId);
+    const matchQ = !q || (cm.numero||'').toLowerCase().includes(q) || (cm.descrizione||'').toLowerCase().includes(q) || (cl?.ragione||'').toLowerCase().includes(q) || (v?.targa||'').toLowerCase().includes(q);
+    const matchS = !_statoFiltro || cm.stato === _statoFiltro;
+    return matchQ && matchS;
+  });
+
+  document.getElementById('home-sub').textContent = `${filtered.length} commess${filtered.length===1?'a':'e'}`;
+
+  const el = document.getElementById('list-commesse');
+  if (!filtered.length) {
+    el.innerHTML = '<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 17H7A5 5 0 017 7h2M15 7h2a5 5 0 010 10h-2M11 12h2"/></svg><p>Nessuna commessa trovata</p></div>';
+    return;
+  }
+
+  const statoLabel = {aperta:'Aperta',wip:'In lavorazione',chiusa:'Chiusa',fatturata:'Fatturata'};
+  const statoBadge = {aperta:'badge-blue',wip:'badge-orange',chiusa:'badge-green',fatturata:'badge-gray'};
+
+  el.innerHTML = filtered.map(cm => {
+    const cl = _clienti.find(c=>c.id===cm.clienteId);
+    const v  = getVeicoli().find(x=>x.id===cm.veicoloId);
+    const nRic = (cm.vociRic||[]).length;
+    return `<div class="com-card" onclick="selezionaCommessa('${cm.id}')">
+      <div class="com-bar ${cm.stato}"></div>
+      <div class="com-info">
+        <div class="com-num">${cm.numero||''} <span class="badge ${statoBadge[cm.stato]||'badge-gray'}">${statoLabel[cm.stato]||cm.stato}</span></div>
+        ${v ? `<div class="com-targa">${v.targa}</div>` : ''}
+        <div class="com-cliente">${cl ? cl.ragione : '—'}</div>
+        <div class="com-desc">${cm.descrizione||'—'}${nRic?` · <strong>${nRic} ricambi</strong>`:''}</div>
+      </div>
+      <div class="com-arrow">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:18px;height:18px"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selezionaCommessa(id) {
+  const cm = getCommesse().find(c=>c.id===id);
+  if (!cm) return;
+  comSelected = cm;
+  const cl = _clienti.find(c=>c.id===cm.clienteId);
+  const v  = getVeicoli().find(x=>x.id===cm.veicoloId);
+  document.getElementById('det-num').textContent = cm.numero||'—';
+  document.getElementById('det-info').textContent = [v?.targa, cl?.ragione].filter(Boolean).join(' · ')||'—';
+  aggiornaBadgeRic();
+  resetScan();
+  setTab('scan');
+  showScreen('screen-detail');
+}
+
+function aggiornaBadgeRic() {
+  if (!comSelected) return;
+  const n = (comSelected.vociRic||[]).length;
+  document.getElementById('det-ric-count').textContent = `${n} ricamb${n===1?'io':'i'}`;
+}
+
+// ── TABS ─────────────────────────────────────
+function setTab(tab) {
+  tabAttivo = tab;
+  document.getElementById('panel-scan').classList.toggle('hidden', tab !== 'scan');
+  document.getElementById('panel-lista').classList.toggle('hidden', tab !== 'lista');
+  document.getElementById('tab-scan').classList.toggle('active', tab === 'scan');
+  document.getElementById('tab-lista').classList.toggle('active', tab === 'lista');
+  if (tab === 'lista') renderListaRicambi();
+  if (tab === 'scan')  setTimeout(()=>document.getElementById('scan-input').focus(), 100);
+}
+
+// ── SCAN ─────────────────────────────────────
+let _scanTimer = null;
+function onScanInput(val) {
+  clearTimeout(_scanTimer);
+  document.getElementById('scan-dropdown').style.display = 'none';
+  document.getElementById('scan-result').style.display = 'none';
+  document.getElementById('scan-notfound').style.display = 'none';
+  scanProdId = null;
+  if (!val || val.length < 2) return;
+  _scanTimer = setTimeout(() => cercaProdotto(val), 300);
+}
+
+function cercaProdotto(val) {
+  const q   = val.trim();
+  const qu  = q.toUpperCase();
+  const ql  = q.toLowerCase();
+  const prodotti = getProdotti();
+
+  // Corrispondenza esatta su barcode o codice
+  const esatto = prodotti.find(p =>
+    (p.barcodes||[]).some(b=>(b||'').toUpperCase()===qu) ||
+    (p.codInt||'').toUpperCase()===qu ||
+    (p.codForn||'').toUpperCase()===qu
+  );
+  if (esatto) { mostraProdotto(esatto); return; }
+
+  // Ricerca testuale
+  const filtrati = prodotti.filter(p =>
+    (p.descrizione||'').toLowerCase().includes(ql) ||
+    (p.codInt||'').toLowerCase().includes(ql) ||
+    (p.codForn||'').toLowerCase().includes(ql) ||
+    (p.barcodes||[]).some(b=>(b||'').toLowerCase().includes(ql))
+  ).slice(0, 8);
+
+  if (filtrati.length === 1) { mostraProdotto(filtrati[0]); return; }
+
+  if (filtrati.length > 1) {
+    const drop = document.getElementById('scan-dropdown');
+    drop.style.display = 'block';
+    drop.innerHTML = filtrati.map(p=>`
+      <div onclick="mostraProdottoId('${p.id}')" style="padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent"
+        ontouchstart="this.style.background='var(--surface2)'" ontouchend="this.style.background=''">
+        <div style="font-size:13px;font-weight:600">${p.descrizione||'—'}</div>
+        <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace">${p.codInt||''} · Giac: ${p.giacenza} ${p.um||'pz'}</div>
+      </div>`).join('');
+    return;
+  }
+
+  // Non trovato
+  if (q.length >= 3) {
+    document.getElementById('scan-notfound').style.display = '';
+    // Pre-popola il form
+    const sembra_cod = /^[A-Z0-9\-\.\/]+$/i.test(q) && q.length <= 30 && !q.includes(' ');
+    if (sembra_cod) { document.getElementById('new-cod').value = q.toUpperCase(); document.getElementById('new-desc').value = ''; }
+    else            { document.getElementById('new-desc').value = q; document.getElementById('new-cod').value = ''; }
+    document.getElementById('new-qta').value = 1;
+  }
+}
+
+function mostraProdottoId(id) {
+  const p = getProdotti().find(x=>x.id===id);
+  if (p) { document.getElementById('scan-dropdown').style.display='none'; mostraProdotto(p); }
+}
+
+function mostraProdotto(p) {
+  scanProdId = p.id;
+  const g = p.giacenza||0;
+  document.getElementById('scan-prod-name').textContent = p.descrizione||'—';
+  document.getElementById('scan-prod-meta').innerHTML =
+    `${p.codInt?`<span style="font-family:'DM Mono',monospace">${p.codInt}</span> · `:''}Giacenza: <strong style="color:${g<=0?'var(--danger)':g<=2?'var(--warning)':'var(--success)'}">${g} ${p.um||'pz'}</strong>`;
+  const res = document.getElementById('scan-result');
+  res.className = 'scan-result ' + (g<=0?'danger':'success');
+  res.style.display = '';
+  document.getElementById('scan-notfound').style.display = 'none';
+  document.getElementById('scan-dropdown').style.display = 'none';
+  document.getElementById('scan-qta').value = 1;
+  document.getElementById('btn-conferma').disabled = false;
+}
+
+function cambiaQta(delta) {
+  const input = document.getElementById('scan-qta');
+  const val = Math.max(1, (parseFloat(input.value)||1) + delta);
+  input.value = val;
+}
+
+async function confermaScan() {
+  if (!scanProdId || !comSelected) return;
+  const p   = getProdotti().find(x=>x.id===scanProdId);
+  if (!p) return;
+  const qta = parseFloat(document.getElementById('scan-qta').value)||1;
+
+  if (p.giacenza < qta) {
+    if (!confirm(`Giacenza insufficiente (${p.giacenza} ${p.um||'pz'}). Procedere comunque?`)) return;
+  }
+
+  document.getElementById('btn-conferma').disabled = true;
+
+  try {
+    // Scarica magazzino
+    await supa.from('movimenti').insert({
+      id: crypto.randomUUID(), prod_id: scanProdId, tipo: 'scarico', qta,
+      com_id: comSelected.id,
+      note: 'Magazziniere — ' + comSelected.numero,
+      data: new Date().toISOString(), created_at: new Date().toISOString()
+    });
+    await supa.from('prodotti').update({giacenza: p.giacenza - qta}).eq('id', scanProdId);
+
+    // Aggiorna voci commessa
+    const { data: cmFresh } = await supa.from('commesse').select('*').eq('id', comSelected.id).single();
+    const vociRic = [...(cmFresh?.voci_ric||[])];
+    const ve = vociRic.find(v=>v.prodId===scanProdId);
+    if (ve) ve.qta = (ve.qta||1)+qta;
+    else vociRic.push({prodId:scanProdId, desc:p.descrizione||'—', qta, prezzo:p.prezzoVend||0});
+    const totale = [...(cmFresh?.voci_mano||[]),...vociRic,...(cmFresh?.voci_extra||[])].reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0);
+    await supa.from('commesse').update({voci_ric:vociRic, totale}).eq('id', comSelected.id);
+
+    showToast(`✓ ${p.descrizione} × ${qta} aggiunto`);
+    suonaOk();
+
+    // Ricarica e reset
+    await loadAll();
+    comSelected = getCommesse().find(c=>c.id===comSelected.id) || comSelected;
+    aggiornaBadgeRic();
+    resetScan();
+  } catch(e) { showToast('Errore: '+e.message); document.getElementById('btn-conferma').disabled = false; }
+}
+
+function resetScan() {
+  scanProdId = null;
+  document.getElementById('scan-input').value = '';
+  document.getElementById('scan-result').style.display = 'none';
+  document.getElementById('scan-notfound').style.display = 'none';
+  document.getElementById('scan-dropdown').style.display = 'none';
+}
+
+// ── CREA NUOVO RICAMBIO ──────────────────────
+async function creaNuovoRicambio() {
+  const desc = (document.getElementById('new-desc').value||'').trim();
+  const cod  = (document.getElementById('new-cod').value||'').trim().toUpperCase();
+  const qta  = parseFloat(document.getElementById('new-qta').value)||1;
+  if (!desc) { alert('Inserisci la descrizione.'); return; }
+  if (!cod)  { alert('Il codice interno è obbligatorio.'); return; }
+  if (!comSelected) return;
+  if (getProdotti().find(p=>(p.codInt||'').toUpperCase()===cod)) { alert(`Codice "${cod}" già esistente.`); return; }
+
+  try {
+    const npId = crypto.randomUUID();
+    const ora  = new Date().toISOString();
+    await supa.from('prodotti').insert({id:npId,created_at:ora,descrizione:desc,cod_int:cod,um:'pz',categoria:'Varie',giacenza:0,scorta_min:1,qta_riordino:10,prezzo_acq:0,prezzo_vend:0,barcodes:[]});
+    await supa.from('movimenti').insert({id:crypto.randomUUID(),prod_id:npId,tipo:'carico',qta,com_id:null,note:'Acquisto per '+comSelected.numero,data:ora,created_at:ora});
+    await supa.from('movimenti').insert({id:crypto.randomUUID(),prod_id:npId,tipo:'scarico',qta,com_id:comSelected.id,note:'Utilizzo in '+comSelected.numero,data:ora,created_at:ora});
+    const { data: cmFresh } = await supa.from('commesse').select('*').eq('id', comSelected.id).single();
+    const vociRic = [...(cmFresh?.voci_ric||[])];
+    vociRic.push({prodId:npId, desc, qta, prezzo:0});
+    const totale = [...(cmFresh?.voci_mano||[]),...vociRic,...(cmFresh?.voci_extra||[])].reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0);
+    await supa.from('commesse').update({voci_ric:vociRic, totale}).eq('id', comSelected.id);
+    showToast(`✓ "${desc}" creato e aggiunto`);
+    suonaOk();
+    await loadAll();
+    comSelected = getCommesse().find(c=>c.id===comSelected.id)||comSelected;
+    aggiornaBadgeRic();
+    resetScan();
+  } catch(e) { showToast('Errore: '+e.message); }
+}
+
+// ── LISTA RICAMBI ────────────────────────────
+function renderListaRicambi() {
+  if (!comSelected) return;
+  const ric = comSelected.vociRic||[];
+  const el  = document.getElementById('lista-ricambi');
+  const em  = document.getElementById('empty-ricambi');
+  if (!ric.length) { el.innerHTML=''; em.style.display=''; return; }
+  em.style.display='none';
+  el.innerHTML = ric.map((r,i)=>`
+    <div class="ric-item">
+      <div class="ric-qta">${r.qta||1}×</div>
+      <div class="ric-desc">
+        <div style="font-size:13px;font-weight:600">${r.desc||'—'}</div>
+        ${r.prezzo?`<div style="font-size:11px;color:var(--text3)">€ ${(r.prezzo||0).toFixed(2)} cad.</div>`:''}
+      </div>
+      <button class="ric-rm" onclick="rimuoviRicambio(${i})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:18px;height:18px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+      </button>
+    </div>`).join('');
+}
+
+async function rimuoviRicambio(idx) {
+  if (!comSelected) return;
+  const ric = [...(comSelected.vociRic||[])];
+  const r   = ric[idx];
+  if (!r) return;
+  if (!confirm(`Rimuovere "${r.desc}" dalla commessa?`)) return;
+
+  try {
+    ric.splice(idx, 1);
+    // Reintegra in magazzino
+    if (r.prodId) {
+      const p = getProdotti().find(x=>x.id===r.prodId);
+      if (p) {
+        await supa.from('prodotti').update({giacenza: p.giacenza + (r.qta||1)}).eq('id', r.prodId);
+        await supa.from('movimenti').insert({id:crypto.randomUUID(),prod_id:r.prodId,tipo:'carico',qta:r.qta||1,com_id:comSelected.id,note:'Storno magazziniere — '+comSelected.numero,data:new Date().toISOString(),created_at:new Date().toISOString()});
+      }
+    }
+    const totale = [...(comSelected.vociMano||[]),...ric,...(comSelected.vociExtra||[])].reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0);
+    await supa.from('commesse').update({voci_ric:ric, totale}).eq('id', comSelected.id);
+    await loadAll();
+    comSelected = getCommesse().find(c=>c.id===comSelected.id)||comSelected;
+    aggiornaBadgeRic();
+    renderListaRicambi();
+    showToast('Ricambio rimosso — giacenza reintegrata ✓');
+  } catch(e) { showToast('Errore: '+e.message); }
+}
+
+// ── FOTOCAMERA ───────────────────────────────
+async function startCamera() {
+  const section = document.getElementById('camera-section');
+  const video   = document.getElementById('camera-video');
+  section.style.display = '';
+
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    video.srcObject = cameraStream;
+
+    if ('BarcodeDetector' in window) {
+      barcodeDetector = new BarcodeDetector({ formats: ['code_128','ean_13','ean_8','qr_code','code_39','data_matrix'] });
+      scanFrame();
+    } else {
+      showToast('Usa il campo testo per cercare manualmente');
+    }
+  } catch(e) {
+    showToast('Fotocamera non disponibile');
+    section.style.display = 'none';
+  }
+}
+
+function scanFrame() {
+  if (!cameraStream) return;
+  const video = document.getElementById('camera-video');
+  if (video.readyState === video.HAVE_ENOUGH_DATA) {
+    barcodeDetector.detect(video).then(barcodes => {
+      if (barcodes.length > 0) {
+        const code = barcodes[0].rawValue;
+        stopCamera();
+        document.getElementById('scan-input').value = code;
+        cercaProdotto(code);
+      }
+    }).catch(()=>{});
+  }
+  requestAnimationFrame(scanFrame);
+}
+
+function stopCamera() {
+  if (cameraStream) { cameraStream.getTracks().forEach(t=>t.stop()); cameraStream = null; }
+  document.getElementById('camera-section').style.display = 'none';
+}
+
+// ── AUDIO ────────────────────────────────────
+function suonaOk() {
+  try {
+    const ctx = new AudioContext();
+    [880, 1100].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.2, ctx.currentTime + i*0.1);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i*0.1 + 0.15);
+      osc.start(ctx.currentTime + i*0.1);
+      osc.stop(ctx.currentTime + i*0.1 + 0.15);
+    });
+  } catch(e) {}
+}
+
+// ── TOAST ────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── INIT ─────────────────────────────────────
+checkSession();
+</script>
+</body>
+</html>
