@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ORMIA — Gestionale Officina</title>
+<title>ORMIA Pro Max — Gestionale Officina</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -173,8 +173,8 @@
   .btn-sm { padding: 5px 10px; font-size: 12px; }
 
   /* CONTENT */
-  .content { padding: 24px 28px; flex: 1; min-width: 0; overflow-y: auto; }
-  #section-documenti, #section-report, #section-preventivi, #section-commesse, #section-clienti, #section-veicoli, #section-meccanici, #section-magazzino, #section-timbrature, #section-impostazioni { width: 100%; }
+  .content { padding: 24px 28px; flex: 1; min-width: 0; overflow-y: auto; display: flex; flex-direction: column; }
+  #section-anagrafiche, #section-clienti, #section-veicoli, #section-commesse, #section-meccanici, #section-magazzino, #section-timbrature, #section-presenze, #section-preventivi, #section-documenti, #section-report, #section-impostazioni { width: 100%; flex: 1; }
 
   /* TABS */
   .tabs { display: flex; gap: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 4px; margin-bottom: 20px; width: fit-content; }
