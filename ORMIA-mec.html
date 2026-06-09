@@ -843,15 +843,15 @@ function renderDetail() {
       <span class="action-btn-sub">→ In lavorazione</span>
     </button>`;
   } else if (cm.stato === 'wip') {
-    btns += `<div style="grid-column:span 2;display:flex;justify-content:center">
-      <button class="action-btn danger small" style="position:relative;overflow:hidden;user-select:none;min-width:160px;max-width:220px"
+    btns += `<div style="grid-column:span 2">
+      <button class="action-btn danger" style="width:100%;position:relative;overflow:hidden;user-select:none"
         onmousedown="startHold(this)" ontouchstart="startHold(this)"
         onmouseup="cancelHold()" ontouchend="cancelHold()"
         onmouseleave="cancelHold()" ontouchcancel="cancelHold()">
         <div id="hold-progress" style="position:absolute;left:0;top:0;height:100%;width:0;background:rgba(255,255,255,.25);transition:none;pointer-events:none"></div>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-        <span class="action-btn-label" style="font-size:12px">Chiudi commessa</span>
-        <span class="action-btn-sub" style="font-size:10px">Tieni premuto 2 sec.</span>
+        <span class="action-btn-label">Chiudi commessa</span>
+        <span class="action-btn-sub">Tieni premuto 2 sec.</span>
       </button>
     </div>`;
   }

@@ -173,8 +173,7 @@
   .btn-sm { padding: 5px 10px; font-size: 12px; }
 
   /* CONTENT */
-  .content { padding: 24px 28px; flex: 1; min-width: 0; overflow-y: auto; display: flex; flex-direction: column; }
-  #section-anagrafiche, #section-clienti, #section-veicoli, #section-commesse, #section-meccanici, #section-magazzino, #section-timbrature, #section-presenze, #section-preventivi, #section-documenti, #section-report, #section-impostazioni { width: 100%; flex: 1; }
+  .content { padding: 24px 28px; flex: 1; overflow-y: auto; margin-left: 220px; }
 
   /* TABS */
   .tabs { display: flex; gap: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 4px; margin-bottom: 20px; width: fit-content; }
@@ -717,16 +716,12 @@
           Preventivi
           <span class="badge" id="badge-preventivi">0</span>
         </div>
-        <div class="nav-item" id="nav-documenti" onclick="setSection('documenti')">
+        <div class="nav-item" id="nav-documenti" onclick="apriDocumenti()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
           Vendita / DDT
-          <span class="badge" id="badge-documenti">0</span>
+          <span class="badge" id="badge-fatture" style="background:var(--accent)">0</span>
         </div>
-        <div class="nav-item" id="nav-report" onclick="setSection('report')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-          Report
-        </div>
-      </div>
+      </div><!-- nav section -->
     </nav>
     <div class="sidebar-footer">
       <div class="nav-item" id="nav-impostazioni" onclick="setSection('impostazioni')" style="margin-bottom:8px">
@@ -1168,93 +1163,7 @@
         </div>
 
       <!-- SEZIONE IMPOSTAZIONI -->
-      <div id="section-impostazioni" style="display:none">
 
-        <div style="max-width:680px">
-
-          <!-- DATI OFFICINA -->
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:16px;box-shadow:var(--shadow)">
-            <div style="font-size:15px;font-weight:600;margin-bottom:4px">Dati officina</div>
-            <div style="font-size:13px;color:var(--text3);margin-bottom:20px">Usati automaticamente su preventivi, DDT e documenti</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-              <div class="form-group" style="grid-column:span 2"><label>Ragione sociale *</label><input type="text" id="off-ragione" placeholder="Es. ORMIA S.R.L."></div>
-              <div class="form-group"><label>P.IVA</label><input type="text" id="off-piva" placeholder="IT12345678901"></div>
-              <div class="form-group"><label>Codice fiscale</label><input type="text" id="off-cf" placeholder="12345678901"></div>
-              <div class="form-group" style="grid-column:span 2"><label>Indirizzo</label><input type="text" id="off-indirizzo" placeholder="Via Roma 1, 00100 Roma RM"></div>
-              <div class="form-group"><label>Telefono</label><input type="text" id="off-tel" placeholder="+39 06 1234567"></div>
-              <div class="form-group"><label>Email</label><input type="text" id="off-email" placeholder="info@officina.it"></div>
-              <div class="form-group"><label>PEC</label><input type="text" id="off-pec" placeholder="officina@pec.it"></div>
-              <div class="form-group"><label>Codice SDI</label><input type="text" id="off-sdi" placeholder="XXXXXXX"></div>
-              <div class="form-group"><label>IBAN</label><input type="text" id="off-iban" placeholder="IT60 X054 2811 1010 0000 0123 456"></div>
-              <div class="form-group"><label>Banca</label><input type="text" id="off-banca" placeholder="Banca XY — Filiale di Roma"></div>
-              <div class="form-group" style="grid-column:span 2"><label>Note piè di pagina (su documenti)</label><input type="text" id="off-note-doc" placeholder="Es. Il pagamento deve avvenire entro 30 giorni dalla data fattura."></div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-              <div class="form-group"><label>Prossimo n° preventivo</label><input type="number" id="off-num-prev" min="1" value="1" style="font-family:'DM Mono',monospace"></div>
-              <div class="form-group"><label>Prossimo n° DDT</label><input type="number" id="off-num-ddt" min="1" value="1" style="font-family:'DM Mono',monospace"></div>
-              <div class="form-group"><label>Prossimo n° fattura</label><input type="number" id="off-num-fatt" min="1" value="1" style="font-family:'DM Mono',monospace"></div>
-            </div>
-            <div style="display:flex;justify-content:flex-end;margin-top:16px">
-              <button class="btn btn-primary" onclick="salvaDatiOfficina()">Salva dati officina</button>
-            </div>
-          </div>
-
-          <!-- TARIFFE MANODOPERA -->
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:16px;box-shadow:var(--shadow)">
-            <div style="font-size:15px;font-weight:600;margin-bottom:4px">Tariffe manodopera</div>
-            <div style="font-size:13px;color:var(--text3);margin-bottom:20px">Costi applicati automaticamente alle voci di manodopera nelle commesse</div>
-
-            <div style="display:grid;grid-template-columns:1fr 140px 140px;gap:0;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
-              <!-- Intestazione -->
-              <div style="padding:10px 14px;background:var(--surface2);font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Tipo</div>
-              <div style="padding:10px 14px;background:var(--surface2);font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;border-left:1px solid var(--border)">Costo interno (€/h)</div>
-              <div style="padding:10px 14px;background:var(--surface2);font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;border-left:1px solid var(--border)">Prezzo cliente (€/h)</div>
-
-              <!-- Normale -->
-              <div style="padding:12px 14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px">
-                <span style="width:8px;height:8px;border-radius:50%;background:#1B4FD8;flex-shrink:0"></span>
-                <div><div style="font-size:13px;font-weight:500">Normale</div><div style="font-size:11px;color:var(--text3)">Ore standard in officina</div></div>
-              </div>
-              <div style="padding:8px 14px;border-top:1px solid var(--border);border-left:1px solid var(--border)"><input type="number" id="tariffa-normale-int" min="0" step="0.5" placeholder="0.00" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace"></div>
-              <div style="padding:8px 14px;border-top:1px solid var(--border);border-left:1px solid var(--border)"><input type="number" id="tariffa-normale-cli" min="0" step="0.5" placeholder="0.00" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace"></div>
-
-              <!-- Straordinario -->
-              <div style="padding:12px 14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px">
-                <span style="width:8px;height:8px;border-radius:50%;background:#D97706;flex-shrink:0"></span>
-                <div><div style="font-size:13px;font-weight:500">Straordinario</div><div style="font-size:11px;color:var(--text3)">Ore extra oltre l'orario</div></div>
-              </div>
-              <div style="padding:8px 14px;border-top:1px solid var(--border);border-left:1px solid var(--border)"><input type="number" id="tariffa-straordinario-int" min="0" step="0.5" placeholder="0.00" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace"></div>
-              <div style="padding:8px 14px;border-top:1px solid var(--border);border-left:1px solid var(--border)"><input type="number" id="tariffa-straordinario-cli" min="0" step="0.5" placeholder="0.00" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace"></div>
-
-              <!-- Su strada -->
-              <div style="padding:12px 14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px">
-                <span style="width:8px;height:8px;border-radius:50%;background:#276749;flex-shrink:0"></span>
-                <div><div style="font-size:13px;font-weight:500">Su strada</div><div style="font-size:11px;color:var(--text3)">Interventi fuori officina</div></div>
-              </div>
-              <div style="padding:8px 14px;border-top:1px solid var(--border);border-left:1px solid var(--border)"><input type="number" id="tariffa-strada-int" min="0" step="0.5" placeholder="0.00" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace"></div>
-              <div style="padding:8px 14px;border-top:1px solid var(--border);border-left:1px solid var(--border)"><input type="number" id="tariffa-strada-cli" min="0" step="0.5" placeholder="0.00" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace"></div>
-
-              <!-- Festivo -->
-              <div style="padding:12px 14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px">
-                <span style="width:8px;height:8px;border-radius:50%;background:#C53030;flex-shrink:0"></span>
-                <div><div style="font-size:13px;font-weight:500">Festivo</div><div style="font-size:11px;color:var(--text3)">Sabato, domenica, festività</div></div>
-              </div>
-              <div style="padding:8px 14px;border-top:1px solid var(--border);border-left:1px solid var(--border)"><input type="number" id="tariffa-festivo-int" min="0" step="0.5" placeholder="0.00" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace"></div>
-              <div style="padding:8px 14px;border-top:1px solid var(--border);border-left:1px solid var(--border)"><input type="number" id="tariffa-festivo-cli" min="0" step="0.5" placeholder="0.00" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace"></div>
-            </div>
-
-            <div style="margin-top:16px;display:flex;justify-content:flex-end">
-              <button class="btn btn-primary" onclick="salvaTariffe()">Salva tariffe</button>
-            </div>
-          </div>
-
-          <!-- INFO APPLICAZIONE -->
-          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 18px;font-size:12px;color:var(--text3)">
-            <strong style="color:var(--text2)">Come funziona</strong> — Quando aggiungi una voce di manodopera a una commessa, seleziona il tipo (normale, straordinario, su strada, festivo) e il prezzo cliente viene precompilato automaticamente. Il costo interno è visibile solo nei report.
-          </div>
-
-        </div>
-      </div><!-- /section-impostazioni -->
 
       <!-- ═══════════════════════════════════════════
            SEZIONE PREVENTIVI
@@ -1284,203 +1193,20 @@
         </div>
       </div><!-- /section-preventivi -->
 
-      <!-- ═══════════════════════════════════════════
-           SEZIONE DOCUMENTI (Vendita banco + DDT)
-      ════════════════════════════════════════════ -->
-      <div id="section-documenti" style="display:none">
-        <!-- TABS -->
-        <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px">
-          <button id="doc-tab-vendita" onclick="setDocTab('vendita')"
-            style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent);margin-bottom:-2px;font-family:'DM Sans',sans-serif">
-            Vendita a banco
-          </button>
-          <button id="doc-tab-ddt" onclick="setDocTab('ddt')"
-            style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);margin-bottom:-2px;font-family:'DM Sans',sans-serif">
-            DDT emessi
-          </button>
-          <button id="doc-tab-fatture" onclick="setDocTab('fatture')"
-            style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);margin-bottom:-2px;font-family:'DM Sans',sans-serif">
-            Fatture
-            <span class="badge" id="badge-fatture" style="background:var(--accent)">0</span>
-          </button>
-        </div>
 
-        <!-- VENDITA A BANCO -->
-        <div id="doc-panel-vendita">
-          <div style="display:grid;grid-template-columns:1fr 380px;gap:16px;align-items:start">
-            <!-- Form vendita -->
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;box-shadow:var(--shadow)">
-              <div style="font-size:14px;font-weight:700;margin-bottom:16px">Nuova vendita a banco</div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-                <div class="form-group"><label>Cliente</label>
-                  <select id="vb-cliente" onchange="popolaVbVeicoli()">
-                    <option value="">— Cliente occasionale —</option>
-                  </select>
-                </div>
-                <div class="form-group"><label>Data</label>
-                  <input type="date" id="vb-data">
-                </div>
-                <div class="form-group" style="grid-column:span 2"><label>Note / riferimento</label>
-                  <input type="text" id="vb-note" placeholder="Es. Ordine telefonico">
-                </div>
-              </div>
+      <!-- Placeholder nascosti per compatibilità JS documenti -->
+      <div style="display:none">
+        <span id="badge-fatture"></span>
+        <div id="doc-panel-ddt"></div><div id="doc-panel-fatture"></div><div id="doc-panel-vendita"></div>
+        <div id="empty-ddt"></div><div id="empty-fatture"></div>
+        <div id="lista-ddt"></div><div id="lista-fatture"></div>
+        <input id="search-ddt"><input id="search-fatture">
+        <select id="vb-cliente"></select>
+        <input id="vb-data"><input id="vb-note">
+        <div id="vb-righe"></div><div id="vb-storico"></div><div id="vb-totale"></div>
+      </div>
 
-              <!-- Righe prodotti -->
-              <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Articoli</div>
-              <div id="vb-righe"></div>
-              <button onclick="aggiungiRigaVb()" style="width:100%;border:1px dashed var(--border2);background:none;border-radius:var(--radius);padding:8px;font-size:12px;color:var(--text3);cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:8px">
-                + Aggiungi articolo
-              </button>
 
-              <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-                <div>
-                  <div style="font-size:12px;color:var(--text3)">Totale imponibile</div>
-                  <div style="font-size:22px;font-weight:700;font-family:'DM Mono',monospace" id="vb-totale">€ 0,00</div>
-                </div>
-                <div style="display:flex;gap:8px">
-                  <button class="btn btn-secondary" onclick="generaDDTdaVendita()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
-                    Emetti DDT
-                  </button>
-                  <button class="btn btn-secondary" onclick="emettiFatturaVendita()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                    Emetti fattura
-                  </button>
-                  <button class="btn btn-primary" onclick="stampaVendita()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-                    Stampa / PDF
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Ultime vendite -->
-            <div>
-              <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:10px">Ultime vendite</div>
-              <div id="vb-storico"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- DDT EMESSI -->
-        <div id="doc-panel-ddt" style="display:none">
-          <div class="toolbar" style="margin-bottom:14px">
-            <div class="search-wrap">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input type="text" class="search-input" id="search-ddt" placeholder="Cerca DDT, cliente…" oninput="renderDDT()">
-            </div>
-            <button class="btn btn-primary" onclick="apriNuovaDDT()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Nuova DDT
-            </button>
-          </div>
-          <div id="lista-ddt"></div>
-          <div class="empty-state" id="empty-ddt">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
-            <p>Nessun DDT emesso. Usa "Nuova DDT" per crearne uno.</p>
-            <button class="btn btn-primary" onclick="apriNuovaDDT()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Nuova DDT
-            </button>
-          </div>
-        </div>
-        <!-- FATTURE -->
-        <div id="doc-panel-fatture" style="display:none">
-          <!-- TOOLBAR -->
-          <div class="toolbar" style="margin-bottom:14px">
-            <div class="search-wrap">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input type="text" class="search-input" id="search-fatture" placeholder="Cerca fattura, cliente, numero…" oninput="renderFatture()">
-            </div>
-            <div class="stato-filter">
-              <div class="stato-pill active" data-stato-fatt="" onclick="setStatoFattFilter(this,'')">Tutte</div>
-              <div class="stato-pill" data-stato-fatt="emessa" onclick="setStatoFattFilter(this,'emessa')">Emesse</div>
-              <div class="stato-pill" data-stato-fatt="pagata" onclick="setStatoFattFilter(this,'pagata')">Pagate</div>
-              <div class="stato-pill" data-stato-fatt="scaduta" onclick="setStatoFattFilter(this,'scaduta')">Scadute</div>
-            </div>
-            <!-- KPI rapide -->
-            <div style="display:flex;gap:10px;margin-left:auto">
-              <div style="text-align:right">
-                <div style="font-size:11px;color:var(--text3)">Da incassare</div>
-                <div style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:var(--accent)" id="fatt-kpi-aperte">€ 0</div>
-              </div>
-              <div style="text-align:right">
-                <div style="font-size:11px;color:var(--text3)">Scadute</div>
-                <div style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:var(--danger)" id="fatt-kpi-scadute">€ 0</div>
-              </div>
-            </div>
-          </div>
-
-          <div id="lista-fatture"></div>
-          <div class="empty-state" id="empty-fatture" style="display:none">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            <p>Nessuna fattura emessa. Generala da una commessa chiusa o da una vendita a banco.</p>
-          </div>
-        </div>
-
-      </div><!-- /section-documenti -->
-
-      <!-- ═══════════════════════════════════════════
-           SEZIONE REPORT
-      ════════════════════════════════════════════ -->
-      <div id="section-report" style="display:none">
-
-        <!-- FILTRI PERIODO -->
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
-          <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--surface)">
-            <button id="rep-tab-mese" onclick="setRepTab('mese')" style="padding:7px 16px;border:none;background:var(--accent);color:white;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">Mensile</button>
-            <button id="rep-tab-anno" onclick="setRepTab('anno')" style="padding:7px 16px;border:none;background:none;color:var(--text2);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">Annuale</button>
-          </div>
-          <div id="rep-filtro-mese" style="display:flex;align-items:center;gap:8px">
-            <button onclick="cambiaRepMese(-1)" style="width:30px;height:30px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">‹</button>
-            <span id="rep-periodo-label" style="font-size:14px;font-weight:700;min-width:120px;text-align:center"></span>
-            <button onclick="cambiaRepMese(+1)" style="width:30px;height:30px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">›</button>
-          </div>
-          <div id="rep-filtro-anno" style="display:none;align-items:center;gap:8px">
-            <button onclick="cambiaRepAnno(-1)" style="width:30px;height:30px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">‹</button>
-            <span id="rep-anno-label" style="font-size:14px;font-weight:700;min-width:60px;text-align:center"></span>
-            <button onclick="cambiaRepAnno(+1)" style="width:30px;height:30px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">›</button>
-          </div>
-        </div>
-
-        <!-- KPI CARDS -->
-        <div id="rep-kpi" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px"></div>
-
-        <!-- GRAFICI -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-          <!-- Fatturato mensile / per mese dell'anno -->
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;box-shadow:var(--shadow)">
-            <div style="font-size:13px;font-weight:700;margin-bottom:14px">Fatturato</div>
-            <canvas id="chart-fatturato" height="180"></canvas>
-          </div>
-          <!-- Commesse per stato -->
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;box-shadow:var(--shadow)">
-            <div style="font-size:13px;font-weight:700;margin-bottom:14px">Commesse per stato</div>
-            <canvas id="chart-commesse" height="180"></canvas>
-          </div>
-        </div>
-
-        <!-- TABELLE -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-          <!-- Ore per meccanico -->
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;box-shadow:var(--shadow)">
-            <div style="font-size:13px;font-weight:700;margin-bottom:14px">Ore lavorate per meccanico</div>
-            <div id="rep-ore-mec"></div>
-          </div>
-          <!-- Ricambi più usati -->
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;box-shadow:var(--shadow)">
-            <div style="font-size:13px;font-weight:700;margin-bottom:14px">Ricambi più utilizzati</div>
-            <div id="rep-ricambi"></div>
-          </div>
-        </div>
-
-        <!-- TABELLA FATTURE DEL PERIODO -->
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;box-shadow:var(--shadow)">
-          <div style="font-size:13px;font-weight:700;margin-bottom:14px">Dettaglio fatture</div>
-          <div id="rep-tabella-fatture"></div>
-        </div>
-
-      </div><!-- /section-report -->
 
     </div><!-- /content -->
   </main>
@@ -3913,10 +3639,7 @@ function showSection(sec) {
   document.getElementById('section-timbrature').style.display  = sec === 'timbrature'   ? 'block' : 'none';
   document.getElementById('section-presenze').style.display    = sec === 'presenze'     ? 'block' : 'none';
   document.getElementById('section-magazzino').style.display   = sec === 'magazzino'    ? 'block' : 'none';
-  document.getElementById('section-impostazioni').style.display = sec === 'impostazioni' ? 'block' : 'none';
   document.getElementById('section-preventivi').style.display   = sec === 'preventivi'   ? 'block' : 'none';
-  document.getElementById('section-documenti').style.display    = sec === 'documenti'    ? 'block' : 'none';
-  document.getElementById('section-report').style.display       = sec === 'report'       ? 'block' : 'none';
 }
 
 function setSection(sec) {
@@ -3953,12 +3676,13 @@ function setSection(sec) {
     closeDetail('detail-cliente'); closeDetail('detail-veicolo'); closeDetail('detail-commessa');
     initTimbrature();
   } else if (sec === 'impostazioni') {
-    document.getElementById('nav-impostazioni').classList.add('active');
-    document.getElementById('topbar-title').textContent = 'Impostazioni';
-    document.getElementById('topbar-sub').textContent   = 'Dati officina, tariffe e configurazione';
-    btn.innerHTML = ''; btn.style.display = 'none';
-    closeDetail('detail-cliente'); closeDetail('detail-veicolo'); closeDetail('detail-commessa');
-    setTimeout(() => { caricaDatiOfficina(); caricaTariffe(); }, 50);
+    // Apri modal sopra la sezione corrente senza cambiarla
+    setTimeout(() => {
+      caricaDatiOfficina();
+      caricaTariffe();
+      document.getElementById('modal-impostazioni').style.display = 'block';
+    }, 50);
+    return; // Non aggiornare topbar né nav
 
   } else if (sec === 'preventivi') {
     document.getElementById('nav-preventivi').classList.add('active');
@@ -3968,23 +3692,6 @@ function setSection(sec) {
     btn.onclick = () => openModalPreventivo();
     closeDetail('detail-cliente'); closeDetail('detail-veicolo'); closeDetail('detail-commessa');
     renderPreventivi();
-
-  } else if (sec === 'documenti') {
-    document.getElementById('nav-documenti').classList.add('active');
-    document.getElementById('topbar-title').textContent = 'Vendita / DDT';
-    document.getElementById('topbar-sub').textContent   = 'Vendita a banco e documenti di trasporto';
-    btn.innerHTML = ''; btn.style.display = 'none';
-    closeDetail('detail-cliente'); closeDetail('detail-veicolo'); closeDetail('detail-commessa');
-    initVendita(); renderDDT(); renderFatture();
-    setDocTab('vendita');
-
-  } else if (sec === 'report') {
-    document.getElementById('nav-report').classList.add('active');
-    document.getElementById('topbar-title').textContent = 'Report';
-    document.getElementById('topbar-sub').textContent   = 'Analisi fatturato, ore e magazzino';
-    btn.innerHTML = ''; btn.style.display = 'none';
-    closeDetail('detail-cliente'); closeDetail('detail-veicolo'); closeDetail('detail-commessa');
-    setTimeout(initReport, 50);
 
   } else if (sec === 'magazzino') {
     document.getElementById('nav-magazzino').classList.add('active');
@@ -5337,6 +5044,101 @@ ${cm.note ? `
   <div class="qr-wrap">
     <img src="${qrUrl}" width="90" height="90" alt="QR ${cm.numero}">
     <div class="qr-label">${cm.numero}</div>
+  </div>
+</div>
+
+
+
+
+<!-- ═══════════════ MODAL DOCUMENTI ═══════════════ -->
+<div id="modal-documenti" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;overflow-y:auto">
+  <div style="background:var(--bg);min-height:100vh;max-width:1100px;margin:0 auto;padding:28px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div style="font-size:22px;font-weight:800">Vendita / DDT / Fatture</div>
+      <button onclick="chiudiDocumenti()" style="background:none;border:none;cursor:pointer;padding:4px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <!-- TABS -->
+    <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px">
+      <button id="doc-tab-vendita" onclick="setDocTab('vendita')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent);margin-bottom:-2px;font-family:'DM Sans',sans-serif">Vendita a banco</button>
+      <button id="doc-tab-ddt" onclick="setDocTab('ddt')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);margin-bottom:-2px;font-family:'DM Sans',sans-serif">DDT emessi</button>
+      <button id="doc-tab-fatture" onclick="setDocTab('fatture')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);margin-bottom:-2px;font-family:'DM Sans',sans-serif">Fatture <span id="badge-fatture-tab" class="badge" style="background:var(--accent)">0</span></button>
+    </div>
+
+    <!-- VENDITA A BANCO -->
+    <div id="doc-panel-vendita">
+      <div style="display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px">
+          <div style="font-size:14px;font-weight:700;margin-bottom:16px">Nuova vendita</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+            <div class="form-group"><label>Cliente</label><select id="vb-cliente"><option value="">— Cliente occasionale —</option></select></div>
+            <div class="form-group"><label>Data</label><input type="date" id="vb-data"></div>
+            <div class="form-group" style="grid-column:span 2"><label>Note</label><input type="text" id="vb-note" placeholder="Riferimento, ordine…"></div>
+          </div>
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:8px">Aggiungi ricambi</div>
+          <div style="position:relative;margin-bottom:12px">
+            <div style="display:flex;gap:8px">
+              <input type="text" id="vb-search-input" placeholder="Cerca per nome, codice o barcode…"
+                oninput="cercaRicambioVb(this.value)"
+                onkeydown="if(event.key==='Enter'){event.preventDefault();aggiungiPrimoProdottoVb()}"
+                style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;outline:none;font-family:'DM Sans',sans-serif">
+              <button onclick="aggiungiPrimoProdottoVb()" class="btn btn-secondary">Aggiungi</button>
+            </div>
+            <div id="vb-search-drop" style="display:none;position:absolute;left:0;right:0;top:calc(100%+4px);background:white;border:1.5px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);z-index:300;max-height:200px;overflow-y:auto"></div>
+          </div>
+          <div id="vb-righe"></div>
+          <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+            <div><div style="font-size:12px;color:var(--text3)">Totale imponibile</div><div style="font-size:22px;font-weight:700;font-family:'DM Mono',monospace" id="vb-totale">€ 0,00</div></div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-secondary" onclick="emettiSoloVbDDT()">Solo DDT</button>
+              <button class="btn btn-primary" onclick="emettiVbDDTFattura()">DDT + Fattura</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--text3);margin-bottom:10px">Ultime vendite</div>
+          <div id="vb-storico"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DDT -->
+    <div id="doc-panel-ddt" style="display:none">
+      <div style="display:flex;gap:12px;margin-bottom:14px;align-items:center">
+        <div style="background:white;border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 12px;display:flex;align-items:center;gap:8px;flex:1">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:var(--text3)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="search-ddt" placeholder="Cerca DDT…" oninput="renderDDT()" style="border:none;outline:none;font-size:14px;width:100%">
+        </div>
+        <button class="btn btn-primary" onclick="apriNuovaDDT()">+ Nuova DDT</button>
+      </div>
+      <div id="lista-ddt"></div>
+      <div id="empty-ddt" style="text-align:center;padding:40px;color:var(--text3)">
+        <p style="margin-bottom:16px">Nessun DDT emesso.</p>
+        <button class="btn btn-primary" onclick="apriNuovaDDT()">+ Nuova DDT</button>
+      </div>
+    </div>
+
+    <!-- FATTURE -->
+    <div id="doc-panel-fatture" style="display:none">
+      <div style="display:flex;gap:12px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
+        <div style="background:white;border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 12px;display:flex;align-items:center;gap:8px;flex:1">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:var(--text3)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="search-fatture" placeholder="Cerca fattura…" oninput="renderFatture()" style="border:none;outline:none;font-size:14px;width:100%">
+        </div>
+        <div style="display:flex;gap:6px">
+          <div class="stato-pill active" data-stato-fatt="" onclick="setStatoFattFilter(this,'')">Tutte</div>
+          <div class="stato-pill" data-stato-fatt="emessa" onclick="setStatoFattFilter(this,'emessa')">Emesse</div>
+          <div class="stato-pill" data-stato-fatt="pagata" onclick="setStatoFattFilter(this,'pagata')">Pagate</div>
+          <div class="stato-pill" data-stato-fatt="scaduta" onclick="setStatoFattFilter(this,'scaduta')">Scadute</div>
+        </div>
+        <div style="display:flex;gap:16px;margin-left:auto">
+          <div><div style="font-size:11px;color:var(--text3)">Da incassare</div><div style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:var(--accent)" id="fatt-kpi-aperte">€ 0</div></div>
+          <div><div style="font-size:11px;color:var(--text3)">Scadute</div><div style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:var(--danger)" id="fatt-kpi-scadute">€ 0</div></div>
+        </div>
+      </div>
+      <div id="lista-fatture"></div>
+      <div id="empty-fatture" style="display:none;text-align:center;padding:40px;color:var(--text3)">Nessuna fattura emessa.</div>
+    </div>
+
   </div>
 </div>
 
@@ -6811,6 +6613,118 @@ function initVendita() {
   renderRigheVb(); renderStoricoVb();
 }
 
+function cercaRicambioVb(q) {
+  const drop = document.getElementById('vb-search-drop');
+  if (!q || q.length < 2) { drop.style.display='none'; return; }
+  const ql = q.toLowerCase();
+  const risultati = prodotti.filter(p =>
+    (p.descrizione||p.desc||'').toLowerCase().includes(ql) ||
+    (p.codInt||'').toLowerCase().includes(ql) ||
+    (p.codForn||'').toLowerCase().includes(ql) ||
+    (p.barcodes||[]).some(b=>(b||'').toLowerCase().includes(ql))
+  ).slice(0,8);
+  if (!risultati.length) { drop.style.display='none'; return; }
+  drop.style.display = '';
+  drop.innerHTML = risultati.map(p => {
+    const g = p.giacenza||0;
+    return `<div onclick="selezionaRicambioVb('${p.id}')"
+      style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center"
+      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <div>
+        <div style="font-size:13px;font-weight:600">${p.descrizione||p.desc||'—'}</div>
+        <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace">${p.codInt||''}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;margin-left:12px">
+        <div style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace">€ ${(p.prezzoVend||p.prezzo_vend||0).toFixed(2)}</div>
+        <div style="font-size:11px;color:${g<=0?'var(--danger)':g<=2?'var(--warning)':'var(--success)'}">Giac: ${g}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selezionaRicambioVb(prodId) {
+  const p = prodotti.find(x=>x.id===prodId);
+  if (!p) return;
+  document.getElementById('vb-search-drop').style.display='none';
+  document.getElementById('vb-search-input').value='';
+  const esistente = vbRighe.find(r=>r.prodId===prodId);
+  if (esistente) { esistente.qta++; }
+  else { vbRighe.push({prodId, desc:p.descrizione||p.desc||'—', qta:1, prezzo:p.prezzoVend||p.prezzo_vend||0}); }
+  renderRigheVb();
+  document.getElementById('vb-search-input').focus();
+}
+
+function aggiungiPrimoProdottoVb() {
+  const drop = document.getElementById('vb-search-drop');
+  const first = drop.querySelector('div[onclick]');
+  if (first) first.click();
+}
+
+async function emettiSoloVbDDT() {
+  const righe = vbRighe.filter(r=>r.desc&&r.qta>0);
+  if (!righe.length) { alert('Aggiungi almeno un ricambio.'); return; }
+  const ddt = await creaVbDDT(righe);
+  if (!ddt) return;
+  const cl = clienti.find(c=>c.id===ddt.clienteId);
+  apriAnteprima(generaHtmlDDT(ddt, getDatiOfficina(), cl), `DDT ${ddt.numero}`);
+  resetVendita();
+  showToast(`DDT ${ddt.numero} emesso ✓`);
+  setDocTab('ddt');
+}
+
+async function emettiVbDDTFattura() {
+  const righe = vbRighe.filter(r=>r.desc&&r.qta>0);
+  if (!righe.length) { alert('Aggiungi almeno un ricambio.'); return; }
+  const ddt = await creaVbDDT(righe);
+  if (!ddt) return;
+  // Precompila fattura dal DDT
+  apriFatturaModal({
+    origine: 'ddt', origineId: ddt.id,
+    clienteId: ddt.clienteId||null,
+    descrizione: `DDT ${ddt.numero}`,
+    veicolo: '',
+    righe: righe.map(r=>({desc:r.desc,qta:r.qta||1,prezzo:r.prezzo||0})),
+  });
+  resetVendita();
+}
+
+async function creaVbDDT(righe) {
+  const cId  = document.getElementById('vb-cliente').value;
+  const data = document.getElementById('vb-data').value;
+  const note = document.getElementById('vb-note').value;
+  const numDdt = `DDT-${new Date().getFullYear()}-${String(_impostazioni.num_ddt||1).padStart(4,'0')}`;
+  try {
+    // Scarica giacenze
+    for (const r of righe.filter(r=>r.prodId)) {
+      const pi = prodotti.findIndex(p=>p.id===r.prodId);
+      if (pi>=0) {
+        const nuovaGiac = Math.max(0, (prodotti[pi].giacenza||0) - (r.qta||1));
+        await supa.from('prodotti').update({giacenza:nuovaGiac}).eq('id',r.prodId);
+        await supa.from('movimenti').insert({id:crypto.randomUUID(),prod_id:r.prodId,tipo:'scarico',qta:r.qta||1,note:'Vendita '+numDdt,data:new Date().toISOString(),created_at:new Date().toISOString()});
+        prodotti[pi].giacenza = nuovaGiac;
+      }
+    }
+    const row = {numero:numDdt,data:data||null,cliente_id:cId||null,righe,causale:'Vendita a banco',note,stato:'aperto'};
+    const {data:r,error} = await supa.from('ddt').insert(row).select().single();
+    if (error) throw error;
+    const ddt = {...r, clienteId:r.cliente_id};
+    ddts.unshift(ddt);
+    await incrementaNumDDT();
+    updateBadgeMagazzino();
+    return ddt;
+  } catch(e) { alert('Errore: '+e.message); return null; }
+}
+
+function resetVendita() {
+  vbRighe = [];
+  renderRigheVb();
+  document.getElementById('vb-note').value = '';
+  const si = document.getElementById('vb-search-input');
+  if (si) { si.value=''; }
+  const drop = document.getElementById('vb-search-drop');
+  if (drop) drop.style.display='none';
+}
+
 function aggiungiRigaVb() { vbRighe.push({prodId:'',desc:'',qta:1,prezzo:0}); renderRigheVb(); }
 
 function renderRigheVb() {
@@ -6930,14 +6844,60 @@ function setDocTab(tab) {
   if (tab==='ddt')     renderDDT();
   if (tab==='fatture') renderFatture();
 }
+let _statoDDTFiltro = '';
+
+function setStatoDDTFilter(el, stato) {
+  _statoDDTFiltro = stato;
+  document.querySelectorAll('[data-ddt-stato]').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  renderDDT();
+}
 
 function renderDDT() {
-  const q=(document.getElementById('search-ddt')?.value||'').toLowerCase();
-  const filtered=[...ddts].reverse().filter(d=>{const cl=clienti.find(c=>c.id===d.clienteId);return!q||(d.numero||'').toLowerCase().includes(q)||(cl?.ragione||'').toLowerCase().includes(q);});
-  const lista=document.getElementById('lista-ddt'); const empty=document.getElementById('empty-ddt');
-  if(!filtered.length){lista.innerHTML='';empty.style.display='';return;}
+  const q = (document.getElementById('search-ddt')?.value||'').toLowerCase();
+  const filtered = ddts.filter(d=>{
+    const cl = clienti.find(c=>c.id===d.clienteId);
+    const mQ = !q||(d.numero||'').toLowerCase().includes(q)||(cl?.ragione||'').toLowerCase().includes(q);
+    const mS = !_statoDDTFiltro || (d.stato||'aperto')===_statoDDTFiltro;
+    return mQ && mS;
+  });
+  const lista = document.getElementById('lista-ddt');
+  const empty = document.getElementById('empty-ddt');
+  if (!filtered.length) { lista.innerHTML=''; empty.style.display=''; return; }
   empty.style.display='none';
-  lista.innerHTML=filtered.map(d=>{const cl=clienti.find(c=>c.id===d.clienteId);return`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 18px;margin-bottom:8px;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:space-between;gap:12px"><div><div style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:var(--text3);margin-bottom:2px">${d.numero}</div><div style="font-size:14px;font-weight:500">${cl?cl.ragione:'Occasionale'}</div><div style="font-size:12px;color:var(--text3)">${formatDate(d.data)} · ${d.causale||'—'} · ${d.righe?.length||0} art.</div></div><div style="display:flex;gap:6px"><button class="btn btn-ghost btn-sm" onclick="anteprimaDDT('${d.id}')">Anteprima</button><button class="btn btn-ghost btn-sm" onclick="ristampaDDT('${d.id}')">Stampa</button></div></div>`;}).join('');
+  lista.innerHTML = filtered.map(d=>{
+    const cl = clienti.find(c=>c.id===d.clienteId);
+    const stato = d.stato||'aperto';
+    const statoColor = stato==='fatturato'?'var(--success)':'var(--accent)';
+    const statoLabel = stato==='fatturato'?'Fatturato':'Aperto';
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 18px;margin-bottom:8px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+          <span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:700;color:var(--text3)">${d.numero}</span>
+          <span style="font-size:11px;font-weight:700;color:${statoColor};background:${stato==='fatturato'?'var(--success-light)':'var(--accent-light)'};padding:2px 8px;border-radius:10px">${statoLabel}</span>
+        </div>
+        <div style="font-size:14px;font-weight:600">${cl?cl.ragione:'Cliente occasionale'}</div>
+        <div style="font-size:12px;color:var(--text3)">${formatDate(d.data)} · ${d.causale||''} · ${d.righe?.length||0} art.</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn btn-ghost btn-sm" onclick="anteprimaDDT('${d.id}')">Anteprima</button>
+        <button class="btn btn-ghost btn-sm" onclick="ristampaDDT('${d.id}')">Stampa</button>
+        ${stato!=='fatturato'?`<button class="btn btn-primary btn-sm" onclick="converteDDTinFattura('${d.id}')">Converti in fattura</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function converteDDTinFattura(id) {
+  const d = ddts.find(x=>x.id===id);
+  if (!d) return;
+  apriFatturaModal({
+    origine:'ddt', origineId:id,
+    clienteId:d.clienteId||null,
+    descrizione:`DDT ${d.numero}`,
+    veicolo:'',
+    righe:(d.righe||[]).map(r=>({desc:r.desc,qta:r.qta||1,prezzo:r.prezzo||0})),
+  });
 }
 
 // ── DDT MANUALE ──────────────────────────────────────
@@ -7124,6 +7084,8 @@ function emettiFatturaCommessa(comId) {
   apriFatturaModal({origine:'commessa',origineId:comId,clienteId:cm.clienteId,
     descrizione:`Commessa ${cm.numero} — ${cm.descrizione||cm.desc}`,
     veicolo:v?`${v.targa} ${[v.marca,v.modello].filter(Boolean).join(' ')}`:'',righe});
+  // Assicurati che il modal documenti sia aperto
+  if (document.getElementById('modal-documenti').style.display !== 'block') apriDocumenti();
 }
 
 function emettiFatturaVendita() {
@@ -7209,6 +7171,11 @@ async function salvaFattura() {
       const ci = commesse.findIndex(c=>c.id===_fattDraft.origineId);
       if (ci>=0) { commesse[ci].stato='fatturata'; commesse[ci].fatturaId=fatt.id; await dbSaveCommessa({...commesse[ci]}); }
     }
+    if (_fattDraft.origine==='ddt' && _fattDraft.origineId) {
+      await supa.from('ddt').update({stato:'fatturato', fattura_id:fatt.id}).eq('id', _fattDraft.origineId);
+      const di = ddts.findIndex(d=>d.id===_fattDraft.origineId);
+      if (di>=0) { ddts[di].stato='fatturato'; ddts[di].fatturaId=fatt.id; }
+    }
     closeModal('modal-fattura'); renderFatture(); updateBadgeFatture();
     showToast(`Fattura ${numero} emessa ✓`);
     return fatt;
@@ -7265,8 +7232,11 @@ function renderFatture() {
 
 function updateBadgeFatture() {
   const n=fatture.filter(f=>f.stato==='emessa'||f.stato==='scaduta').length;
-  const el=document.getElementById('badge-fatture');
-  if(el){el.textContent=n;el.style.background=fatture.some(f=>f.stato==='scaduta')?'var(--danger)':'var(--accent)';}
+  const color=fatture.some(f=>f.stato==='scaduta')?'var(--danger)':'var(--accent)';
+  ['badge-fatture','badge-fatture-tab'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.textContent=n;el.style.background=color;}
+  });
 }
 
 async function segnaComePagata(id) {
@@ -7620,6 +7590,26 @@ function renderTabellaFatture(fattArr) {
   </table>`;
 }
 
+function apriDocumenti() {
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('nav-documenti').classList.add('active');
+  initVendita();
+  renderDDT();
+  renderFatture();
+  updateBadgeFatture();
+  document.getElementById('modal-documenti').style.display = 'block';
+  setDocTab('vendita');
+}
+
+function chiudiDocumenti() {
+  document.getElementById('modal-documenti').style.display = 'none';
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+}
+
+function chiudiImpostazioni() {
+  document.getElementById('modal-impostazioni').style.display = 'none';
+}
+
 function initDocumenti() {
   caricaDatiOfficina();
   caricaTariffe();
@@ -7690,6 +7680,62 @@ initDocumenti();
       </div>
     </div>
     <iframe id="anteprima-frame" style="flex:1;border:none;border-radius:0 0 var(--radius-lg) var(--radius-lg);background:white"></iframe>
+  </div>
+</div>
+
+
+<!-- MODAL IMPOSTAZIONI -->
+<div id="modal-impostazioni" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;overflow-y:auto" onclick="if(event.target===this)chiudiImpostazioni()">
+  <div style="background:var(--bg);min-height:100vh;max-width:740px;margin:0 auto;padding:32px 28px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+      <div><div style="font-size:22px;font-weight:800">Impostazioni</div><div style="font-size:13px;color:var(--text3)">Dati officina, tariffe e configurazione</div></div>
+      <button onclick="chiudiImpostazioni()" style="background:none;border:none;cursor:pointer;padding:4px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:16px">
+      <div style="font-size:15px;font-weight:700;margin-bottom:16px">Dati officina</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group" style="grid-column:span 2"><label>Ragione sociale</label><input type="text" id="off-ragione" placeholder="Es. ORMIA S.R.L."></div>
+        <div class="form-group"><label>P.IVA</label><input type="text" id="off-piva" placeholder="IT12345678901"></div>
+        <div class="form-group"><label>Codice fiscale</label><input type="text" id="off-cf" placeholder="12345678901"></div>
+        <div class="form-group" style="grid-column:span 2"><label>Indirizzo</label><input type="text" id="off-indirizzo" placeholder="Via Roma 1, 00100 Roma"></div>
+        <div class="form-group"><label>Telefono</label><input type="text" id="off-tel" placeholder="+39 06 1234567"></div>
+        <div class="form-group"><label>Email</label><input type="text" id="off-email" placeholder="info@officina.it"></div>
+        <div class="form-group"><label>PEC</label><input type="text" id="off-pec" placeholder="officina@pec.it"></div>
+        <div class="form-group"><label>SDI (7 caratteri)</label><input type="text" id="off-sdi" placeholder="XXXXXXX" maxlength="7"></div>
+        <div class="form-group"><label>IBAN</label><input type="text" id="off-iban" placeholder="IT60 X054..."></div>
+        <div class="form-group"><label>Banca</label><input type="text" id="off-banca" placeholder="Banca XY"></div>
+        <div class="form-group" style="grid-column:span 2"><label>Note piè di pagina</label><input type="text" id="off-note-doc" placeholder="Pagamento entro 30 giorni..."></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+        <div class="form-group"><label>N° preventivo</label><input type="number" id="off-num-prev" min="1" value="1" style="font-family:monospace"></div>
+        <div class="form-group"><label>N° DDT</label><input type="number" id="off-num-ddt" min="1" value="1" style="font-family:monospace"></div>
+        <div class="form-group"><label>N° fattura</label><input type="number" id="off-num-fatt" min="1" value="1" style="font-family:monospace"></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:16px">
+        <button class="btn btn-primary" onclick="salvaDatiOfficina()">Salva dati officina</button>
+      </div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:16px">
+      <div style="font-size:15px;font-weight:700;margin-bottom:16px">Tariffe manodopera</div>
+      <div style="display:grid;grid-template-columns:1fr 140px 140px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <div style="padding:10px 14px;background:var(--surface2);font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase">Tipo</div>
+        <div style="padding:10px 14px;background:var(--surface2);font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;border-left:1px solid var(--border)">Interno €/h</div>
+        <div style="padding:10px 14px;background:var(--surface2);font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;border-left:1px solid var(--border)">Cliente €/h</div>
+        <div style="padding:10px 14px;border-top:1px solid var(--border)">Normale</div>
+        <div style="padding:6px 10px;border-top:1px solid var(--border);border-left:1px solid var(--border)"><input type="number" id="tariffa-normale-int" min="0" step="0.5" placeholder="0" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-family:monospace;font-size:13px"></div>
+        <div style="padding:6px 10px;border-top:1px solid var(--border);border-left:1px solid var(--border)"><input type="number" id="tariffa-normale-cli" min="0" step="0.5" placeholder="0" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-family:monospace;font-size:13px"></div>
+        <div style="padding:10px 14px;border-top:1px solid var(--border)">Straordinario</div>
+        <div style="padding:6px 10px;border-top:1px solid var(--border);border-left:1px solid var(--border)"><input type="number" id="tariffa-straordinario-int" min="0" step="0.5" placeholder="0" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-family:monospace;font-size:13px"></div>
+        <div style="padding:6px 10px;border-top:1px solid var(--border);border-left:1px solid var(--border)"><input type="number" id="tariffa-straordinario-cli" min="0" step="0.5" placeholder="0" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-family:monospace;font-size:13px"></div>
+        <div style="padding:10px 14px;border-top:1px solid var(--border)">Su strada</div>
+        <div style="padding:6px 10px;border-top:1px solid var(--border);border-left:1px solid var(--border)"><input type="number" id="tariffa-strada-int" min="0" step="0.5" placeholder="0" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-family:monospace;font-size:13px"></div>
+        <div style="padding:6px 10px;border-top:1px solid var(--border);border-left:1px solid var(--border)"><input type="number" id="tariffa-strada-cli" min="0" step="0.5" placeholder="0" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-family:monospace;font-size:13px"></div>
+        <div style="padding:10px 14px;border-top:1px solid var(--border)">Festivo</div>
+        <div style="padding:6px 10px;border-top:1px solid var(--border);border-left:1px solid var(--border)"><input type="number" id="tariffa-festivo-int" min="0" step="0.5" placeholder="0" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-family:monospace;font-size:13px"></div>
+        <div style="padding:6px 10px;border-top:1px solid var(--border);border-left:1px solid var(--border)"><input type="number" id="tariffa-festivo-cli" min="0" step="0.5" placeholder="0" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-family:monospace;font-size:13px"></div>
+      </div>
+      <div style="margin-top:16px;display:flex;justify-content:flex-end"><button class="btn btn-primary" onclick="salvaTariffe()">Salva tariffe</button></div>
+    </div>
   </div>
 </div>
 
