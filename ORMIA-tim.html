@@ -217,23 +217,27 @@ let commesse   = [];
 let clienti    = [];
 let veicoli    = [];
 let timbrature = [];
+let presenze   = [];
 let mecAttivo  = null;
 let comAttiva  = null;
 
 // ── CARICAMENTO DATI ────────────────────────────────
 async function loadAll() {
-  const [m, co, cl, v, t] = await Promise.all([
+  const oggi = new Date().toISOString().split('T')[0];
+  const [m, co, cl, v, t, p] = await Promise.all([
     supa.from('meccanici').select('*'),
     supa.from('commesse').select('*'),
     supa.from('clienti').select('*'),
     supa.from('veicoli').select('*'),
     supa.from('timbrature').select('*'),
+    supa.from('presenze').select('*').gte('data', oggi),
   ]);
   meccanici  = m.data  || [];
   commesse   = co.data || [];
   clienti    = cl.data || [];
   veicoli    = v.data  || [];
   timbrature = t.data  || [];
+  presenze   = p.data  || [];
   renderLive();
 }
 
@@ -258,11 +262,16 @@ document.getElementById('input-badge').addEventListener('input', e => {
   }, 300);
 });
 
+const RUOLI_COMMESSA = ['meccanico','capo officina','elettrauto','apprendista'];
+
+function isMeccanicoOperativo(mec) {
+  return RUOLI_COMMESSA.includes((mec.ruolo||'').toLowerCase());
+}
+
 function cercaMeccanico() {
   const val = document.getElementById('input-badge').value.trim().toUpperCase();
   if (!val) return;
 
-  // Cerca per badge, PIN o ID
   const mec = meccanici.find(m =>
     (m.badge||'').toUpperCase() === val ||
     (m.pin||'') === val ||
@@ -272,20 +281,35 @@ function cercaMeccanico() {
   const resEl = document.getElementById('result-mec');
   if (!mec) {
     resEl.className = 'result-card show danger';
-    document.getElementById('result-mec-nome').textContent = 'Meccanico non trovato';
+    document.getElementById('result-mec-nome').textContent = 'Dipendente non trovato';
     document.getElementById('result-mec-sub').textContent = 'Controlla il badge o riprova';
     return;
   }
 
   mecAttivo = mec;
 
-  // Controlla se ha già una timbratura aperta
+  // Controlla presenza giornaliera
+  const oggi = new Date().toISOString().split('T')[0];
+  const presenzaOggi = presenze.find(p => p.mec_id === mec.id && (p.data||'').startsWith(oggi));
+
+  // Se non è un meccanico operativo → solo entrata/uscita giornaliera
+  if (!isMeccanicoOperativo(mec)) {
+    resEl.className = 'result-card show ' + (presenzaOggi && !presenzaOggi.uscita ? 'info' : 'success');
+    document.getElementById('result-mec-nome').textContent = mec.nome;
+    document.getElementById('result-mec-sub').textContent = presenzaOggi && !presenzaOggi.uscita
+      ? `In officina dalle ${new Date(presenzaOggi.entrata).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})} — timbro uscita automatico`
+      : `${mec.ruolo} — timbro entrata`;
+    setTimeout(() => registraPresenzaGiornaliera(mec, presenzaOggi), 800);
+    return;
+  }
+
+  // Per meccanici operativi → flusso normale con commessa
   const tAperta = timbrature.find(t => t.mec_id === mec.id && !t.uscita);
   const cmTim   = tAperta ? commesse.find(c => c.id === tAperta.com_id) : null;
 
   resEl.className = 'result-card show ' + (tAperta ? 'info' : 'success');
   document.getElementById('result-mec-nome').textContent = mec.nome;
-  document.getElementById('result-mec-sub').textContent  = tAperta && cmTim
+  document.getElementById('result-mec-sub').textContent = tAperta && cmTim
     ? `⏱ In lavorazione su ${cmTim.numero} — scansiona la commessa per registrare l'uscita`
     : 'Scansiona la commessa per timbrare l\'entrata';
 
@@ -293,6 +317,30 @@ function cercaMeccanico() {
   document.getElementById('step-commessa').style.opacity = '1';
   document.getElementById('step-commessa').style.pointerEvents = 'auto';
   setTimeout(() => document.getElementById('input-commessa').focus(), 100);
+}
+
+// ── PRESENZA GIORNALIERA (non meccanici) ─────────────────
+async function registraPresenzaGiornaliera(mec, presenzaEsistente) {
+  const ora   = new Date().toISOString();
+  const oggi  = new Date().toISOString().split('T')[0];
+  try {
+    if (presenzaEsistente && !presenzaEsistente.uscita) {
+      // Timbra uscita
+      await supa.from('presenze').update({uscita: ora}).eq('id', presenzaEsistente.id);
+      showToast(`✓ ${mec.nome} — USCITA registrata`);
+      suonaSegnale('uscita');
+    } else if (!presenzaEsistente) {
+      // Timbra entrata
+      await supa.from('presenze').insert({
+        id: crypto.randomUUID(), mec_id: mec.id, data: oggi,
+        entrata: ora, uscita: null, created_at: ora
+      });
+      showToast(`✓ ${mec.nome} — ENTRATA registrata`);
+      suonaSegnale('entrata');
+    }
+    await loadAll();
+    setTimeout(reset, 3000);
+  } catch(e) { showToast('Errore: '+e.message); }
 }
 
 // ── STEP 2: COMMESSA ─────────────────────────────────

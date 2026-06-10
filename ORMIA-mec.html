@@ -664,7 +664,7 @@ function renderHome() {
 
   // Stato live
   const tAperta = timbrature.find(t=>t.mecId===mecLogged.id && !t.uscita);
-  const comAttiva = tAperta ? commesse.find(c=>c.id===tAperta.comId && (c.stato==='aperta'||c.stato==='wip')) : null;
+  const comAttiva = tAperta ? commesse.find(c=>c.id===tAperta.comId && (c.stato==='aperta'||c.stato==='wip'||c.stato==='standby')) : null;
   const dot  = document.getElementById('home-dot');
   const stxt = document.getElementById('home-status-text');
   const ssub = document.getElementById('home-status-sub');
@@ -828,7 +828,7 @@ function renderDetail() {
       <span class="action-btn-sub">Timbra entrata</span>
     </button>`;
   } else {
-    btns += `<button class="action-btn danger" onclick="timbra('uscita')">
+    btns += `<button class="action-btn primary" onclick="timbra('uscita')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
       <span class="action-btn-label">Fine lavoro</span>
       <span class="action-btn-sub">Timbra uscita</span>
@@ -843,17 +843,15 @@ function renderDetail() {
       <span class="action-btn-sub">→ In lavorazione</span>
     </button>`;
   } else if (cm.stato === 'wip') {
-    btns += `<div style="grid-column:span 2">
-      <button class="action-btn danger" style="width:100%;position:relative;overflow:hidden;user-select:none"
-        onmousedown="startHold(this)" ontouchstart="startHold(this)"
-        onmouseup="cancelHold()" ontouchend="cancelHold()"
-        onmouseleave="cancelHold()" ontouchcancel="cancelHold()">
-        <div id="hold-progress" style="position:absolute;left:0;top:0;height:100%;width:0;background:rgba(255,255,255,.25);transition:none;pointer-events:none"></div>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-        <span class="action-btn-label">Chiudi commessa</span>
-        <span class="action-btn-sub">Tieni premuto 2 sec.</span>
-      </button>
-    </div>`;
+    btns += `<button class="action-btn danger" style="position:relative;overflow:hidden;user-select:none"
+      onmousedown="startHold(this)" ontouchstart="startHold(this)"
+      onmouseup="cancelHold()" ontouchend="cancelHold()"
+      onmouseleave="cancelHold()" ontouchcancel="cancelHold()">
+      <div id="hold-progress" style="position:absolute;left:0;top:0;height:100%;width:0;background:rgba(255,255,255,.25);transition:none;pointer-events:none"></div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      <span class="action-btn-label">Chiudi commessa</span>
+      <span class="action-btn-sub">Tieni premuto 1 sec.</span>
+    </button>`;
   }
 
   actions.innerHTML = btns;
@@ -871,13 +869,18 @@ async function timbra(verso) {
       for (const t of aperte) await supa.from('timbrature').update({uscita:ora}).eq('id',t.id);
       await supa.from('timbrature').insert({id:genId(),mec_id:mecLogged.id,com_id:comSelected.id,entrata:ora,uscita:null,created_at:ora});
       const cm = _commesse.find(c=>c.id===comSelected.id);
-      if (cm && cm.stato==='aperta') await supa.from('commesse').update({stato:'wip'}).eq('id',comSelected.id);
+      if (cm && (cm.stato==='aperta'||cm.stato==='standby')) await supa.from('commesse').update({stato:'wip'}).eq('id',comSelected.id);
       showToast('Timbratura entrata registrata ✓');
     } else {
       const t = _timbrature.find(x=>x.mec_id===mecLogged.id&&x.com_id===comSelected.id&&!x.uscita);
       if (!t) { showToast('Nessuna timbratura aperta su questa commessa'); return; }
       await supa.from('timbrature').update({uscita:ora}).eq('id',t.id);
-      showToast('Timbratura uscita registrata ✓');
+      // Se nessun altro meccanico è ancora attivo → standby
+      const altreAperte = _timbrature.filter(x=>x.com_id===comSelected.id&&!x.uscita&&x.id!==t.id);
+      if (!altreAperte.length) {
+        await supa.from('commesse').update({stato:'standby'}).eq('id',comSelected.id);
+      }
+      showToast('Fine lavoro registrato ✓');
     }
     await loadAll();
     comSelected = getCommesse().find(c=>c.id===comSelected.id) || comSelected;
@@ -925,6 +928,10 @@ async function caricaFoto(input) {
   const btnLabel = document.getElementById('btn-aggiungi-foto');
   btnLabel.style.opacity = '.5';
 
+  // Assicura sessione anonima per Storage
+  const { data: { session } } = await supa.auth.getSession();
+  if (!session) await supa.auth.signInAnonymously();
+
   const fotoCorrenti = comSelected.foto || [];
   const nuoveFoto    = [...fotoCorrenti];
 
@@ -969,7 +976,7 @@ function apriLightbox(url) {
 
 let _holdTimer = null;
 let _holdStart = null;
-const HOLD_MS = 2000;
+const HOLD_MS = 1000;
 
 function startHold(btn) {
   cancelHold();

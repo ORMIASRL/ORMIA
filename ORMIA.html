@@ -44,8 +44,8 @@
   }
 
   /* LAYOUT */
-  .app { display: flex; min-height: 100vh; }
-
+  .app { min-height: 100vh; }
+  .main { margin-left: 220px; display: flex; flex-direction: column; min-width: 0; }
   .sidebar {
     width: 220px;
     background: var(--surface);
@@ -129,7 +129,7 @@
   .user-role { font-size: 10px; color: var(--text3); }
 
   /* MAIN */
-  .main { margin-left: 220px; flex: 1; display: flex; flex-direction: column; }
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 
   .topbar {
     background: var(--surface);
@@ -173,7 +173,7 @@
   .btn-sm { padding: 5px 10px; font-size: 12px; }
 
   /* CONTENT */
-  .content { padding: 24px 28px; flex: 1; overflow-y: auto; margin-left: 220px; }
+  .content { padding: 24px 28px; flex: 1; overflow-y: auto; }
 
   /* TABS */
   .tabs { display: flex; gap: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 4px; margin-bottom: 20px; width: fit-content; }
@@ -363,7 +363,7 @@
     position: fixed; inset: 0;
     background: rgba(0,0,0,0.35);
     display: flex; align-items: center; justify-content: center;
-    z-index: 200;
+    z-index: 1100;
     padding: 20px;
     backdrop-filter: blur(2px);
   }
@@ -535,6 +535,7 @@
   .commessa-stato { display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500; }
   .stato-aperta   { background:#EEF2FF;color:#1B4FD8; }
   .stato-wip      { background:#FFFBEB;color:#92400E; }
+  .stato-standby  { background:#F5F3FF;color:#6D28D9; }
   .stato-chiusa   { background:#F0FFF4;color:#276749; }
   .stato-fatturata{ background:#F9F8F6;color:#6B6A65;border:1px solid #E4E2DC; }
 
@@ -584,6 +585,7 @@
   }
   .stato-aperta    { background:#DBEAFE;color:#1D4ED8; }
   .stato-wip       { background:#FEF3C7;color:#92400E; }
+  .stato-standby   { background:#F5F3FF;color:#6D28D9; }
   .stato-chiusa    { background:#D1FAE5;color:#065F46; }
   .stato-fatturata { background:#F3F4F6;color:#4B5563;border:1px solid #E5E7EB; }
 
@@ -669,12 +671,12 @@
         <div class="nav-item active" id="nav-clienti" onclick="setTab('clienti')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
           Clienti
-          <span class="badge" id="badge-clienti">0</span>
+          
         </div>
         <div class="nav-item" id="nav-veicoli" onclick="setTab('veicoli')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
           Veicoli
-          <span class="badge" id="badge-veicoli">0</span>
+          
         </div>
       </div>
       <div class="nav-section">
@@ -682,22 +684,17 @@
         <div class="nav-item" id="nav-commesse" onclick="setSection('commesse')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           Commesse
-          <span class="badge" id="badge-commesse">0</span>
-        </div>
-        <div class="nav-item" id="nav-meccanici" onclick="setSection('meccanici')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
-          Meccanici
-          <span class="badge" id="badge-meccanici">0</span>
+          
         </div>
         <div class="nav-item" id="nav-timbrature" onclick="setSection('timbrature')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           Timbrature
-          <span class="badge" id="badge-timbrature" title="In lavorazione adesso">0</span>
+          
         </div>
         <div class="nav-item" id="nav-presenze" onclick="setSection('presenze')" style="display:none">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
           Presenze
-          <span class="badge" id="badge-presenze">0</span>
+          
         </div>
       </div>
       <div class="nav-section">
@@ -705,7 +702,7 @@
         <div class="nav-item" id="nav-magazzino" onclick="setSection('magazzino')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
           Magazzino
-          <span class="badge" id="badge-magazzino">0</span>
+          
           <span class="badge" id="badge-da-approvare" style="background:var(--danger);display:none">!</span>
         </div>
       </div>
@@ -714,12 +711,12 @@
         <div class="nav-item" id="nav-preventivi" onclick="setSection('preventivi')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
           Preventivi
-          <span class="badge" id="badge-preventivi">0</span>
+          
         </div>
         <div class="nav-item" id="nav-documenti" onclick="apriDocumenti()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
           Vendita / DDT
-          <span class="badge" id="badge-fatture" style="background:var(--accent)">0</span>
+          
         </div>
       </div><!-- nav section -->
     </nav>
@@ -827,7 +824,7 @@
       <div id="section-commesse" style="display:none">
 
         <!-- KPI ROW -->
-        <div id="dash-kpi" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px"></div>
+        <div id="dash-kpi" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px"></div>
 
         <!-- MECCANICI IN LAVORAZIONE (strip) -->
         <div id="dash-mec-strip" style="margin-bottom:18px"></div>
@@ -842,6 +839,7 @@
             <div class="stato-pill active" data-stato="" onclick="setStatoFilter(this,'')">Tutte</div>
             <div class="stato-pill" data-stato="aperta" onclick="setStatoFilter(this,'aperta')">Aperte</div>
             <div class="stato-pill" data-stato="wip" onclick="setStatoFilter(this,'wip')">In lavorazione</div>
+            <div class="stato-pill" data-stato="standby" onclick="setStatoFilter(this,'standby')">Standby</div>
             <div class="stato-pill" data-stato="chiusa" onclick="setStatoFilter(this,'chiusa')">Chiuse</div>
             <div class="stato-pill" data-stato="fatturata" onclick="setStatoFilter(this,'fatturata')">Fatturate</div>
           </div>
@@ -861,7 +859,7 @@
         </div>
 
         <!-- KANBAN -->
-        <div id="dash-kanban" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:start"></div>
+        <div id="dash-kanban" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;align-items:start"></div>
 
         <!-- LISTA (fallback) -->
         <div id="lista-commesse" style="display:none"></div>
@@ -901,7 +899,7 @@
           <div class="empty-state" id="empty-meccanici" style="display:none">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
             <p>Nessun meccanico ancora.</p>
-            <button class="btn btn-primary" onclick="openModalMeccanico()">+ Aggiungi meccanico</button>
+            <button class="btn btn-primary" onclick="openModalMeccanico()">+ Aggiungi dipendente</button>
             <button class="btn btn-secondary" onclick="stampaTuttiBadge()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
               Stampa tutti i badge
@@ -910,12 +908,32 @@
         </div>
       </div><!-- /section-meccanici -->
 
-      <!-- SEZIONE TIMBRATURE -->
+      <!-- SEZIONE TIMBRATURE — Live board officina -->
       <div id="section-timbrature" style="display:none">
 
-        <!-- CHI STA LAVORANDO ADESSO -->
-        <div id="t-live-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">
-          <div style="font-size:13px;color:var(--text3);grid-column:1/-1;padding:40px 0;text-align:center">Nessun meccanico in lavorazione.</div>
+        <!-- LIVE: chi sta lavorando adesso -->
+        <div style="margin-bottom:24px">
+          <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:12px;display:flex;align-items:center;gap:8px">
+            <span style="width:8px;height:8px;border-radius:50%;background:var(--success);display:inline-block;animation:pulse 1.5s infinite"></span>
+            In lavorazione adesso
+          </div>
+          <div id="t-live-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px"></div>
+        </div>
+
+        <!-- STORICO OGGI -->
+        <div style="margin-bottom:24px">
+          <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:12px">
+            Attività di oggi
+          </div>
+          <div id="t-oggi" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px"></div>
+        </div>
+
+        <!-- ASSENTI OGGI -->
+        <div>
+          <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:12px">
+            Assenti oggi
+          </div>
+          <div id="t-assenti" style="display:flex;flex-wrap:wrap;gap:10px"></div>
         </div>
 
         <!-- elementi nascosti mantenuti per compatibilità JS -->
@@ -1904,8 +1922,8 @@ function updateStats() {
 }
 
 function updateBadges() {
-  document.getElementById('badge-clienti').textContent = clienti.length;
-  document.getElementById('badge-veicoli').textContent = veicoli.length;
+  const _bc=document.getElementById('badge-clienti'); if(_bc) _bc.textContent=clienti.length;
+  const _bv=document.getElementById('badge-veicoli'); if(_bv) _bv.textContent=veicoli.length;
 }
 
 // ===== MODAL =====
@@ -2119,8 +2137,8 @@ function showDetailVeicolo(id) {
   const dvList  = document.getElementById('dv-commesse-list');
   const dvCount = document.getElementById('dv-commesse-count');
   dvCount.textContent = comVeicolo.length + ' commess' + (comVeicolo.length===1?'a':'e');
-  const statoColors = {aperta:'var(--accent)',wip:'var(--warning)',chiusa:'var(--success)',fatturata:'#6366F1'};
-  const statoLabels = {aperta:'Aperta',wip:'In lavorazione',chiusa:'Chiusa',fatturata:'Fatturata'};
+  const statoColors = {aperta:'var(--accent)',wip:'var(--warning)',standby:'#6D28D9',chiusa:'var(--success)',fatturata:'#6366F1'};
+  const statoLabels = {aperta:'Aperta',wip:'In lavorazione',standby:'Standby',chiusa:'Chiusa',fatturata:'Fatturata'};
   if (!comVeicolo.length) {
     dvList.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0">Nessuna commessa registrata.</div>';
   } else {
@@ -2230,8 +2248,8 @@ function init() {
   <div class="modal">
     <div class="modal-header">
       <div>
-        <div class="modal-title" id="modal-meccanico-title">Nuovo meccanico</div>
-        <div class="modal-sub">Dati anagrafici del meccanico</div>
+        <div class="modal-title" id="modal-meccanico-title">Nuovo dipendente</div>
+        <div class="modal-sub">Dati anagrafici del dipendente</div>
       </div>
       <button class="close-btn" onclick="closeModal('modal-meccanico')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -2245,12 +2263,13 @@ function init() {
         </div>
         <div class="form-group">
           <label>Ruolo</label>
-          <select id="mec-ruolo">
+          <select id="mec-ruolo" onchange="togglePinBadge()">
             <option>Meccanico</option>
             <option>Capo officina</option>
             <option>Elettrauto</option>
             <option>Apprendista</option>
             <option>Magazziniere</option>
+            <option>Amministrazione</option>
           </select>
         </div>
         <div class="form-group">
@@ -2265,15 +2284,15 @@ function init() {
           <label>Note</label>
           <textarea id="mec-note" placeholder="Specializzazioni, certificazioni..."></textarea>
         </div>
-        <div class="form-section-title">Accesso app meccanici</div>
-        <div class="form-group">
+        <div id="mec-pin-section" class="form-section-title" style="grid-column:span 2">Accesso app meccanici</div>
+        <div id="mec-pin-wrap" class="form-group">
           <label>PIN (4 cifre) *</label>
           <input type="text" id="mec-pin" placeholder="Es. 1234" maxlength="4" pattern="[0-9]{4}"
             style="font-family:'DM Mono',monospace;letter-spacing:4px;font-size:18px"
             oninput="this.value=this.value.replace(/\D/g,'').substr(0,4)">
           <div style="font-size:11px;color:var(--text3);margin-top:3px">Usato per il login sull'app mobile</div>
         </div>
-        <div class="form-group">
+        <div id="mec-badge-wrap" class="form-group">
           <label>Codice badge <span style="font-weight:400;color:var(--text3)">(opzionale)</span></label>
           <input type="text" id="mec-badge" placeholder="Scansiona o digita il codice"
             style="font-family:'DM Mono',monospace;text-transform:uppercase">
@@ -2775,7 +2794,7 @@ async function showApp() {
   document.getElementById('app-login').style.display='none';
   await Promise.all([loadAllData(), loadImpostazioni(), loadDocumenti()]);
   document.getElementById('app-loading').style.display='none';
-  document.querySelector('.app').style.display='flex';
+  document.querySelector('.app').style.display='block';
   init();
 }
 
@@ -2885,9 +2904,12 @@ function initRealtime() {
     updateBadgeCommesse();
     if(currentSection==='commesse') renderCommesse();
     if(currentSection==='meccanici') renderMeccanici();
-    if(currentSection==='timbrature') initTimbrature();
+    if(currentSection==='timbrature') { initTimbrature(); renderLiveBoard(); }
     if(selectedCommessaId) renderTimbratureLiveCommessa(selectedCommessaId);
-  }, 5000);
+    // Controllo chiusura automatica presenze (ogni ora)
+  const oraAttuale = new Date();
+  if (oraAttuale.getHours() >= 20) chiudiPresenzeAutomatiche();
+}, 5000);
 
   // Refresh immediato quando si torna sulla finestra
   document.addEventListener('visibilitychange', async () => {
@@ -3305,13 +3327,14 @@ function renderCommesse() {
   // ── KPI ──────────────────────────────────────────────
   const nAp  = commesse.filter(c=>c.stato==='aperta').length;
   const nWip = commesse.filter(c=>c.stato==='wip').length;
+  const nSby = commesse.filter(c=>c.stato==='standby').length;
   const nCh  = commesse.filter(c=>c.stato==='chiusa').length;
   const nFat = commesse.filter(c=>c.stato==='fatturata').length;
-  const nGarAp  = commesse.filter(c=>c.stato==='aperta'  && isVeicoloInGaranzia(c.veicoloId)).length;
+  const nGarAp  = commesse.filter(c=>c.stato==='aperta'   && isVeicoloInGaranzia(c.veicoloId)).length;
   const nGarWip = commesse.filter(c=>c.stato==='wip'      && isVeicoloInGaranzia(c.veicoloId)).length;
   const nGarCh  = commesse.filter(c=>c.stato==='chiusa'   && isVeicoloInGaranzia(c.veicoloId)).length;
   const nGarFat = commesse.filter(c=>c.stato==='fatturata'&& isVeicoloInGaranzia(c.veicoloId)).length;
-  const totAttivo = commesse.filter(c=>c.stato==='aperta'||c.stato==='wip')
+  const totAttivo = commesse.filter(c=>c.stato==='aperta'||c.stato==='wip'||c.stato==='standby')
     .reduce((s,c)=>s+(c.totale||0),0);
   document.getElementById('dash-kpi').innerHTML = `
     <div class="dash-kpi-card dash-kpi-accent" onclick="setStatoFilter(document.querySelector('[data-stato=aperta]'),'aperta')" style="cursor:pointer">
@@ -3323,6 +3346,11 @@ function renderCommesse() {
       <div class="dash-kpi-label">In lavorazione</div>
       <div class="dash-kpi-val" style="color:#D97706">${nWip}</div>
       <div class="dash-kpi-sub">${nGarWip>0?`<span style="color:var(--warning)">🔧 ${nGarWip} in garanzia</span>`:`€ ${totAttivo.toLocaleString('it-IT',{minimumFractionDigits:0})} valore attivo`}</div>
+    </div>
+    <div class="dash-kpi-card" style="border-top:3px solid #6D28D9;cursor:pointer" onclick="setStatoFilter(document.querySelector('[data-stato=standby]'),'standby')">
+      <div class="dash-kpi-label">Standby</div>
+      <div class="dash-kpi-val" style="color:#6D28D9">${nSby}</div>
+      <div class="dash-kpi-sub">in pausa</div>
     </div>
     <div class="dash-kpi-card dash-kpi-ok" onclick="setStatoFilter(document.querySelector('[data-stato=chiusa]'),'chiusa')" style="cursor:pointer">
       <div class="dash-kpi-label">Chiuse</div>
@@ -3391,6 +3419,7 @@ function renderCommesse() {
     const cols = [
       { stato:'aperta',    label:'Aperte',        headCls:'k-col-head-aperta',    colCls:'k-col-aperta' },
       { stato:'wip',       label:'In lavorazione', headCls:'k-col-head-wip',       colCls:'k-col-wip'    },
+      { stato:'standby',   label:'Standby',        headCls:'k-col-head-standby',   colCls:'k-col-standby'},
       { stato:'chiusa',    label:'Chiuse',         headCls:'k-col-head-chiusa',    colCls:'k-col-chiusa' },
       { stato:'fatturata', label:'Fatturate',      headCls:'k-col-head-fatturata', colCls:'k-col-fatturata' },
     ];
@@ -3480,6 +3509,7 @@ function statoLabel(s) {
   const map = {
     aperta:    { label:'Aperta',        cls:'stato-aperta',    icon:'○' },
     wip:       { label:'In lavorazione',cls:'stato-wip',       icon:'◉' },
+    standby:   { label:'Standby',       cls:'stato-standby',   icon:'⏸' },
     chiusa:    { label:'Chiusa',        cls:'stato-chiusa',    icon:'✓' },
     fatturata: { label:'Fatturata',     cls:'stato-fatturata', icon:'◈' },
   };
@@ -3495,7 +3525,7 @@ function updateStatsCommesse() {
 }
 
 function updateBadgeCommesse() {
-  document.getElementById('badge-commesse').textContent = commesse.length;
+  const _bco=document.getElementById('badge-commesse'); if(_bco) _bco.textContent=commesse.length;
 }
 
 // ===== DETAIL COMMESSA =====
@@ -3680,6 +3710,7 @@ function setSection(sec) {
     setTimeout(() => {
       caricaDatiOfficina();
       caricaTariffe();
+      setImpTab('officina');
       document.getElementById('modal-impostazioni').style.display = 'block';
     }, 50);
     return; // Non aggiornare topbar né nav
@@ -3714,9 +3745,20 @@ function setSection(sec) {
   // sec === 'anagrafiche' gestito da setTab
 }
 
+const RUOLI_OPERATIVI = ['meccanico','capo officina','elettrauto','apprendista','magazziniere'];
+
+function togglePinBadge() {
+  const ruolo = document.getElementById('mec-ruolo').value.toLowerCase();
+  const operativo = RUOLI_OPERATIVI.includes(ruolo);
+  ['mec-pin-section','mec-pin-wrap','mec-badge-wrap'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = operativo ? '' : 'none';
+  });
+}
+
 function openModalMeccanico(editId) {
   editingMeccanicoId = editId || null;
-  document.getElementById('modal-meccanico-title').textContent = editId ? 'Modifica meccanico' : 'Nuovo meccanico';
+  document.getElementById('modal-meccanico-title').textContent = editId ? 'Modifica dipendente' : 'Nuovo dipendente';
   if (editId) {
     const m = meccanici.find(x=>x.id===editId);
     if (m) {
@@ -3732,24 +3774,29 @@ function openModalMeccanico(editId) {
     ['mec-nome','mec-tel','mec-email','mec-note','mec-pin','mec-badge'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('mec-ruolo').value = 'Meccanico';
   }
+  togglePinBadge();
   document.getElementById('modal-meccanico').style.display='flex';
 }
 
 async function saveMeccanico() {
   const nome = document.getElementById('mec-nome').value.trim();
   if (!nome) { alert('Inserisci il nome.'); return; }
+  const ruolo = document.getElementById('mec-ruolo').value;
+  const operativo = RUOLI_OPERATIVI.includes(ruolo.toLowerCase());
   const pin = document.getElementById('mec-pin').value.trim();
-  if (!pin || pin.length !== 4) { alert('Il PIN deve essere di 4 cifre.'); document.getElementById('mec-pin').focus(); return; }
-  const dup = meccanici.find(m => m.pin === pin && m.id !== editingMeccanicoId);
-  if (dup) { alert(`Il PIN ${pin} è già usato da ${dup.nome}.`); return; }
+  if (operativo) {
+    if (!pin || pin.length !== 4) { alert('Il PIN deve essere di 4 cifre.'); document.getElementById('mec-pin').focus(); return; }
+    const dup = meccanici.find(m => m.pin === pin && m.id !== editingMeccanicoId);
+    if (dup) { alert(`Il PIN ${pin} è già usato da ${dup.nome}.`); return; }
+  }
   const data = {
     nome,
-    ruolo:  document.getElementById('mec-ruolo').value,
+    ruolo,
     tel:    document.getElementById('mec-tel').value.trim(),
     email:  document.getElementById('mec-email').value.trim(),
     note:   document.getElementById('mec-note').value.trim(),
-    pin,
-    badge: document.getElementById('mec-badge').value.trim().toUpperCase() || null,
+    pin:    operativo ? pin : null,
+    badge:  operativo ? (document.getElementById('mec-badge').value.trim().toUpperCase() || null) : null,
   };
   try {
     if (editingMeccanicoId) await dbSaveMeccanico({...meccanici.find(m=>m.id===editingMeccanicoId), ...data});
@@ -3926,15 +3973,94 @@ function ripristinaDemoMeccanici() {
 }
 
 function updateBadgeMeccanici() {
-  document.getElementById('badge-meccanici').textContent = meccanici.length;
+  const _bm=document.getElementById('badge-meccanici'); if(_bm) _bm.textContent=meccanici.length;
 }
 
 // ===== TIMBRATURE =====
 async function saveTimbrature() { /* gestito da dbSaveTimbratura */ }
 
 function initTimbrature() {
-  renderLive();
+  renderLiveBoard();
   updateBadgeTimbrature();
+}
+
+function renderLiveBoard() {
+  const oggi = new Date().toISOString().split('T')[0];
+  const ora  = new Date();
+
+  // CHI STA LAVORANDO ADESSO
+  const liveCards = document.getElementById('t-live-cards');
+  if (!liveCards) return;
+  const attivi = timbrature.filter(t => {
+    if (t.uscita) return false;
+    const cm = commesse.find(x=>x.id===t.comId);
+    return cm && (cm.stato==='wip'||cm.stato==='aperta');
+  });
+  if (!attivi.length) {
+    liveCards.innerHTML = '<div style="grid-column:1/-1;font-size:13px;color:var(--text3);padding:20px 0;text-align:center">Nessun meccanico in lavorazione adesso.</div>';
+  } else {
+    const perMec = {};
+    attivi.forEach(t=>{ if(!perMec[t.mecId]||t.entrata>perMec[t.mecId].entrata) perMec[t.mecId]=t; });
+    liveCards.innerHTML = Object.values(perMec).map(t => {
+      const m  = meccanici.find(x=>x.id===t.mecId);
+      const cm = commesse.find(x=>x.id===t.comId);
+      const cl = cm ? clienti.find(c=>c.id===cm.clienteId) : null;
+      const v  = cm ? veicoli.find(x=>x.id===cm.veicoloId) : null;
+      const mins = Math.floor((ora - new Date(t.entrata))/60000);
+      const dur  = mins>=60 ? `${Math.floor(mins/60)}h ${String(mins%60).padStart(2,'0')}m` : `${mins}m`;
+      const ini  = m ? m.nome.split(' ').map(w=>w[0]).join('').substr(0,2).toUpperCase() : '?';
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--success);border-radius:var(--radius-lg);padding:14px 16px;box-shadow:var(--shadow)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <div style="width:36px;height:36px;border-radius:50%;background:var(--success);color:white;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0">${ini}</div>
+          <div><div style="font-size:14px;font-weight:700">${m?m.nome:'—'}</div><div style="font-size:11px;color:var(--text3)">${m?.ruolo||''}</div></div>
+          <div style="margin-left:auto;font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:var(--success)">⏱ ${dur}</div>
+        </div>
+        <div style="font-size:12px;color:var(--text2)"><strong>${cm?cm.numero:'—'}</strong>${v?' · '+v.targa:''}${cl?' · '+cl.ragione:''}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // ATTIVITÀ DI OGGI
+  const oggiEl = document.getElementById('t-oggi');
+  if (oggiEl) {
+    const timOggi = timbrature.filter(t => t.entrata && t.entrata.startsWith(oggi));
+    const mecOggi = [...new Set(timOggi.map(t=>t.mecId))];
+    if (!mecOggi.length) {
+      oggiEl.innerHTML = '<div style="grid-column:1/-1;font-size:13px;color:var(--text3);padding:20px 0;text-align:center">Nessuna attività oggi.</div>';
+    } else {
+      oggiEl.innerHTML = mecOggi.map(mecId => {
+        const m = meccanici.find(x=>x.id===mecId);
+        const tMec = timOggi.filter(t=>t.mecId===mecId);
+        const oreTotal = tMec.reduce((s,t)=>{ if(!t.uscita) return s+(ora-new Date(t.entrata))/3600000; return s+(new Date(t.uscita)-new Date(t.entrata))/3600000; },0);
+        const ini = m ? m.nome.split(' ').map(w=>w[0]).join('').substr(0,2).toUpperCase() : '?';
+        const ancoraIn = tMec.some(t=>!t.uscita);
+        return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;box-shadow:var(--shadow)">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:36px;height:36px;border-radius:50%;background:${ancoraIn?'var(--success)':'var(--surface2)'};color:${ancoraIn?'white':'var(--text2)'};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800">${ini}</div>
+            <div style="flex:1"><div style="font-size:14px;font-weight:700">${m?m.nome:'—'}</div><div style="font-size:11px;color:var(--text3)">${tMec.length} timbr${tMec.length===1?'atura':'ature'}</div></div>
+            <div style="font-family:'DM Mono',monospace;font-size:14px;font-weight:700;color:var(--accent)">${oreTotal.toFixed(1)}h</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // ASSENTI OGGI
+    const assentiEl = document.getElementById('t-assenti');
+    if (assentiEl) {
+      const assenti = meccanici.filter(m => !mecOggi.includes(m.id));
+      if (!assenti.length) {
+        assentiEl.innerHTML = '<div style="font-size:13px;color:var(--text3)">Tutti i meccanici hanno timbrato oggi.</div>';
+      } else {
+        assentiEl.innerHTML = assenti.map(m => {
+          const ini = m.nome.split(' ').map(w=>w[0]).join('').substr(0,2).toUpperCase();
+          return `<div style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px 14px">
+            <div style="width:32px;height:32px;border-radius:50%;background:var(--surface2);color:var(--text3);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">${ini}</div>
+            <div><div style="font-size:13px;font-weight:600;color:var(--text2)">${m.nome}</div><div style="font-size:11px;color:var(--text3)">${m.ruolo||''}</div></div>
+          </div>`;
+        }).join('');
+      }
+    }
+  }
 }
 
 // Ora corrente formattata per datetime-local
@@ -4760,6 +4886,31 @@ async function confermaTimbraturaCommessa(verso) {
   } catch(e) { alert('Errore: '+e.message); }
 }
 
+async function chiudiPresenzeAutomatiche() {
+  const oggi = new Date().toISOString().split('T')[0];
+  const ore17 = new Date(); ore17.setHours(17,0,0,0);
+  // Cerca timbrature aperte di oggi
+  const aperte = timbrature.filter(t => {
+    if (t.uscita) return false;
+    return (t.entrata||'').startsWith(oggi);
+  });
+  for (const t of aperte) {
+    await supa.from('timbrature').update({uscita:ore17.toISOString()}).eq('id',t.id);
+    t.uscita = ore17.toISOString();
+  }
+  // Cerca presenze aperte di oggi
+  const { data: presenzeAperte } = await supa.from('presenze')
+    .select('*').eq('data',oggi).is('uscita',null);
+  for (const p of (presenzeAperte||[])) {
+    await supa.from('presenze').update({uscita:ore17.toISOString(),uscita_automatica:true}).eq('id',p.id);
+  }
+  const tot = aperte.length + (presenzeAperte||[]).length;
+  if (tot > 0) {
+    timbrature = await DB.load('timbrature');
+    showToast(`⚠️ ${tot} uscite automatiche registrate alle 17:00`);
+  }
+}
+
 function renderTimbratureLiveCommessa(comId) {
   const cm   = commesse.find(c=>c.id===comId);
   const el   = document.getElementById('dc-tim-live');
@@ -5047,100 +5198,6 @@ ${cm.note ? `
   </div>
 </div>
 
-
-
-
-<!-- ═══════════════ MODAL DOCUMENTI ═══════════════ -->
-<div id="modal-documenti" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;overflow-y:auto">
-  <div style="background:var(--bg);min-height:100vh;max-width:1100px;margin:0 auto;padding:28px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-      <div style="font-size:22px;font-weight:800">Vendita / DDT / Fatture</div>
-      <button onclick="chiudiDocumenti()" style="background:none;border:none;cursor:pointer;padding:4px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-    </div>
-    <!-- TABS -->
-    <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px">
-      <button id="doc-tab-vendita" onclick="setDocTab('vendita')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent);margin-bottom:-2px;font-family:'DM Sans',sans-serif">Vendita a banco</button>
-      <button id="doc-tab-ddt" onclick="setDocTab('ddt')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);margin-bottom:-2px;font-family:'DM Sans',sans-serif">DDT emessi</button>
-      <button id="doc-tab-fatture" onclick="setDocTab('fatture')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);margin-bottom:-2px;font-family:'DM Sans',sans-serif">Fatture <span id="badge-fatture-tab" class="badge" style="background:var(--accent)">0</span></button>
-    </div>
-
-    <!-- VENDITA A BANCO -->
-    <div id="doc-panel-vendita">
-      <div style="display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start">
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px">
-          <div style="font-size:14px;font-weight:700;margin-bottom:16px">Nuova vendita</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
-            <div class="form-group"><label>Cliente</label><select id="vb-cliente"><option value="">— Cliente occasionale —</option></select></div>
-            <div class="form-group"><label>Data</label><input type="date" id="vb-data"></div>
-            <div class="form-group" style="grid-column:span 2"><label>Note</label><input type="text" id="vb-note" placeholder="Riferimento, ordine…"></div>
-          </div>
-          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:8px">Aggiungi ricambi</div>
-          <div style="position:relative;margin-bottom:12px">
-            <div style="display:flex;gap:8px">
-              <input type="text" id="vb-search-input" placeholder="Cerca per nome, codice o barcode…"
-                oninput="cercaRicambioVb(this.value)"
-                onkeydown="if(event.key==='Enter'){event.preventDefault();aggiungiPrimoProdottoVb()}"
-                style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;outline:none;font-family:'DM Sans',sans-serif">
-              <button onclick="aggiungiPrimoProdottoVb()" class="btn btn-secondary">Aggiungi</button>
-            </div>
-            <div id="vb-search-drop" style="display:none;position:absolute;left:0;right:0;top:calc(100%+4px);background:white;border:1.5px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);z-index:300;max-height:200px;overflow-y:auto"></div>
-          </div>
-          <div id="vb-righe"></div>
-          <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-            <div><div style="font-size:12px;color:var(--text3)">Totale imponibile</div><div style="font-size:22px;font-weight:700;font-family:'DM Mono',monospace" id="vb-totale">€ 0,00</div></div>
-            <div style="display:flex;gap:8px">
-              <button class="btn btn-secondary" onclick="emettiSoloVbDDT()">Solo DDT</button>
-              <button class="btn btn-primary" onclick="emettiVbDDTFattura()">DDT + Fattura</button>
-            </div>
-          </div>
-        </div>
-        <div>
-          <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--text3);margin-bottom:10px">Ultime vendite</div>
-          <div id="vb-storico"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- DDT -->
-    <div id="doc-panel-ddt" style="display:none">
-      <div style="display:flex;gap:12px;margin-bottom:14px;align-items:center">
-        <div style="background:white;border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 12px;display:flex;align-items:center;gap:8px;flex:1">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:var(--text3)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="search-ddt" placeholder="Cerca DDT…" oninput="renderDDT()" style="border:none;outline:none;font-size:14px;width:100%">
-        </div>
-        <button class="btn btn-primary" onclick="apriNuovaDDT()">+ Nuova DDT</button>
-      </div>
-      <div id="lista-ddt"></div>
-      <div id="empty-ddt" style="text-align:center;padding:40px;color:var(--text3)">
-        <p style="margin-bottom:16px">Nessun DDT emesso.</p>
-        <button class="btn btn-primary" onclick="apriNuovaDDT()">+ Nuova DDT</button>
-      </div>
-    </div>
-
-    <!-- FATTURE -->
-    <div id="doc-panel-fatture" style="display:none">
-      <div style="display:flex;gap:12px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
-        <div style="background:white;border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 12px;display:flex;align-items:center;gap:8px;flex:1">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:var(--text3)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="search-fatture" placeholder="Cerca fattura…" oninput="renderFatture()" style="border:none;outline:none;font-size:14px;width:100%">
-        </div>
-        <div style="display:flex;gap:6px">
-          <div class="stato-pill active" data-stato-fatt="" onclick="setStatoFattFilter(this,'')">Tutte</div>
-          <div class="stato-pill" data-stato-fatt="emessa" onclick="setStatoFattFilter(this,'emessa')">Emesse</div>
-          <div class="stato-pill" data-stato-fatt="pagata" onclick="setStatoFattFilter(this,'pagata')">Pagate</div>
-          <div class="stato-pill" data-stato-fatt="scaduta" onclick="setStatoFattFilter(this,'scaduta')">Scadute</div>
-        </div>
-        <div style="display:flex;gap:16px;margin-left:auto">
-          <div><div style="font-size:11px;color:var(--text3)">Da incassare</div><div style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:var(--accent)" id="fatt-kpi-aperte">€ 0</div></div>
-          <div><div style="font-size:11px;color:var(--text3)">Scadute</div><div style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:var(--danger)" id="fatt-kpi-scadute">€ 0</div></div>
-        </div>
-      </div>
-      <div id="lista-fatture"></div>
-      <div id="empty-fatture" style="display:none;text-align:center;padding:40px;color:var(--text3)">Nessuna fattura emessa.</div>
-    </div>
-
-  </div>
-</div>
 
 </body>
 </html>`;
@@ -6527,7 +6584,7 @@ async function salvaPreventivo() {
       incrementaNumPreventivo();
     }
     closeModal('modal-preventivo'); renderPreventivi();
-    document.getElementById('badge-preventivi').textContent = preventivi.filter(p=>p.stato==='bozza'||p.stato==='inviato').length;
+    const _bp=document.getElementById('badge-preventivi'); if(_bp) _bp.textContent=preventivi.filter(p=>p.stato==='bozza'||p.stato==='inviato').length;
     showToast('Preventivo salvato ✓');
   } catch(e) { alert('Errore: '+e.message); }
 }
@@ -7606,6 +7663,16 @@ function chiudiDocumenti() {
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
 }
 
+function setImpTab(tab) {
+  document.getElementById('imp-panel-officina').style.display  = tab==='officina'  ? '' : 'none';
+  document.getElementById('imp-panel-meccanici').style.display = tab==='meccanici' ? '' : 'none';
+  document.getElementById('imp-tab-officina').style.borderBottomColor  = tab==='officina'  ? 'var(--accent)' : 'transparent';
+  document.getElementById('imp-tab-officina').style.color  = tab==='officina'  ? 'var(--accent)' : 'var(--text2)';
+  document.getElementById('imp-tab-meccanici').style.borderBottomColor = tab==='meccanici' ? 'var(--accent)' : 'transparent';
+  document.getElementById('imp-tab-meccanici').style.color = tab==='meccanici' ? 'var(--accent)' : 'var(--text2)';
+  if (tab==='meccanici') renderMeccanici();
+}
+
 function chiudiImpostazioni() {
   document.getElementById('modal-impostazioni').style.display = 'none';
 }
@@ -7616,7 +7683,7 @@ function initDocumenti() {
   initVendita();
   renderDDT();
   renderFatture();
-  document.getElementById('badge-preventivi').textContent=preventivi.filter(p=>p.stato==='bozza'||p.stato==='inviato').length;
+  const _bp2=document.getElementById('badge-preventivi'); if(_bp2) _bp2.textContent=preventivi.filter(p=>p.stato==='bozza'||p.stato==='inviato').length;
   updateBadgeFatture();
 }
 
@@ -7687,10 +7754,17 @@ initDocumenti();
 <!-- MODAL IMPOSTAZIONI -->
 <div id="modal-impostazioni" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;overflow-y:auto" onclick="if(event.target===this)chiudiImpostazioni()">
   <div style="background:var(--bg);min-height:100vh;max-width:740px;margin:0 auto;padding:32px 28px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
-      <div><div style="font-size:22px;font-weight:800">Impostazioni</div><div style="font-size:13px;color:var(--text3)">Dati officina, tariffe e configurazione</div></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div><div style="font-size:22px;font-weight:800">Impostazioni</div><div style="font-size:13px;color:var(--text3)">Dati officina, tariffe e meccanici</div></div>
       <button onclick="chiudiImpostazioni()" style="background:none;border:none;cursor:pointer;padding:4px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
+    <!-- TABS -->
+    <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:24px">
+      <button id="imp-tab-officina" onclick="setImpTab('officina')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent);margin-bottom:-2px;font-family:'DM Sans',sans-serif">Officina & Tariffe</button>
+      <button id="imp-tab-meccanici" onclick="setImpTab('meccanici')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);margin-bottom:-2px;font-family:'DM Sans',sans-serif">Dipendenti</button>
+    </div>
+    <!-- PANEL OFFICINA -->
+    <div id="imp-panel-officina">
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:16px">
       <div style="font-size:15px;font-weight:700;margin-bottom:16px">Dati officina</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -7736,8 +7810,129 @@ initDocumenti();
       </div>
       <div style="margin-top:16px;display:flex;justify-content:flex-end"><button class="btn btn-primary" onclick="salvaTariffe()">Salva tariffe</button></div>
     </div>
+    </div><!-- /imp-panel-officina -->
+
+    <!-- PANEL MECCANICI -->
+    <div id="imp-panel-meccanici" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div class="search-wrap" style="flex:1;margin-right:12px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" class="search-input" id="search-meccanici" placeholder="Cerca meccanico..." oninput="renderMeccanici()">
+        </div>
+        <button class="btn btn-primary" onclick="openModalMeccanico()">+ Aggiungi dipendente</button>
+        <button class="btn btn-secondary" onclick="stampaTuttiBadge()" style="margin-left:8px">Stampa badge</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Nome</th><th>Ruolo</th><th>Presenza</th><th>Commessa in corso</th><th>Telefono</th><th></th>
+          </tr></thead>
+          <tbody id="tbody-meccanici"></tbody>
+        </table>
+        <div class="empty-state" id="empty-meccanici" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+          <p>Nessun meccanico ancora.</p>
+          <button class="btn btn-primary" onclick="openModalMeccanico()">+ Aggiungi dipendente</button>
+        </div>
+      </div>
+    </div><!-- /imp-panel-meccanici -->
+
   </div>
 </div>
 
+
+
+
+<!-- ═══════════════ MODAL DOCUMENTI ═══════════════ -->
+<div id="modal-documenti" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;overflow-y:auto">
+  <div style="background:var(--bg);min-height:100vh;max-width:1100px;margin:0 auto;padding:28px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div style="font-size:22px;font-weight:800">Vendita / DDT / Fatture</div>
+      <button onclick="chiudiDocumenti()" style="background:none;border:none;cursor:pointer;padding:4px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <!-- TABS -->
+    <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px">
+      <button id="doc-tab-vendita" onclick="setDocTab('vendita')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent);margin-bottom:-2px;font-family:'DM Sans',sans-serif">Vendita a banco</button>
+      <button id="doc-tab-ddt" onclick="setDocTab('ddt')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);margin-bottom:-2px;font-family:'DM Sans',sans-serif">DDT emessi</button>
+      <button id="doc-tab-fatture" onclick="setDocTab('fatture')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);margin-bottom:-2px;font-family:'DM Sans',sans-serif">Fatture <span id="badge-fatture-tab" class="badge" style="background:var(--accent)">0</span></button>
+    </div>
+
+    <!-- VENDITA A BANCO -->
+    <div id="doc-panel-vendita">
+      <div style="display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px">
+          <div style="font-size:14px;font-weight:700;margin-bottom:16px">Nuova vendita</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+            <div class="form-group"><label>Cliente</label><select id="vb-cliente"><option value="">— Cliente occasionale —</option></select></div>
+            <div class="form-group"><label>Data</label><input type="date" id="vb-data"></div>
+            <div class="form-group" style="grid-column:span 2"><label>Note</label><input type="text" id="vb-note" placeholder="Riferimento, ordine…"></div>
+          </div>
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:8px">Aggiungi ricambi</div>
+          <div style="position:relative;margin-bottom:12px">
+            <div style="display:flex;gap:8px">
+              <input type="text" id="vb-search-input" placeholder="Cerca per nome, codice o barcode…"
+                oninput="cercaRicambioVb(this.value)"
+                onkeydown="if(event.key==='Enter'){event.preventDefault();aggiungiPrimoProdottoVb()}"
+                style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;outline:none;font-family:'DM Sans',sans-serif">
+              <button onclick="aggiungiPrimoProdottoVb()" class="btn btn-secondary">Aggiungi</button>
+            </div>
+            <div id="vb-search-drop" style="display:none;position:absolute;left:0;right:0;top:calc(100%+4px);background:white;border:1.5px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);z-index:300;max-height:200px;overflow-y:auto"></div>
+          </div>
+          <div id="vb-righe"></div>
+          <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+            <div><div style="font-size:12px;color:var(--text3)">Totale imponibile</div><div style="font-size:22px;font-weight:700;font-family:'DM Mono',monospace" id="vb-totale">€ 0,00</div></div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-secondary" onclick="emettiSoloVbDDT()">Solo DDT</button>
+              <button class="btn btn-primary" onclick="emettiVbDDTFattura()">DDT + Fattura</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--text3);margin-bottom:10px">Ultime vendite</div>
+          <div id="vb-storico"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DDT -->
+    <div id="doc-panel-ddt" style="display:none">
+      <div style="display:flex;gap:12px;margin-bottom:14px;align-items:center">
+        <div style="background:white;border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 12px;display:flex;align-items:center;gap:8px;flex:1">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:var(--text3)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="search-ddt" placeholder="Cerca DDT…" oninput="renderDDT()" style="border:none;outline:none;font-size:14px;width:100%">
+        </div>
+        <button class="btn btn-primary" onclick="apriNuovaDDT()">+ Nuova DDT</button>
+      </div>
+      <div id="lista-ddt"></div>
+      <div id="empty-ddt" style="text-align:center;padding:40px;color:var(--text3)">
+        <p style="margin-bottom:16px">Nessun DDT emesso.</p>
+        <button class="btn btn-primary" onclick="apriNuovaDDT()">+ Nuova DDT</button>
+      </div>
+    </div>
+
+    <!-- FATTURE -->
+    <div id="doc-panel-fatture" style="display:none">
+      <div style="display:flex;gap:12px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
+        <div style="background:white;border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 12px;display:flex;align-items:center;gap:8px;flex:1">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:var(--text3)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="search-fatture" placeholder="Cerca fattura…" oninput="renderFatture()" style="border:none;outline:none;font-size:14px;width:100%">
+        </div>
+        <div style="display:flex;gap:6px">
+          <div class="stato-pill active" data-stato-fatt="" onclick="setStatoFattFilter(this,'')">Tutte</div>
+          <div class="stato-pill" data-stato-fatt="emessa" onclick="setStatoFattFilter(this,'emessa')">Emesse</div>
+          <div class="stato-pill" data-stato-fatt="pagata" onclick="setStatoFattFilter(this,'pagata')">Pagate</div>
+          <div class="stato-pill" data-stato-fatt="scaduta" onclick="setStatoFattFilter(this,'scaduta')">Scadute</div>
+        </div>
+        <div style="display:flex;gap:16px;margin-left:auto">
+          <div><div style="font-size:11px;color:var(--text3)">Da incassare</div><div style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:var(--accent)" id="fatt-kpi-aperte">€ 0</div></div>
+          <div><div style="font-size:11px;color:var(--text3)">Scadute</div><div style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:var(--danger)" id="fatt-kpi-scadute">€ 0</div></div>
+        </div>
+      </div>
+      <div id="lista-fatture"></div>
+      <div id="empty-fatture" style="display:none;text-align:center;padding:40px;color:var(--text3)">Nessuna fattura emessa.</div>
+    </div>
+
+  </div>
+</div>
 </body>
 </html>
