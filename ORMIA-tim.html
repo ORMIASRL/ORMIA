@@ -194,11 +194,11 @@ html, body { height:100%; background:var(--bg); font-family:'DM Sans',sans-serif
 
     </div>
 
-    <!-- DESTRA: CHI STA LAVORANDO -->
+    <!-- DESTRA: APPUNTAMENTI OGGI -->
     <div class="panel">
-      <div class="panel-title">In lavorazione adesso</div>
-      <div class="live-list" id="live-list">
-        <div class="live-empty">Nessun meccanico in lavorazione</div>
+      <div class="panel-title">📅 Appuntamenti di oggi</div>
+      <div class="live-list" id="cal-oggi-list">
+        <div class="live-empty">Nessun appuntamento oggi</div>
       </div>
     </div>
 
@@ -218,27 +218,87 @@ let clienti    = [];
 let veicoli    = [];
 let timbrature = [];
 let presenze   = [];
+let appuntamenti = [];
 let mecAttivo  = null;
 let comAttiva  = null;
 
-// ── CARICAMENTO DATI ────────────────────────────────
 async function loadAll() {
   const oggi = new Date().toISOString().split('T')[0];
-  const [m, co, cl, v, t, p] = await Promise.all([
+  const [m, co, cl, v, t, p, a] = await Promise.all([
     supa.from('meccanici').select('*'),
     supa.from('commesse').select('*'),
     supa.from('clienti').select('*'),
     supa.from('veicoli').select('*'),
     supa.from('timbrature').select('*'),
     supa.from('presenze').select('*').gte('data', oggi),
+    supa.from('appuntamenti').select('*').gte('data_ora', oggi+'T00:00:00').lte('data_ora', oggi+'T23:59:59'),
   ]);
-  meccanici  = m.data  || [];
-  commesse   = co.data || [];
-  clienti    = cl.data || [];
-  veicoli    = v.data  || [];
-  timbrature = t.data  || [];
-  presenze   = p.data  || [];
+  meccanici    = m.data  || [];
+  commesse     = co.data || [];
+  clienti      = cl.data || [];
+  veicoli      = v.data  || [];
+  timbrature   = t.data  || [];
+  presenze     = p.data  || [];
+  appuntamenti = a.data  || [];
   renderLive();
+  renderCalOggi();
+}
+
+function renderCalOggi() {
+  const el = document.getElementById('cal-oggi-list');
+  if (!el) return;
+
+  // Unisci appuntamenti + consegne commesse di oggi
+  const oggi = new Date().toISOString().split('T')[0];
+  const eventi = [];
+
+  appuntamenti.forEach(a => {
+    const cl = clienti.find(c=>c.id===a.cliente_id);
+    const v  = veicoli.find(x=>x.id===a.veicolo_id);
+    eventi.push({
+      ora: new Date(a.data_ora),
+      titolo: a.titolo,
+      sub: [cl?.ragione, v?.targa].filter(Boolean).join(' · '),
+      tipo: 'appuntamento',
+      note: a.note
+    });
+  });
+
+  commesse.filter(c=>c.consegna_prevista&&c.consegna_prevista.startsWith(oggi)).forEach(c => {
+    const v  = veicoli.find(x=>x.id===c.veicolo_id);
+    const cl = clienti.find(x=>x.id===c.cliente_id);
+    eventi.push({
+      ora: new Date(c.consegna_prevista),
+      titolo: `Consegna ${v?.targa||c.numero}`,
+      sub: cl?.ragione||'',
+      tipo: 'consegna',
+      note: ''
+    });
+  });
+
+  eventi.sort((a,b)=>a.ora-b.ora);
+
+  if (!eventi.length) {
+    el.innerHTML = '<div class="live-empty">Nessun appuntamento oggi</div>';
+    return;
+  }
+
+  const ora = new Date();
+  el.innerHTML = eventi.map(e => {
+    const passato = e.ora < ora;
+    const oraStr = e.ora.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+    const colore = e.tipo==='consegna'?'#D97706':'var(--accent)';
+    const icona  = e.tipo==='consegna'?'🚗':'📋';
+    return `<div style="padding:12px 14px;border-bottom:1px solid var(--border);opacity:${passato?.5:1};display:flex;align-items:start;gap:10px">
+      <div style="font-family:monospace;font-size:13px;font-weight:700;color:${colore};width:44px;flex-shrink:0;padding-top:2px">${oraStr}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600">${icona} ${e.titolo}</div>
+        ${e.sub?`<div style="font-size:11px;color:var(--text2);margin-top:2px">${e.sub}</div>`:''}
+        ${e.note?`<div style="font-size:11px;color:var(--text3);margin-top:2px">${e.note}</div>`:''}
+      </div>
+      ${!passato?`<div style="width:8px;height:8px;border-radius:50%;background:${colore};flex-shrink:0;margin-top:5px"></div>`:''}
+    </div>`;
+  }).join('');
 }
 
 // ── OROLOGIO ────────────────────────────────────────
@@ -544,6 +604,7 @@ setInterval(async () => {
   const co = await supa.from('commesse').select('*');
   commesse = co.data || [];
   renderLive();
+  renderCalOggi();
 }, 5000);
 
 // ── INIT ─────────────────────────────────────────────
