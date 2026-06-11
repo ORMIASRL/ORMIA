@@ -42,6 +42,10 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
 /* ── SCROLL AREA ── */
 .scroll { flex: 1; overflow-y: auto; padding: 12px 14px; -webkit-overflow-scrolling: touch; }
 
+/* ── PIN BTN ── */
+.pin-btn { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);font-size:20px;font-weight:600;cursor:pointer;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif; }
+.pin-btn:active { background:var(--surface2); }
+
 /* ── COMMESSA CARD ── */
 .com-card {
   background: var(--surface); border: 1px solid var(--border);
@@ -185,7 +189,142 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
 <!-- ══════════════════════════════════════════════
      SCREEN LOGIN
 ════════════════════════════════════════════════ -->
-<div class="screen" id="screen-login">
+<div class="screen" id="screen-landing">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:32px 24px;gap:20px">
+    <div style="width:72px;height:72px;background:var(--accent);border-radius:20px;display:flex;align-items:center;justify-content:center;margin-bottom:4px">
+      <svg viewBox="0 0 24 24" style="width:40px;height:40px;fill:white"><path d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm-7 3a3 3 0 110 6 3 3 0 010-6zm6 13H6v-.5c0-2.5 3.1-4.5 6-4.5s6 2 6 4.5V19z"/></svg>
+    </div>
+    <div style="font-size:26px;font-weight:800;text-align:center">ORMIA</div>
+    <div style="font-size:14px;color:var(--text2);text-align:center;margin-top:-8px">Seleziona il modulo</div>
+
+    <button onclick="scegliModuloMag('commesse')" style="width:100%;max-width:320px;padding:20px 24px;border-radius:var(--radius-lg);border:none;cursor:pointer;display:flex;align-items:center;gap:16px;background:var(--accent);color:white;box-shadow:0 4px 16px rgba(27,79,216,.3)">
+      <div style="width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" style="width:28px;height:28px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      </div>
+      <div style="text-align:left">
+        <div style="font-size:17px;font-weight:700">Commesse</div>
+        <div style="font-size:12px;opacity:.75;margin-top:2px">Ricambi e lavorazioni</div>
+      </div>
+    </button>
+
+    <button onclick="scegliModuloMag('magazzino')" style="width:100%;max-width:320px;padding:20px 24px;border-radius:var(--radius-lg);border:none;cursor:pointer;display:flex;align-items:center;gap:16px;background:var(--surface);box-shadow:0 2px 8px rgba(0,0,0,.08);border:1.5px solid var(--border)">
+      <div style="width:52px;height:52px;border-radius:14px;background:var(--surface2);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" style="width:28px;height:28px"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+      </div>
+      <div style="text-align:left">
+        <div style="font-size:17px;font-weight:700;color:var(--text)">Magazzino</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">Carico e scarico veloce</div>
+      </div>
+    </button>
+  </div>
+</div>
+
+<!-- ═══ LOGIN MAGAZZINO DIRETTO ═══ -->
+<div class="screen hidden" id="screen-login-mag2">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:24px;gap:0">
+    <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:50%;width:64px;height:64px;display:flex;align-items:center;justify-content:center;margin-bottom:16px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" style="width:32px;height:32px"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+    </div>
+    <div style="font-size:22px;font-weight:800;margin-bottom:4px">Magazzino</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:28px">Inserisci il tuo PIN</div>
+    <div style="display:flex;gap:12px;margin-bottom:24px">
+      <div id="pdmag0" style="width:16px;height:16px;border-radius:50%;background:var(--border);transition:background .1s"></div>
+      <div id="pdmag1" style="width:16px;height:16px;border-radius:50%;background:var(--border);transition:background .1s"></div>
+      <div id="pdmag2" style="width:16px;height:16px;border-radius:50%;background:var(--border);transition:background .1s"></div>
+      <div id="pdmag3" style="width:16px;height:16px;border-radius:50%;background:var(--border);transition:background .1s"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:280px">
+      <button class="pin-btn" onclick="pinMag2('1')">1</button><button class="pin-btn" onclick="pinMag2('2')">2</button><button class="pin-btn" onclick="pinMag2('3')">3</button>
+      <button class="pin-btn" onclick="pinMag2('4')">4</button><button class="pin-btn" onclick="pinMag2('5')">5</button><button class="pin-btn" onclick="pinMag2('6')">6</button>
+      <button class="pin-btn" onclick="pinMag2('7')">7</button><button class="pin-btn" onclick="pinMag2('8')">8</button><button class="pin-btn" onclick="pinMag2('9')">9</button>
+      <button class="pin-btn" onclick="pinMag2Del()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;margin:auto"><path d="M21 4H8l-7 8 7 8h13a2 2 0 002-2V6a2 2 0 00-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg>
+      </button>
+      <button class="pin-btn" onclick="pinMag2('0')">0</button>
+      <div></div>
+    </div>
+    <button onclick="showScreen('screen-landing')" style="margin-top:20px;background:none;border:none;color:var(--text3);font-size:14px;cursor:pointer">← Indietro</button>
+  </div>
+</div>
+
+<!-- ═══ MAGAZZINO HOME ═══ -->
+<div class="screen hidden" id="screen-mag2-home">
+  <div class="topbar">
+    <button class="topbar-back" onclick="logoutMag2()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    </button>
+    <div>
+      <div class="topbar-title">Magazzino</div>
+      <div class="topbar-sub" id="mag2-utente">—</div>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:6px">
+      <button id="mag2-btn-carico"  onclick="setMag2Mode('carico')"  style="padding:7px 12px;border-radius:var(--radius);border:none;background:rgba(255,255,255,.9);color:var(--success);font-size:12px;font-weight:700;cursor:pointer">▲ Carico</button>
+      <button id="mag2-btn-scarico" onclick="setMag2Mode('scarico')" style="padding:7px 12px;border-radius:var(--radius);border:none;background:rgba(255,255,255,.3);color:white;font-size:12px;font-weight:700;cursor:pointer">▼ Scarico</button>
+    </div>
+  </div>
+  <div class="scroll">
+    <div id="mag2-mode-banner" style="background:var(--success);color:white;border-radius:var(--radius-lg);padding:10px 16px;margin-bottom:14px;text-align:center;font-weight:700;font-size:14px">▲ Modalità CARICO</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input type="text" id="mag2-search" placeholder="Cerca nome, codice, barcode…"
+        oninput="cercaMag2(this.value)"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();aggiungiPrimoMag2()}"
+        style="flex:1;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;outline:none;font-family:'DM Sans',sans-serif;background:white">
+      <button onclick="document.getElementById('mag2-search').focus();showToast('Scansiona il barcode')" style="padding:0 12px;background:var(--accent);border:none;border-radius:var(--radius);color:white;cursor:pointer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><line x1="14" y1="14" x2="14" y2="21"/><line x1="14" y1="17" x2="21" y2="17"/><line x1="21" y1="14" x2="21" y2="21"/></svg>
+      </button>
+    </div>
+    <div id="mag2-search-results"></div>
+    <div id="mag2-prodotto-card" style="display:none;background:var(--surface);border:1.5px solid var(--accent);border-radius:var(--radius-lg);padding:16px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px">
+        <div>
+          <div style="font-size:11px;color:var(--text3);font-family:monospace" id="mag2-prod-codice"></div>
+          <div style="font-size:16px;font-weight:700" id="mag2-prod-nome"></div>
+          <div style="font-size:12px;color:var(--text3);margin-top:3px">Giacenza: <strong id="mag2-prod-giacenza"></strong></div>
+        </div>
+        <button onclick="resetMag2Prodotto()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text3)">✕</button>
+      </div>
+      <div style="display:flex;align-items:center;border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:12px">
+        <button onclick="cambiaQtyMag2(-1)" style="width:52px;height:52px;border:none;background:var(--surface2);font-size:24px;cursor:pointer">−</button>
+        <input type="number" id="mag2-qty" value="1" min="1" style="flex:1;text-align:center;font-size:24px;font-weight:700;font-family:monospace;border:none;outline:none;padding:0">
+        <button onclick="cambiaQtyMag2(1)"  style="width:52px;height:52px;border:none;background:var(--surface2);font-size:24px;cursor:pointer">+</button>
+      </div>
+      <input type="text" id="mag2-note" placeholder="Note (opzionale)" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;outline:none;margin-bottom:12px;font-family:'DM Sans',sans-serif">
+      <button id="mag2-conferma-btn" onclick="confermaMag2()" style="width:100%;padding:14px;border:none;border-radius:var(--radius-lg);font-size:16px;font-weight:700;cursor:pointer;color:white;background:var(--success)">▲ Conferma carico</button>
+    </div>
+    <div id="mag2-ultimi-wrap">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--text3);margin-bottom:10px">Oggi</div>
+      <div id="mag2-ultimi"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ NUOVO PRODOTTO ═══ -->
+<div class="screen hidden" id="screen-mag2-nuovo">
+  <div class="topbar">
+    <button class="topbar-back" onclick="showScreen('screen-mag2-home')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div><div class="topbar-title">Nuovo articolo</div></div>
+  </div>
+  <div class="scroll">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px">
+      <div style="margin-bottom:14px"><label style="font-size:12px;font-weight:700;color:var(--text2);display:block;margin-bottom:6px;text-transform:uppercase">Nome articolo *</label><input type="text" id="mag2-np-desc" style="width:100%;padding:12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;outline:none" placeholder="Es. Filtro olio Iveco"></div>
+      <div style="margin-bottom:14px"><label style="font-size:12px;font-weight:700;color:var(--text2);display:block;margin-bottom:6px;text-transform:uppercase">Codice interno</label><input type="text" id="mag2-np-cod" style="width:100%;padding:12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;outline:none;font-family:monospace" placeholder="Es. ART-0042"></div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:12px;font-weight:700;color:var(--text2);display:block;margin-bottom:6px;text-transform:uppercase">Quantità iniziale</label>
+        <div style="display:flex;align-items:center;border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden">
+          <button onclick="const i=document.getElementById('mag2-np-qta');i.value=Math.max(0,parseInt(i.value||0)-1)" style="width:52px;height:52px;border:none;background:var(--surface2);font-size:24px;cursor:pointer">−</button>
+          <input type="number" id="mag2-np-qta" value="1" min="0" style="flex:1;text-align:center;font-size:22px;font-weight:700;font-family:monospace;border:none;outline:none;padding:0">
+          <button onclick="const i=document.getElementById('mag2-np-qta');i.value=parseInt(i.value||0)+1" style="width:52px;height:52px;border:none;background:var(--surface2);font-size:24px;cursor:pointer">+</button>
+        </div>
+      </div>
+      <div style="margin-bottom:20px"><label style="font-size:12px;font-weight:700;color:var(--text2);display:block;margin-bottom:6px;text-transform:uppercase">Prezzo acquisto (€)</label><input type="number" id="mag2-np-prezzo" step="0.01" min="0" style="width:100%;padding:12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;outline:none;font-family:monospace" placeholder="0.00"></div>
+      <button onclick="salvaNuovoMag2()" style="width:100%;padding:14px;background:var(--accent);color:white;border:none;border-radius:var(--radius-lg);font-size:15px;font-weight:700;cursor:pointer">Crea articolo e carica</button>
+    </div>
+  </div>
+</div>
+
+<div class="screen hidden" id="screen-login">
   <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;gap:20px">
     <div style="width:56px;height:56px;background:var(--accent);border-radius:14px;display:flex;align-items:center;justify-content:center">
       <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="width:28px;height:28px"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
@@ -409,19 +548,16 @@ async function doLogin() {
 
 async function doLogout() {
   await supa.auth.signOut();
-  showScreen('screen-login');
+  showScreen('screen-landing');
 }
 
 async function checkSession() {
   const { data: { session } } = await supa.auth.getSession();
   if (session) {
     await loadAll();
-    showScreen('screen-home');
-    renderCommesse();
+    showScreen('screen-landing');
   } else {
-    document.getElementById('login-loading').style.display = 'none';
-    document.getElementById('login-form').style.display = 'flex';
-    document.getElementById('login-form').style.flexDirection = 'column';
+    showScreen('screen-landing');
   }
 }
 
@@ -796,6 +932,210 @@ function showToast(msg) {
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── LANDING ──────────────────────────────────
+let _mag2Logged = null;
+let _mag2Mode = 'carico';
+let _mag2ProdSel = null;
+let _pinMag2Buf = '';
+
+function scegliModuloMag(modulo) {
+  if (modulo === 'commesse') {
+    const { data: { session } } = supa.auth.getSession().then(({data:{session}}) => {
+      if (session) { showScreen('screen-home'); renderCommesse(); }
+      else { showScreen('screen-login'); }
+    });
+  } else {
+    _pinMag2Buf = '';
+    ['pdmag0','pdmag1','pdmag2','pdmag3'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.background='var(--border)'; });
+    showScreen('screen-login-mag2');
+  }
+}
+
+function pinMag2(d) {
+  if (_pinMag2Buf.length >= 4) return;
+  _pinMag2Buf += d;
+  const el = document.getElementById('pdmag'+(_pinMag2Buf.length-1));
+  if (el) el.style.background = 'var(--accent)';
+  if (_pinMag2Buf.length === 4) setTimeout(checkPinMag2, 80);
+}
+
+function pinMag2Del() {
+  if (!_pinMag2Buf.length) return;
+  const el = document.getElementById('pdmag'+(_pinMag2Buf.length-1));
+  if (el) el.style.background = 'var(--border)';
+  _pinMag2Buf = _pinMag2Buf.slice(0,-1);
+}
+
+async function checkPinMag2() {
+  const meccs = meccanici || [];
+  const mec = meccs.find(m => m.pin === _pinMag2Buf);
+  if (!mec) {
+    ['pdmag0','pdmag1','pdmag2','pdmag3'].forEach(id=>{ const el=document.getElementById(id); if(el){el.style.background='var(--danger)';setTimeout(()=>el.style.background='var(--border)',600);} });
+    _pinMag2Buf = '';
+    return;
+  }
+  _mag2Logged = mec;
+  _pinMag2Buf = '';
+  document.getElementById('mag2-utente').textContent = mec.nome + ' · ' + (mec.ruolo||'');
+  setMag2Mode('carico');
+  renderUltimiMag2();
+  showScreen('screen-mag2-home');
+}
+
+function logoutMag2() { _mag2Logged=null; _mag2ProdSel=null; showScreen('screen-landing'); }
+
+function setMag2Mode(mode) {
+  _mag2Mode = mode;
+  const banner = document.getElementById('mag2-mode-banner');
+  const btnC = document.getElementById('mag2-btn-carico');
+  const btnS = document.getElementById('mag2-btn-scarico');
+  const confBtn = document.getElementById('mag2-conferma-btn');
+  if (mode==='carico') {
+    banner.style.background='var(--success)'; banner.textContent='▲ Modalità CARICO';
+    btnC.style.background='rgba(255,255,255,.9)'; btnC.style.color='var(--success)';
+    btnS.style.background='rgba(255,255,255,.2)'; btnS.style.color='white';
+    if(confBtn){confBtn.style.background='var(--success)';confBtn.textContent='▲ Conferma carico';}
+  } else {
+    banner.style.background='var(--danger)'; banner.textContent='▼ Modalità SCARICO';
+    btnS.style.background='rgba(255,255,255,.9)'; btnS.style.color='var(--danger)';
+    btnC.style.background='rgba(255,255,255,.2)'; btnC.style.color='white';
+    if(confBtn){confBtn.style.background='var(--danger)';confBtn.textContent='▼ Conferma scarico';}
+  }
+  resetMag2Prodotto();
+}
+
+function cercaMag2(q) {
+  const el = document.getElementById('mag2-search-results');
+  if (!q||q.length<2) { el.innerHTML=''; return; }
+  const ql = q.toLowerCase();
+  const prods = prodotti||[];
+  const risultati = prods.filter(p=>
+    (p.descrizione||p.desc||'').toLowerCase().includes(ql)||
+    (p.codInt||p.cod_int||'').toLowerCase().includes(ql)||
+    (p.codForn||p.cod_forn||'').toLowerCase().includes(ql)||
+    (p.barcodes||[]).some(b=>(b||'').toLowerCase().includes(ql))
+  ).slice(0,6);
+  if (!risultati.length) {
+    el.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">
+      <div style="margin-bottom:10px">Nessun prodotto trovato</div>
+      <button onclick="apriNuovoMag2()" style="background:var(--accent);color:white;border:none;border-radius:var(--radius);padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer">+ Crea nuovo articolo</button>
+    </div>`;
+    return;
+  }
+  el.innerHTML = risultati.map(p => {
+    const g = p.giacenza||0;
+    const col = g<=0?'var(--danger)':g<=(p.scortaMin||p.scorta_min||0)?'var(--warning)':'var(--success)';
+    return `<div onclick="selezionaMag2('${p.id}')" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:8px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:12px;font-family:monospace;color:var(--accent)">${p.codInt||p.cod_int||'—'}</div>
+        <div style="font-size:14px;font-weight:600;margin-top:2px">${p.descrizione||p.desc||'—'}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;margin-left:12px">
+        <div style="font-size:20px;font-weight:800;font-family:monospace;color:${col}">${g}</div>
+        <div style="font-size:10px;color:var(--text3)">in stock</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function aggiungiPrimoMag2() {
+  const first = document.getElementById('mag2-search-results').querySelector('div[onclick]');
+  if (first) first.click();
+}
+
+function selezionaMag2(prodId) {
+  const p = (prodotti||[]).find(x=>x.id===prodId);
+  if (!p) return;
+  _mag2ProdSel = p;
+  document.getElementById('mag2-search').value='';
+  document.getElementById('mag2-search-results').innerHTML='';
+  document.getElementById('mag2-prod-codice').textContent = p.codInt||p.cod_int||'';
+  document.getElementById('mag2-prod-nome').textContent = p.descrizione||p.desc||'—';
+  document.getElementById('mag2-prod-giacenza').textContent = p.giacenza||0;
+  document.getElementById('mag2-qty').value = 1;
+  document.getElementById('mag2-note').value = '';
+  document.getElementById('mag2-prodotto-card').style.display='';
+  const btn = document.getElementById('mag2-conferma-btn');
+  if (_mag2Mode==='carico') {btn.style.background='var(--success)';btn.textContent='▲ Conferma carico';}
+  else {btn.style.background='var(--danger)';btn.textContent='▼ Conferma scarico';}
+}
+
+function resetMag2Prodotto() {
+  _mag2ProdSel=null;
+  document.getElementById('mag2-prodotto-card').style.display='none';
+  document.getElementById('mag2-search').value='';
+  document.getElementById('mag2-search-results').innerHTML='';
+}
+
+function cambiaQtyMag2(delta) {
+  const inp=document.getElementById('mag2-qty');
+  inp.value=Math.max(1,(parseInt(inp.value)||1)+delta);
+}
+
+async function confermaMag2() {
+  if (!_mag2ProdSel) return;
+  const qty = parseInt(document.getElementById('mag2-qty').value)||1;
+  const note = document.getElementById('mag2-note').value.trim();
+  const p = _mag2ProdSel;
+  const nuovaGiac = _mag2Mode==='carico' ? (p.giacenza||0)+qty : Math.max(0,(p.giacenza||0)-qty);
+  try {
+    await supa.from('prodotti').update({giacenza:nuovaGiac}).eq('id',p.id);
+    await supa.from('movimenti').insert({id:crypto.randomUUID(),prod_id:p.id,tipo:_mag2Mode,qta:qty,note:note||null,data:new Date().toISOString(),created_at:new Date().toISOString()});
+    // Aggiorna locale
+    if (prodotti) { const i=prodotti.findIndex(x=>x.id===p.id); if(i>=0) prodotti[i].giacenza=nuovaGiac; }
+    showToast(`${_mag2Mode==='carico'?'▲':' ▼'} ${qty} × ${p.descrizione||p.desc} ✓`);
+    resetMag2Prodotto();
+    renderUltimiMag2();
+    if (navigator.vibrate) navigator.vibrate(50);
+  } catch(e) { showToast('Errore: '+e.message); }
+}
+
+function renderUltimiMag2() {
+  const el = document.getElementById('mag2-ultimi');
+  if (!el) return;
+  const oggi = new Date().toISOString().split('T')[0];
+  const movs = (movimenti||[]).filter(m=>(m.data||m.createdAt||m.created_at||'').startsWith(oggi))
+    .sort((a,b)=>new Date(b.data||b.created_at)-new Date(a.data||a.created_at)).slice(0,8);
+  if (!movs.length) { el.innerHTML='<div style="font-size:12px;color:var(--text3)">Nessun movimento oggi</div>'; return; }
+  el.innerHTML = movs.map(m=>{
+    const p=(prodotti||[]).find(x=>x.id===(m.prodId||m.prod_id));
+    const col=m.tipo==='carico'?'var(--success)':'var(--danger)';
+    const ora=new Date(m.data||m.created_at).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${col};border-radius:var(--radius-lg);padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px">
+      <div style="font-size:16px;font-weight:800;color:${col};width:24px">${m.tipo==='carico'?'▲':'▼'}</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:600">${p?p.descrizione||p.desc:'—'}</div><div style="font-size:11px;color:var(--text3)">${ora}${m.note?' · '+m.note:''}</div></div>
+      <div style="font-family:monospace;font-size:15px;font-weight:700;color:${col}">${m.tipo==='carico'?'+':'−'}${m.qta}</div>
+    </div>`;
+  }).join('');
+}
+
+function apriNuovoMag2() {
+  const q = document.getElementById('mag2-search').value;
+  document.getElementById('mag2-np-desc').value = q||'';
+  document.getElementById('mag2-np-cod').value='';
+  document.getElementById('mag2-np-qta').value='1';
+  document.getElementById('mag2-np-prezzo').value='';
+  showScreen('screen-mag2-nuovo');
+}
+
+async function salvaNuovoMag2() {
+  const desc = document.getElementById('mag2-np-desc').value.trim();
+  if (!desc) { alert('Inserisci il nome.'); return; }
+  const qta = parseInt(document.getElementById('mag2-np-qta').value)||0;
+  const prezzo = parseFloat(document.getElementById('mag2-np-prezzo').value)||0;
+  try {
+    const row = {id:crypto.randomUUID(),descrizione:desc,cod_int:document.getElementById('mag2-np-cod').value.trim()||null,giacenza:qta,prezzo_acq:prezzo||null,created_at:new Date().toISOString()};
+    const {data,error} = await supa.from('prodotti').insert(row).select().single();
+    if (error) throw error;
+    if (!prodotti) prodotti = [];
+    prodotti.push(data);
+    if (qta>0) await supa.from('movimenti').insert({id:crypto.randomUUID(),prod_id:data.id,tipo:'carico',qta,note:'Carico iniziale',data:new Date().toISOString(),created_at:new Date().toISOString()});
+    showToast('Articolo creato ✓');
+    showScreen('screen-mag2-home');
+    selezionaMag2(data.id);
+  } catch(e) { alert('Errore: '+e.message); }
 }
 
 // ── INIT ─────────────────────────────────────

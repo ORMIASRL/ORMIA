@@ -56,36 +56,7 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
 /* ── SCROLL BODY ── */
 .scroll-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px; padding-bottom: calc(16px + var(--safe-bottom)); }
 
-/* ── LANDING SCELTA ── */
-.landing-wrap { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; padding:32px 24px; gap:20px; }
-.landing-logo { width:72px; height:72px; background:var(--accent); border-radius:20px; display:flex; align-items:center; justify-content:center; margin-bottom:4px; }
-.landing-logo svg { width:40px; height:40px; fill:white; }
-.landing-title { font-size:26px; font-weight:800; text-align:center; }
-.landing-sub { font-size:14px; color:var(--text2); text-align:center; margin-top:-8px; }
-.landing-btn { width:100%; max-width:320px; padding:20px 24px; border-radius:var(--radius-lg); border:none; cursor:pointer; display:flex; align-items:center; gap:16px; text-align:left; transition:transform .1s, box-shadow .1s; -webkit-tap-highlight-color:transparent; }
-.landing-btn:active { transform:scale(.97); }
-.landing-btn-icon { width:52px; height:52px; border-radius:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-.landing-btn-icon svg { width:28px; height:28px; }
-.landing-btn-label { font-size:17px; font-weight:700; }
-.landing-btn-sub { font-size:12px; opacity:.75; margin-top:2px; }
-.landing-btn-primary { background:var(--accent); color:white; box-shadow:0 4px 16px rgba(27,79,216,.3); }
-.landing-btn-secondary { background:var(--surface); color:var(--text); border:1.5px solid var(--border); box-shadow:var(--shadow); }
-
-/* ── MAGAZZINO MOBILE ── */
-.mag-search-bar { display:flex; gap:8px; margin-bottom:16px; }
-.mag-search-bar input { flex:1; padding:12px 14px; border:1.5px solid var(--border); border-radius:var(--radius); font-size:15px; outline:none; font-family:'DM Sans',sans-serif; background:white; }
-.mag-result-card { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--radius-lg); padding:16px; margin-bottom:10px; cursor:pointer; transition:border-color .15s; }
-.mag-result-card:active { border-color:var(--accent); }
-.mag-result-targa { font-family:'DM Mono',monospace; font-size:13px; font-weight:700; color:var(--accent); }
-.mag-result-nome { font-size:15px; font-weight:600; margin-top:2px; }
-.mag-result-info { font-size:12px; color:var(--text3); margin-top:4px; }
-.mag-giacenza { font-family:'DM Mono',monospace; font-size:22px; font-weight:800; }
-.qty-control { display:flex; align-items:center; gap:0; border:1.5px solid var(--border); border-radius:var(--radius); overflow:hidden; }
-.qty-btn { width:52px; height:52px; border:none; background:var(--surface2); font-size:24px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
-.qty-btn:active { background:var(--border); }
-.qty-input { flex:1; text-align:center; font-size:24px; font-weight:700; font-family:'DM Mono',monospace; border:none; outline:none; padding:0; min-width:0; }
-
-
+/* ── LOGIN ── */
 .login-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 24px; gap: 0; }
 .login-logo { width: 64px; height: 64px; background: var(--accent); border-radius: 18px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
 .login-logo svg { width: 34px; height: 34px; fill: white; }
@@ -256,146 +227,7 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
 <!-- ═══════════════════════════════════════════════════
      SCREEN: LOGIN
 ════════════════════════════════════════════════════ -->
-<!-- ═══ SCREEN: LANDING — scelta modulo ═══ -->
-<div id="screen-landing" class="screen">
-  <div class="landing-wrap">
-    <div class="landing-logo">
-      <svg viewBox="0 0 24 24"><path d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm-7 3a3 3 0 110 6 3 3 0 010-6zm6 13H6v-.5c0-2.5 3.1-4.5 6-4.5s6 2 6 4.5V19z"/></svg>
-    </div>
-    <div class="landing-title">ORMIA</div>
-    <div class="landing-sub">Seleziona il modulo</div>
-
-    <button class="landing-btn landing-btn-primary" onclick="scegliModulo('commesse')">
-      <div class="landing-btn-icon" style="background:rgba(255,255,255,.2)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-      </div>
-      <div>
-        <div class="landing-btn-label">Commesse</div>
-        <div class="landing-btn-sub">Lavorazioni, timbrature, chiusure</div>
-      </div>
-    </button>
-
-    <button class="landing-btn landing-btn-secondary" onclick="scegliModulo('magazzino')">
-      <div class="landing-btn-icon" style="background:var(--surface2)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-      </div>
-      <div>
-        <div class="landing-btn-label">Magazzino</div>
-        <div class="landing-btn-sub">Carica e scarica articoli veloce</div>
-      </div>
-    </button>
-  </div>
-</div>
-
-<!-- ═══ SCREEN: LOGIN MAGAZZINO ═══ -->
-<div id="screen-login-mag" class="screen hidden">
-  <div class="login-wrap">
-    <div class="login-logo" style="background:var(--surface2);border:1.5px solid var(--border)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
-    </div>
-    <div class="login-title">Magazzino</div>
-    <div class="login-sub">Inserisci il tuo PIN</div>
-    <div class="login-card">
-      <div class="login-label">PIN magazziniere</div>
-      <div class="pin-dots" id="pin-dots-mag">
-        <div class="pin-dot" id="pdm0"></div>
-        <div class="pin-dot" id="pdm1"></div>
-        <div class="pin-dot" id="pdm2"></div>
-        <div class="pin-dot" id="pdm3"></div>
-      </div>
-      <div class="pinpad">
-        <button class="pin-btn" onclick="pinTapMag('1')">1</button>
-        <button class="pin-btn" onclick="pinTapMag('2')">2</button>
-        <button class="pin-btn" onclick="pinTapMag('3')">3</button>
-        <button class="pin-btn" onclick="pinTapMag('4')">4</button>
-        <button class="pin-btn" onclick="pinTapMag('5')">5</button>
-        <button class="pin-btn" onclick="pinTapMag('6')">6</button>
-        <button class="pin-btn" onclick="pinTapMag('7')">7</button>
-        <button class="pin-btn" onclick="pinTapMag('8')">8</button>
-        <button class="pin-btn" onclick="pinTapMag('9')">9</button>
-        <button class="pin-btn del" onclick="pinDelMag()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 4H8l-7 8 7 8h13a2 2 0 002-2V6a2 2 0 00-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg>
-        </button>
-        <button class="pin-btn zero" onclick="pinTapMag('0')">0</button>
-      </div>
-    </div>
-    <button onclick="showScreen('screen-landing')" style="margin-top:16px;background:none;border:none;color:var(--text3);font-size:14px;cursor:pointer">← Torna indietro</button>
-  </div>
-</div>
-
-<!-- ═══ SCREEN: MAGAZZINO HOME ═══ -->
-<div id="screen-mag-home" class="screen hidden">
-  <div class="topbar">
-    <div class="topbar-back" onclick="logoutMag()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-    </div>
-    <div>
-      <div class="topbar-title">Magazzino</div>
-      <div class="topbar-sub" id="mag-utente">—</div>
-    </div>
-    <div style="margin-left:auto;display:flex;gap:8px">
-      <button onclick="setMagMode('carico')" id="mag-btn-carico" style="padding:8px 14px;border-radius:var(--radius);border:none;background:var(--success);color:white;font-size:13px;font-weight:700;cursor:pointer">▲ Carico</button>
-      <button onclick="setMagMode('scarico')" id="mag-btn-scarico" style="padding:8px 14px;border-radius:var(--radius);border:none;background:var(--surface2);color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;border:1.5px solid var(--border)">▼ Scarico</button>
-    </div>
-  </div>
-  <div class="scroll-body">
-    <!-- Modalità attiva -->
-    <div id="mag-mode-banner" style="background:var(--success);color:white;border-radius:var(--radius-lg);padding:12px 16px;margin-bottom:16px;text-align:center;font-weight:700;font-size:14px">▲ Modalità CARICO</div>
-
-    <!-- Ricerca -->
-    <div class="mag-search-bar">
-      <input type="text" id="mag-search-input" placeholder="Cerca per nome, codice o barcode…"
-        oninput="cercaProdottoMag(this.value)"
-        onkeydown="if(event.key==='Enter')aggiungiPrimoProdottoMag()"
-        autocomplete="off" autocorrect="off" spellcheck="false">
-      <button onclick="avviaScannerMag()" style="padding:0 14px;background:var(--accent);border:none;border-radius:var(--radius);color:white;cursor:pointer">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><line x1="14" y1="14" x2="14" y2="21"/><line x1="14" y1="17" x2="21" y2="17"/><line x1="21" y1="14" x2="21" y2="21"/></svg>
-      </button>
-    </div>
-    <div id="mag-search-results"></div>
-
-    <!-- Prodotto selezionato -->
-    <div id="mag-prodotto-card" style="display:none;background:var(--surface);border:1.5px solid var(--accent);border-radius:var(--radius-lg);padding:18px;margin-bottom:16px">
-      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:14px">
-        <div>
-          <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace" id="mag-prod-codice"></div>
-          <div style="font-size:17px;font-weight:700;margin-top:2px" id="mag-prod-nome"></div>
-          <div style="font-size:12px;color:var(--text3);margin-top:4px">Giacenza attuale: <span id="mag-prod-giacenza" style="font-family:'DM Mono',monospace;font-weight:700;color:var(--text)"></span></div>
-        </div>
-        <button onclick="resetMagProdotto()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:20px;padding:0">✕</button>
-      </div>
-
-      <!-- Quantità -->
-      <div style="margin-bottom:16px">
-        <div style="font-size:12px;font-weight:600;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Quantità</div>
-        <div class="qty-control">
-          <button class="qty-btn" onclick="cambiaQtyMag(-1)">−</button>
-          <input type="number" class="qty-input" id="mag-qty" value="1" min="1" oninput="aggiornaPrevMag()">
-          <button class="qty-btn" onclick="cambiaQtyMag(1)">+</button>
-        </div>
-      </div>
-
-      <!-- Note -->
-      <div style="margin-bottom:16px">
-        <div style="font-size:12px;font-weight:600;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Note <span style="font-weight:400;text-transform:none">(opzionale)</span></div>
-        <input type="text" id="mag-note" placeholder="Es. DDT fornitore, commessa…" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;outline:none;font-family:'DM Sans',sans-serif">
-      </div>
-
-      <!-- Conferma -->
-      <button id="mag-conferma-btn" onclick="confermaMagMovimento()" style="width:100%;padding:16px;border:none;border-radius:var(--radius-lg);font-size:16px;font-weight:700;cursor:pointer;color:white;background:var(--success)">
-        ▲ Conferma carico
-      </button>
-    </div>
-
-    <!-- Ultimi movimenti -->
-    <div id="mag-ultimi-wrap" style="margin-top:8px">
-      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:10px">Ultimi movimenti di oggi</div>
-      <div id="mag-ultimi-lista"></div>
-    </div>
-  </div>
-</div>
-
-<div id="screen-login" class="screen hidden">
+<div id="screen-login" class="screen">
   <div class="login-wrap">
     <div class="login-logo">
       <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
@@ -434,55 +266,12 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
         <button onclick="loginBadge()">Accedi</button>
       </div>
     </div>
-    <button onclick="showScreen('screen-landing')" style="margin-top:16px;background:none;border:none;color:var(--text3);font-size:14px;cursor:pointer">← Torna indietro</button>
   </div>
 </div>
 
-<!-- ═══ SCREEN: NUOVO PRODOTTO ═══ -->
-<div id="screen-nuovo-prodotto" class="screen hidden">
-  <div class="topbar">
-    <div class="topbar-back" onclick="showScreen('screen-mag-home')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-    </div>
-    <div>
-      <div class="topbar-title">Nuovo articolo</div>
-      <div class="topbar-sub">Crea e carica in magazzino</div>
-    </div>
-  </div>
-  <div class="scroll-body">
-    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:18px;margin-bottom:16px">
-      <div style="margin-bottom:14px">
-        <div style="font-size:12px;font-weight:600;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Nome articolo *</div>
-        <input type="text" id="np-desc" placeholder="Es. Filtro olio Iveco Stralis" 
-          style="width:100%;padding:12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;outline:none;font-family:'DM Sans',sans-serif">
-      </div>
-      <div style="margin-bottom:14px">
-        <div style="font-size:12px;font-weight:600;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Codice interno</div>
-        <input type="text" id="np-cod" placeholder="Es. ART-0042" 
-          style="width:100%;padding:12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;outline:none;font-family:'DM Mono',monospace">
-      </div>
-      <div style="margin-bottom:14px">
-        <div style="font-size:12px;font-weight:600;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Quantità iniziale</div>
-        <div class="qty-control">
-          <button class="qty-btn" onclick="const i=document.getElementById('np-qta');i.value=Math.max(0,parseInt(i.value||0)-1)">−</button>
-          <input type="number" class="qty-input" id="np-qta" value="1" min="0">
-          <button class="qty-btn" onclick="const i=document.getElementById('np-qta');i.value=parseInt(i.value||0)+1">+</button>
-        </div>
-      </div>
-      <div style="margin-bottom:20px">
-        <div style="font-size:12px;font-weight:600;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Prezzo acquisto (€)</div>
-        <input type="number" id="np-prezzo" placeholder="0.00" step="0.01" min="0"
-          style="width:100%;padding:12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;outline:none;font-family:'DM Mono',monospace">
-      </div>
-      <button onclick="salvaNuovoProdottoMag()" 
-        style="width:100%;padding:16px;background:var(--accent);color:white;border:none;border-radius:var(--radius-lg);font-size:16px;font-weight:700;cursor:pointer">
-        Crea articolo e carica
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ SCREEN: HOME COMMESSE ═══ -->
+<!-- ═══════════════════════════════════════════════════
+     SCREEN: HOME — lista commesse
+════════════════════════════════════════════════════ -->
 <div id="screen-home" class="screen hidden">
   <div class="user-header">
     <div class="user-header-top">
@@ -825,26 +614,21 @@ function logout() {
   localStorage.removeItem('ormia_mec_session');
   renderPinDots();
   document.getElementById('badge-input').value = '';
-  showScreen('screen-landing');
+  showScreen('screen-login');
 }
 
 async function restoreSession() {
-  // Mostra landing e carica dati in background
-  showScreen('screen-landing');
+  // Prima carica i dati da Supabase
+  document.getElementById('screen-login').innerHTML += '<div id="login-loading" style="text-align:center;margin-top:12px;font-size:12px;color:var(--text3)">Connessione…</div>';
   await loadAll();
+  document.getElementById('login-loading')?.remove();
 
-  // Se c'è una sessione salvata per commesse, vai diretto al login commesse
   const s = localStorage.getItem('ormia_mec_session');
-  if (s) {
-    try {
-      const sess = JSON.parse(s);
-      if (Date.now() - sess.ts <= 8*3600*1000) {
-        const mec = getMeccanici().find(m=>m.id===sess.id);
-        if (mec) { loginOk(mec); return; }
-      }
-    } catch(e) {}
-    localStorage.removeItem('ormia_mec_session');
-  }
+  if (!s) return;
+  const sess = JSON.parse(s);
+  if (Date.now() - sess.ts > 8*3600*1000) { localStorage.removeItem('ormia_mec_session'); return; }
+  const mec = getMeccanici().find(m=>m.id===sess.id);
+  if (mec) loginOk(mec);
 }
 
 // ══════════════════════════════════════════════════
@@ -858,283 +642,6 @@ function showScreen(id) {
 function goHome()   { showScreen('screen-home');   renderHome(); }
 function goDetail() { showScreen('screen-detail'); renderDetail(); }
 function goScan()   { showScreen('screen-scan');   renderScanScreen(); }
-
-// ══════════════════════════════════════════════════
-// LANDING — scelta modulo
-// ══════════════════════════════════════════════════
-let _moduloScelto = null;
-
-function scegliModulo(modulo) {
-  _moduloScelto = modulo;
-  if (modulo === 'commesse') {
-    showScreen('screen-login');
-  } else {
-    showScreen('screen-login-mag');
-    document.getElementById('pdm0').classList.remove('filled');
-    document.getElementById('pdm1').classList.remove('filled');
-    document.getElementById('pdm2').classList.remove('filled');
-    document.getElementById('pdm3').classList.remove('filled');
-    _pinMag = '';
-  }
-}
-
-// ══════════════════════════════════════════════════
-// LOGIN MAGAZZINO
-// ══════════════════════════════════════════════════
-let _pinMag = '';
-let _magLogged = null;
-let _magMode = 'carico';
-let _magProdottoSel = null;
-
-function pinTapMag(d) {
-  if (_pinMag.length >= 4) return;
-  _pinMag += d;
-  document.getElementById(`pdm${_pinMag.length-1}`).classList.add('filled');
-  if (_pinMag.length === 4) setTimeout(checkPinMag, 80);
-}
-
-function pinDelMag() {
-  if (!_pinMag.length) return;
-  document.getElementById(`pdm${_pinMag.length-1}`).classList.remove('filled');
-  _pinMag = _pinMag.slice(0,-1);
-}
-
-async function checkPinMag() {
-  const mec = meccanici.find(m => m.pin === _pinMag);
-  if (!mec) {
-    ['pdm0','pdm1','pdm2','pdm3'].forEach(id => {
-      const el = document.getElementById(id);
-      el.style.background='var(--danger)';
-      setTimeout(()=>{ el.style.background=''; el.classList.remove('filled'); },600);
-    });
-    _pinMag = '';
-    return;
-  }
-  _magLogged = mec;
-  _pinMag = '';
-  ['pdm0','pdm1','pdm2','pdm3'].forEach(id=>document.getElementById(id).classList.remove('filled'));
-  showScreen('screen-mag-home');
-  document.getElementById('mag-utente').textContent = mec.nome + ' · ' + (mec.ruolo||'');
-  setMagMode('carico');
-  renderUltimiMovMag();
-}
-
-function apriNuovoProdottoMag(descPrecompilata) {
-  document.getElementById('np-desc').value = descPrecompilata || '';
-  document.getElementById('np-cod').value = '';
-  document.getElementById('np-qta').value = '1';
-  document.getElementById('np-prezzo').value = '';
-  showScreen('screen-nuovo-prodotto');
-}
-
-async function salvaNuovoProdottoMag() {
-  const desc = document.getElementById('np-desc').value.trim();
-  const cod  = document.getElementById('np-cod').value.trim();
-  const qta  = parseInt(document.getElementById('np-qta').value)||0;
-  const prezzo = parseFloat(document.getElementById('np-prezzo').value)||0;
-  if (!desc) { alert('Inserisci almeno il nome del prodotto.'); return; }
-  try {
-    const row = {
-      id: crypto.randomUUID(),
-      descrizione: desc,
-      cod_int: cod||null,
-      giacenza: qta,
-      prezzo_acq: prezzo||null,
-      created_at: new Date().toISOString()
-    };
-    const { data, error } = await supa.from('prodotti').insert(row).select().single();
-    if (error) throw error;
-    prodotti.push(data);
-    // Registra movimento carico iniziale se qta > 0
-    if (qta > 0) {
-      await supa.from('movimenti').insert({
-        id: crypto.randomUUID(), prod_id: data.id,
-        tipo: 'carico', qta, note: 'Carico iniziale',
-        data: new Date().toISOString(), created_at: new Date().toISOString()
-      });
-    }
-    showToast('Articolo creato ✓');
-    showScreen('screen-mag-home');
-    selezionaProdottoMag(data.id);
-  } catch(e) { alert('Errore: '+e.message); }
-}
-
-function logoutMag() {
-  _magLogged = null;
-  _magProdottoSel = null;
-  showScreen('screen-landing');
-}
-
-// ══════════════════════════════════════════════════
-// MAGAZZINO MOBILE
-// ══════════════════════════════════════════════════
-function setMagMode(mode) {
-  _magMode = mode;
-  const banner = document.getElementById('mag-mode-banner');
-  const btnC = document.getElementById('mag-btn-carico');
-  const btnS = document.getElementById('mag-btn-scarico');
-  const confBtn = document.getElementById('mag-conferma-btn');
-  if (mode === 'carico') {
-    banner.style.background = 'var(--success)';
-    banner.textContent = '▲ Modalità CARICO';
-    btnC.style.background = 'var(--success)'; btnC.style.color = 'white';
-    btnS.style.background = 'var(--surface2)'; btnS.style.color = 'var(--text2)';
-    if (confBtn) { confBtn.style.background='var(--success)'; confBtn.textContent='▲ Conferma carico'; }
-  } else {
-    banner.style.background = 'var(--danger)';
-    banner.textContent = '▼ Modalità SCARICO';
-    btnS.style.background = 'var(--danger)'; btnS.style.color = 'white';
-    btnC.style.background = 'var(--surface2)'; btnC.style.color = 'var(--text2)';
-    if (confBtn) { confBtn.style.background='var(--danger)'; confBtn.textContent='▼ Conferma scarico'; }
-  }
-  resetMagProdotto();
-}
-
-function cercaProdottoMag(q) {
-  const el = document.getElementById('mag-search-results');
-  if (!q || q.length < 2) { el.innerHTML=''; return; }
-  const ql = q.toLowerCase();
-  const risultati = prodotti.filter(p =>
-    (p.descrizione||p.desc||'').toLowerCase().includes(ql) ||
-    (p.codInt||'').toLowerCase().includes(ql) ||
-    (p.codForn||'').toLowerCase().includes(ql) ||
-    (p.barcodes||[]).some(b=>(b||'').toLowerCase().includes(ql))
-  ).slice(0,6);
-  if (!risultati.length) {
-    el.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">
-      <div style="margin-bottom:12px">Nessun prodotto trovato per "<strong>${q}</strong>"</div>
-      <button onclick="apriNuovoProdottoMag(document.getElementById('mag-search-input').value)" 
-        style="background:var(--accent);color:white;border:none;border-radius:var(--radius);padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">
-        + Crea nuovo articolo
-      </button>
-    </div>`;
-    return;
-  }
-  el.innerHTML = risultati.map(p => {
-    const g = p.giacenza||0;
-    const colore = g<=0?'var(--danger)':g<=(p.scortaMin||0)?'var(--warning)':'var(--success)';
-    return `<div class="mag-result-card" onclick="selezionaProdottoMag('${p.id}')">
-      <div style="display:flex;justify-content:space-between;align-items:start">
-        <div>
-          <div class="mag-result-targa">${p.codInt||'—'}</div>
-          <div class="mag-result-nome">${p.descrizione||p.desc||'—'}</div>
-          <div class="mag-result-info">${p.codForn?'Cod. forn: '+p.codForn:''}</div>
-        </div>
-        <div style="text-align:right;flex-shrink:0;margin-left:12px">
-          <div class="mag-giacenza" style="color:${colore}">${g}</div>
-          <div style="font-size:11px;color:var(--text3)">in stock</div>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function aggiungiPrimoProdottoMag() {
-  const first = document.getElementById('mag-search-results').querySelector('.mag-result-card');
-  if (first) first.click();
-}
-
-function selezionaProdottoMag(prodId) {
-  const p = prodotti.find(x=>x.id===prodId);
-  if (!p) return;
-  _magProdottoSel = p;
-  document.getElementById('mag-search-input').value = '';
-  document.getElementById('mag-search-results').innerHTML = '';
-  document.getElementById('mag-prod-codice').textContent = p.codInt||'';
-  document.getElementById('mag-prod-nome').textContent = p.descrizione||p.desc||'—';
-  document.getElementById('mag-prod-giacenza').textContent = p.giacenza||0;
-  document.getElementById('mag-qty').value = 1;
-  document.getElementById('mag-note').value = '';
-  document.getElementById('mag-prodotto-card').style.display = '';
-  document.getElementById('mag-search-input').blur();
-  // Aggiorna colori conferma
-  const confBtn = document.getElementById('mag-conferma-btn');
-  if (_magMode==='carico') { confBtn.style.background='var(--success)'; confBtn.textContent='▲ Conferma carico'; }
-  else { confBtn.style.background='var(--danger)'; confBtn.textContent='▼ Conferma scarico'; }
-}
-
-function resetMagProdotto() {
-  _magProdottoSel = null;
-  document.getElementById('mag-prodotto-card').style.display = 'none';
-  document.getElementById('mag-search-input').value = '';
-  document.getElementById('mag-search-results').innerHTML = '';
-}
-
-function cambiaQtyMag(delta) {
-  const inp = document.getElementById('mag-qty');
-  const val = Math.max(1, (parseInt(inp.value)||1) + delta);
-  inp.value = val;
-}
-
-async function confermaMagMovimento() {
-  if (!_magProdottoSel || !_magLogged) return;
-  const qty = parseInt(document.getElementById('mag-qty').value)||1;
-  const note = document.getElementById('mag-note').value.trim();
-  const tipo = _magMode; // 'carico' o 'scarico'
-  const p = _magProdottoSel;
-
-  // Calcola nuova giacenza
-  const nuovaGiac = _magMode === 'carico'
-    ? (p.giacenza||0) + qty
-    : Math.max(0, (p.giacenza||0) - qty);
-
-  try {
-    // Aggiorna giacenza
-    await supa.from('prodotti').update({giacenza: nuovaGiac}).eq('id', p.id);
-    // Registra movimento
-    await supa.from('movimenti').insert({
-      id: crypto.randomUUID(),
-      prod_id: p.id,
-      tipo,
-      qta: qty,
-      note: note || null,
-      data: new Date().toISOString(),
-      created_at: new Date().toISOString()
-    });
-    // Aggiorna locale
-    const pi = prodotti.findIndex(x=>x.id===p.id);
-    if (pi>=0) prodotti[pi].giacenza = nuovaGiac;
-
-    showToast(`${tipo==='carico'?'▲ Carico':'▼ Scarico'} ${qty} × ${p.descrizione||p.desc} ✓`);
-    resetMagProdotto();
-    renderUltimiMovMag();
-    // Vibrazione feedback
-    if (navigator.vibrate) navigator.vibrate(50);
-  } catch(e) { showToast('Errore: '+e.message); }
-}
-
-function renderUltimiMovMag() {
-  const el = document.getElementById('mag-ultimi-lista');
-  if (!el) return;
-  const oggi = new Date().toISOString().split('T')[0];
-  const movOggi = movimenti.filter(m => (m.data||m.createdAt||'').startsWith(oggi))
-    .sort((a,b) => new Date(b.data||b.createdAt) - new Date(a.data||a.createdAt))
-    .slice(0,8);
-  if (!movOggi.length) {
-    el.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:8px 0">Nessun movimento oggi.</div>';
-    return;
-  }
-  el.innerHTML = movOggi.map(m => {
-    const p = prodotti.find(x=>x.id===m.prodId||x.id===m.prod_id);
-    const colore = m.tipo==='carico'?'var(--success)':'var(--danger)';
-    const ora = new Date(m.data||m.createdAt).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
-    return `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${colore};border-radius:var(--radius-lg);padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px">
-      <div style="font-size:18px;font-weight:800;color:${colore};width:28px;text-align:center">${m.tipo==='carico'?'▲':'▼'}</div>
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:600">${p?p.descrizione||p.desc:'—'}</div>
-        <div style="font-size:11px;color:var(--text3)">${ora}${m.note?' · '+m.note:''}</div>
-      </div>
-      <div style="font-family:'DM Mono',monospace;font-size:16px;font-weight:700;color:${colore}">${m.tipo==='carico'?'+':'−'}${m.qta}</div>
-    </div>`;
-  }).join('');
-}
-
-function avviaScannerMag() {
-  // Usa l'input per scanner barcode esterno o fotocamera
-  const inp = document.getElementById('mag-search-input');
-  inp.focus();
-  showToast('Scansiona il barcode o digita il codice');
-}
 
 // ══════════════════════════════════════════════════
 // HOME
@@ -1277,15 +784,6 @@ function renderDetail() {
     fotoWrap.style.display = 'none';
   }
 
-  // Foto richieste checklist
-  let frEl = document.getElementById('det-foto-richieste');
-  if (!frEl) {
-    frEl = document.createElement('div');
-    frEl.id = 'det-foto-richieste';
-    fotoWrap.parentNode.insertBefore(frEl, fotoWrap);
-  }
-  renderFotoRichieste(cm.foto||[], inGaranzia, cm.stato);
-
   // Ricambi
   const ricList = document.getElementById('det-ricambi-list');
   if ((cm.vociRic||[]).length) {
@@ -1323,24 +821,12 @@ function renderDetail() {
   }
 
   let btns = '';
-  const foto = cm.foto || [];
-  const fotoEntrataOk = !inGaranzia || fotePrerequisitiEntrata(foto);
-  const fotoChiusuraOkFlag = !inGaranzia || fotoChiusuraOk(foto);
-
   if (!timAperta) {
-    if (!fotoEntrataOk) {
-      btns += `<button class="action-btn" style="opacity:.4;cursor:not-allowed;background:#6B7280;grid-column:span 2" disabled>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-        <span class="action-btn-label">Inizia lavoro</span>
-        <span class="action-btn-sub">Scatta prima le 3 foto ↑</span>
-      </button>`;
-    } else {
-      btns += `<button class="action-btn success" onclick="timbra('entrata')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-        <span class="action-btn-label">Inizia lavoro</span>
-        <span class="action-btn-sub">Timbra entrata</span>
-      </button>`;
-    }
+    btns += `<button class="action-btn success" onclick="timbra('entrata')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      <span class="action-btn-label">Inizia lavoro</span>
+      <span class="action-btn-sub">Timbra entrata</span>
+    </button>`;
   } else {
     btns += `<button class="action-btn primary" onclick="timbra('uscita')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
@@ -1357,23 +843,15 @@ function renderDetail() {
       <span class="action-btn-sub">→ In lavorazione</span>
     </button>`;
   } else if (cm.stato === 'wip') {
-    if (!fotoChiusuraOkFlag) {
-      btns += `<button class="action-btn" style="opacity:.4;cursor:not-allowed;background:#6B7280;grid-column:span 2" disabled>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-        <span class="action-btn-label">Chiudi commessa</span>
-        <span class="action-btn-sub">Scatta almeno 2 foto lavorazioni ↑</span>
-      </button>`;
-    } else {
-      btns += `<button class="action-btn danger" style="position:relative;overflow:hidden;user-select:none;grid-column:span 2;width:100%"
-        onmousedown="startHold(this)" ontouchstart="startHold(this)"
-        onmouseup="cancelHold()" ontouchend="cancelHold()"
-        onmouseleave="cancelHold()" ontouchcancel="cancelHold()">
-        <div id="hold-progress" style="position:absolute;left:0;top:0;height:100%;width:0;background:rgba(255,255,255,.25);transition:none;pointer-events:none"></div>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-        <span class="action-btn-label">Chiudi commessa</span>
-        <span class="action-btn-sub">Tieni premuto 1 sec.</span>
-      </button>`;
-    }
+    btns += `<button class="action-btn danger" style="position:relative;overflow:hidden;user-select:none"
+      onmousedown="startHold(this)" ontouchstart="startHold(this)"
+      onmouseup="cancelHold()" ontouchend="cancelHold()"
+      onmouseleave="cancelHold()" ontouchcancel="cancelHold()">
+      <div id="hold-progress" style="position:absolute;left:0;top:0;height:100%;width:0;background:rgba(255,255,255,.25);transition:none;pointer-events:none"></div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      <span class="action-btn-label">Chiudi commessa</span>
+      <span class="action-btn-sub">Tieni premuto 1 sec.</span>
+    </button>`;
   }
 
   actions.innerHTML = btns;
@@ -1432,124 +910,16 @@ function isVeicoloInGaranzia(v) {
   return new Date(scad) >= new Date();
 }
 
-const FOTO_ENTRATA = [
-  { tag: 'facciata', label: 'Facciata veicolo' },
-  { tag: 'km',       label: 'Km / ore strumenti' },
-  { tag: 'telaio',   label: 'Telaio / targa' },
-];
-
-function getFotoTag(url) {
-  // Estrae il tag dal path se presente (es. .../facciata_xxx.webp)
-  for (const f of FOTO_ENTRATA) {
-    if ((url.url||url||'').includes('_'+f.tag+'_') || (url.tag||'')=== f.tag) return f.tag;
-  }
-  return 'lavorazione';
-}
-
-function getFotoUrl(f) { return typeof f === 'string' ? f : f.url || f; }
-
-function fotoHasTag(foto, tag) {
-  return foto.some(f => (typeof f === 'object' ? f.tag : getFotoTag(f)) === tag);
-}
-
-function fotePrerequisitiEntrata(foto) {
-  // Controlla se ci sono le 3 foto obbligatorie
-  return FOTO_ENTRATA.every(ft => foto.some(f => {
-    const t = typeof f === 'object' ? f.tag : null;
-    return t === ft.tag;
-  }));
-}
-
-function fotoChiusuraOk(foto) {
-  const lavorazione = foto.filter(f => {
-    const t = typeof f === 'object' ? f.tag : 'lavorazione';
-    return t === 'lavorazione';
-  });
-  return lavorazione.length >= 2;
-}
-
 function renderFotoGaranzia(foto) {
   const grid  = document.getElementById('det-foto-grid');
   const count = document.getElementById('det-foto-count');
   count.textContent = `${foto.length} foto`;
-  
   if (!foto.length) { grid.innerHTML = ''; return; }
-  grid.innerHTML = foto.map((f,i) => {
-    const url = getFotoUrl(f);
-    const tag = typeof f === 'object' ? f.tag : getFotoTag(f);
-    const tagLabel = FOTO_ENTRATA.find(x=>x.tag===tag)?.label || 'Lavorazione';
-    return `<div style="position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:#eee">
+  grid.innerHTML = foto.map((url,i) => `
+    <div style="position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:#eee">
       <img src="${url}" style="width:100%;height:100%;object-fit:cover;display:block" onclick="apriLightbox('${url}')">
-      <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);color:white;font-size:9px;padding:3px 6px;text-align:center">${tagLabel}</div>
       <button onclick="eliminaFoto(${i})" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);border:none;color:white;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;padding:0">✕</button>
-    </div>`;
-  }).join('');
-}
-
-function renderFotoRichieste(foto, inGaranzia, stato) {
-  const el = document.getElementById('det-foto-richieste');
-  if (!el || !inGaranzia) return;
-  
-  const timAperta = timbrature.find(t=>t.comId===comSelected?.id&&t.mecId===mecLogged?.id&&!t.uscita);
-  
-  if (stato === 'aperta' || stato === 'standby' || (!timAperta && stato === 'wip')) {
-    // Mostra checklist foto entrata
-    el.innerHTML = `<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;padding:12px 14px;margin-bottom:12px">
-      <div style="font-size:12px;font-weight:700;color:#C2410C;margin-bottom:8px">📸 Foto obbligatorie per iniziare</div>
-      ${FOTO_ENTRATA.map(ft => {
-        const ok = foto.some(f => (typeof f === 'object' ? f.tag : null) === ft.tag);
-        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          <span style="font-size:14px">${ok ? '✅' : '⬜'}</span>
-          <span style="font-size:12px;color:${ok?'var(--success)':'var(--text2)'}">${ft.label}</span>
-          ${!ok ? `<label style="margin-left:auto;font-size:11px;color:var(--accent);cursor:pointer;font-weight:600">
-            Scatta
-            <input type="file" accept="image/*" capture="environment" style="display:none" onchange="caricaFotoTag(this,'${ft.tag}')">
-          </label>` : ''}
-        </div>`;
-      }).join('')}
-    </div>`;
-  } else if (stato === 'wip' && timAperta) {
-    // Mostra checklist foto chiusura
-    const lavorazione = foto.filter(f => (typeof f === 'object' ? f.tag : 'lavorazione') === 'lavorazione');
-    el.innerHTML = `<div style="background:${lavorazione.length>=2?'#F0FDF4':'#FFF7ED'};border:1px solid ${lavorazione.length>=2?'#BBF7D0':'#FED7AA'};border-radius:10px;padding:12px 14px;margin-bottom:12px">
-      <div style="font-size:12px;font-weight:700;color:${lavorazione.length>=2?'#16A34A':'#C2410C'};margin-bottom:4px">
-        📸 Foto lavorazioni: ${lavorazione.length}/2 minimo
-      </div>
-      <div style="font-size:11px;color:var(--text3)">Scatta almeno 2 foto delle lavorazioni eseguite per poter chiudere.</div>
-    </div>`;
-  } else {
-    el.innerHTML = '';
-  }
-}
-
-function renderActions() {
-  if (comSelected) renderDetail(comSelected.id);
-}
-
-async function caricaFotoTag(input, tag) {
-  if (!input.files.length || !comSelected) return;
-  const file = input.files[0];
-
-  const { data: { session } } = await supa.auth.getSession();
-  if (!session) await supa.auth.signInAnonymously();
-
-  try {
-    const ext  = file.name.split('.').pop() || 'jpg';
-    const path = `${comSelected.id}/${Date.now()}_${tag}_${Math.random().toString(36).substr(2,6)}.${ext}`;
-    const { error } = await supa.storage.from('commesse-foto').upload(path, file, { contentType: file.type });
-    if (error) { showToast('Errore: '+error.message); return; }
-    const { data: { publicUrl } } = supa.storage.from('commesse-foto').getPublicUrl(path);
-    const fotoCorrenti = [...(comSelected.foto||[])];
-    fotoCorrenti.push({ url: publicUrl, tag });
-    await supa.from('commesse').update({ foto: fotoCorrenti }).eq('id', comSelected.id);
-    await loadAll();
-    comSelected = getCommesse().find(c=>c.id===comSelected.id) || comSelected;
-    renderFotoGaranzia(comSelected.foto||[]);
-    const v = veicoli.find(x=>x.id===comSelected.veicoloId);
-    renderFotoRichieste(comSelected.foto||[], isVeicoloInGaranzia(v), comSelected.stato);
-    renderActions();
-    showToast(`✓ Foto ${tag} caricata`);
-  } catch(e) { showToast('Errore: '+e.message); }
+    </div>`).join('');
 }
 
 async function caricaFoto(input) {
@@ -1572,7 +942,7 @@ async function caricaFoto(input) {
       const { error: upErr } = await supa.storage.from('commesse-foto').upload(path, file, { contentType: file.type, upsert: false });
       if (upErr) { showToast('Errore upload: ' + upErr.message); continue; }
       const { data: { publicUrl } } = supa.storage.from('commesse-foto').getPublicUrl(path);
-      nuoveFoto.push({ url: publicUrl, tag: 'lavorazione' });
+      nuoveFoto.push(publicUrl);
     } catch(e) { showToast('Errore: ' + e.message); }
   }
 
@@ -1580,9 +950,6 @@ async function caricaFoto(input) {
   await loadAll();
   comSelected = getCommesse().find(c=>c.id===comSelected.id) || comSelected;
   renderFotoGaranzia(comSelected.foto || []);
-  const _v = veicoli.find(x=>x.id===comSelected.veicoloId);
-  renderFotoRichieste(comSelected.foto||[], isVeicoloInGaranzia(_v), comSelected.stato);
-  renderActions();
   btnLabel.style.opacity = '1';
   input.value = '';
   showToast(`✓ ${files.length} foto caricate`);
