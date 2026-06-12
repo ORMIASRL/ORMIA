@@ -1,56 +1,67 @@
-const https = require('https');
-const querystring = require('querystring');
+var https = require('https');
 
-const CORS = { 'Access-Control-Allow-Origin': 'https://ormiaofficina.netlify.app' };
+var ORIGIN = 'https://ormiaofficina.netlify.app';
 
-exports.handler = async (event) => {
+exports.handler = function(event, context, callback) {
+  var headers = {
+    'Access-Control-Allow-Origin': ORIGIN,
+    'Access-Control-Allow-Methods': 'POST,OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type'
+  };
+
   if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers: { ...CORS, 'Access-Control-Allow-Methods': 'POST,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' },
-      body: ''
-    };
+    return callback(null, { statusCode: 200, headers: headers, body: '' });
   }
-  if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
+  if (event.httpMethod !== 'POST') {
+    return callback(null, { statusCode: 405, body: 'Method Not Allowed' });
+  }
 
-  try {
-    const body = JSON.parse(event.body || '{}');
-    const formBody = querystring.stringify(
-      Object.fromEntries(Object.entries(body).filter(([, v]) => v != null && v !== ''))
-    );
+  var body = {};
+  try { body = JSON.parse(event.body || '{}'); } catch(e) {}
 
-    const result = await new Promise((resolve, reject) => {
-      const req = https.request({
-        hostname: 'api-v2.fattureincloud.it',
-        path: '/oauth/token',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Content-Length': Buffer.byteLength(formBody)
-        }
-      }, (res) => {
-        let data = '';
-        res.on('data', chunk => data += chunk);
-        res.on('end', () => resolve({ status: res.statusCode, body: data }));
+  // Converti JSON in form-encoded (standard OAuth2)
+  var parts = [];
+  var keys = Object.keys(body);
+  for (var i = 0; i < keys.length; i++) {
+    var k = keys[i];
+    if (body[k] !== null && body[k] !== undefined && body[k] !== '') {
+      parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(body[k]));
+    }
+  }
+  var formBody = parts.join('&');
+
+  var options = {
+    hostname: 'api-v2.fattureincloud.it',
+    path: '/oauth/token',
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Content-Length': Buffer.byteLength(formBody)
+    }
+  };
+
+  var req = https.request(options, function(res) {
+    var data = '';
+    res.on('data', function(chunk) { data += chunk; });
+    res.on('end', function() {
+      var parsed;
+      try { parsed = JSON.parse(data); } catch(e) { parsed = { error: 'parse_error', raw: data }; }
+      callback(null, {
+        statusCode: res.statusCode,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': ORIGIN },
+        body: JSON.stringify(parsed)
       });
-      req.on('error', reject);
-      req.write(formBody);
-      req.end();
     });
+  });
 
-    let data;
-    try { data = JSON.parse(result.body); } catch (_) { data = { error: 'parse_error', raw: result.body }; }
-
-    return {
-      statusCode: result.status,
-      headers: { 'Content-Type': 'application/json', ...CORS },
-      body: JSON.stringify(data)
-    };
-  } catch (e) {
-    return {
+  req.on('error', function(e) {
+    callback(null, {
       statusCode: 500,
-      headers: CORS,
+      headers: { 'Access-Control-Allow-Origin': ORIGIN },
       body: JSON.stringify({ error: 'proxy_error', error_description: e.message })
-    };
-  }
+    });
+  });
+
+  req.write(formBody);
+  req.end();
 };
