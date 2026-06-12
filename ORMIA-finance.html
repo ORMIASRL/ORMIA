@@ -1,0 +1,2152 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ORMIA Finance</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #F5F4F1; --surface: #FFFFFF; --surface2: #F9F8F6;
+  --border: #E4E2DC; --border2: #D0CEC7;
+  --text: #1A1917; --text2: #6B6A65; --text3: #A09E99;
+  --accent: #1B4FD8; --accent-light: #EEF2FF;
+  --danger: #C53030; --danger-light: #FFF5F5;
+  --success: #276749; --success-light: #F0FFF4;
+  --warning: #92400E; --warning-light: #FFFBEB;
+  --radius: 8px; --radius-lg: 12px;
+  --shadow: 0 1px 3px rgba(0,0,0,.08); --shadow-md: 0 4px 12px rgba(0,0,0,.08);
+}
+body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); font-size:14px; line-height:1.5; min-height:100vh; }
+
+/* ── LAYOUT ── */
+.app { min-height:100vh; display:none; }
+.sidebar { width:220px; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; position:fixed; top:0; left:0; bottom:0; z-index:100; }
+.main { margin-left:220px; display:flex; flex-direction:column; min-width:0; }
+.topbar { background:var(--surface); border-bottom:1px solid var(--border); padding:14px 24px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:50; }
+.content { padding:24px 28px; }
+
+/* ── SIDEBAR ── */
+.sidebar-logo { padding:18px 16px 14px; border-bottom:1px solid var(--border); }
+.logo-mark { width:32px; height:32px; background:var(--success); border-radius:8px; display:flex; align-items:center; justify-content:center; margin-bottom:8px; }
+.logo-mark svg { width:18px; height:18px; fill:white; }
+.app-name { font-size:15px; font-weight:800; }
+.app-sub  { font-size:11px; color:var(--text3); margin-top:1px; }
+.sidebar-nav { padding:10px 8px; flex:1; overflow-y:auto; }
+.nav-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:var(--text3); padding:8px 10px 4px; }
+.nav-item { display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:var(--radius); cursor:pointer; color:var(--text2); font-size:13px; font-weight:500; transition:background .12s; }
+.nav-item:hover { background:var(--surface2); color:var(--text); }
+.nav-item.active { background:var(--accent-light); color:var(--accent); font-weight:600; }
+.nav-item svg { width:16px; height:16px; flex-shrink:0; }
+.sidebar-footer { padding:12px 10px; border-top:1px solid var(--border); }
+.conn-badge { font-size:10px; padding:3px 8px; border-radius:10px; font-weight:600; }
+.conn-badge.ok { background:var(--success-light); color:var(--success); }
+.conn-badge.ko { background:var(--danger-light); color:var(--danger); }
+
+/* ── KPI CARDS ── */
+.kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:24px; }
+.kpi-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:18px; box-shadow:var(--shadow); }
+.kpi-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; color:var(--text3); margin-bottom:6px; }
+.kpi-val { font-size:24px; font-weight:800; font-family:'DM Mono',monospace; }
+.kpi-sub { font-size:11px; color:var(--text3); margin-top:4px; }
+
+/* ── TABLES ── */
+.table-wrap { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; box-shadow:var(--shadow); }
+table { width:100%; border-collapse:collapse; }
+th { background:var(--surface2); padding:10px 14px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text3); text-align:left; border-bottom:1px solid var(--border); }
+td { padding:12px 14px; border-bottom:1px solid var(--border); font-size:13px; }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:var(--surface2); }
+
+/* ── STATO BADGES ── */
+.badge-stato { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:10px; font-size:11px; font-weight:700; }
+.badge-emessa   { background:var(--accent-light); color:var(--accent); }
+.badge-pagata   { background:var(--success-light); color:var(--success); }
+.badge-scaduta  { background:var(--danger-light); color:var(--danger); }
+.badge-parziale { background:var(--warning-light); color:var(--warning); }
+.badge-attesa   { background:#F5F3FF; color:#6D28D9; }
+
+/* ── RICONCILIAZIONE ── */
+.ric-card { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--radius-lg); padding:16px; margin-bottom:10px; transition:border-color .15s; }
+.ric-card.match-proposto { border-color:#FDE68A; background:#FFFBEB; }
+.ric-card.match-confermato { border-color:#BBF7D0; background:var(--success-light); }
+.ric-match-badge { font-size:11px; font-weight:700; padding:2px 8px; border-radius:6px; }
+.ric-match-alto { background:#D1FAE5; color:#065F46; }
+.ric-match-medio { background:#FEF3C7; color:#92400E; }
+.ric-match-basso { background:#FEE2E2; color:#991B1B; }
+
+/* ── BUTTONS ── */
+.btn { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:var(--radius); font-size:13px; font-weight:600; cursor:pointer; border:none; font-family:'DM Sans',sans-serif; transition:opacity .1s; }
+.btn:active { opacity:.85; }
+.btn-primary { background:var(--accent); color:white; }
+.btn-secondary { background:var(--surface); border:1.5px solid var(--border); color:var(--text2); }
+.btn-success { background:var(--success); color:white; }
+.btn-danger  { background:var(--danger); color:white; }
+.btn-warning { background:#D97706; color:white; }
+.btn-ghost   { background:none; border:none; color:var(--text3); }
+.btn-sm { padding:5px 10px; font-size:12px; }
+.btn-pos { background:linear-gradient(135deg,#1B4FD8,#7C3AED); color:white; font-size:14px; font-weight:700; padding:12px 20px; border-radius:var(--radius-lg); }
+
+/* ── MODAL ── */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:1000; padding:20px; backdrop-filter:blur(2px); }
+.modal { background:var(--surface); border-radius:var(--radius-lg); width:100%; max-width:520px; box-shadow:var(--shadow-md); overflow:hidden; }
+.modal-header { padding:18px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.modal-title { font-size:16px; font-weight:800; }
+.modal-body { padding:20px; max-height:70vh; overflow-y:auto; }
+.modal-footer { padding:14px 20px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:8px; }
+.close-btn { background:none; border:none; cursor:pointer; padding:4px; color:var(--text3); }
+.form-group { margin-bottom:14px; }
+.form-group label { font-size:12px; font-weight:600; color:var(--text2); display:block; margin-bottom:5px; }
+.form-group input, .form-group select, .form-group textarea { width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:var(--radius); font-size:13px; font-family:'DM Sans',sans-serif; outline:none; background:white; }
+.form-group input:focus, .form-group select:focus { border-color:var(--accent); }
+.form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.span-2 { grid-column:span 2; }
+
+/* ── LOGIN ── */
+.login-screen { display:flex; align-items:center; justify-content:center; min-height:100vh; }
+.login-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:32px; width:100%; max-width:380px; box-shadow:var(--shadow-md); }
+.login-logo { width:48px; height:48px; background:var(--success); border-radius:14px; display:flex; align-items:center; justify-content:center; margin-bottom:16px; }
+.login-logo svg { width:28px; height:28px; fill:white; }
+
+/* ── POS ── */
+.pos-screen { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px; text-align:center; }
+.pos-amount { font-size:52px; font-weight:900; font-family:'DM Mono',monospace; color:var(--accent); margin:20px 0; }
+.pos-status { font-size:16px; font-weight:600; margin-top:12px; }
+
+/* ── EMPTY ── */
+.empty-state { text-align:center; padding:48px; color:var(--text3); }
+.empty-state svg { width:48px; height:48px; margin:0 auto 12px; display:block; opacity:.4; }
+
+/* ── TABS ── */
+.tabs { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:20px; }
+.tab-btn { padding:10px 18px; border:none; background:none; font-size:13px; font-weight:600; cursor:pointer; border-bottom:2px solid transparent; color:var(--text2); margin-bottom:-2px; font-family:'DM Sans',sans-serif; }
+.tab-btn.active { border-bottom-color:var(--accent); color:var(--accent); }
+
+/* ── ALERTS ── */
+.alert { padding:12px 16px; border-radius:var(--radius); font-size:13px; display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+.alert-warning { background:var(--warning-light); border:1px solid #FDE68A; color:var(--warning); }
+.alert-info { background:var(--accent-light); border:1px solid #BFDBFE; color:var(--accent); }
+.alert-success { background:var(--success-light); border:1px solid #BBF7D0; color:var(--success); }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ LOGIN ═══════════ -->
+<div id="app-login" class="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+    </div>
+    <div style="font-size:22px;font-weight:800;margin-bottom:4px">ORMIA Finance</div>
+    <div style="font-size:13px;color:var(--text3);margin-bottom:24px">Fatturazione, incassi e riconciliazione</div>
+    <div class="form-group"><label>Email</label><input type="email" id="login-email" placeholder="admin@ormia.it"></div>
+    <div class="form-group"><label>Password</label><input type="password" id="login-pwd" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div id="login-err" style="color:var(--danger);font-size:12px;margin-bottom:8px;display:none"></div>
+    <button class="btn btn-success" style="width:100%;padding:12px" onclick="doLogin()">Accedi</button>
+    <div style="margin-top:16px;text-align:center">
+      <a href="ORMIA.html" style="font-size:12px;color:var(--text3)">← Torna al gestionale</a>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ APP ═══════════ -->
+<div class="app" id="app-main">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+      </div>
+      <div class="app-name">ORMIA Finance</div>
+      <div class="app-sub">Gestione finanziaria</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-label">Principale</div>
+      <div class="nav-item active" id="nav-dashboard" onclick="setSection('dashboard')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </div>
+      <div class="nav-item" id="nav-incassa" onclick="setSection('incassa')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        Incassa
+      </div>
+      <div class="nav-label">Fatturazione</div>
+      <div class="nav-item" id="nav-fatture" onclick="setSection('fatture')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Fatture
+      </div>
+      <div class="nav-item" id="nav-note-credito" onclick="setSection('note-credito')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="11" y2="17"/></svg>
+        Note credito
+      </div>
+      <div class="nav-item" id="nav-riconciliazione" onclick="setSection('riconciliazione')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+        Riconciliazione
+        <span id="badge-ric" style="margin-left:auto;background:var(--warning);color:white;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;display:none">0</span>
+      </div>
+      <div class="nav-label">Integrazioni</div>
+      <div class="nav-item" id="nav-sumup" onclick="setSection('sumup')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        SumUp POS
+        <span id="badge-sumup" class="conn-badge ko" style="margin-left:auto">Non collegato</span>
+      </div>
+      <div class="nav-item" id="nav-fic" onclick="setSection('fic')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+        Fatture in Cloud
+        <span id="badge-fic" class="conn-badge ko" style="margin-left:auto">Non collegato</span>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:12px;color:var(--text3)" id="fin-user-name">—</div>
+        <button onclick="doLogout()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px">Esci</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <div style="font-size:18px;font-weight:800" id="topbar-title">Dashboard</div>
+        <div style="font-size:12px;color:var(--text3)" id="topbar-sub">Panoramica finanziaria</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn btn-pos" onclick="apriIncassaRapido()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+          Incassa
+        </button>
+        <a href="ORMIA.html" class="btn btn-secondary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="15 18 9 12 15 6"/></svg>
+          Gestionale
+        </a>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ══ SEZIONE DASHBOARD ══ -->
+      <div id="section-dashboard">
+        <div class="kpi-grid">
+          <div class="kpi-card" style="border-top:3px solid var(--success)">
+            <div class="kpi-label">Incassato questo mese</div>
+            <div class="kpi-val" id="kpi-incassato" style="color:var(--success)">€ 0</div>
+            <div class="kpi-sub" id="kpi-incassato-sub">—</div>
+          </div>
+          <div class="kpi-card" style="border-top:3px solid var(--accent)">
+            <div class="kpi-label">Da incassare</div>
+            <div class="kpi-val" id="kpi-da-incassare" style="color:var(--accent)">€ 0</div>
+            <div class="kpi-sub" id="kpi-da-incassare-sub">—</div>
+          </div>
+          <div class="kpi-card" style="border-top:3px solid var(--danger)">
+            <div class="kpi-label">Scaduto</div>
+            <div class="kpi-val" id="kpi-scaduto" style="color:var(--danger)">€ 0</div>
+            <div class="kpi-sub" id="kpi-scaduto-sub">—</div>
+          </div>
+          <div class="kpi-card" style="border-top:3px solid #6D28D9">
+            <div class="kpi-label">Da riconciliare</div>
+            <div class="kpi-val" id="kpi-da-ric" style="color:#6D28D9">0</div>
+            <div class="kpi-sub">movimenti in attesa</div>
+          </div>
+        </div>
+
+        <!-- Ultimi incassi -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+          <div>
+            <div style="font-size:13px;font-weight:700;margin-bottom:12px">Ultimi incassi</div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Data</th><th>Cliente</th><th>Metodo</th><th>Importo</th></tr></thead>
+                <tbody id="tb-ultimi-incassi"></tbody>
+              </table>
+              <div id="empty-ultimi-incassi" class="empty-state" style="padding:24px">Nessun incasso recente</div>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:13px;font-weight:700;margin-bottom:12px">Fatture in scadenza</div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Fattura</th><th>Cliente</th><th>Scadenza</th><th>Importo</th></tr></thead>
+                <tbody id="tb-scadenze-fatt"></tbody>
+              </table>
+              <div id="empty-scadenze-fatt" class="empty-state" style="padding:24px">Nessuna scadenza imminente</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ SEZIONE INCASSA ══ -->
+      <div id="section-incassa" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 380px;gap:24px;align-items:start">
+
+          <!-- Form incasso rapido -->
+          <div class="table-wrap" style="padding:20px">
+            <div style="font-size:15px;font-weight:700;margin-bottom:20px">Nuovo incasso</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Cliente</label>
+                <select id="inc-cliente" onchange="onIncClienteChange()">
+                  <option value="">— Seleziona —</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Fattura collegata</label>
+                <select id="inc-fattura">
+                  <option value="">— Nessuna / Acconto —</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Importo (€) *</label>
+                <input type="number" id="inc-importo" placeholder="0.00" step="0.01" min="0" style="font-family:'DM Mono',monospace;font-size:18px;font-weight:700">
+              </div>
+              <div class="form-group">
+                <label>Data</label>
+                <input type="date" id="inc-data">
+              </div>
+              <div class="form-group span-2">
+                <label>Metodo di pagamento *</label>
+                <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:4px">
+                  <button class="metodo-btn active" data-metodo="contanti" onclick="selMetodo(this)">💵 Contanti</button>
+                  <button class="metodo-btn" data-metodo="carta" onclick="selMetodo(this)">💳 Carta</button>
+                  <button class="metodo-btn" data-metodo="bonifico" onclick="selMetodo(this)">🏦 Bonifico</button>
+                  <button class="metodo-btn" data-metodo="riba" onclick="selMetodo(this)">📄 Ri.Ba.</button>
+                  <button class="metodo-btn" data-metodo="sumup" onclick="selMetodo(this)" id="btn-metodo-sumup">📱 POS</button>
+                </div>
+              </div>
+              <div class="form-group span-2">
+                <label>Riferimento <span style="font-weight:400;color:var(--text3)">(opzionale)</span></label>
+                <input type="text" id="inc-riferimento" placeholder="N° transazione, causale bonifico…">
+              </div>
+              <div class="form-group span-2">
+                <label>Note</label>
+                <input type="text" id="inc-note" placeholder="Note interne…">
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+              <button class="btn btn-secondary" onclick="resetIncasso()">Reset</button>
+              <button class="btn btn-pos" id="btn-paga-pos" style="display:none" onclick="pagaConPOS()">
+                📱 Invia al POS · <span id="btn-pos-importo">€ 0</span>
+              </button>
+              <button class="btn btn-success" onclick="salvaIncasso()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px"><polyline points="20 6 9 17 4 12"/></svg>
+                Registra incasso
+              </button>
+            </div>
+          </div>
+
+          <!-- Sidebar incassi recenti + fatture aperte -->
+          <div>
+            <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--text3);margin-bottom:10px">Fatture aperte cliente</div>
+            <div id="inc-fatture-cliente" style="margin-bottom:20px">
+              <div style="font-size:12px;color:var(--text3);padding:8px 0">Seleziona un cliente</div>
+            </div>
+            <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--text3);margin-bottom:10px">Ultimi incassi</div>
+            <div id="inc-recenti"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ SEZIONE FATTURE ══ -->
+      <div id="section-fatture" style="display:none">
+        <div style="display:flex;gap:12px;margin-bottom:16px;align-items:center;flex-wrap:wrap">
+          <div style="background:white;border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 12px;display:flex;align-items:center;gap:8px;flex:1">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="fatt-search" placeholder="Cerca fattura, cliente…" oninput="renderFattureFin()" style="border:none;outline:none;font-size:14px;width:100%">
+          </div>
+          <div class="tabs" style="margin-bottom:0;border-bottom:none;gap:4px">
+            <button class="tab-btn active" data-fstato="" onclick="setFattStatoFil(this,'')">Tutte</button>
+            <button class="tab-btn" data-fstato="emessa" onclick="setFattStatoFil(this,'emessa')">Emesse</button>
+            <button class="tab-btn" data-fstato="parziale" onclick="setFattStatoFil(this,'parziale')">Parziali</button>
+            <button class="tab-btn" data-fstato="pagata" onclick="setFattStatoFil(this,'pagata')">Pagate</button>
+            <button class="tab-btn" data-fstato="scaduta" onclick="setFattStatoFil(this,'scaduta')">Scadute</button>
+          </div>
+          <button class="btn btn-primary" onclick="sincronizzaFIC()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.62"/></svg>
+            Sincronizza FiC
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>N° Fattura</th><th>Cliente</th><th>Data</th><th>Scadenza</th>
+              <th>Importo</th><th>Stato</th><th>FiC</th><th></th>
+            </tr></thead>
+            <tbody id="tb-fatture"></tbody>
+          </table>
+          <div id="empty-fatture-fin" class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <p>Nessuna fattura trovata</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ SEZIONE NOTE CREDITO ══ -->
+      <div id="section-note-credito" style="display:none">
+        <div style="display:flex;gap:12px;margin-bottom:16px;align-items:center">
+          <div style="background:white;border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 12px;display:flex;align-items:center;gap:8px;flex:1">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="nc-search" placeholder="Cerca nota credito, cliente…" oninput="renderNoteCredito()" style="border:none;outline:none;font-size:14px;width:100%">
+          </div>
+          <button class="btn btn-primary" onclick="apriNuovaNC()">+ Nuova nota credito</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Numero</th><th>Fattura collegata</th><th>Cliente</th><th>Data</th>
+              <th>Importo</th><th>Motivo</th><th>Stato</th><th></th>
+            </tr></thead>
+            <tbody id="tb-note-credito"></tbody>
+          </table>
+          <div id="empty-note-credito" class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <p>Nessuna nota di credito emessa</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ SEZIONE RICONCILIAZIONE ══ -->
+      <div id="section-riconciliazione" style="display:none">
+        <div class="alert alert-info" style="margin-bottom:20px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          I match proposti dal sistema devono essere <strong>confermati manualmente</strong> prima di essere registrati. Controlla sempre prima di confermare.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+          <!-- Movimenti da riconciliare -->
+          <div>
+            <div style="font-size:13px;font-weight:700;margin-bottom:12px">
+              Movimenti da riconciliare
+              <span id="count-mov" style="background:var(--warning-light);color:var(--warning);font-size:11px;padding:2px 8px;border-radius:10px;margin-left:6px">0</span>
+            </div>
+            <div id="lista-movimenti-ric"></div>
+            <div id="empty-movimenti-ric" class="empty-state">
+              <p>Nessun movimento da riconciliare</p>
+            </div>
+          </div>
+          <!-- Proposte match -->
+          <div>
+            <div style="font-size:13px;font-weight:700;margin-bottom:12px">Proposte di abbinamento</div>
+            <div id="lista-proposte-ric"></div>
+            <div id="empty-proposte-ric" class="empty-state">
+              <p>Seleziona un movimento per vedere le proposte</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ SEZIONE SUMUP ══ -->
+      <div id="section-sumup" style="display:none">
+        <div style="max-width:620px">
+          <div class="table-wrap" style="padding:24px;margin-bottom:16px">
+            <div style="font-size:15px;font-weight:700;margin-bottom:4px">Configurazione SumUp</div>
+            <div style="font-size:13px;color:var(--text3);margin-bottom:16px">Connessione OAuth2 — credenziali da <strong>developer.sumup.com → Le tue app</strong></div>
+            <div class="alert alert-info" style="margin-bottom:16px">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Redirect URI da registrare su SumUp: <code style="font-size:11px">https://ormiaofficina.netlify.app/ormia-finance</code>
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Client ID</label>
+                <input type="text" id="sumup-client-id" placeholder="cc_classic_…" style="font-family:'DM Mono',monospace;font-size:12px">
+              </div>
+              <div class="form-group">
+                <label>Redirect URI</label>
+                <input type="text" id="sumup-redirect-uri" placeholder="https://ormiaofficina.netlify.app/ormia-finance" style="font-family:'DM Mono',monospace;font-size:12px">
+              </div>
+              <div class="form-group">
+                <label>Client Secret</label>
+                <input type="password" id="sumup-client-secret" placeholder="Client Secret">
+              </div>
+              <div class="form-group">
+                <label>Merchant Code <span style="font-weight:400;color:var(--text3)">(da profilo SumUp)</span></label>
+                <input type="text" id="sumup-merchant" placeholder="Es. MC12345678" style="font-family:'DM Mono',monospace">
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:16px">
+              <button class="btn btn-success" onclick="salvaSumUp()">Salva configurazione</button>
+            </div>
+            <!-- AUTH PANEL -->
+            <div id="sumup-auth-panel" style="border-top:1px solid var(--border);padding-top:16px;display:none">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                <div>
+                  <div style="font-size:13px;font-weight:700">Stato autorizzazione</div>
+                  <div id="sumup-token-status" style="font-size:12px;color:var(--text3);margin-top:2px">—</div>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="autorizzaSumUp()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                  Autorizza SumUp
+                </button>
+              </div>
+              <div id="sumup-auth-step2" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px">
+                <div style="font-size:12px;font-weight:700;margin-bottom:6px">📋 Completa l'autorizzazione</div>
+                <div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.7">
+                  1. Si è aperta la pagina SumUp — accedi e autorizza ORMIA<br>
+                  2. Dopo aver autorizzato, copia l'URL completo della pagina di redirect<br>
+                  3. Incollalo qui sotto (o solo il valore del parametro <code>?code=</code>)
+                </div>
+                <div class="form-group" style="margin-bottom:8px">
+                  <input type="text" id="sumup-auth-code" placeholder="Incolla URL di redirect o codice…" style="font-size:12px;font-family:'DM Mono',monospace">
+                </div>
+                <div style="display:flex;gap:8px">
+                  <button class="btn btn-primary btn-sm" onclick="completaAutorizzazioneSumUp()">Completa autorizzazione</button>
+                  <button class="btn btn-ghost btn-sm" onclick="document.getElementById('sumup-auth-step2').style.display='none'">Annulla</button>
+                </div>
+                <div id="sumup-auth-result" style="margin-top:8px;font-size:12px;display:none"></div>
+              </div>
+            </div>
+          </div>
+          <div class="table-wrap" style="padding:20px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div style="font-size:14px;font-weight:700">Ultimi pagamenti POS</div>
+              <button class="btn btn-ghost btn-sm" onclick="caricaTransazioniSumUp()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.96"/></svg>
+                Aggiorna
+              </button>
+            </div>
+            <div id="lista-pagamenti-sumup">
+              <div class="empty-state"><p>Nessun pagamento POS registrato</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ SEZIONE FATTURE IN CLOUD ══ -->
+      <div id="section-fic" style="display:none">
+        <div style="max-width:620px">
+
+          <!-- CONFIG -->
+          <div class="table-wrap" style="padding:24px;margin-bottom:16px">
+            <div style="font-size:15px;font-weight:700;margin-bottom:4px">Configurazione Fatture in Cloud</div>
+            <div style="font-size:13px;color:var(--text3);margin-bottom:16px">Connessione OAuth2 — credenziali dal portale developer FiC</div>
+            <div class="alert alert-info" style="margin-bottom:16px">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Vai su <strong>developer.fattureincloud.it → La tua app → Credenziali</strong>
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Company ID</label>
+                <input type="text" id="fic-company-id" placeholder="Es. 12345" style="font-family:'DM Mono',monospace">
+              </div>
+              <div class="form-group">
+                <label>Redirect URI <span style="font-weight:400;color:var(--text3)">(registrata su FiC)</span></label>
+                <input type="text" id="fic-redirect-uri" placeholder="https://localhost/fic-callback" style="font-family:'DM Mono',monospace;font-size:12px">
+              </div>
+              <div class="form-group">
+                <label>Client ID</label>
+                <input type="text" id="fic-client-id" placeholder="Client ID" style="font-family:'DM Mono',monospace;font-size:12px">
+              </div>
+              <div class="form-group">
+                <label>Client Secret</label>
+                <input type="password" id="fic-client-secret" placeholder="Client Secret">
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:16px">
+              <button class="btn btn-success" onclick="salvaFIC()">Salva configurazione</button>
+            </div>
+            <!-- AUTH PANEL -->
+            <div id="fic-auth-panel" style="border-top:1px solid var(--border);padding-top:16px;display:none">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                <div>
+                  <div style="font-size:13px;font-weight:700">Stato autorizzazione</div>
+                  <div id="fic-token-status" style="font-size:12px;color:var(--text3);margin-top:2px">—</div>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="autorizzaFIC()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                  Autorizza FiC
+                </button>
+              </div>
+              <div id="fic-auth-step2" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px">
+                <div style="font-size:12px;font-weight:700;margin-bottom:6px">📋 Completa l'autorizzazione</div>
+                <div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.7">
+                  1. Si è aperta la pagina di login FiC — accedi e autorizza ORMIA<br>
+                  2. Dopo aver autorizzato, copia l'URL completo della pagina di redirect<br>
+                  3. Incollalo qui sotto (o solo il valore del parametro <code>?code=</code>)
+                </div>
+                <div class="form-group" style="margin-bottom:8px">
+                  <input type="text" id="fic-auth-code" placeholder="Incolla URL di redirect o codice…" style="font-size:12px;font-family:'DM Mono',monospace">
+                </div>
+                <div style="display:flex;gap:8px">
+                  <button class="btn btn-success btn-sm" onclick="completaAutorizzazioneFIC()">✓ Completa</button>
+                  <button class="btn btn-ghost btn-sm" onclick="document.getElementById('fic-auth-step2').style.display='none'">Annulla</button>
+                </div>
+                <div id="fic-auth-result" style="margin-top:10px;font-size:12px;display:none"></div>
+              </div>
+            </div>
+          </div><!-- /config card -->
+
+          <!-- FLUSSO -->
+          <div class="table-wrap" style="padding:20px">
+            <div style="font-size:14px;font-weight:700;margin-bottom:4px">Flusso automatico</div>
+            <div style="font-size:13px;color:var(--text3);margin-bottom:14px">Come funziona la sincronizzazione</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--surface2);border-radius:var(--radius)">
+                <div style="width:28px;height:28px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;flex-shrink:0;font-size:12px">1</div>
+                <div><div style="font-weight:600;font-size:13px">ORMIA emette fattura</div><div style="font-size:12px;color:var(--text3)">Inviata automaticamente a FiC — FiC risponde con ID ufficiale</div></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--surface2);border-radius:var(--radius)">
+                <div style="width:28px;height:28px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;flex-shrink:0;font-size:12px">2</div>
+                <div><div style="font-weight:600;font-size:13px">fic_stato = confermata</div><div style="font-size:12px;color:var(--text3)">ORMIA salva il FiC ID — la fattura è ufficialmente registrata</div></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--surface2);border-radius:var(--radius)">
+                <div style="width:28px;height:28px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;flex-shrink:0;font-size:12px">3</div>
+                <div><div style="font-weight:600;font-size:13px">FiC legge il conto bancario</div><div style="font-size:12px;color:var(--text3)">Tramite Open Banking riceve bonifici, Ri.Ba. e POS</div></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--surface2);border-radius:var(--radius)">
+                <div style="width:28px;height:28px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;flex-shrink:0;font-size:12px">4</div>
+                <div><div style="font-weight:600;font-size:13px">Polling ogni 2 min</div><div style="font-size:12px;color:var(--text3)">Finance legge stato da FiC — propone riconciliazione da confermare</div></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--surface2);border-radius:var(--radius)">
+                <div style="width:28px;height:28px;background:var(--success);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;flex-shrink:0;font-size:12px">5</div>
+                <div><div style="font-weight:600;font-size:13px">Fattura pagata → alert moroso sparisce</div><div style="font-size:12px;color:var(--text3)">Aggiornamento in tempo reale su ORMIA.html via Supabase Realtime</div></div>
+              </div>
+            </div>
+            <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
+              <button class="btn btn-primary btn-sm" onclick="sincronizzaFICManuale()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.62"/></svg>
+                Sincronizza ora
+              </button>
+              <div id="fic-polling-status" style="font-size:12px;color:var(--text3)">Polling: inattivo</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </main>
+</div>
+
+<!-- MODAL INCASSO RAPIDO -->
+<div class="modal-overlay" id="modal-incassa-rapido" style="display:none" onclick="if(event.target.classList.contains('modal-overlay'))this.style.display='none'">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Incasso rapido</div>
+      <button class="close-btn" onclick="document.getElementById('modal-incassa-rapido').style.display='none'">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label>Importo (€) *</label><input type="number" id="ir-importo" placeholder="0.00" step="0.01" style="font-size:24px;font-weight:700;font-family:'DM Mono',monospace"></div>
+      <div class="form-group"><label>Cliente</label><select id="ir-cliente"><option value="">— Occasionale —</option></select></div>
+      <div class="form-group"><label>Metodo *</label>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          <button class="metodo-btn active" data-metodo="contanti" onclick="selMetodoRapido(this)">💵 Contanti</button>
+          <button class="metodo-btn" data-metodo="carta" onclick="selMetodoRapido(this)">💳 Carta</button>
+          <button class="metodo-btn" data-metodo="sumup" onclick="selMetodoRapido(this)">📱 POS</button>
+        </div>
+      </div>
+      <div class="form-group"><label>Note</label><input type="text" id="ir-note" placeholder="Descrizione pagamento…"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-incassa-rapido').style.display='none'">Annulla</button>
+      <button class="btn btn-pos" id="ir-btn-pos" style="display:none" onclick="pagaConPOSRapido()">📱 Invia al POS</button>
+      <button class="btn btn-success" onclick="salvaIncassoRapido()">✓ Registra</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL POS IN CORSO -->
+<div class="modal-overlay" id="modal-pos" style="display:none">
+  <div class="modal" style="max-width:380px;text-align:center">
+    <div class="modal-body" style="padding:32px">
+      <div style="font-size:40px;margin-bottom:12px" id="pos-icona">📱</div>
+      <div style="font-size:16px;font-weight:700" id="pos-titolo">Pagamento in corso</div>
+      <div class="pos-amount" id="pos-importo-display">€ 0,00</div>
+      <div style="font-size:13px;color:var(--text3)" id="pos-messaggio">Il POS sta elaborando il pagamento…</div>
+      <div id="pos-spinner" style="margin:16px auto;width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite"></div>
+      <button id="pos-annulla" class="btn btn-secondary" style="margin-top:8px" onclick="annullaPOS()">Annulla</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.metodo-btn { padding:10px 8px; border:1.5px solid var(--border); border-radius:var(--radius); background:var(--surface); cursor:pointer; font-size:12px; font-weight:600; font-family:'DM Sans',sans-serif; transition:all .12s; text-align:center; }
+.metodo-btn.active { border-color:var(--accent); background:var(--accent-light); color:var(--accent); }
+@keyframes spin { to { transform:rotate(360deg); } }
+</style>
+
+<script>
+const SUPA_URL = 'https://crcfwmkemnwippplteqm.supabase.co';
+const SUPA_KEY = 'sb_publishable_bzZrugm5WWBaUKkO_mlrLw_dNXKPCM9';
+const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+let currentUser = null;
+let _fatture = [], _incassi = [], _clienti = [], _commesse = [], _noteCredito = [];
+let _metodoSelezionato = 'contanti';
+let _metodoRapido = 'contanti';
+let _fattStatoFil = '';
+
+// ── CREDENZIALI INTEGRAZIONI ───────────────────────
+let _sumupConfig = JSON.parse(localStorage.getItem('ormia_sumup_config')||'{}');
+let _sumupToken  = JSON.parse(localStorage.getItem('ormia_sumup_token') ||'null');
+let _sumupPoll   = null;
+let _ficConfig   = JSON.parse(localStorage.getItem('ormia_fic_config')||'{}');
+let _ficToken    = JSON.parse(localStorage.getItem('ormia_fic_token') ||'null');
+let _ficPolling  = null;
+
+// ══════════════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════════════
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pwd   = document.getElementById('login-pwd').value;
+  const errEl = document.getElementById('login-err');
+  errEl.style.display = 'none';
+  const { data, error } = await supa.auth.signInWithPassword({ email, password: pwd });
+  if (error) { errEl.textContent = error.message; errEl.style.display = ''; return; }
+  currentUser = data.user;
+  showApp();
+}
+
+async function doLogout() {
+  await supa.auth.signOut();
+  document.getElementById('app-main').style.display = 'none';
+  document.getElementById('app-login').style.display = 'flex';
+}
+
+async function initAuth() {
+  const { data: { session } } = await supa.auth.getSession();
+  if (session) { currentUser = session.user; showApp(); }
+}
+
+async function showApp() {
+  document.getElementById('app-login').style.display = 'none';
+  document.getElementById('app-main').style.display = 'block';
+  document.getElementById('fin-user-name').textContent = currentUser?.email||'—';
+  await loadAll();
+  setSection('dashboard');
+  checkIntegrazioni();
+  avviaPollingFIC();
+  avviaRealtimeFin();
+}
+
+function avviaRealtimeFin() {
+  supa.channel('finance-fatture')
+    .on('postgres_changes', {event:'INSERT', schema:'public', table:'fatture'}, async () => {
+      await loadAll(); renderFattureFin(); renderDashboard();
+    })
+    .on('postgres_changes', {event:'UPDATE', schema:'public', table:'fatture'}, async (payload) => {
+      const idx = _fatture.findIndex(f => f.id === payload.new.id);
+      const r = payload.new;
+      const mapped = {...r, clienteId:r.cliente_id, commessaId:r.commessa_id, fatturaId:r.id,
+        ficId:r.fic_id, ficStato:r.fic_stato, dataPagamento:r.data_pagamento, scadenza:r.scadenza};
+      if (idx >= 0) { Object.assign(_fatture[idx], mapped); }
+      else { _fatture.unshift(mapped); }
+      renderFattureFin(); renderDashboard();
+    })
+    .on('postgres_changes', {event:'INSERT', schema:'public', table:'incassi'}, async () => {
+      await loadAll(); renderDashboard();
+    })
+    .subscribe();
+}
+
+// ══════════════════════════════════════════════════
+// DATI
+// ══════════════════════════════════════════════════
+async function loadAll() {
+  const [f, i, c, co, nc] = await Promise.all([
+    supa.from('fatture').select('*').order('created_at', {ascending:false}),
+    supa.from('incassi').select('*').order('data', {ascending:false}),
+    supa.from('clienti').select('*').order('ragione'),
+    supa.from('commesse').select('*').in('stato',['chiusa','fatturata']).order('created_at',{ascending:false}).limit(100),
+    supa.from('note_credito').select('*').order('created_at', {ascending:false}),
+  ]);
+  _fatture     = (f.data||[]).map(x=>({...x, clienteId:x.cliente_id, commessaId:x.commessa_id, fatturaId:x.id, ficId:x.fic_id, ficStato:x.fic_stato, dataPagamento:x.data_pagamento, scadenza:x.scadenza}));
+  _incassi     = (i.data||[]).map(x=>({...x, clienteId:x.cliente_id, fatturaId:x.fattura_id, commessaId:x.commessa_id}));
+  _clienti     = c.data||[];
+  _commesse    = co.data||[];
+  _noteCredito = (nc.data||[]).map(x=>({...x, clienteId:x.cliente_id, fatturaId:x.fattura_id}));
+  populateClienteSelects();
+}
+
+function populateClienteSelects() {
+  const opts = '<option value="">— Seleziona —</option>' +
+    _clienti.map(c=>`<option value="${c.id}">${c.ragione}</option>`).join('');
+  ['inc-cliente','ir-cliente'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = opts;
+  });
+}
+
+// ══════════════════════════════════════════════════
+// NAVIGAZIONE
+// ══════════════════════════════════════════════════
+function setSection(sec) {
+  ['dashboard','incassa','fatture','note-credito','riconciliazione','sumup','fic'].forEach(s => {
+    document.getElementById('section-'+s).style.display = s===sec ? '' : 'none';
+    document.getElementById('nav-'+s)?.classList.toggle('active', s===sec);
+  });
+  const titles = {
+    dashboard:     ['Dashboard','Panoramica finanziaria'],
+    incassa:       ['Incassa','Registra pagamenti'],
+    fatture:       ['Fatture','Lista e stato fatture'],
+    'note-credito':['Note credito','Emissione e gestione note credito'],
+    riconciliazione: ['Riconciliazione','Abbina pagamenti alle fatture'],
+    sumup:         ['SumUp POS','Configurazione terminale'],
+    fic:           ['Fatture in Cloud','Configurazione e sincronizzazione'],
+  };
+  const [title, sub] = titles[sec]||['—',''];
+  document.getElementById('topbar-title').textContent = title;
+  document.getElementById('topbar-sub').textContent   = sub;
+  if (sec==='dashboard')        renderDashboard();
+  if (sec==='incassa')          renderIncassa();
+  if (sec==='fatture')          renderFattureFin();
+  if (sec==='note-credito')     renderNoteCredito();
+  if (sec==='riconciliazione')  renderRiconciliazione();
+  if (sec==='fic')              caricaFormFIC();
+  if (sec==='sumup')            caricaFormSumUp();
+}
+
+// ══════════════════════════════════════════════════
+// HELPERS PAGAMENTI
+// ══════════════════════════════════════════════════
+
+/** Quanto manca ancora da incassare su una fattura (considera incassi parziali già registrati) */
+function residuoFattura(fatturaId) {
+  const fatt = _fatture.find(f=>f.id===fatturaId);
+  if (!fatt || fatt.stato==='pagata') return 0;
+  const giaPagato = _incassi
+    .filter(i=>(i.fattura_id||i.fatturaId)===fatturaId)
+    .reduce((s,i)=>s+(i.importo||0),0);
+  return Math.max(0, (fatt.totale||0) - giaPagato);
+}
+
+/** Quanto di un incasso è già stato allocato su fatture */
+function allocatoIncasso(incassoId) {
+  return _incassi
+    .filter(i=>i.id!==incassoId && i.incasso_origine_id===incassoId)
+    .reduce((s,i)=>s+(i.importo||0),0);
+}
+
+// ══════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════
+function renderDashboard() {
+  const ora = new Date();
+  const inizioMese = new Date(ora.getFullYear(), ora.getMonth(), 1);
+
+  const incassatoMese = _incassi
+    .filter(i => new Date(i.data||i.created_at) >= inizioMese)
+    .reduce((s,i)=>s+(i.importo||0), 0);
+
+  const daIncassare = _fatture
+    .filter(f=>f.stato==='emessa'||f.stato==='attesa'||f.stato==='parziale')
+    .reduce((s,f)=>s+residuoFattura(f.id),0);
+
+  const scaduto = _fatture
+    .filter(f=>(f.stato==='emessa'||f.stato==='attesa'||f.stato==='parziale') && f.scadenza && new Date(f.scadenza)<ora)
+    .reduce((s,f)=>s+residuoFattura(f.id),0);
+
+  const daRic = _incassi.filter(i=>!i.riconciliato && !i.fattura_id).length;
+
+  document.getElementById('kpi-incassato').textContent = '€ '+incassatoMese.toLocaleString('it-IT',{minimumFractionDigits:0});
+  document.getElementById('kpi-da-incassare').textContent = '€ '+daIncassare.toLocaleString('it-IT',{minimumFractionDigits:0});
+  document.getElementById('kpi-scaduto').textContent = '€ '+scaduto.toLocaleString('it-IT',{minimumFractionDigits:0});
+  document.getElementById('kpi-da-ric').textContent = daRic;
+  if (daRic>0) { document.getElementById('badge-ric').textContent=daRic; document.getElementById('badge-ric').style.display=''; }
+
+  // Ultimi incassi
+  const tbody = document.getElementById('tb-ultimi-incassi');
+  const ultimiInc = _incassi.slice(0,6);
+  if (!ultimiInc.length) { tbody.innerHTML=''; document.getElementById('empty-ultimi-incassi').style.display=''; }
+  else {
+    document.getElementById('empty-ultimi-incassi').style.display='none';
+    tbody.innerHTML = ultimiInc.map(i => {
+      const cl = _clienti.find(c=>c.id===i.clienteId);
+      return `<tr>
+        <td>${formatDateFin(i.data||i.created_at)}</td>
+        <td>${cl?cl.ragione:'—'}</td>
+        <td>${metodoBadge(i.metodo)}</td>
+        <td style="font-family:'DM Mono',monospace;font-weight:700;color:var(--success)">€ ${(i.importo||0).toFixed(2)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Fatture in scadenza (prossimi 30 giorni)
+  const tra30 = new Date(); tra30.setDate(tra30.getDate()+30);
+  const inScadenza = _fatture.filter(f=>f.stato==='emessa'&&f.scadenza&&new Date(f.scadenza)<=tra30&&new Date(f.scadenza)>=ora)
+    .sort((a,b)=>new Date(a.scadenza)-new Date(b.scadenza)).slice(0,6);
+  const tbody2 = document.getElementById('tb-scadenze-fatt');
+  if (!inScadenza.length) { tbody2.innerHTML=''; document.getElementById('empty-scadenze-fatt').style.display=''; }
+  else {
+    document.getElementById('empty-scadenze-fatt').style.display='none';
+    tbody2.innerHTML = inScadenza.map(f => {
+      const cl = _clienti.find(c=>c.id===f.clienteId);
+      const giorni = Math.ceil((new Date(f.scadenza)-ora)/86400000);
+      return `<tr>
+        <td style="font-family:'DM Mono',monospace;font-size:12px">${f.numero||'—'}</td>
+        <td>${cl?cl.ragione:'—'}</td>
+        <td style="color:${giorni<=7?'var(--danger)':'var(--warning)'}"><strong>${giorni}gg</strong></td>
+        <td style="font-family:'DM Mono',monospace;font-weight:700">€ ${(f.totale||0).toFixed(2)}</td>
+      </tr>`;
+    }).join('');
+  }
+}
+
+// ══════════════════════════════════════════════════
+// INCASSA
+// ══════════════════════════════════════════════════
+function renderIncassa() {
+  document.getElementById('inc-data').value = new Date().toISOString().split('T')[0];
+  renderIncassiRecenti();
+}
+
+function onIncClienteChange() {
+  const cId = document.getElementById('inc-cliente').value;
+  const selFatt = document.getElementById('inc-fattura');
+  const listEl = document.getElementById('inc-fatture-cliente');
+  if (!cId) { selFatt.innerHTML='<option value="">— Nessuna / Acconto —</option>'; listEl.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px 0">Seleziona un cliente</div>'; return; }
+  const fattAperte = _fatture.filter(f=>f.clienteId===cId&&(f.stato==='emessa'||f.stato==='scaduta'||f.stato==='attesa'));
+  selFatt.innerHTML = '<option value="">— Nessuna / Acconto —</option>' +
+    fattAperte.map(f=>`<option value="${f.id}">${f.numero} — € ${(f.totale||0).toFixed(2)} (${f.stato})</option>`).join('');
+  if (!fattAperte.length) {
+    listEl.innerHTML = '<div style="font-size:12px;color:var(--success)">✓ Nessuna fattura aperta</div>';
+  } else {
+    listEl.innerHTML = fattAperte.map(f=>`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="document.getElementById('inc-fattura').value='${f.id}';document.getElementById('inc-importo').value='${f.totale||0}'">
+      <div>
+        <div style="font-size:12px;font-family:'DM Mono',monospace;font-weight:700">${f.numero||'—'}</div>
+        <div style="font-size:11px;color:var(--text3)">${formatDateFin(f.scadenza)}</div>
+      </div>
+      <div style="font-family:'DM Mono',monospace;font-weight:700;color:${f.stato==='scaduta'?'var(--danger)':'var(--accent)'}">€ ${(f.totale||0).toFixed(2)}</div>
+    </div>`).join('');
+  }
+}
+
+function selMetodo(btn) {
+  document.querySelectorAll('#section-incassa .metodo-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  _metodoSelezionato = btn.dataset.metodo;
+  const posBtn = document.getElementById('btn-paga-pos');
+  const importo = parseFloat(document.getElementById('inc-importo').value)||0;
+  if (_metodoSelezionato==='sumup') {
+    posBtn.style.display = '';
+    document.getElementById('btn-pos-importo').textContent = '€ '+importo.toFixed(2);
+  } else posBtn.style.display = 'none';
+}
+
+function selMetodoRapido(btn) {
+  document.querySelectorAll('#modal-incassa-rapido .metodo-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  _metodoRapido = btn.dataset.metodo;
+  document.getElementById('ir-btn-pos').style.display = _metodoRapido==='sumup' ? '' : 'none';
+}
+
+async function salvaIncasso() {
+  const importo = parseFloat(document.getElementById('inc-importo').value)||0;
+  const metodo  = _metodoSelezionato;
+  if (!importo) { alert('Inserisci l\'importo.'); return; }
+  const row = {
+    id: crypto.randomUUID(),
+    cliente_id: document.getElementById('inc-cliente').value||null,
+    fattura_id: document.getElementById('inc-fattura').value||null,
+    importo, metodo,
+    riferimento: document.getElementById('inc-riferimento').value.trim()||null,
+    note: document.getElementById('inc-note').value.trim()||null,
+    data: new Date(document.getElementById('inc-data').value).toISOString(),
+    riconciliato: !!document.getElementById('inc-fattura').value,
+  };
+  try {
+    await supa.from('incassi').insert(row);
+    await loadAll();
+    if (row.fattura_id) await aggiornaStatoPagamento(row.fattura_id);
+    resetIncasso();
+    showToastFin('Incasso registrato ✓');
+    renderDashboard();
+  } catch(e) { alert('Errore: '+e.message); }
+}
+
+async function salvaIncassoRapido() {
+  const importo = parseFloat(document.getElementById('ir-importo').value)||0;
+  if (!importo) { alert('Inserisci l\'importo.'); return; }
+  const row = {
+    id: crypto.randomUUID(),
+    cliente_id: document.getElementById('ir-cliente').value||null,
+    importo, metodo: _metodoRapido,
+    note: document.getElementById('ir-note').value.trim()||null,
+    data: new Date().toISOString(),
+    riconciliato: false,
+  };
+  try {
+    await supa.from('incassi').insert(row);
+    await loadAll();
+    document.getElementById('modal-incassa-rapido').style.display = 'none';
+    showToastFin('Incasso registrato ✓');
+  } catch(e) { alert('Errore: '+e.message); }
+}
+
+function resetIncasso() {
+  document.getElementById('inc-importo').value = '';
+  document.getElementById('inc-cliente').value = '';
+  document.getElementById('inc-fattura').innerHTML = '<option value="">— Nessuna / Acconto —</option>';
+  document.getElementById('inc-riferimento').value = '';
+  document.getElementById('inc-note').value = '';
+  document.getElementById('inc-fatture-cliente').innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0">Seleziona un cliente</div>';
+}
+
+function renderIncassiRecenti() {
+  const el = document.getElementById('inc-recenti');
+  const ultimi = _incassi.slice(0,5);
+  if (!ultimi.length) { el.innerHTML='<div style="font-size:12px;color:var(--text3)">Nessun incasso recente</div>'; return; }
+  el.innerHTML = ultimi.map(i => {
+    const cl = _clienti.find(c=>c.id===i.clienteId);
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--success);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:13px;font-weight:600">${cl?cl.ragione:'Occasionale'}</div>
+        <div style="font-family:'DM Mono',monospace;font-weight:700;color:var(--success)">€ ${(i.importo||0).toFixed(2)}</div>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px">${formatDateFin(i.data||i.created_at)} · ${metodoBadge(i.metodo)}</div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════
+// FATTURE
+// ══════════════════════════════════════════════════
+function setFattStatoFil(btn, stato) {
+  _fattStatoFil = stato;
+  document.querySelectorAll('[data-fstato]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderFattureFin();
+}
+
+function renderFattureFin() {
+  const q = (document.getElementById('fatt-search')?.value||'').toLowerCase();
+  const filtered = _fatture.filter(f => {
+    const cl = _clienti.find(c=>c.id===f.clienteId);
+    const mQ = !q || (f.numero||'').toLowerCase().includes(q) || (cl?.ragione||'').toLowerCase().includes(q);
+    const mS = !_fattStatoFil || f.stato===_fattStatoFil;
+    return mQ && mS;
+  });
+  const tbody = document.getElementById('tb-fatture');
+  const empty = document.getElementById('empty-fatture-fin');
+  if (!filtered.length) { tbody.innerHTML=''; empty.style.display=''; return; }
+  empty.style.display='none';
+  tbody.innerHTML = filtered.map(f => {
+    const cl = _clienti.find(c=>c.id===f.clienteId);
+    const scaduta = (f.stato==='emessa'||f.stato==='parziale') && f.scadenza && new Date(f.scadenza)<new Date();
+    const residuo = residuoFattura(f.id);
+    const isParziale = f.stato==='parziale';
+    const importoCell = isParziale
+      ? `<div style="font-family:'DM Mono',monospace;font-weight:700">€ ${(f.totale||0).toFixed(2)}</div>
+         <div style="font-size:11px;color:var(--warning);font-family:'DM Mono',monospace">residuo: € ${residuo.toFixed(2)}</div>`
+      : `€ ${(f.totale||0).toFixed(2)}`;
+    return `<tr>
+      <td style="font-family:'DM Mono',monospace;font-size:12px;font-weight:700">${f.numero||'—'}</td>
+      <td>${cl?cl.ragione:'—'}</td>
+      <td>${formatDateFin(f.data||f.created_at)}</td>
+      <td style="color:${scaduta?'var(--danger)':'inherit'}">${f.scadenza?formatDateFin(f.scadenza):'—'}</td>
+      <td style="font-family:'DM Mono',monospace;font-weight:700">${importoCell}</td>
+      <td><span class="badge-stato badge-${scaduta?'scaduta':f.stato}">${scaduta?'Scaduta':statoFattLabel(f.stato)}</span></td>
+      <td>${f.ficId?`<span style="font-size:10px;background:#E0E7FF;color:#3730A3;padding:2px 6px;border-radius:4px;font-weight:600">FiC ✓</span>`:'<span style="font-size:10px;color:var(--text3)">—</span>'}</td>
+      <td>
+        <div style="display:flex;gap:4px">
+          ${f.stato!=='pagata'?`<button class="btn btn-sm btn-success" onclick="segnaFatturaPagata('${f.id}')">Segna pagata</button>`:''}
+          ${!f.ficId?`<button class="btn btn-sm btn-secondary" onclick="inviaSuFIC('${f.id}')">→ FiC</button>`:''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function segnaFatturaPagata(id) {
+  if (!confirm('Segnare questa fattura come pagata?')) return;
+  await supa.from('fatture').update({stato:'pagata', data_pagamento:new Date().toISOString()}).eq('id',id);
+  await loadAll();
+  renderFattureFin();
+  showToastFin('Fattura segnata come pagata ✓');
+}
+
+// ══════════════════════════════════════════════════
+// RICONCILIAZIONE
+// ══════════════════════════════════════════════════
+let _movSelezionato = null;
+
+function renderRiconciliazione() {
+  const daRic = _incassi.filter(i=>!i.riconciliato);
+  const listEl = document.getElementById('lista-movimenti-ric');
+  const emptyEl = document.getElementById('empty-movimenti-ric');
+  document.getElementById('count-mov').textContent = daRic.length;
+
+  if (!daRic.length) { listEl.innerHTML=''; emptyEl.style.display=''; return; }
+  emptyEl.style.display='none';
+  listEl.innerHTML = daRic.map(i => {
+    const cl = _clienti.find(c=>c.id===i.clienteId);
+    const isSelected = _movSelezionato?.id===i.id;
+    return `<div class="ric-card ${isSelected?'match-proposto':''}" onclick="selezionaMovimento('${i.id}')" style="cursor:pointer">
+      <div style="display:flex;justify-content:space-between;align-items:start">
+        <div>
+          <div style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace">€ ${(i.importo||0).toFixed(2)}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">${cl?cl.ragione:'Sconosciuto'} · ${metodoBadge(i.metodo)}</div>
+          <div style="font-size:11px;color:var(--text3)">${formatDateFin(i.data||i.created_at)}</div>
+        </div>
+        <button onclick="event.stopPropagation();riconciliaManuale('${i.id}')" class="btn btn-sm btn-secondary">Abbina</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selezionaMovimento(id) {
+  _movSelezionato = _incassi.find(i=>i.id===id);
+  renderRiconciliazione();
+  renderProposteMatch();
+}
+
+function renderProposteMatch() {
+  if (!_movSelezionato) return;
+  const listEl = document.getElementById('lista-proposte-ric');
+  const emptyEl = document.getElementById('empty-proposte-ric');
+  const mov = _movSelezionato;
+
+  // Cerca fatture con importo simile e stesso cliente
+  const proposte = _fatture
+    .filter(f=>f.stato!=='pagata')
+    .map(f => {
+      const cl = _clienti.find(c=>c.id===f.clienteId);
+      const diffImporto = Math.abs((f.totale||0)-(mov.importo||0));
+      const matchCliente = f.clienteId===mov.clienteId;
+      const matchImporto = diffImporto < 0.01;
+      const matchVicino  = diffImporto < (mov.importo||0)*0.05; // entro 5%
+      let score = 0;
+      if (matchImporto) score += 60;
+      else if (matchVicino) score += 30;
+      if (matchCliente) score += 40;
+      return { ...f, cl, score, diffImporto };
+    })
+    .filter(f=>f.score>0)
+    .sort((a,b)=>b.score-a.score)
+    .slice(0,5);
+
+  if (!proposte.length) {
+    listEl.innerHTML='';
+    emptyEl.innerHTML=`<p>Nessuna proposta trovata.<br><small><a href="#" onclick="apriModaleSplit('${mov.id}');return false">Abbina manualmente →</a></small></p>`;
+    emptyEl.style.display='';
+    return;
+  }
+  emptyEl.style.display='none';
+  listEl.innerHTML = proposte.map(p => {
+    const matchLevel = p.score>=80?'alto':p.score>=50?'medio':'basso';
+    const matchLabel = p.score>=80?'Match alto':p.score>=50?'Match medio':'Match basso';
+    const residuo    = residuoFattura(p.id);
+    const suggerito  = Math.min(mov.importo||0, residuo).toFixed(2);
+    const isParziale = p.stato==='parziale';
+    return `<div class="ric-card match-proposto">
+      <div style="display:flex;align-items:start;margin-bottom:8px;gap:8px">
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+            <span style="font-size:12px;font-family:'DM Mono',monospace;font-weight:700">${p.numero||'—'}</span>
+            <span class="ric-match-badge ric-match-${matchLevel}">${matchLabel} (${p.score}%)</span>
+            ${isParziale?`<span style="font-size:10px;background:var(--warning-light);color:var(--warning);padding:2px 6px;border-radius:4px;font-weight:600">Parziale</span>`:''}
+          </div>
+          <div style="font-size:12px;color:var(--text2)">${p.cl?p.cl.ragione:'—'}</div>
+          <div style="font-size:11px;color:var(--text3)">Totale: € ${(p.totale||0).toFixed(2)} · Residuo: <strong style="color:var(--warning)">€ ${residuo.toFixed(2)}</strong></div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <label style="font-size:11px;color:var(--text3);flex-shrink:0">Importo (€):</label>
+        <input type="number" id="ric-amt-${p.id}" value="${suggerito}" min="0.01" step="0.01"
+          style="width:100px;padding:5px 8px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace">
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-success btn-sm" onclick="confermRicFromInput('${mov.id}','${p.id}')">✓ Conferma</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--text3)" onclick="apriModaleSplit('${mov.id}')">Multi-fattura</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/**
+ * Abbina incasso a fattura con importo (parziale o totale).
+ * @param {string} incassoId
+ * @param {string} fatturaId
+ * @param {number|null} importoApplicato - se null usa l'importo dell'incasso
+ */
+async function confermRiconciliazione(incassoId, fatturaId, importoApplicato=null) {
+  const incasso = _incassi.find(i=>i.id===incassoId);
+  const fatt    = _fatture.find(f=>f.id===fatturaId);
+  if (!incasso||!fatt) return;
+  const importo = importoApplicato ?? (incasso.importo||0);
+  const residuo = residuoFattura(fatturaId);
+  const label   = importo < residuo - 0.01
+    ? `Pagamento PARZIALE di € ${importo.toFixed(2)} su fattura ${fatt.numero} (residuo: € ${(residuo-importo).toFixed(2)}). Confermi?`
+    : `Abbina € ${importo.toFixed(2)} alla fattura ${fatt.numero}. Confermi?`;
+  if (!confirm(label)) return;
+  try {
+    // Se importo parziale: crea un incasso "figlio" per la quota abbinata, lascia l'originale non riconciliato
+    let workingIncassoId = incassoId;
+    if (importoApplicato !== null && Math.abs(importo - (incasso.importo||0)) > 0.01) {
+      // Crea split: un incasso figlio con l'importo applicato
+      const split = {
+        id: crypto.randomUUID(),
+        cliente_id: incasso.clienteId||incasso.cliente_id||null,
+        importo,
+        metodo: incasso.metodo||'contanti',
+        data: incasso.data||new Date().toISOString(),
+        riconciliato: true,
+        fattura_id: fatturaId,
+        note: `Split da incasso ${incassoId.slice(0,8)}`,
+        incasso_origine_id: incassoId,
+        created_at: new Date().toISOString(),
+      };
+      await supa.from('incassi').insert(split);
+      // Aggiorna l'importo residuo dell'incasso originale
+      const nuovoImporto = (incasso.importo||0) - importo;
+      await supa.from('incassi').update({importo: nuovoImporto}).eq('id', incassoId);
+    } else {
+      await supa.from('incassi').update({riconciliato:true, fattura_id:fatturaId}).eq('id',incassoId);
+    }
+    await aggiornaStatoPagamento(fatturaId);
+    await loadAll();
+    _movSelezionato = null;
+    renderRiconciliazione();
+    renderDashboard();
+    document.getElementById('lista-proposte-ric').innerHTML='';
+    document.getElementById('empty-proposte-ric').innerHTML='<p>Seleziona un movimento per vedere le proposte</p>';
+    document.getElementById('empty-proposte-ric').style.display='';
+    const nuovoStato = _fatture.find(f=>f.id===fatturaId)?.stato||'parziale';
+    showToastFin(`Riconciliazione confermata ✓ — Fattura ${fatt.numero}: ${statoFattLabel(nuovoStato)}`);
+  } catch(e) { alert('Errore: '+e.message); }
+}
+
+function riconciliaManuale(incassoId) {
+  apriModaleSplit(incassoId);
+}
+
+/** Legge l'importo dall'input della proposta e chiama confermRiconciliazione */
+function confermRicFromInput(incassoId, fatturaId) {
+  const input = document.getElementById('ric-amt-'+fatturaId);
+  const importo = input ? parseFloat(input.value)||null : null;
+  confermRiconciliazione(incassoId, fatturaId, importo);
+}
+
+/** Modal split: alloca un incasso su una o più fatture con importi personalizzati */
+function apriModaleSplit(incassoId) {
+  const incasso = _incassi.find(i=>i.id===incassoId); if (!incasso) return;
+  const totale  = incasso.importo||0;
+  // Fatture aperte (emessa, parziale, attesa)
+  const fattureAperte = _fatture
+    .filter(f=>f.stato!=='pagata')
+    .sort((a,b)=>{ // Stesso cliente prima
+      if (a.clienteId===incasso.clienteId && b.clienteId!==incasso.clienteId) return -1;
+      if (b.clienteId===incasso.clienteId && a.clienteId!==incasso.clienteId) return 1;
+      return 0;
+    });
+  document.getElementById('split-incasso-info').innerHTML =
+    `<strong>€ ${totale.toFixed(2)}</strong> · ${metodoBadge(incasso.metodo)} · ${formatDateFin(incasso.data||incasso.created_at)}`;
+  document.getElementById('split-incasso-id').value = incassoId;
+  document.getElementById('split-totale-disponibile').textContent = totale.toFixed(2);
+  document.getElementById('split-righe').innerHTML = fattureAperte.map(f => {
+    const cl = _clienti.find(c=>c.id===f.clienteId);
+    const residuo = residuoFattura(f.id);
+    return `<tr>
+      <td><input type="checkbox" class="split-check" data-id="${f.id}" onchange="aggiornaSplitTotale()" style="width:16px;height:16px"></td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px;font-weight:700">${f.numero||'—'}</td>
+      <td style="font-size:12px">${cl?cl.ragione:'—'}</td>
+      <td style="font-size:12px;font-family:'DM Mono',monospace">€ ${residuo.toFixed(2)}</td>
+      <td>
+        <input type="number" class="split-amt" data-id="${f.id}" value="${residuo.toFixed(2)}" min="0.01" step="0.01"
+          oninput="aggiornaSplitTotale()"
+          style="width:90px;padding:4px 8px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:'DM Mono',monospace;display:none">
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('split-allocato').textContent = '0.00';
+  document.getElementById('split-residuo').textContent = totale.toFixed(2);
+  document.getElementById('modal-split-ric').style.display = 'flex';
+}
+
+function aggiornaSplitTotale() {
+  const incassoId = document.getElementById('split-incasso-id').value;
+  const incasso   = _incassi.find(i=>i.id===incassoId);
+  const totale    = incasso?.importo||0;
+  let allocato = 0;
+  document.querySelectorAll('.split-check').forEach(chk => {
+    const amtInput = document.querySelector(`.split-amt[data-id="${chk.dataset.id}"]`);
+    if (chk.checked) {
+      amtInput.style.display = '';
+      allocato += parseFloat(amtInput.value)||0;
+    } else {
+      amtInput.style.display = 'none';
+    }
+  });
+  document.getElementById('split-allocato').textContent = allocato.toFixed(2);
+  const residuo = totale - allocato;
+  const resEl = document.getElementById('split-residuo');
+  resEl.textContent = residuo.toFixed(2);
+  resEl.style.color = residuo < -0.01 ? 'var(--danger)' : residuo < 0.01 ? 'var(--success)' : 'var(--warning)';
+  document.getElementById('btn-conferma-split').disabled = allocato <= 0 || residuo < -0.01;
+}
+
+async function confermaSplit() {
+  const incassoId = document.getElementById('split-incasso-id').value;
+  const incasso   = _incassi.find(i=>i.id===incassoId);
+  if (!incasso) return;
+  const checks    = [...document.querySelectorAll('.split-check:checked')];
+  if (!checks.length) { showToastFin('⚠ Seleziona almeno una fattura'); return; }
+  const splits = checks.map(chk => {
+    const amt = parseFloat(document.querySelector(`.split-amt[data-id="${chk.dataset.id}"]`)?.value)||0;
+    return { fatturaId: chk.dataset.id, importo: amt };
+  }).filter(s=>s.importo>0);
+  const totaleAllocato = splits.reduce((s,x)=>s+x.importo,0);
+  const totaleIncasso  = incasso.importo||0;
+  if (totaleAllocato > totaleIncasso + 0.01) { showToastFin('⚠ Importo allocato supera il pagamento'); return; }
+  try {
+    // Crea un incasso-split per ogni fattura
+    for (const s of splits) {
+      const row = {
+        id: crypto.randomUUID(),
+        cliente_id: _fatture.find(f=>f.id===s.fatturaId)?.clienteId||null,
+        importo: s.importo,
+        metodo: incasso.metodo||'contanti',
+        data: incasso.data||new Date().toISOString(),
+        riconciliato: true,
+        fattura_id: s.fatturaId,
+        note: `Split da incasso ${incassoId.slice(0,8)}`,
+        incasso_origine_id: incassoId,
+        created_at: new Date().toISOString(),
+      };
+      await supa.from('incassi').insert(row);
+      await aggiornaStatoPagamento(s.fatturaId);
+    }
+    // Se tutto l'importo è stato allocato, marca l'originale come riconciliato
+    if (Math.abs(totaleAllocato - totaleIncasso) < 0.01) {
+      await supa.from('incassi').update({riconciliato:true}).eq('id',incassoId);
+    } else {
+      // Riduce l'importo dell'originale
+      await supa.from('incassi').update({importo: totaleIncasso - totaleAllocato}).eq('id',incassoId);
+    }
+    await loadAll();
+    _movSelezionato = null;
+    document.getElementById('modal-split-ric').style.display = 'none';
+    renderRiconciliazione();
+    renderDashboard();
+    showToastFin(`Split completato: ${splits.length} fattura/e abbinate ✓`);
+  } catch(e) { alert('Errore: '+e.message); }
+}
+
+// ══════════════════════════════════════════════════
+// POS SUMUP
+// ══════════════════════════════════════════════════
+async function pagaConPOS() {
+  const importo = parseFloat(document.getElementById('inc-importo').value)||0;
+  if (!importo) { alert('Inserisci l\'importo prima.'); return; }
+  await avviaPagamentoPOS(importo, 'inc');
+}
+
+async function pagaConPOSRapido() {
+  const importo = parseFloat(document.getElementById('ir-importo').value)||0;
+  if (!importo) { alert('Inserisci l\'importo prima.'); return; }
+  await avviaPagamentoPOS(importo, 'rapido');
+}
+
+async function avviaPagamentoPOS(importo, origine) {
+  if (!_sumupConfig.client_id) {
+    alert('SumUp non configurato. Vai su Integrazioni → SumUp POS.');
+    return;
+  }
+  document.getElementById('pos-importo-display').textContent = '€ '+importo.toFixed(2).replace('.',',');
+  document.getElementById('pos-titolo').textContent = 'Pagamento in corso';
+  document.getElementById('pos-messaggio').textContent = 'Creazione checkout SumUp…';
+  document.getElementById('pos-icona').textContent = '📱';
+  document.getElementById('pos-spinner').style.display = '';
+  document.getElementById('pos-annulla').style.display = '';
+  document.getElementById('modal-pos').style.display = 'flex';
+  try {
+    const token = await getSumUpAccessToken();
+    const ref = 'ORMIA-' + Date.now();
+    const res = await fetch('https://api.sumup.com/v0.1/checkouts', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: importo, currency: 'EUR',
+        checkout_reference: ref, merchant_code: _sumupConfig.merchant }),
+    });
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.message || 'Errore checkout SumUp '+res.status); }
+    const checkout = await res.json();
+    document.getElementById('pos-messaggio').textContent = 'In attesa conferma dal terminale…';
+    // Polling ogni 3s per max 3 minuti
+    const checkoutId = checkout.id;
+    let attempts = 0;
+    _sumupPoll = setInterval(async () => {
+      attempts++;
+      if (attempts > 60) { clearInterval(_sumupPoll); _sumupPoll=null; posErrore('Timeout — nessuna risposta dal terminale.'); return; }
+      try {
+        const sr = await fetch(`https://api.sumup.com/v0.1/checkouts/${checkoutId}`, {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const st = await sr.json();
+        if (st.status === 'PAID') {
+          clearInterval(_sumupPoll); _sumupPoll=null;
+          posSuccesso(st.transactions?.[0]?.id || checkoutId, importo, origine);
+        } else if (st.status === 'FAILED' || st.status === 'CANCELLED') {
+          clearInterval(_sumupPoll); _sumupPoll=null;
+          posErrore('Pagamento ' + st.status.toLowerCase());
+        }
+      } catch(e) { console.warn('[SumUp poll]', e.message); }
+    }, 3000);
+  } catch(e) {
+    posErrore(e.message);
+  }
+}
+
+function posSuccesso(transactionId, importo, origine) {
+  document.getElementById('pos-icona').textContent = '✅';
+  document.getElementById('pos-titolo').textContent = 'Pagamento approvato!';
+  document.getElementById('pos-messaggio').textContent = 'Transazione: '+transactionId;
+  document.getElementById('pos-spinner').style.display = 'none';
+  document.getElementById('pos-annulla').style.display = 'none';
+  // Precompila riferimento
+  if (origine==='inc') document.getElementById('inc-riferimento').value = transactionId;
+  if (origine==='rapido') document.getElementById('ir-note').value = 'POS: '+transactionId;
+  setTimeout(() => {
+    document.getElementById('modal-pos').style.display = 'none';
+    if (origine==='inc') salvaIncasso();
+    if (origine==='rapido') salvaIncassoRapido();
+  }, 1500);
+}
+
+function posErrore(msg) {
+  document.getElementById('pos-icona').textContent = '❌';
+  document.getElementById('pos-titolo').textContent = 'Pagamento rifiutato';
+  document.getElementById('pos-messaggio').textContent = msg;
+  document.getElementById('pos-spinner').style.display = 'none';
+}
+
+function annullaPOS() {
+  if (_sumupPoll) { clearInterval(_sumupPoll); _sumupPoll = null; }
+  document.getElementById('modal-pos').style.display = 'none';
+}
+
+// ══════════════════════════════════════════════════
+// FATTURE IN CLOUD — OAuth2 + API v2
+// ══════════════════════════════════════════════════
+
+const FIC_TOKEN_URL = 'https://api.fattureincloud.it/v2/oauth/token';
+const FIC_AUTH_URL  = 'https://api.fattureincloud.it/v2/oauth/authorize';
+
+// ── Token management ─────────────────────────────
+function _saveFicToken(d) {
+  _ficToken = {
+    access_token:  d.access_token,
+    refresh_token: d.refresh_token || _ficToken?.refresh_token,
+    expires_at:    Date.now() + (d.expires_in || 3600) * 1000,
+  };
+  localStorage.setItem('ormia_fic_token', JSON.stringify(_ficToken));
+  checkIntegrazioni();
+  updateFicTokenStatus();
+}
+
+async function getFicAccessToken() {
+  if (_ficToken?.access_token && _ficToken.expires_at > Date.now() + 60_000)
+    return _ficToken.access_token;
+  if (_ficToken?.refresh_token) {
+    try { return await _refreshFicToken(); } catch(_) {}
+  }
+  throw new Error('Token FiC non disponibile. Vai su Integrazioni → Fatture in Cloud e autorizza nuovamente.');
+}
+
+async function _refreshFicToken() {
+  const res = await fetch(FIC_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type:    'refresh_token',
+      client_id:     _ficConfig.client_id,
+      client_secret: _ficConfig.client_secret,
+      refresh_token: _ficToken.refresh_token,
+    }),
+  });
+  if (!res.ok) { _ficToken = null; localStorage.removeItem('ormia_fic_token'); throw new Error('Refresh token scaduto'); }
+  const d = await res.json();
+  _saveFicToken(d);
+  return d.access_token;
+}
+
+async function scambiaCodiceFIC(code) {
+  const redirectUri = document.getElementById('fic-redirect-uri')?.value?.trim() || 'https://localhost/fic-callback';
+  const res = await fetch(FIC_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type:    'authorization_code',
+      client_id:     _ficConfig.client_id,
+      client_secret: _ficConfig.client_secret,
+      redirect_uri:  redirectUri,
+      code,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error_description || err.error || `Errore ${res.status}`);
+  }
+  _saveFicToken(await res.json());
+}
+
+function autorizzaFIC() {
+  if (!_ficConfig.client_id) { alert('Salva prima la configurazione FiC.'); return; }
+  const redirectUri = document.getElementById('fic-redirect-uri')?.value?.trim() || 'https://localhost/fic-callback';
+  const cid = _ficConfig.company_id || '';
+  const scopes = [`c:${cid}:issued_documents:r`,`c:${cid}:issued_documents:a`,`c:${cid}:issued_documents:e`].join(';');
+  const authUrl = `${FIC_AUTH_URL}?response_type=code`
+    + `&client_id=${encodeURIComponent(_ficConfig.client_id)}`
+    + `&redirect_uri=${encodeURIComponent(redirectUri)}`
+    + `&scope=${encodeURIComponent(scopes)}`;
+  window.open(authUrl, '_blank');
+  document.getElementById('fic-auth-step2').style.display = '';
+}
+
+async function completaAutorizzazioneFIC() {
+  const input = document.getElementById('fic-auth-code').value.trim();
+  if (!input) { alert("Incolla l'URL di redirect o il codice."); return; }
+  let code = input;
+  try { const u = new URL(input); code = u.searchParams.get('code') || input; } catch(_) {}
+  const el = document.getElementById('fic-auth-result');
+  el.style.display = ''; el.innerHTML = '<span style="color:var(--text3)">Scambio codice…</span>';
+  try {
+    await scambiaCodiceFIC(code);
+    el.innerHTML = '<span style="color:var(--success)">✓ Autorizzazione completata — FiC collegato!</span>';
+    document.getElementById('fic-auth-step2').style.display = 'none';
+  } catch(e) {
+    el.innerHTML = `<span style="color:var(--danger)">✗ ${e.message}</span>`;
+  }
+}
+
+function updateFicTokenStatus() {
+  const el = document.getElementById('fic-token-status');
+  if (!el) return;
+  if (_ficToken?.access_token && _ficToken.expires_at > Date.now()) {
+    const exp = new Date(_ficToken.expires_at).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+    el.innerHTML = `<span style="color:var(--success)">✓ Token valido fino alle ${exp}</span>`;
+  } else if (_ficToken?.refresh_token) {
+    el.innerHTML = '<span style="color:var(--warning)">⚠ Token scaduto — rinnovato auto al prossimo uso</span>';
+  } else {
+    el.innerHTML = '<span style="color:var(--danger)">✗ Non autorizzato — clicca "Autorizza FiC"</span>';
+  }
+}
+
+function caricaFormSumUp() {
+  const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+  set('sumup-client-id',    _sumupConfig.client_id   || '');
+  set('sumup-redirect-uri', _sumupConfig.redirect_uri|| 'https://ormiaofficina.netlify.app/ormia-finance');
+  set('sumup-merchant',     _sumupConfig.merchant    || '');
+  const panel = document.getElementById('sumup-auth-panel');
+  if (panel) panel.style.display = _sumupConfig.client_id ? '' : 'none';
+  updateSumUpTokenStatus();
+}
+
+function caricaFormFIC() {
+  const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+  set('fic-company-id',   _ficConfig.company_id  || '');
+  set('fic-client-id',    _ficConfig.client_id   || '');
+  set('fic-redirect-uri', _ficConfig.redirect_uri|| '');
+  const panel = document.getElementById('fic-auth-panel');
+  if (panel) panel.style.display = _ficConfig.client_id ? '' : 'none';
+  updateFicTokenStatus();
+}
+
+// ── ficFetch con auto-refresh ─────────────────────
+async function ficFetch(path, opts = {}) {
+  const token = await getFicAccessToken();
+  const url = 'https://api.fattureincloud.it/v2' + path;
+  const doReq = async (tok) => fetch(url, {
+    ...opts,
+    headers: { 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json', ...(opts.headers||{}) },
+  });
+  let res = await doReq(token);
+  if (res.status === 401 && _ficToken?.refresh_token) {
+    try { res = await doReq(await _refreshFicToken()); } catch(_) {}
+  }
+  if (!res.ok) {
+    if (res.status === 401) {
+      _ficToken = null; localStorage.removeItem('ormia_fic_token');
+      checkIntegrazioni(); updateFicTokenStatus();
+      throw new Error('Token FiC non valido. Autorizza nuovamente in Integrazioni → Fatture in Cloud.');
+    }
+    let msg = `Errore ${res.status}`;
+    try { const j = await res.json(); msg = j.error?.message || j.message || msg; } catch(_) {}
+    throw new Error(msg);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+// ── Polling automatico ogni 2 min ─────────────────
+function avviaPollingFIC() {
+  if (_ficPolling) return;
+  const run = async () => {
+    if (!_ficConfig.company_id || !_ficToken?.refresh_token) return;
+    try {
+      await sincronizzaFIC(true);
+      const el = document.getElementById('fic-polling-status');
+      if (el) el.textContent = 'Polling: ' + new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+    } catch(e) { console.warn('[FiC poll]', e.message); }
+  };
+  _ficPolling = setInterval(run, 2 * 60 * 1000);
+  const el = document.getElementById('fic-polling-status');
+  if (el) el.textContent = 'Polling: attivo (ogni 2 min)';
+}
+
+// ── Stati pagamento multi-livello ─────────────────
+async function aggiornaStatoPagamento(fatturaId) {
+  const f = _fatture.find(x => x.id === fatturaId);
+  if (!f || f.stato === 'pagata') return;
+  const pagato = _incassi
+    .filter(i => (i.fattura_id || i.fatturaId) === fatturaId)
+    .reduce((s, i) => s + (i.importo || 0), 0);
+  if (pagato <= 0) return;
+  const nuovoStato = pagato >= (f.totale || 0) - 0.01 ? 'pagata' : 'parziale';
+  if (nuovoStato === f.stato) return;
+  const upd = { stato: nuovoStato };
+  if (nuovoStato === 'pagata') upd.data_pagamento = new Date().toISOString().split('T')[0];
+  await supa.from('fatture').update(upd).eq('id', fatturaId);
+  const idx = _fatture.findIndex(x => x.id === fatturaId);
+  if (idx >= 0) Object.assign(_fatture[idx], upd);
+  renderDashboard();
+}
+
+// ── Riconciliazione — proposta da FiC ────────────
+function _aggiungiPropostaRiconciliazione(fattura, importo, ficDoc) {
+  const id = 'fic-prop-' + ficDoc.id;
+  if (_incassi.find(i => i.id === id)) return; // già presente
+  _incassi.unshift({
+    id, importo, metodo: 'bonifico',
+    data: ficDoc.payment_date || new Date().toISOString(),
+    clienteId: fattura.clienteId,
+    fattura_id: null, riconciliato: false,
+    _proposta: true, _ficDoc: ficDoc.id, _fatturaId: fattura.id,
+  });
+  const badge = document.getElementById('badge-ric');
+  const n = _incassi.filter(i => !i.riconciliato).length;
+  if (badge && n > 0) { badge.textContent = n; badge.style.display = ''; }
+}
+
+// ── sincronizzaFIC ────────────────────────────────
+async function sincronizzaFIC(silent = false) {
+  if (!_ficConfig.company_id) {
+    if (!silent) alert('Fatture in Cloud non configurato. Vai su Integrazioni → Fatture in Cloud.');
+    return;
+  }
+  if (!silent) showToastFin('Sincronizzazione FiC avviata…');
+  try {
+    let allDocs = [];
+    for (let page = 1; page <= 5; page++) {
+      const r = await ficFetch(`/c/${_ficConfig.company_id}/issued_documents?type=invoice&per_page=50&page=${page}`);
+      allDocs = allDocs.concat(r.data || []);
+      if (!r.next_page_url) break;
+    }
+    let aggiornate = 0;
+    for (const f of _fatture.filter(x => x.ficId)) {
+      const doc = allDocs.find(d => String(d.id) === String(f.ficId));
+      if (!doc) continue;
+      if (doc.payment_status === 'paid' && f.stato !== 'pagata') {
+        const dataPag = doc.payment_date || new Date().toISOString().split('T')[0];
+        await supa.from('fatture').update({ stato:'pagata', data_pagamento:dataPag, fic_stato:'pagata' }).eq('id', f.id);
+        const idx = _fatture.findIndex(x => x.id === f.id);
+        if (idx >= 0) { _fatture[idx].stato = 'pagata'; _fatture[idx].ficStato = 'pagata'; }
+        aggiornate++;
+      } else if (doc.payment_status === 'partial') {
+        const amtPaid = (f.totale||0) - (doc.amount_due||0);
+        if (amtPaid > 0 && f.stato !== 'parziale') {
+          await supa.from('fatture').update({ stato:'parziale', fic_stato:'parziale' }).eq('id', f.id);
+          const idx = _fatture.findIndex(x => x.id === f.id);
+          if (idx >= 0) _fatture[idx].stato = 'parziale';
+          _aggiungiPropostaRiconciliazione(f, amtPaid, doc);
+          aggiornate++;
+        }
+      }
+    }
+    await loadAll(); renderFattureFin(); renderDashboard();
+    if (!silent) showToastFin(`Sincronizzazione completata — ${aggiornate} fatture aggiornate ✓`);
+  } catch(e) {
+    if (!silent) {
+      const hint = (e.message.includes('Failed to fetch')||e.message.includes('NetworkError'))
+        ? '\n\nSe apri il file localmente il browser blocca CORS. Usa un server locale.' : '';
+      alert('Errore sincronizzazione FiC: ' + e.message + hint);
+    }
+  }
+}
+
+// ── inviaSuFIC ────────────────────────────────────
+async function inviaSuFIC(fatturaId) {
+  if (!_ficConfig.company_id) { alert('Configura prima Fatture in Cloud.'); return; }
+  const f = _fatture.find(x => x.id === fatturaId);
+  if (!f) { alert('Fattura non trovata.'); return; }
+  const cl = _clienti.find(c => c.id === f.clienteId);
+  showToastFin('Invio fattura a FiC…');
+  try {
+    const righe = (f.righe||[]).filter(r => r.desc||r.descrizione);
+    const items = righe.length
+      ? righe.map(r => ({ name:r.desc||r.descrizione, qty:r.qta||1, net_price:r.prezzo||0, vat:{value:f.iva||22} }))
+      : [{ name:f.descrizione||'Servizio officina', qty:1,
+           net_price: f.imponibile||(f.totale||0)/(1+(f.iva||22)/100), vat:{value:f.iva||22} }];
+    const res = await ficFetch(`/c/${_ficConfig.company_id}/issued_documents`, {
+      method: 'POST',
+      body: JSON.stringify({ data: {
+        type:'invoice', date:(f.data||new Date().toISOString()).split('T')[0], number:f.numero,
+        entity: { name:f.cl_ragione||cl?.ragione||'Cliente', vat_number:f.cl_piva||cl?.piva||'',
+                  tax_code:f.cl_cf||cl?.cf||'', ei_code:f.cl_sdi||cl?.sdi||'',
+                  certified_email:f.cl_pec||cl?.pec||'' },
+        items_list: items,
+      }}),
+    });
+    const ficId = String(res.data.id);
+    await supa.from('fatture').update({ fic_id:ficId, fic_stato:'confermata' }).eq('id', fatturaId);
+    await loadAll(); renderFattureFin();
+    showToastFin('Fattura inviata a FiC ✓ (ID: ' + ficId + ')');
+  } catch(e) { alert('Errore invio FiC: ' + e.message); }
+}
+
+async function sincronizzaFICManuale() { await sincronizzaFIC(false); }
+
+// ══════════════════════════════════════════════════
+// CONFIGURAZIONI
+// ══════════════════════════════════════════════════
+// ── SumUp OAuth2 ─────────────────────────────────
+const SUMUP_TOKEN_URL = 'https://api.sumup.com/token';
+const SUMUP_AUTH_URL  = 'https://api.sumup.com/authorize';
+
+function _saveSumUpToken(d) {
+  _sumupToken = {
+    access_token:  d.access_token,
+    refresh_token: d.refresh_token || _sumupToken?.refresh_token,
+    expires_at:    Date.now() + (d.expires_in || 3600) * 1000,
+  };
+  localStorage.setItem('ormia_sumup_token', JSON.stringify(_sumupToken));
+  checkIntegrazioni(); updateSumUpTokenStatus();
+}
+
+async function getSumUpAccessToken() {
+  if (_sumupToken?.access_token && _sumupToken.expires_at > Date.now() + 60_000)
+    return _sumupToken.access_token;
+  if (_sumupToken?.refresh_token) {
+    try {
+      const res = await fetch(SUMUP_TOKEN_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token', client_id: _sumupConfig.client_id,
+          client_secret: _sumupConfig.client_secret, refresh_token: _sumupToken.refresh_token,
+        }),
+      });
+      if (res.ok) { _saveSumUpToken(await res.json()); return _sumupToken.access_token; }
+    } catch(_) {}
+  }
+  throw new Error('SumUp non autorizzato. Vai su Integrazioni → SumUp POS e autorizza.');
+}
+
+function autorizzaSumUp() {
+  if (!_sumupConfig.client_id) { alert('Salva prima la configurazione SumUp.'); return; }
+  const redirectUri = document.getElementById('sumup-redirect-uri')?.value?.trim()
+    || 'https://ormiaofficina.netlify.app/ormia-finance';
+  const authUrl = `${SUMUP_AUTH_URL}?response_type=code`
+    + `&client_id=${encodeURIComponent(_sumupConfig.client_id)}`
+    + `&redirect_uri=${encodeURIComponent(redirectUri)}`
+    + `&scope=${encodeURIComponent('payments transactions.history')}`;
+  window.open(authUrl, '_blank');
+  document.getElementById('sumup-auth-step2').style.display = '';
+}
+
+async function completaAutorizzazioneSumUp() {
+  const input = document.getElementById('sumup-auth-code').value.trim();
+  if (!input) { alert("Incolla l'URL di redirect o il codice."); return; }
+  let code = input;
+  try { const u = new URL(input); code = u.searchParams.get('code') || input; } catch(_) {}
+  const redirectUri = document.getElementById('sumup-redirect-uri')?.value?.trim()
+    || 'https://ormiaofficina.netlify.app/ormia-finance';
+  const el = document.getElementById('sumup-auth-result');
+  el.style.display = ''; el.innerHTML = '<span style="color:var(--text3)">Scambio codice…</span>';
+  try {
+    const res = await fetch(SUMUP_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code', client_id: _sumupConfig.client_id,
+        client_secret: _sumupConfig.client_secret, redirect_uri: redirectUri, code,
+      }),
+    });
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error_description||e.error||`Errore ${res.status}`); }
+    _saveSumUpToken(await res.json());
+    el.innerHTML = '<span style="color:var(--success)">✓ Autorizzazione completata — SumUp collegato!</span>';
+    document.getElementById('sumup-auth-step2').style.display = 'none';
+  } catch(e) {
+    el.innerHTML = `<span style="color:var(--danger)">✗ ${e.message}</span>`;
+  }
+}
+
+function updateSumUpTokenStatus() {
+  const el = document.getElementById('sumup-token-status');
+  if (!el) return;
+  if (_sumupToken?.access_token && _sumupToken.expires_at > Date.now()) {
+    const exp = new Date(_sumupToken.expires_at).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+    el.innerHTML = `<span style="color:var(--success)">✓ Token valido fino alle ${exp}</span>`;
+  } else if (_sumupToken?.refresh_token) {
+    el.innerHTML = '<span style="color:var(--warning)">⚠ Token scaduto — rinnovato auto al prossimo uso</span>';
+  } else {
+    el.innerHTML = '<span style="color:var(--danger)">✗ Non autorizzato — clicca "Autorizza SumUp"</span>';
+  }
+}
+
+async function caricaTransazioniSumUp() {
+  const el = document.getElementById('lista-pagamenti-sumup');
+  el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">Caricamento…</div>';
+  try {
+    const token = await getSumUpAccessToken();
+    const res = await fetch('https://api.sumup.com/v0.1/me/transactions/history?limit=20', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!res.ok) throw new Error('Errore ' + res.status);
+    const d = await res.json();
+    const items = d.items || [];
+    if (!items.length) { el.innerHTML = '<div class="empty-state"><p>Nessuna transazione</p></div>'; return; }
+    el.innerHTML = items.map(t => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-size:13px;font-weight:600">${t.status === 'SUCCESSFUL' ? '✓' : '✗'} € ${(t.amount||0).toFixed(2).replace('.',',')}</div>
+          <div style="font-size:11px;color:var(--text3)">${new Date(t.timestamp).toLocaleString('it-IT')} — ${t.payment_type||'—'}</div>
+          <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3)">${t.transaction_code||t.id}</div>
+        </div>
+        <span style="font-size:11px;padding:2px 8px;border-radius:12px;background:${t.status==='SUCCESSFUL'?'var(--success-light)':'var(--danger-light)'};color:${t.status==='SUCCESSFUL'?'var(--success)':'var(--danger)'}">${t.status}</span>
+      </div>`).join('');
+  } catch(e) { el.innerHTML = `<div class="empty-state"><p style="color:var(--danger)">${e.message}</p></div>`; }
+}
+
+function salvaSumUp() {
+  _sumupConfig = {
+    client_id:     document.getElementById('sumup-client-id').value.trim(),
+    client_secret: document.getElementById('sumup-client-secret').value.trim(),
+    merchant:      document.getElementById('sumup-merchant').value.trim(),
+    redirect_uri:  document.getElementById('sumup-redirect-uri')?.value?.trim() || 'https://ormiaofficina.netlify.app/ormia-finance',
+  };
+  localStorage.setItem('ormia_sumup_config', JSON.stringify(_sumupConfig));
+  _sumupToken = null; localStorage.removeItem('ormia_sumup_token');
+  checkIntegrazioni(); updateSumUpTokenStatus();
+  const panel = document.getElementById('sumup-auth-panel');
+  if (panel) panel.style.display = _sumupConfig.client_id ? '' : 'none';
+  showToastFin('Configurazione salvata ✓ — ora clicca "Autorizza SumUp"');
+}
+
+function salvaFIC() {
+  _ficConfig = {
+    company_id:    document.getElementById('fic-company-id').value.trim(),
+    client_id:     document.getElementById('fic-client-id').value.trim(),
+    client_secret: document.getElementById('fic-client-secret').value.trim(),
+    redirect_uri:  document.getElementById('fic-redirect-uri')?.value?.trim() || 'https://localhost/fic-callback',
+  };
+  localStorage.setItem('ormia_fic_config', JSON.stringify(_ficConfig));
+  _ficToken = null; localStorage.removeItem('ormia_fic_token');
+  checkIntegrazioni(); updateFicTokenStatus();
+  const panel = document.getElementById('fic-auth-panel');
+  if (panel) panel.style.display = _ficConfig.client_id ? '' : 'none';
+  showToastFin('Configurazione salvata ✓ — ora clicca "Autorizza FiC"');
+}
+
+async function testSumUp() {
+  try {
+    await caricaTransazioniSumUp();
+    showToastFin('✓ SumUp risponde correttamente');
+  } catch(e) { alert('Test SumUp: ' + e.message); }
+}
+
+async function testFIC() {
+  try {
+    await ficFetch(`/c/${_ficConfig.company_id}/issued_documents?type=invoice&per_page=1`);
+    showToastFin('✓ FiC risponde correttamente');
+    checkIntegrazioni();
+  } catch(e) { alert('Test FiC: ' + e.message); }
+}
+
+function configuraPollingSinc() { avviaPollingFIC(); showToastFin('Polling FiC attivato ✓'); }
+
+function checkIntegrazioni() {
+  const sumupBadge = document.getElementById('badge-sumup');
+  const ficBadge   = document.getElementById('badge-fic');
+  if (sumupBadge) {
+    const okS = _sumupToken?.refresh_token || (_sumupToken?.access_token && _sumupToken.expires_at > Date.now());
+    if (okS)                          { sumupBadge.textContent = 'Collegato';       sumupBadge.className = 'conn-badge ok'; }
+    else if (_sumupConfig.client_id)  { sumupBadge.textContent = 'Non autorizzato'; sumupBadge.className = 'conn-badge ko'; }
+    else                              { sumupBadge.textContent = 'Non collegato';   sumupBadge.className = 'conn-badge ko'; }
+  }
+  if (ficBadge) {
+    const ok = _ficToken?.refresh_token || (_ficToken?.access_token && _ficToken.expires_at > Date.now());
+    if (ok)                        { ficBadge.textContent = 'Collegato';       ficBadge.className = 'conn-badge ok'; }
+    else if (_ficConfig.client_id) { ficBadge.textContent = 'Non autorizzato'; ficBadge.className = 'conn-badge ko'; }
+    else                           { ficBadge.textContent = 'Non collegato';   ficBadge.className = 'conn-badge ko'; }
+  }
+}
+
+function showToastFin(msg) {
+  let t = document.getElementById('toast-fin');
+  if (!t) { t=document.createElement('div'); t.id='toast-fin'; t.style.cssText='position:fixed;bottom:24px;right:24px;background:#1A1917;color:white;padding:10px 18px;border-radius:8px;font-size:13px;z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none'; document.body.appendChild(t); }
+  t.textContent=msg; t.style.opacity='1';
+  setTimeout(()=>t.style.opacity='0',2500);
+}
+
+function configuraPollingSinc() { avviaPollingFIC(); showToastFin('Polling FiC attivato ✓'); }
+
+// ══════════════════════════════════════════════════
+// NOTE CREDITO
+// ══════════════════════════════════════════════════
+
+function renderNoteCredito() {
+  const q = (document.getElementById('nc-search')?.value||'').toLowerCase();
+  const filtered = _noteCredito.filter(nc => {
+    const cl = _clienti.find(c=>c.id===nc.clienteId);
+    const fatt = _fatture.find(f=>f.id===nc.fatturaId);
+    return !q
+      || (nc.numero||'').toLowerCase().includes(q)
+      || (cl?.ragione||'').toLowerCase().includes(q)
+      || (fatt?.numero||'').toLowerCase().includes(q);
+  });
+  const tbody = document.getElementById('tb-note-credito');
+  const empty = document.getElementById('empty-note-credito');
+  if (!filtered.length) { tbody.innerHTML=''; empty.style.display=''; return; }
+  empty.style.display='none';
+  tbody.innerHTML = filtered.map(nc => {
+    const cl   = _clienti.find(c=>c.id===nc.clienteId);
+    const fatt = _fatture.find(f=>f.id===nc.fatturaId);
+    const statoColor = nc.stato==='contabilizzata' ? 'var(--success)' : 'var(--warning)';
+    const statoLabel = nc.stato==='contabilizzata' ? 'Contabilizzata' : 'Emessa';
+    return `<tr>
+      <td style="font-family:'DM Mono',monospace;font-size:12px;font-weight:700">${nc.numero||'—'}</td>
+      <td style="font-size:12px;color:var(--text2)">${fatt?fatt.numero:'—'}</td>
+      <td>${cl?cl.ragione:'—'}</td>
+      <td>${formatDateFin(nc.data||nc.created_at)}</td>
+      <td style="font-family:'DM Mono',monospace;font-weight:700;color:var(--danger)">- € ${(nc.importo||0).toFixed(2)}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--text2)">${nc.motivo||'—'}</td>
+      <td><span style="font-size:11px;font-weight:700;color:${statoColor};background:${nc.stato==='contabilizzata'?'var(--success-light)':'#FEF3C7'};padding:2px 8px;border-radius:10px">${statoLabel}</span></td>
+      <td>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-sm btn-secondary" onclick="stampaNC('${nc.id}')">Stampa</button>
+          ${nc.stato!=='contabilizzata'?`<button class="btn btn-sm btn-success" onclick="contabilizzaNC('${nc.id}')">Contabilizza</button>`:''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function apriNuovaNC() {
+  const opzFatture = _fatture
+    .filter(f=>f.stato==='emessa'||f.stato==='scaduta'||f.stato==='pagata')
+    .map(f=>{
+      const cl = _clienti.find(c=>c.id===f.clienteId);
+      return `<option value="${f.id}" data-totale="${f.totale||0}">${f.numero} — ${cl?cl.ragione:'Cliente'} — € ${(f.totale||0).toFixed(2)}</option>`;
+    }).join('');
+  document.getElementById('nc-fattura').innerHTML = '<option value="">— Seleziona fattura —</option>' + opzFatture;
+  document.getElementById('nc-importo').value = '';
+  document.getElementById('nc-motivo').value = '';
+  document.getElementById('nc-data').value = new Date().toISOString().split('T')[0];
+  document.getElementById('modal-nc').style.display = 'flex';
+}
+
+function onNCFatturaChange() {
+  const sel = document.getElementById('nc-fattura');
+  const opt = sel.options[sel.selectedIndex];
+  if (opt && opt.dataset.totale) {
+    document.getElementById('nc-importo').value = parseFloat(opt.dataset.totale).toFixed(2);
+  }
+}
+
+async function salvaNC() {
+  const fatturaId = document.getElementById('nc-fattura').value;
+  const importo   = parseFloat(document.getElementById('nc-importo').value)||0;
+  const motivo    = document.getElementById('nc-motivo').value.trim();
+  const data      = document.getElementById('nc-data').value;
+  if (!fatturaId) { showToastFin('⚠ Seleziona la fattura di riferimento'); return; }
+  if (!importo)   { showToastFin('⚠ Inserisci l\'importo'); return; }
+  if (!motivo)    { showToastFin('⚠ Inserisci il motivo'); return; }
+  const fatt = _fatture.find(f=>f.id===fatturaId);
+  const anno = new Date().getFullYear();
+  const seq  = String(_noteCredito.filter(n=>n.numero?.startsWith('NC-'+anno)).length + 1).padStart(4,'0');
+  const numero = `NC-${anno}-${seq}`;
+  try {
+    const row = {
+      id: crypto.randomUUID(),
+      numero,
+      data: data||null,
+      fattura_id: fatturaId,
+      cliente_id: fatt?.clienteId||null,
+      motivo,
+      importo,
+      stato: 'emessa',
+      created_at: new Date().toISOString(),
+    };
+    const { data:r, error } = await supa.from('note_credito').insert(row).select().single();
+    if (error) throw error;
+    const nc = {...r, clienteId:r.cliente_id, fatturaId:r.fattura_id};
+    _noteCredito.unshift(nc);
+    document.getElementById('modal-nc').style.display = 'none';
+    renderNoteCredito();
+    showToastFin(`Nota credito ${numero} emessa ✓`);
+    const cl = _clienti.find(c=>c.id===nc.clienteId);
+    apriAnteprimaNc(generaHtmlNC(nc, fatt, cl));
+  } catch(e) {
+    showToastFin('Errore: ' + e.message);
+  }
+}
+
+async function contabilizzaNC(id) {
+  const idx = _noteCredito.findIndex(n=>n.id===id);
+  if (idx<0) return;
+  try {
+    const {error} = await supa.from('note_credito').update({stato:'contabilizzata'}).eq('id',id);
+    if (error) throw error;
+    _noteCredito[idx].stato = 'contabilizzata';
+    renderNoteCredito();
+    showToastFin('Nota credito contabilizzata ✓');
+  } catch(e) { showToastFin('Errore: '+e.message); }
+}
+
+function stampaNC(id) {
+  const nc   = _noteCredito.find(n=>n.id===id); if (!nc) return;
+  const fatt = _fatture.find(f=>f.id===nc.fatturaId);
+  const cl   = _clienti.find(c=>c.id===nc.clienteId);
+  apriAnteprimaNc(generaHtmlNC(nc, fatt, cl));
+}
+
+function apriAnteprimaNc(html) {
+  const w = window.open('','_blank','width=900,height=700');
+  w.document.write(html);
+  w.document.close();
+}
+
+function generaHtmlNC(nc, fatt, cl) {
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Nota Credito ${nc.numero}</title>
+<style>body{font-family:'Helvetica Neue',Arial,sans-serif;color:#222;padding:40px;max-width:800px;margin:0 auto}@media print{body{padding:0}}</style></head><body>
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:20px;border-bottom:2px solid #DC2626">
+  <div>
+    <div style="font-size:20px;font-weight:800;color:#DC2626">NOTA DI CREDITO</div>
+    <div style="font-family:monospace;font-size:14px;font-weight:600;color:#DC2626;margin-top:4px">${nc.numero}</div>
+    <div style="font-size:12px;color:#666;margin-top:4px">Data: ${nc.data?new Date(nc.data).toLocaleDateString('it-IT'):'—'}</div>
+  </div>
+  <div style="text-align:right;font-size:12px;color:#666">
+    ${fatt?`<div>Riferimento fattura: <strong>${fatt.numero}</strong></div>`:''}
+    ${cl?`<div style="margin-top:8px;font-size:14px;font-weight:600">${cl.ragione}</div>`:''}
+    ${cl?.piva?`<div>P.IVA: ${cl.piva}</div>`:''}
+    ${cl?.indirizzo?`<div>${cl.indirizzo}</div>`:''}
+  </div>
+</div>
+<div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:20px;margin-bottom:24px">
+  <div style="font-size:13px;color:#666;margin-bottom:6px">Motivo della nota di credito:</div>
+  <div style="font-size:15px;font-weight:600">${nc.motivo||'—'}</div>
+</div>
+<div style="display:flex;justify-content:flex-end">
+  <div style="background:#FEF2F2;border:1px solid #FECACA;padding:20px 28px;border-radius:8px;text-align:right;min-width:260px">
+    <div style="font-size:13px;color:#666;margin-bottom:8px">Importo della nota di credito:</div>
+    <div style="font-size:28px;font-weight:800;color:#DC2626">- € ${(nc.importo||0).toFixed(2)}</div>
+  </div>
+</div>
+<div style="margin-top:48px;padding-top:16px;border-top:1px solid #E4E2DC;font-size:11px;color:#999;text-align:center">Documento emesso da ORMIA Officina</div>
+</body></html>`;
+}
+
+// ══════════════════════════════════════════════════
+// INTEGRATIONS — check badges
+// ══════════════════════════════════════════════════
+
+function checkIntegrazioni() {
+  const sumupBadge = document.getElementById('badge-sumup');
+  const ficBadge   = document.getElementById('badge-fic');
+  if (sumupBadge) {
+    const okS = _sumupToken?.refresh_token || (_sumupToken?.access_token && _sumupToken.expires_at > Date.now());
+    if (okS)                          { sumupBadge.textContent = 'Collegato';       sumupBadge.className = 'conn-badge ok'; }
+    else if (_sumupConfig.client_id)  { sumupBadge.textContent = 'Non autorizzato'; sumupBadge.className = 'conn-badge ko'; }
+    else                              { sumupBadge.textContent = 'Non collegato';   sumupBadge.className = 'conn-badge ko'; }
+  }
+  if (ficBadge) {
+    const ok = _ficToken?.refresh_token || (_ficToken?.access_token && _ficToken.expires_at > Date.now());
+    if (ok)                        { ficBadge.textContent = 'Collegato';       ficBadge.className = 'conn-badge ok'; }
+    else if (_ficConfig.client_id) { ficBadge.textContent = 'Non autorizzato'; ficBadge.className = 'conn-badge ko'; }
+    else                           { ficBadge.textContent = 'Non collegato';   ficBadge.className = 'conn-badge ko'; }
+  }
+}
+
+function showToastFin(msg) {
+  let t = document.getElementById('toast-fin');
+  if (!t) { t=document.createElement('div'); t.id='toast-fin'; t.style.cssText='position:fixed;bottom:24px;right:24px;background:#1A1917;color:white;padding:10px 18px;border-radius:8px;font-size:13px;z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none'; document.body.appendChild(t); }
+  t.textContent=msg; t.style.opacity='1';
+  setTimeout(()=>t.style.opacity='0',2500);
+}
+
+function configuraPollingSinc() { avviaPollingFIC(); showToastFin('Polling FiC attivato ✓'); }
+
+// ══════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════
+initAuth();
+</script>
+
+<!-- MODAL SPLIT RICONCILIAZIONE -->
+<div id="modal-split-ric" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--bg);border-radius:var(--radius-lg);width:100%;max-width:680px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+    <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg);z-index:1">
+      <div>
+        <div style="font-size:16px;font-weight:800">Abbina pagamento</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px">Pagamento: <span id="split-incasso-info"></span></div>
+      </div>
+      <button onclick="document.getElementById('modal-split-ric').style.display='none'" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text3)">✕</button>
+    </div>
+    <input type="hidden" id="split-incasso-id">
+    <div style="padding:16px 24px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;gap:24px;font-size:13px">
+      <span>Disponibile: <strong style="font-family:'DM Mono',monospace">€ <span id="split-totale-disponibile">0.00</span></strong></span>
+      <span>Allocato: <strong style="font-family:'DM Mono',monospace;color:var(--accent)">€ <span id="split-allocato">0.00</span></strong></span>
+      <span>Residuo: <strong style="font-family:'DM Mono',monospace" id="split-residuo">0.00</strong></span>
+    </div>
+    <div style="padding:0 24px 8px">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:12px">
+        <thead><tr style="border-bottom:2px solid var(--border)">
+          <th style="padding:8px 4px;text-align:left;width:32px"></th>
+          <th style="padding:8px 8px;text-align:left">Fattura</th>
+          <th style="padding:8px 8px;text-align:left">Cliente</th>
+          <th style="padding:8px 8px;text-align:right">Residuo</th>
+          <th style="padding:8px 8px;text-align:right">Importo</th>
+        </tr></thead>
+        <tbody id="split-righe"></tbody>
+      </table>
+    </div>
+    <div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;position:sticky;bottom:0;background:var(--bg)">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-split-ric').style.display='none'">Annulla</button>
+      <button id="btn-conferma-split" class="btn btn-success" onclick="confermaSplit()" disabled>✓ Conferma abbinamento</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOTA CREDITO -->
+<div id="modal-nc" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--bg);border-radius:var(--radius-lg);width:100%;max-width:520px;box-shadow:0 20px 60px rgba(0,0,0,.2);overflow:hidden">
+    <div style="background:#DC2626;padding:16px 20px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:16px;font-weight:800;color:white">Nuova nota di credito</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.8)">Storno parziale o totale di una fattura</div>
+      </div>
+      <button onclick="document.getElementById('modal-nc').style.display='none'" style="background:rgba(255,255,255,.2);border:none;color:white;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:18px;line-height:1">✕</button>
+    </div>
+    <div style="padding:24px;display:grid;gap:14px">
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">Fattura di riferimento *</label>
+        <select id="nc-fattura" onchange="onNCFatturaChange()" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif"></select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">Importo da stornare (€) *</label>
+          <input type="number" id="nc-importo" min="0.01" step="0.01" placeholder="0.00" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">Data emissione</label>
+          <input type="date" id="nc-data" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace;box-sizing:border-box">
+        </div>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">Motivo *</label>
+        <input type="text" id="nc-motivo" placeholder="Es. Reso merce, errore di fatturazione, sconto accordato…" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;box-sizing:border-box">
+      </div>
+    </div>
+    <div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-nc').style.display='none'">Annulla</button>
+      <button class="btn btn-primary" style="background:#DC2626;border-color:#DC2626" onclick="salvaNC()">Emetti nota credito</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
