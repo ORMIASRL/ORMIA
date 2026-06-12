@@ -1487,8 +1487,7 @@ function autorizzaFIC() {
   if (!_ficConfig.client_id) { alert('Salva prima la configurazione FiC.'); return; }
   if (!_ficConfig.company_id) { alert('Inserisci il Company ID FiC e salva prima di autorizzare.'); return; }
   const redirectUri = document.getElementById('fic-redirect-uri')?.value?.trim() || 'https://localhost/fic-callback';
-  const cid = _ficConfig.company_id;
-  const scopes = [`c:${cid}:issued_documents:r`,`c:${cid}:issued_documents:a`,`c:${cid}:issued_documents:e`].join(' ');
+  const scopes = 'issued_documents.invoices:r issued_documents.invoices:a issued_documents.credit_notes:r issued_documents.credit_notes:a situation:r';
   const authUrl = `${FIC_AUTH_URL}?response_type=code`
     + `&client_id=${encodeURIComponent(_ficConfig.client_id)}`
     + `&redirect_uri=${encodeURIComponent(redirectUri)}`
