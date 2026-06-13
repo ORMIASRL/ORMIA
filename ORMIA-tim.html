@@ -258,7 +258,6 @@ async function loadAll() {
   timbrature   = t.data  || [];
   presenze     = p.data  || [];
   appuntamenti = a.data  || [];
-  renderLive();
   renderCalOggi();
 }
 
@@ -266,7 +265,6 @@ function renderCalOggi() {
   const el = document.getElementById('cal-oggi-list');
   if (!el) return;
 
-  // Unisci appuntamenti + consegne commesse di oggi
   const oggi = new Date().toISOString().split('T')[0];
   const eventi = [];
 
@@ -331,7 +329,6 @@ aggiornaOrologio();
 document.getElementById('input-badge').addEventListener('keydown', e => {
   if (e.key === 'Enter') cercaMeccanico();
 });
-// Auto-detect scan (lettore inserisce tutto velocemente)
 let badgeBuffer = '', badgeTimer = null;
 document.getElementById('input-badge').addEventListener('input', e => {
   clearTimeout(badgeTimer);
@@ -366,11 +363,9 @@ function cercaMeccanico() {
 
   mecAttivo = mec;
 
-  // Controlla presenza giornaliera
   const oggi = new Date().toISOString().split('T')[0];
   const presenzaOggi = presenze.find(p => p.mec_id === mec.id && (p.data||'').startsWith(oggi));
 
-  // Se non è un meccanico operativo → solo entrata/uscita giornaliera
   if (!isMeccanicoOperativo(mec)) {
     resEl.className = 'result-card show ' + (presenzaOggi && !presenzaOggi.uscita ? 'info' : 'success');
     document.getElementById('result-mec-nome').textContent = mec.nome;
@@ -381,7 +376,6 @@ function cercaMeccanico() {
     return;
   }
 
-  // Per meccanici operativi → flusso normale con commessa
   const tAperta = timbrature.find(t => t.mec_id === mec.id && !t.uscita);
   const cmTim   = tAperta ? commesse.find(c => c.id === tAperta.com_id) : null;
 
@@ -391,7 +385,6 @@ function cercaMeccanico() {
     ? `⏱ In lavorazione su ${cmTim.numero} — scansiona la commessa per registrare l'uscita`
     : 'Scansiona la commessa per timbrare l\'entrata';
 
-  // Sblocca step 2
   document.getElementById('step-commessa').style.opacity = '1';
   document.getElementById('step-commessa').style.pointerEvents = 'auto';
   setTimeout(() => document.getElementById('input-commessa').focus(), 100);
@@ -403,12 +396,10 @@ async function registraPresenzaGiornaliera(mec, presenzaEsistente) {
   const oggi  = new Date().toISOString().split('T')[0];
   try {
     if (presenzaEsistente && !presenzaEsistente.uscita) {
-      // Timbra uscita
       await supa.from('presenze').update({uscita: ora}).eq('id', presenzaEsistente.id);
       showToast(`✓ ${mec.nome} — USCITA registrata`);
       suonaSegnale('uscita');
     } else if (!presenzaEsistente) {
-      // Timbra entrata
       await supa.from('presenze').insert({
         id: crypto.randomUUID(), mec_id: mec.id, data: oggi,
         entrata: ora, uscita: null, created_at: ora
@@ -463,7 +454,6 @@ function cercaCommessa() {
   const cl  = clienti.find(c => c.id === cm.cliente_id);
   const v   = veicoli.find(x => x.id === cm.veicolo_id);
 
-  // Controlla se il meccanico ha già timbratura aperta su questa commessa
   const tAperta = timbrature.find(t => t.mec_id === mecAttivo.id && t.com_id === cm.id && !t.uscita);
 
   resEl.className = 'result-card show info';
@@ -490,13 +480,11 @@ async function registraEntrata() {
   const ora = new Date().toISOString();
 
   try {
-    // Chiudi eventuali timbrature aperte su altre commesse
     const altreAperte = timbrature.filter(t => t.mec_id === mecAttivo.id && !t.uscita && t.com_id !== comAttiva.id);
     for (const t of altreAperte) {
       await supa.from('timbrature').update({uscita: ora}).eq('id', t.id);
     }
 
-    // Nuova timbratura entrata
     await supa.from('timbrature').insert({
       id: crypto.randomUUID(),
       mec_id: mecAttivo.id,
@@ -506,7 +494,6 @@ async function registraEntrata() {
       created_at: ora,
     });
 
-    // Porta commessa in wip se era aperta
     if (comAttiva.stato === 'aperta') {
       await supa.from('commesse').update({stato: 'wip'}).eq('id', comAttiva.id);
     }
@@ -542,50 +529,6 @@ async function registraUscita(tAperta) {
   } catch(e) {
     showToast('Errore: ' + e.message);
   }
-}
-
-// ── RENDER LIVE ──────────────────────────────────────
-function renderLive() {
-  const aperte = timbrature.filter(t => {
-    if (t.uscita) return false;
-    const cm = commesse.find(c => c.id === t.com_id);
-    return cm && (cm.stato === 'aperta' || cm.stato === 'wip');
-  });
-
-  const el = document.getElementById('live-list');
-  if (!aperte.length) {
-    el.innerHTML = '<div class="live-empty">Nessun meccanico in lavorazione</div>';
-    return;
-  }
-
-  // Un record per meccanico — il più recente
-  const perMec = {};
-  aperte.forEach(t => {
-    if (!perMec[t.mec_id] || t.entrata > perMec[t.mec_id].entrata) perMec[t.mec_id] = t;
-  });
-
-  el.innerHTML = Object.values(perMec).map(t => {
-    const m  = meccanici.find(x => x.id === t.mec_id);
-    const cm = commesse.find(x => x.id === t.com_id);
-    const cl = cm ? clienti.find(c => c.id === cm.cliente_id) : null;
-    const v  = cm ? veicoli.find(x => x.id === cm.veicolo_id) : null;
-    const mins = Math.floor((Date.now() - new Date(t.entrata)) / 60000);
-    const dur  = mins >= 60 ? `${Math.floor(mins/60)}h ${String(mins%60).padStart(2,'0')}m` : `${mins}m`;
-    const initials = m ? m.nome.split(' ').map(w=>w[0]).join('').substr(0,2).toUpperCase() : '??';
-
-    return `<div class="live-card">
-      <div class="live-avatar">${initials}</div>
-      <div style="flex:1;min-width:0">
-        <div class="live-nome">${m ? m.nome : '—'}</div>
-        <div class="live-commessa">
-          ${cm ? `<strong>${cm.numero}</strong> — ${cm.descrizione||cm.desc||''}` : '—'}
-          ${v  ? ` · ${v.targa}` : ''}
-          ${cl ? ` · ${cl.ragione}` : ''}
-        </div>
-      </div>
-      <div class="live-dur"><span class="dot"></span>${dur}</div>
-    </div>`;
-  }).join('');
 }
 
 // ── RESET ────────────────────────────────────────────
@@ -629,10 +572,8 @@ setInterval(async () => {
   timbrature = t.data || [];
   const co = await supa.from('commesse').select('*');
   commesse = co.data || [];
-  renderLive();
   renderCalOggi();
 }, 5000);
-
 
 // ── PIN giornaliero ──────────────────────────────────────────
 function controllaPinGiornaliero() {

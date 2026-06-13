@@ -162,6 +162,11 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
 .form-field label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text3); display: block; margin-bottom: 4px; }
 .form-field input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px; font-family: 'DM Sans', sans-serif; }
 
+/* ── FOTO GRID ── */
+.foto-thumb { position: relative; border-radius: var(--radius); overflow: hidden; aspect-ratio: 4/3; background: #000; }
+.foto-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.foto-thumb-rm { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,.65); border: none; border-radius: 50%; width: 26px; height: 26px; color: white; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; }
+
 /* ── TOAST ── */
 #toast {
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
@@ -182,12 +187,13 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
 .badge-orange { background: #FEF3C7; color: #92400E; }
 .badge-green { background: #F0FFF4; color: #276749; }
 .badge-gray { background: #F5F4F1; color: #6B6A65; }
+.badge-purple { background: #F3E8FF; color: #6D28D9; }
 </style>
 </head>
 <body>
 
 <!-- ══════════════════════════════════════════════
-     SCREEN LOGIN
+     SCREEN LANDING (dopo PIN)
 ════════════════════════════════════════════════ -->
 <div class="screen" id="screen-landing">
   <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:32px 24px;gap:20px">
@@ -195,7 +201,7 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
       <svg viewBox="0 0 24 24" style="width:40px;height:40px;fill:white"><path d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm-7 3a3 3 0 110 6 3 3 0 010-6zm6 13H6v-.5c0-2.5 3.1-4.5 6-4.5s6 2 6 4.5V19z"/></svg>
     </div>
     <div style="font-size:26px;font-weight:800;text-align:center">ORMIA</div>
-    <div style="font-size:14px;color:var(--text2);text-align:center;margin-top:-8px">Seleziona il modulo</div>
+    <div id="landing-utente" style="font-size:14px;color:var(--text2);text-align:center;margin-top:-8px">Seleziona il modulo</div>
 
     <button onclick="scegliModuloMag('commesse')" style="width:100%;max-width:320px;padding:20px 24px;border-radius:var(--radius-lg);border:none;cursor:pointer;display:flex;align-items:center;gap:16px;background:var(--accent);color:white;box-shadow:0 4px 16px rgba(27,79,216,.3)">
       <div style="width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0">
@@ -216,17 +222,21 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
         <div style="font-size:12px;color:var(--text2);margin-top:2px">Carico e scarico veloce</div>
       </div>
     </button>
+
+    <button onclick="doLogout()" style="margin-top:8px;background:none;border:none;color:var(--text3);font-size:13px;cursor:pointer;padding:8px 16px">
+      Esci / Cambia utente
+    </button>
   </div>
 </div>
 
-<!-- ═══ LOGIN MAGAZZINO DIRETTO ═══ -->
+<!-- ═══ PIN SCREEN (unico per tutti i moduli) ═══ -->
 <div class="screen hidden" id="screen-login-mag2">
   <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:24px;gap:0">
-    <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:50%;width:64px;height:64px;display:flex;align-items:center;justify-content:center;margin-bottom:16px">
-      <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" style="width:32px;height:32px"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+    <div style="width:72px;height:72px;background:var(--accent);border-radius:20px;display:flex;align-items:center;justify-content:center;margin-bottom:16px">
+      <svg viewBox="0 0 24 24" style="width:40px;height:40px;fill:white"><path d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm-7 3a3 3 0 110 6 3 3 0 010-6zm6 13H6v-.5c0-2.5 3.1-4.5 6-4.5s6 2 6 4.5V19z"/></svg>
     </div>
-    <div style="font-size:22px;font-weight:800;margin-bottom:4px">Magazzino</div>
-    <div style="font-size:13px;color:var(--text2);margin-bottom:28px">Inserisci il tuo PIN</div>
+    <div style="font-size:26px;font-weight:800;margin-bottom:4px">ORMIA</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:28px">Inserisci il tuo PIN per accedere</div>
     <div style="display:flex;gap:12px;margin-bottom:24px">
       <div id="pdmag0" style="width:16px;height:16px;border-radius:50%;background:var(--border);transition:background .1s"></div>
       <div id="pdmag1" style="width:16px;height:16px;border-radius:50%;background:var(--border);transition:background .1s"></div>
@@ -243,25 +253,21 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
       <button class="pin-btn" onclick="pinMag2('0')">0</button>
       <div></div>
     </div>
-    <button onclick="showScreen('screen-landing')" style="margin-top:20px;background:none;border:none;color:var(--text3);font-size:14px;cursor:pointer">← Indietro</button>
+    <div id="pin-err" style="display:none;margin-top:12px;font-size:13px;color:var(--danger);font-weight:600">PIN non riconosciuto</div>
   </div>
 </div>
 
 <!-- ═══ MAGAZZINO HOME ═══ -->
 <div class="screen hidden" id="screen-mag2-home">
   <div class="topbar">
-    <button class="topbar-back" onclick="logoutMag2()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    <button class="topbar-back" onclick="showScreen('screen-landing')" title="Torna ai moduli">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:22px;height:22px"><polyline points="15 18 9 12 15 6"/></svg>
     </button>
     <div>
       <div class="topbar-title">Magazzino</div>
       <div class="topbar-sub" id="mag2-utente">—</div>
     </div>
-    <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
-      <a href="ORMIA.html" style="padding:6px 12px;border-radius:var(--radius);border:none;background:rgba(255,255,255,.15);color:white;font-size:12px;font-weight:700;cursor:pointer;text-decoration:none;display:flex;align-items:center;gap:5px">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px;height:13px"><polyline points="15 18 9 12 15 6"/></svg>
-        Gestionale
-      </a>
+    <div style="margin-left:auto;display:flex;gap:6px">
       <button id="mag2-btn-carico"  onclick="setMag2Mode('carico')"  style="padding:7px 12px;border-radius:var(--radius);border:none;background:rgba(255,255,255,.9);color:var(--success);font-size:12px;font-weight:700;cursor:pointer">▲ Carico</button>
       <button id="mag2-btn-scarico" onclick="setMag2Mode('scarico')" style="padding:7px 12px;border-radius:var(--radius);border:none;background:rgba(255,255,255,.3);color:white;font-size:12px;font-weight:700;cursor:pointer">▼ Scarico</button>
     </div>
@@ -328,41 +334,21 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
   </div>
 </div>
 
-<div class="screen hidden" id="screen-login">
-  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;gap:20px">
-    <div style="width:56px;height:56px;background:var(--accent);border-radius:14px;display:flex;align-items:center;justify-content:center">
-      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="width:28px;height:28px"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
-    </div>
-    <div style="text-align:center">
-      <div style="font-size:22px;font-weight:800;margin-bottom:4px">ORMIA Magazzino</div>
-      <div style="font-size:14px;color:var(--text2)">Accesso magazziniere</div>
-    </div>
-    <div id="login-loading" style="font-size:13px;color:var(--text3)">Connessione…</div>
-    <div id="login-form" style="display:none;width:100%;max-width:340px;display:flex;flex-direction:column;gap:10px">
-      <div>
-        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);display:block;margin-bottom:4px">Email</label>
-        <input type="email" id="login-email" placeholder="email@officina.it" style="width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;font-family:'DM Sans',sans-serif">
-      </div>
-      <div>
-        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);display:block;margin-bottom:4px">Password</label>
-        <input type="password" id="login-pwd" placeholder="••••••••" style="width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;font-family:'DM Sans',sans-serif" onkeydown="if(event.key==='Enter')doLogin()">
-      </div>
-      <div id="login-err" style="display:none;font-size:12px;color:var(--danger);padding:8px 12px;background:var(--danger-light);border-radius:8px"></div>
-      <button onclick="doLogin()" style="padding:14px;border-radius:var(--radius);background:var(--accent);color:white;border:none;font-size:16px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer;margin-top:4px">Accedi</button>
-    </div>
-  </div>
-</div>
+<!-- screen-login rimosso: accesso tramite PIN unificato -->
 
 <!-- ══════════════════════════════════════════════
      SCREEN HOME — Lista commesse
 ════════════════════════════════════════════════ -->
 <div class="screen hidden" id="screen-home">
   <div class="topbar">
+    <button class="topbar-back" onclick="showScreen('screen-landing')" title="Torna ai moduli">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:22px;height:22px"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
     <div style="flex:1">
-      <div class="topbar-title">Magazzino</div>
+      <div class="topbar-title">Commesse</div>
       <div class="topbar-sub" id="home-sub">Seleziona una commessa</div>
     </div>
-    <button onclick="doLogout()" style="background:rgba(255,255,255,.2);border:none;color:white;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">Esci</button>
+    <span id="home-utente" style="font-size:11px;opacity:.75"></span>
   </div>
 
   <div style="padding:12px 14px 0;flex-shrink:0">
@@ -384,7 +370,7 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
 </div>
 
 <!-- ══════════════════════════════════════════════
-     SCREEN DETTAGLIO — Aggiungi ricambi
+     SCREEN DETTAGLIO — Aggiungi ricambi + Foto
 ════════════════════════════════════════════════ -->
 <div class="screen hidden" id="screen-detail">
   <div class="topbar">
@@ -407,6 +393,12 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
     <button class="tab-btn" id="tab-lista" onclick="setTab('lista')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
       Ricambi aggunti
+    </button>
+    <!-- Visibile solo su commesse in garanzia -->
+    <button class="tab-btn" id="tab-foto" onclick="setTab('foto')" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      Foto
+      <span id="tab-foto-badge" style="display:none;margin-left:4px;background:var(--warning);color:white;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:800"></span>
     </button>
   </div>
 
@@ -493,6 +485,59 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
       <p>Nessun ricambio aggiunto<br>su questa commessa</p>
     </div>
   </div>
+
+  <!-- TAB FOTO — visibile solo per commesse in garanzia -->
+  <div class="scroll hidden" id="panel-foto">
+    <!-- Banner stato garanzia -->
+    <div style="background:var(--accent-light);border:1.5px solid #93C5FD;border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" style="width:20px;height:20px;flex-shrink:0"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--accent)">Commessa in garanzia</div>
+        <div style="font-size:12px;color:var(--text2)">Foto accettazione (3) + Foto chiusura (2+)</div>
+      </div>
+    </div>
+
+    <!-- ── FOTO INIZIO ── -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3)">Foto accettazione</div>
+      <div id="foto-count-label" style="font-size:13px;font-weight:700"></div>
+    </div>
+    <div id="foto-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px"></div>
+    <div id="foto-upload-area" style="margin-bottom:16px">
+      <label for="foto-input" style="display:flex;flex-direction:column;align-items:center;padding:16px 14px;border:2px dashed var(--border2);border-radius:var(--radius-lg);text-align:center;cursor:pointer;background:var(--surface);gap:6px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" style="width:28px;height:28px"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        <div style="font-size:14px;font-weight:700;color:var(--accent)">Aggiungi foto accettazione</div>
+        <div style="font-size:11px;color:var(--text3)">Minimo 3 foto obbligatorie</div>
+        <input type="file" id="foto-input" accept="image/*" multiple capture="environment" style="display:none" onchange="uploadFotoInizio(this)">
+      </label>
+    </div>
+    <div id="foto-done-banner" style="display:none;margin-bottom:16px;padding:12px 14px;background:var(--success-light);border:1.5px solid #86EFAC;border-radius:var(--radius-lg);text-align:center">
+      <div style="font-size:14px;font-weight:700;color:var(--success)">✓ Foto accettazione complete</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px">Il meccanico può iniziare la lavorazione</div>
+    </div>
+
+    <!-- ── FOTO FINE (wip / chiusa) ── -->
+    <div id="foto-fine-section" style="display:none">
+      <div style="height:1px;background:var(--border);margin-bottom:14px"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3)">Foto chiusura lavorazione</div>
+        <div id="foto-fine-count-label" style="font-size:13px;font-weight:700"></div>
+      </div>
+      <div id="foto-fine-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px"></div>
+      <div id="foto-fine-upload-area">
+        <label for="foto-fine-input" style="display:flex;flex-direction:column;align-items:center;padding:16px 14px;border:2px dashed var(--border2);border-radius:var(--radius-lg);text-align:center;cursor:pointer;background:var(--surface);gap:6px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2" style="width:28px;height:28px"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <div style="font-size:14px;font-weight:700;color:var(--warning)">Aggiungi foto chiusura</div>
+          <div style="font-size:11px;color:var(--text3)">Minimo 2 foto prima di chiudere</div>
+          <input type="file" id="foto-fine-input" accept="image/*" multiple capture="environment" style="display:none" onchange="uploadFotoFine(this)">
+        </label>
+      </div>
+      <div id="foto-fine-done-banner" style="display:none;margin-top:10px;padding:12px 14px;background:var(--success-light);border:1.5px solid #86EFAC;border-radius:var(--radius-lg);text-align:center">
+        <div style="font-size:14px;font-weight:700;color:var(--success)">✓ Foto chiusura complete</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">Lavorazione pronta per essere chiusa</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div id="toast"></div>
@@ -506,6 +551,7 @@ const SUPA_KEY = 'sb_publishable_bzZrugm5WWBaUKkO_mlrLw_dNXKPCM9';
 const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 let _commesse = [], _clienti = [], _veicoli = [], _prodotti = [], _movimenti = [];
+let meccanici = []; // dipendenti — caricati su init per PIN magazzino
 let comSelected = null;
 let scanProdId  = null;
 let statoFiltro = '';
@@ -515,20 +561,40 @@ let tabAttivo = 'scan';
 
 // ── CARICA DATI ──────────────────────────────
 async function loadAll() {
-  const [co, cl, v, p] = await Promise.all([
+  const [co, cl, v, p, mec] = await Promise.all([
     supa.from('commesse').select('*').order('created_at', {ascending: false}),
     supa.from('clienti').select('*'),
     supa.from('veicoli').select('*'),
     supa.from('prodotti').select('*'),
+    supa.from('meccanici').select('id,nome,ruolo,pin,ora_uscita_automatica'),
   ]);
   _commesse = co.data || [];
   _clienti  = cl.data || [];
   _veicoli  = v.data  || [];
   _prodotti = p.data  || [];
+  meccanici = mec.data || [];
 }
 
+// Carica meccanici subito all'avvio per il PIN (anche senza sessione auth)
+supa.from('meccanici').select('id,nome,ruolo,pin').then(({data}) => {
+  if (data) meccanici = data;
+});
+
 // ── FIX SNAKE_CASE → CAMELCASE ───────────────
-function fixCom(c) { return c ? {...c, clienteId:c.cliente_id, veicoloId:c.veicolo_id, dataApertura:c.data_apertura, vociRic:c.voci_ric||[], vociMano:c.voci_mano||[], vociExtra:c.voci_extra||[], descrizione:c.descrizione||c.desc} : null; }
+function fixCom(c) {
+  return c ? {
+    ...c,
+    clienteId:    c.cliente_id,
+    veicoloId:    c.veicolo_id,
+    dataApertura: c.data_apertura,
+    vociRic:      c.voci_ric    || [],
+    vociMano:     c.voci_mano   || [],
+    vociExtra:    c.voci_extra  || [],
+    descrizione:  c.descrizione || c.desc,
+    fotoInizio:   c.foto_inizio || [],
+    fotoFine:     c.foto_fine   || [],
+  } : null;
+}
 function fixProd(p) { return p ? {...p, descrizione:p.descrizione||p.desc, codInt:p.cod_int, codForn:p.cod_forn, prezzoVend:p.prezzo_vend||0, giacenza:p.giacenza||0} : null; }
 function fixVei(v)  { return v ? {...v, clienteId:v.cliente_id} : null; }
 
@@ -536,33 +602,19 @@ function getCommesse() { return _commesse.map(fixCom); }
 function getProdotti()  { return _prodotti.map(fixProd); }
 function getVeicoli()   { return _veicoli.map(fixVei); }
 
-// ── AUTH ─────────────────────────────────────
-async function doLogin() {
-  const email = document.getElementById('login-email').value.trim();
-  const pwd   = document.getElementById('login-pwd').value;
-  const errEl = document.getElementById('login-err');
-  errEl.style.display = 'none';
-  if (!email || !pwd) { errEl.textContent = 'Inserisci email e password'; errEl.style.display = ''; return; }
-  const { error } = await supa.auth.signInWithPassword({ email, password: pwd });
-  if (error) { errEl.textContent = 'Email o password errati'; errEl.style.display = ''; return; }
-  await loadAll();
-  showScreen('screen-home');
-  renderCommesse();
-}
-
-async function doLogout() {
-  await supa.auth.signOut();
-  showScreen('screen-landing');
+// ── AUTH (solo PIN) ──────────────────────────
+function doLogout() {
+  _mag2Logged = null;
+  _pinMag2Buf = '';
+  ['pdmag0','pdmag1','pdmag2','pdmag3'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.style.background='var(--border)';
+  });
+  showScreen('screen-login-mag2');
 }
 
 async function checkSession() {
-  const { data: { session } } = await supa.auth.getSession();
-  if (session) {
-    await loadAll();
-    showScreen('screen-landing');
-  } else {
-    showScreen('screen-landing');
-  }
+  // Accesso solo via PIN — mostra direttamente il PIN screen
+  showScreen('screen-login-mag2');
 }
 
 // ── SCREEN NAV ───────────────────────────────
@@ -574,6 +626,13 @@ function goHome() {
   comSelected = null; scanProdId = null;
   showScreen('screen-home');
   loadAll().then(renderCommesse);
+}
+
+// Torna alla scelta moduli (senza re-PIN)
+function tornaModuli() {
+  stopCamera();
+  comSelected = null; scanProdId = null;
+  showScreen('screen-landing');
 }
 
 // ── COMMESSE ─────────────────────────────────
@@ -611,13 +670,16 @@ function renderCommesse() {
     const cl = _clienti.find(c=>c.id===cm.clienteId);
     const v  = getVeicoli().find(x=>x.id===cm.veicoloId);
     const nRic = (cm.vociRic||[]).length;
+    const garBadge = cm.garanzia ? `<span class="badge badge-purple" style="margin-left:4px">Garanzia</span>` : '';
+    const fotoOk = cm.garanzia && (cm.fotoInizio||[]).length >= 3;
+    const fotoWarn = cm.garanzia && !fotoOk ? `<span style="margin-left:4px;font-size:10px;color:var(--warning);font-weight:700">📷 ${(cm.fotoInizio||[]).length}/3</span>` : '';
     return `<div class="com-card" onclick="selezionaCommessa('${cm.id}')">
       <div class="com-bar ${cm.stato}"></div>
       <div class="com-info">
-        <div class="com-num">${cm.numero||''} <span class="badge ${statoBadge[cm.stato]||'badge-gray'}">${statoLabel[cm.stato]||cm.stato}</span></div>
+        <div class="com-num">${cm.numero||''} <span class="badge ${statoBadge[cm.stato]||'badge-gray'}">${statoLabel[cm.stato]||cm.stato}</span>${garBadge}</div>
         ${v ? `<div class="com-targa">${v.targa}</div>` : ''}
         <div class="com-cliente">${cl ? cl.ragione : '—'}</div>
-        <div class="com-desc">${cm.descrizione||'—'}${nRic?` · <strong>${nRic} ricambi</strong>`:''}</div>
+        <div class="com-desc">${cm.descrizione||'—'}${nRic?` · <strong>${nRic} ricambi</strong>`:''}${fotoWarn}</div>
       </div>
       <div class="com-arrow">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:18px;height:18px"><polyline points="9 18 15 12 9 6"/></svg>
@@ -636,6 +698,23 @@ function selezionaCommessa(id) {
   document.getElementById('det-info').textContent = [v?.targa, cl?.ragione].filter(Boolean).join(' · ')||'—';
   aggiornaBadgeRic();
   resetScan();
+
+  // Mostra/nascondi tab foto
+  const tabFoto = document.getElementById('tab-foto');
+  const tabFotoBadge = document.getElementById('tab-foto-badge');
+  if (cm.garanzia) {
+    tabFoto.style.display = '';
+    const nFoto = (cm.fotoInizio||[]).length;
+    if (nFoto < 3) {
+      tabFotoBadge.style.display = '';
+      tabFotoBadge.textContent = `${nFoto}/3`;
+    } else {
+      tabFotoBadge.style.display = 'none';
+    }
+  } else {
+    tabFoto.style.display = 'none';
+  }
+
   setTab('scan');
   showScreen('screen-detail');
 }
@@ -651,10 +730,164 @@ function setTab(tab) {
   tabAttivo = tab;
   document.getElementById('panel-scan').classList.toggle('hidden', tab !== 'scan');
   document.getElementById('panel-lista').classList.toggle('hidden', tab !== 'lista');
+  document.getElementById('panel-foto').classList.toggle('hidden', tab !== 'foto');
   document.getElementById('tab-scan').classList.toggle('active', tab === 'scan');
   document.getElementById('tab-lista').classList.toggle('active', tab === 'lista');
+  document.getElementById('tab-foto').classList.toggle('active', tab === 'foto');
   if (tab === 'lista') renderListaRicambi();
   if (tab === 'scan')  setTimeout(()=>document.getElementById('scan-input').focus(), 100);
+  if (tab === 'foto')  renderFotoInizio();
+}
+
+// ── FOTO ACCETTAZIONE + CHIUSURA ──────────────
+function renderFotoInizio() {
+  if (!comSelected) return;
+  const fotoI = comSelected.fotoInizio || [];
+  const fotoF = comSelected.fotoFine   || [];
+  const aperta = comSelected.stato === 'aperta';
+  const wip    = comSelected.stato === 'wip';
+  const chiusa = comSelected.stato === 'chiusa' || comSelected.stato === 'fatturata';
+
+  // ── Foto inizio ──
+  const labelI = document.getElementById('foto-count-label');
+  labelI.innerHTML = fotoI.length >= 3
+    ? `<span style="color:var(--success)">${fotoI.length}/3 ✓</span>`
+    : `<span style="color:var(--warning)">${fotoI.length}/3</span>`;
+
+  document.getElementById('foto-grid').innerHTML = fotoI.map((url, i) => `
+    <div class="foto-thumb">
+      <img src="${url}" loading="lazy" onclick="apriImmagine('${url}')">
+      ${aperta ? `<button class="foto-thumb-rm" onclick="removeFotoInizio(${i})">×</button>` : ''}
+    </div>`).join('');
+
+  const uploadAreaI = document.getElementById('foto-upload-area');
+  const doneBannerI = document.getElementById('foto-done-banner');
+  if (!aperta) {
+    uploadAreaI.style.display = 'none';
+  } else {
+    uploadAreaI.style.display = '';
+  }
+  doneBannerI.style.display = fotoI.length >= 3 ? '' : 'none';
+
+  // ── Foto fine (visibile solo in wip/chiusa) ──
+  const sezioneF = document.getElementById('foto-fine-section');
+  if (wip || chiusa) {
+    sezioneF.style.display = '';
+
+    const labelF = document.getElementById('foto-fine-count-label');
+    labelF.innerHTML = fotoF.length >= 2
+      ? `<span style="color:var(--success)">${fotoF.length}/2+ ✓</span>`
+      : `<span style="color:var(--warning)">${fotoF.length}/2</span>`;
+
+    document.getElementById('foto-fine-grid').innerHTML = fotoF.map((url, i) => `
+      <div class="foto-thumb">
+        <img src="${url}" loading="lazy" onclick="apriImmagine('${url}')">
+        ${wip ? `<button class="foto-thumb-rm" onclick="removeFotoFine(${i})">×</button>` : ''}
+      </div>`).join('');
+
+    const uploadAreaF = document.getElementById('foto-fine-upload-area');
+    const doneBannerF = document.getElementById('foto-fine-done-banner');
+    uploadAreaF.style.display = wip ? '' : 'none';
+    doneBannerF.style.display = fotoF.length >= 2 ? '' : 'none';
+  } else {
+    sezioneF.style.display = 'none';
+  }
+}
+
+async function uploadFotoInizio(input) {
+  if (!comSelected || !input.files.length) return;
+  const files = Array.from(input.files);
+  input.value = '';
+  showToast(`Caricamento ${files.length} foto…`);
+
+  try {
+    const urls = [];
+    for (const file of files) {
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      const path = `${comSelected.id}/inizio/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: upErr } = await supa.storage.from('commesse-foto').upload(path, file, { upsert: false });
+      if (upErr) throw upErr;
+      const { data: urlData } = supa.storage.from('commesse-foto').getPublicUrl(path);
+      urls.push(urlData.publicUrl);
+    }
+
+    const fotoInizio = [...(comSelected.fotoInizio || []), ...urls];
+    const { error: dbErr } = await supa.from('commesse').update({ foto_inizio: fotoInizio }).eq('id', comSelected.id);
+    if (dbErr) throw dbErr;
+
+    // Aggiorna cache locale
+    const idx = _commesse.findIndex(c => c.id === comSelected.id);
+    if (idx >= 0) _commesse[idx].foto_inizio = fotoInizio;
+    comSelected = getCommesse().find(c => c.id === comSelected.id) || comSelected;
+
+    // Aggiorna badge sul tab
+    const badge = document.getElementById('tab-foto-badge');
+    if (badge) {
+      if (fotoInizio.length < 3) { badge.style.display = ''; badge.textContent = `${fotoInizio.length}/3`; }
+      else { badge.style.display = 'none'; }
+    }
+
+    showToast(`✓ ${urls.length} foto caricate`);
+    if (navigator.vibrate) navigator.vibrate(50);
+    renderFotoInizio();
+  } catch(e) {
+    showToast('Errore upload: ' + e.message);
+  }
+}
+
+async function removeFotoInizio(idx) {
+  if (!comSelected || !confirm('Rimuovere questa foto?')) return;
+  const fotoInizio = [...(comSelected.fotoInizio || [])];
+  fotoInizio.splice(idx, 1);
+  const { error } = await supa.from('commesse').update({ foto_inizio: fotoInizio }).eq('id', comSelected.id);
+  if (error) { showToast('Errore: ' + error.message); return; }
+  const i = _commesse.findIndex(c => c.id === comSelected.id);
+  if (i >= 0) _commesse[i].foto_inizio = fotoInizio;
+  comSelected = getCommesse().find(c => c.id === comSelected.id) || comSelected;
+  renderFotoInizio();
+}
+
+async function uploadFotoFine(input) {
+  if (!comSelected || !input.files.length) return;
+  const files = Array.from(input.files);
+  input.value = '';
+  showToast(`Caricamento ${files.length} foto chiusura…`);
+  try {
+    const urls = [];
+    for (const file of files) {
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      const path = `${comSelected.id}/fine/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: upErr } = await supa.storage.from('commesse-foto').upload(path, file, { upsert: false });
+      if (upErr) throw upErr;
+      const { data: urlData } = supa.storage.from('commesse-foto').getPublicUrl(path);
+      urls.push(urlData.publicUrl);
+    }
+    const fotoFine = [...(comSelected.fotoFine || []), ...urls];
+    const { error: dbErr } = await supa.from('commesse').update({ foto_fine: fotoFine }).eq('id', comSelected.id);
+    if (dbErr) throw dbErr;
+    const idx = _commesse.findIndex(c => c.id === comSelected.id);
+    if (idx >= 0) _commesse[idx].foto_fine = fotoFine;
+    comSelected = getCommesse().find(c => c.id === comSelected.id) || comSelected;
+    showToast(`✓ ${urls.length} foto chiusura caricate`);
+    if (navigator.vibrate) navigator.vibrate(50);
+    renderFotoInizio();
+  } catch(e) { showToast('Errore upload: ' + e.message); }
+}
+
+async function removeFotoFine(idx) {
+  if (!comSelected || !confirm('Rimuovere questa foto?')) return;
+  const fotoFine = [...(comSelected.fotoFine || [])];
+  fotoFine.splice(idx, 1);
+  const { error } = await supa.from('commesse').update({ foto_fine: fotoFine }).eq('id', comSelected.id);
+  if (error) { showToast('Errore: ' + error.message); return; }
+  const i = _commesse.findIndex(c => c.id === comSelected.id);
+  if (i >= 0) _commesse[i].foto_fine = fotoFine;
+  comSelected = getCommesse().find(c => c.id === comSelected.id) || comSelected;
+  renderFotoInizio();
+}
+
+function apriImmagine(url) {
+  window.open(url, '_blank');
 }
 
 // ── SCAN ─────────────────────────────────────
@@ -870,7 +1103,7 @@ async function rimuoviRicambio(idx) {
   } catch(e) { showToast('Errore: '+e.message); }
 }
 
-// ── FOTOCAMERA ───────────────────────────────
+// ── FOTOCAMERA (barcode) ─────────────────────
 async function startCamera() {
   const section = document.getElementById('camera-section');
   const video   = document.getElementById('camera-video');
@@ -945,15 +1178,14 @@ let _mag2ProdSel = null;
 let _pinMag2Buf = '';
 
 function scegliModuloMag(modulo) {
+  if (!_mag2Logged) { showScreen('screen-login-mag2'); return; }
   if (modulo === 'commesse') {
-    const { data: { session } } = supa.auth.getSession().then(({data:{session}}) => {
-      if (session) { showScreen('screen-home'); renderCommesse(); }
-      else { showScreen('screen-login'); }
-    });
+    showScreen('screen-home');
+    renderCommesse();
   } else {
-    _pinMag2Buf = '';
-    ['pdmag0','pdmag1','pdmag2','pdmag3'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.background='var(--border)'; });
-    showScreen('screen-login-mag2');
+    setMag2Mode('carico');
+    renderUltimiMag2();
+    showScreen('screen-mag2-home');
   }
 }
 
@@ -973,22 +1205,39 @@ function pinMag2Del() {
 }
 
 async function checkPinMag2() {
-  const meccs = meccanici || [];
-  const mec = meccs.find(m => m.pin === _pinMag2Buf);
+  // Ricarica meccanici se ancora vuoti (race condition all'avvio)
+  if (!meccanici.length) {
+    const { data } = await supa.from('meccanici').select('id,nome,ruolo,pin');
+    meccanici = data || [];
+  }
+  const mec = meccanici.find(m => m.pin === _pinMag2Buf);
   if (!mec) {
-    ['pdmag0','pdmag1','pdmag2','pdmag3'].forEach(id=>{ const el=document.getElementById(id); if(el){el.style.background='var(--danger)';setTimeout(()=>el.style.background='var(--border)',600);} });
+    ['pdmag0','pdmag1','pdmag2','pdmag3'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el){ el.style.background='var(--danger)'; setTimeout(()=>el.style.background='var(--border)',600); }
+    });
+    const errEl = document.getElementById('pin-err');
+    if (errEl) { errEl.style.display=''; setTimeout(()=>errEl.style.display='none', 2000); }
     _pinMag2Buf = '';
     return;
   }
   _mag2Logged = mec;
   _pinMag2Buf = '';
+
+  // Carica dati
+  await loadAll();
+
+  // Mostra nome utente nella landing
+  const lu = document.getElementById('landing-utente');
+  if (lu) lu.textContent = `Ciao, ${mec.nome} · ${mec.ruolo||''}`;
+  const hu = document.getElementById('home-utente');
+  if (hu) hu.textContent = mec.nome;
   document.getElementById('mag2-utente').textContent = mec.nome + ' · ' + (mec.ruolo||'');
-  setMag2Mode('carico');
-  renderUltimiMag2();
-  showScreen('screen-mag2-home');
+
+  showScreen('screen-landing');
 }
 
-function logoutMag2() { _mag2Logged=null; _mag2ProdSel=null; showScreen('screen-landing'); }
+function logoutMag2() { showScreen('screen-landing'); }
 
 function setMag2Mode(mode) {
   _mag2Mode = mode;
@@ -1014,11 +1263,11 @@ function cercaMag2(q) {
   const el = document.getElementById('mag2-search-results');
   if (!q||q.length<2) { el.innerHTML=''; return; }
   const ql = q.toLowerCase();
-  const prods = prodotti||[];
+  const prods = _prodotti||[];
   const risultati = prods.filter(p=>
     (p.descrizione||p.desc||'').toLowerCase().includes(ql)||
-    (p.codInt||p.cod_int||'').toLowerCase().includes(ql)||
-    (p.codForn||p.cod_forn||'').toLowerCase().includes(ql)||
+    (p.cod_int||'').toLowerCase().includes(ql)||
+    (p.cod_forn||'').toLowerCase().includes(ql)||
     (p.barcodes||[]).some(b=>(b||'').toLowerCase().includes(ql))
   ).slice(0,6);
   if (!risultati.length) {
@@ -1030,10 +1279,10 @@ function cercaMag2(q) {
   }
   el.innerHTML = risultati.map(p => {
     const g = p.giacenza||0;
-    const col = g<=0?'var(--danger)':g<=(p.scortaMin||p.scorta_min||0)?'var(--warning)':'var(--success)';
+    const col = g<=0?'var(--danger)':g<=(p.scorta_min||0)?'var(--warning)':'var(--success)';
     return `<div onclick="selezionaMag2('${p.id}')" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:8px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
       <div>
-        <div style="font-size:12px;font-family:monospace;color:var(--accent)">${p.codInt||p.cod_int||'—'}</div>
+        <div style="font-size:12px;font-family:monospace;color:var(--accent)">${p.cod_int||'—'}</div>
         <div style="font-size:14px;font-weight:600;margin-top:2px">${p.descrizione||p.desc||'—'}</div>
       </div>
       <div style="text-align:right;flex-shrink:0;margin-left:12px">
@@ -1050,12 +1299,12 @@ function aggiungiPrimoMag2() {
 }
 
 function selezionaMag2(prodId) {
-  const p = (prodotti||[]).find(x=>x.id===prodId);
+  const p = _prodotti.find(x=>x.id===prodId);
   if (!p) return;
   _mag2ProdSel = p;
   document.getElementById('mag2-search').value='';
   document.getElementById('mag2-search-results').innerHTML='';
-  document.getElementById('mag2-prod-codice').textContent = p.codInt||p.cod_int||'';
+  document.getElementById('mag2-prod-codice').textContent = p.cod_int||'';
   document.getElementById('mag2-prod-nome').textContent = p.descrizione||p.desc||'—';
   document.getElementById('mag2-prod-giacenza').textContent = p.giacenza||0;
   document.getElementById('mag2-qty').value = 1;
@@ -1088,8 +1337,8 @@ async function confermaMag2() {
     await supa.from('prodotti').update({giacenza:nuovaGiac}).eq('id',p.id);
     await supa.from('movimenti').insert({id:crypto.randomUUID(),prod_id:p.id,tipo:_mag2Mode,qta:qty,note:note||null,data:new Date().toISOString(),created_at:new Date().toISOString()});
     // Aggiorna locale
-    if (prodotti) { const i=prodotti.findIndex(x=>x.id===p.id); if(i>=0) prodotti[i].giacenza=nuovaGiac; }
-    showToast(`${_mag2Mode==='carico'?'▲':' ▼'} ${qty} × ${p.descrizione||p.desc} ✓`);
+    const i=_prodotti.findIndex(x=>x.id===p.id); if(i>=0) _prodotti[i].giacenza=nuovaGiac;
+    showToast(`${_mag2Mode==='carico'?'▲':'▼'} ${qty} × ${p.descrizione||p.desc} ✓`);
     resetMag2Prodotto();
     renderUltimiMag2();
     if (navigator.vibrate) navigator.vibrate(50);
@@ -1100,11 +1349,11 @@ function renderUltimiMag2() {
   const el = document.getElementById('mag2-ultimi');
   if (!el) return;
   const oggi = new Date().toISOString().split('T')[0];
-  const movs = (movimenti||[]).filter(m=>(m.data||m.createdAt||m.created_at||'').startsWith(oggi))
+  const movs = (_movimenti||[]).filter(m=>(m.data||m.created_at||'').startsWith(oggi))
     .sort((a,b)=>new Date(b.data||b.created_at)-new Date(a.data||a.created_at)).slice(0,8);
   if (!movs.length) { el.innerHTML='<div style="font-size:12px;color:var(--text3)">Nessun movimento oggi</div>'; return; }
   el.innerHTML = movs.map(m=>{
-    const p=(prodotti||[]).find(x=>x.id===(m.prodId||m.prod_id));
+    const p=_prodotti.find(x=>x.id===(m.prod_id||m.prodId));
     const col=m.tipo==='carico'?'var(--success)':'var(--danger)';
     const ora=new Date(m.data||m.created_at).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
     return `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${col};border-radius:var(--radius-lg);padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px">
@@ -1133,8 +1382,7 @@ async function salvaNuovoMag2() {
     const row = {id:crypto.randomUUID(),descrizione:desc,cod_int:document.getElementById('mag2-np-cod').value.trim()||null,giacenza:qta,prezzo_acq:prezzo||null,created_at:new Date().toISOString()};
     const {data,error} = await supa.from('prodotti').insert(row).select().single();
     if (error) throw error;
-    if (!prodotti) prodotti = [];
-    prodotti.push(data);
+    _prodotti.push(data);
     if (qta>0) await supa.from('movimenti').insert({id:crypto.randomUUID(),prod_id:data.id,tipo:'carico',qta,note:'Carico iniziale',data:new Date().toISOString(),created_at:new Date().toISOString()});
     showToast('Articolo creato ✓');
     showScreen('screen-mag2-home');

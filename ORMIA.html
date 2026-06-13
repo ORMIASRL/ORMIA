@@ -434,6 +434,7 @@
     box-shadow: var(--shadow-md);
     z-index: 150;
     overflow-y: auto;
+    overflow-x: hidden;
     animation: panelIn 0.2s ease;
     display: flex; flex-direction: column;
   }
@@ -517,7 +518,6 @@
 
   /* MOBILE TIMBRATURE */
   @media (max-width: 768px) {
-    #section-timbrature > div:first-child { grid-template-columns:1fr; }
   }
 
   /* REMINDER CHIP */
@@ -686,11 +686,7 @@
           Commesse
           
         </div>
-        <div class="nav-item" id="nav-timbrature" onclick="setSection('timbrature')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          Timbrature
-          
-        </div>
+
         <div class="nav-item" id="nav-presenze" onclick="setSection('presenze')" style="display:none">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
           Presenze
@@ -955,50 +951,6 @@
           </div>
         </div>
       </div><!-- /section-calendario -->
-      <div id="section-timbrature" style="display:none">
-
-        <!-- LIVE: chi sta lavorando adesso -->
-        <div style="margin-bottom:24px">
-          <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:12px;display:flex;align-items:center;gap:8px">
-            <span style="width:8px;height:8px;border-radius:50%;background:var(--success);display:inline-block;animation:pulse 1.5s infinite"></span>
-            In lavorazione adesso
-          </div>
-          <div id="t-live-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px"></div>
-        </div>
-
-        <!-- STORICO OGGI -->
-        <div style="margin-bottom:24px">
-          <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:12px">
-            Attività di oggi
-          </div>
-          <div id="t-oggi" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px"></div>
-        </div>
-
-        <!-- ASSENTI OGGI -->
-        <div>
-          <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:12px">
-            Assenti oggi
-          </div>
-          <div id="t-assenti" style="display:flex;flex-wrap:wrap;gap:10px"></div>
-        </div>
-
-        <!-- elementi nascosti mantenuti per compatibilità JS -->
-        <div style="display:none">
-          <select id="t-meccanico"></select>
-          <select id="t-commessa"></select>
-          <input type="datetime-local" id="t-ora">
-          <input type="text" id="t-qr-input">
-          <div id="t-qr-result"><span id="t-qr-desc"></span><span id="t-qr-meta"></span></div>
-          <select id="t-qr-meccanico"></select>
-          <select id="t-filter-mec"></select>
-          <input type="date" id="t-filter-data">
-          <tbody id="tbody-timbrature"></tbody>
-          <div id="empty-timbrature"></div>
-          <div id="t-live"></div>
-          <div id="t-riepilogo"></div>
-        </div>
-
-      </div><!-- /section-timbrature -->
 
       <!-- SEZIONE PRESENZE -->
       <div id="section-presenze" style="display:none">
@@ -1779,7 +1731,10 @@
   <div class="detail-section" id="dv-commesse-section">
     <div class="detail-section-title" style="display:flex;justify-content:space-between;align-items:center">
       Storico commesse
-      <span id="dv-commesse-count" style="font-size:11px;color:var(--text3);font-weight:400"></span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span id="dv-commesse-count" style="font-size:11px;color:var(--text3);font-weight:400"></span>
+        <button class="btn btn-ghost btn-sm" onclick="apriStoricoVeicolo()" style="font-size:11px;padding:2px 8px">Vedi tutto</button>
+      </div>
     </div>
     <div id="dv-commesse-list"></div>
   </div>
@@ -1822,7 +1777,6 @@ function setTab(tab) {
   document.getElementById('section-anagrafiche').style.display = 'block';
   document.getElementById('section-commesse').style.display    = 'none';
   document.getElementById('section-meccanici').style.display   = 'none';
-  document.getElementById('section-timbrature').style.display  = 'none';
   document.getElementById('section-magazzino').style.display   = 'none';
   document.getElementById('section-preventivi').style.display  = 'none';
   document.getElementById('section-calendario').style.display  = 'none';
@@ -2277,7 +2231,15 @@ function showDetailVeicolo(id) {
   document.getElementById('detail-veicolo').style.display='flex';
 }
 
-function closeDetail(id) { document.getElementById(id).style.display='none'; }
+function closeDetail(id) {
+  document.getElementById(id).style.display='none';
+  if (id === 'detail-commessa') {
+    const f = document.getElementById('dc-tim-manuale');
+    if (f) f.style.display = 'none';
+    const b = document.getElementById('btn-tim-manuale-toggle');
+    if (b) b.textContent = '+ Timbratura';
+  }
+}
 
 function editCliente() { openModal('cliente',null,selectedClienteId); closeDetail('detail-cliente'); }
 function editVeicolo() { openModal('veicolo',null,selectedVeicoloId); closeDetail('detail-veicolo'); }
@@ -2503,21 +2465,9 @@ function init() {
     <div>
       <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:4px" id="dc-num"></div>
       <div class="detail-name" id="dc-desc"></div>
-      <div class="detail-sub" id="dc-cliente-veicolo"></div>
+      <div id="dc-cliente-veicolo" style="font-size:13px;font-weight:600;color:var(--text1);margin-top:3px"></div>
     </div>
     <div style="display:flex;gap:6px;align-items:flex-start">
-      <button class="btn btn-secondary btn-sm" onclick="anteprimaCommessa(selectedCommessaId)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-        Anteprima
-      </button>
-      <button class="btn btn-secondary btn-sm" onclick="stampaCommessa(selectedCommessaId)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-        Stampa
-      </button>
-      <button class="btn btn-secondary btn-sm" id="dc-btn-fattura" onclick="emettiFatturaCommessa(selectedCommessaId)" style="display:none">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
-        Fattura
-      </button>
       <button class="btn btn-secondary btn-sm" onclick="editCommessa()">Modifica</button>
       <button class="close-btn" onclick="closeDetail('detail-commessa')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -2532,64 +2482,40 @@ function init() {
     <div class="detail-row"><span class="detail-key">Meccanici</span><span class="detail-val" id="dc-meccanici" style="text-align:right"></span></div>
   </div>
 
-  <!-- TIMBRATURA COMMESSA -->
-  <div class="detail-section" style="background:var(--surface2)">
-    <div class="detail-section-title" style="display:flex;align-items:center;justify-content:space-between">
-      <span style="display:flex;align-items:center;gap:6px">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        Timbratura
-      </span>
-      <button class="btn btn-ghost btn-sm" onclick="toggleQRCommessa()" style="font-size:11px">QR commessa</button>
+  <!-- MECCANICI ATTIVI su questa commessa -->
+  <div id="dc-tim-live-wrap" class="detail-section" style="background:var(--surface2);display:none">
+    <div class="detail-section-title" style="display:flex;align-items:center;gap:6px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      In lavorazione
     </div>
-
-    <!-- QR code commessa (mostra/nascondi) -->
-    <div id="dc-qr-wrap" style="display:none;text-align:center;margin-bottom:12px">
-      <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Il meccanico scansiona questo QR con lo smartphone per timbrare</div>
-      <div id="dc-qr-code" style="display:inline-block;padding:10px;background:white;border-radius:var(--radius);border:1px solid var(--border)"></div>
-      <div style="margin-top:6px">
-        <a id="dc-qr-link" href="#" target="_blank" style="font-size:11px;color:var(--accent)">Apri pagina mobile</a>
-      </div>
-    </div>
-
-    <!-- Scansione tesserino / selezione manuale -->
-    <div id="dc-tim-chiusa-msg" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;font-size:12px;color:var(--text3);margin-bottom:10px">
-      🔒 Commessa chiusa — le timbrature non sono più attive su questa commessa.
-    </div>
-    <div id="dc-tim-input-area">
-    <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;margin-bottom:10px">
-      <div class="form-group" style="margin:0">
-        <label style="font-size:11px">Scansiona tesserino meccanico o seleziona</label>
-        <input type="text" id="dc-tim-scan"
-          placeholder="Scansiona tesserino o digita ID..."
-          style="font-family:'DM Mono',monospace;font-size:12px;text-transform:uppercase"
-          oninput="cercaMeccanicoDaTesserino(this.value)"
-          onkeydown="if(event.key==='Enter')confermaTimbraturaCommessa('entrata')">
-      </div>
-      <div class="form-group" style="margin:0">
-        <label style="font-size:11px">Oppure seleziona</label>
-        <select id="dc-tim-mec" style="font-size:12px"></select>
-      </div>
-    </div>
-
-    <!-- Risultato scansione tesserino -->
-    <div id="dc-tim-trovato" style="display:none;background:var(--accent-light);border:1px solid #C7D7F8;border-radius:var(--radius);padding:8px 12px;font-size:13px;font-weight:500;color:var(--accent);margin-bottom:10px" id="dc-tim-trovato"></div>
-
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-primary" style="flex:1" onclick="confermaTimbraturaCommessa('entrata')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px;height:13px"><polyline points="9 18 15 12 9 6"/></svg>
-        Entrata
-      </button>
-      <button class="btn btn-secondary" style="flex:1" onclick="confermaTimbraturaCommessa('uscita')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px;height:13px"><polyline points="15 18 9 12 15 6"/></svg>
-        Uscita
-      </button>
-    </div>
-    </div><!-- /dc-tim-input-area -->
-
-    <!-- Timbrature attive su questa commessa -->
-    <div id="dc-tim-live" style="margin-top:10px"></div>
+    <div id="dc-tim-live"></div>
   </div>
-  <div class="detail-section"><div class="detail-section-title">Manodopera</div><div id="dc-manodopera"></div></div>
+  <div class="detail-section">
+    <div class="detail-section-title" style="display:flex;justify-content:space-between;align-items:center">
+      Manodopera
+      <button class="btn btn-ghost btn-sm" onclick="toggleTimbraturaManuale()" style="font-size:11px;padding:2px 8px" id="btn-tim-manuale-toggle">+ Timbratura</button>
+    </div>
+    <div id="dc-manodopera"></div>
+    <!-- FORM TIMBRATURA MANUALE -->
+    <div id="dc-tim-manuale" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Aggiungi timbratura manuale</div>
+      <div class="form-group" style="margin-bottom:8px">
+        <label style="font-size:11px">Meccanico</label>
+        <select id="dc-tim-m-mec" style="font-size:12px"></select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div class="form-group" style="margin:0">
+          <label style="font-size:11px">Entrata</label>
+          <input type="datetime-local" id="dc-tim-m-entrata" style="font-family:'DM Mono',monospace;font-size:12px">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label style="font-size:11px">Uscita (opz.)</label>
+          <input type="datetime-local" id="dc-tim-m-uscita" style="font-family:'DM Mono',monospace;font-size:12px">
+        </div>
+      </div>
+      <button class="btn btn-primary btn-sm" style="width:100%" onclick="salvaTimbraturaManuale()">Salva timbratura</button>
+    </div>
+  </div>
 
   <!-- SCANSIONE RICAMBI -->
   <div class="detail-section" style="background:var(--surface2)">
@@ -2748,7 +2674,18 @@ function init() {
     <div id="dc-foto-empty" style="font-size:12px;color:var(--text3);padding:8px 0;display:none">Nessuna foto caricata ancora dal meccanico.</div>
   </div>
 
+  <div id="dc-btn-fattura-wrap" style="display:none;padding:0 24px 0">
+    <button class="btn btn-primary" style="width:100%;font-size:14px;padding:12px" onclick="emettiFatturaCommessa(selectedCommessaId)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;margin-right:6px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+      Emetti fattura
+    </button>
+  </div>
   <div style="padding:16px 24px;display:flex;gap:8px;flex-wrap:wrap">
+
+    <button class="btn btn-secondary btn-sm" onclick="stampaCommessa(selectedCommessaId)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Stampa
+    </button>
     <button class="btn btn-secondary btn-sm" onclick="cambiaStato()">Cambia stato</button>
     <button class="btn btn-danger btn-sm" onclick="deleteCommessa()">Elimina</button>
   </div>
@@ -2896,6 +2833,9 @@ async function showApp() {
   init();
   // Timbratura automatica entrata per amministrazione
   setTimeout(() => registraEntrataAmministrazione(), 500);
+  // Tab counter per beacon admin
+  const tabCount = parseInt(localStorage.getItem('ormia_admin_tabs') || '0') + 1;
+  localStorage.setItem('ormia_admin_tabs', tabCount);
 }
 
 async function registraEntrataAmministrazione() {
@@ -3023,8 +2963,6 @@ function initRealtime() {
     .on('postgres_changes', {event:'*', schema:'public', table:'timbrature'}, async ()=>{
       timbrature = await DB.load('timbrature');
       renderTimbratureLiveCommessa(selectedCommessaId);
-      renderLive();
-      updateBadgeTimbrature();
       if(currentSection==='commesse') renderCommesse();
       if(currentSection==='meccanici') renderMeccanici();
     })
@@ -3061,12 +2999,9 @@ function initRealtime() {
   setInterval(async () => {
     timbrature = await DB.load('timbrature');
     commesse   = await DB.load('commesse');
-    renderLive();
-    updateBadgeTimbrature();
     updateBadgeCommesse();
     if(currentSection==='commesse') renderCommesse();
     if(currentSection==='meccanici') renderMeccanici();
-    if(currentSection==='timbrature') { initTimbrature(); renderLiveBoard(); }
     if(selectedCommessaId) renderTimbratureLiveCommessa(selectedCommessaId);
     // Controllo chiusura automatica presenze (ogni ora)
   const oraAttuale = new Date();
@@ -3078,7 +3013,6 @@ function initRealtime() {
     if (document.visibilityState === 'visible') {
       timbrature = await DB.load('timbrature');
       commesse   = await DB.load('commesse');
-      renderLive();
       updateBadgeCommesse();
       if(currentSection==='commesse') renderCommesse();
       if(currentSection==='meccanici') renderMeccanici();
@@ -3579,7 +3513,7 @@ function renderCommesse() {
       (cl?.ragione||'').toLowerCase().includes(q) ||
       (v?.targa||'').toLowerCase().includes(q) ||
       (cm.numero||'').toLowerCase().includes(q);
-    const matchS = !statoFiltro || cm.stato === statoFiltro;
+    const matchS = statoFiltro ? cm.stato === statoFiltro : cm.stato !== 'fatturata';
     return matchQ && matchS;
   });
   filtered.sort((a,b)=>{
@@ -3623,7 +3557,7 @@ function renderCommesse() {
     <div class="dash-kpi-card dash-kpi-fat" onclick="setStatoFilter(document.querySelector('[data-stato=fatturata]'),'fatturata')" style="cursor:pointer">
       <div class="dash-kpi-label">Fatturate</div>
       <div class="dash-kpi-val" style="color:#6366F1">${nFat}</div>
-      <div class="dash-kpi-sub">${nGarFat>0?`<span style="color:var(--warning)">🔧 ${nGarFat} in garanzia</span>`:'completate'}</div>
+      <div class="dash-kpi-sub">${nGarFat>0?`<span style="color:var(--warning)">🔧 ${nGarFat} in garanzia</span>`:'completate · clicca per vedere'}</div>
     </div>`;
 
   // compat vecchi id
@@ -3831,7 +3765,8 @@ function showDetailCommessa(id) {
 
   // Mostra tasto Fattura solo se commessa chiusa o fatturata
   const btnFatt = document.getElementById('dc-btn-fattura');
-  if (btnFatt) btnFatt.style.display = (cm.stato==='chiusa'||cm.stato==='fatturata') ? '' : 'none';
+  const btnFattWrap = document.getElementById('dc-btn-fattura-wrap');
+  if (btnFattWrap) btnFattWrap.style.display = cm.stato==='chiusa' ? '' : 'none';
   document.getElementById('dc-data').textContent = formatDate(cm.dataApertura)||'—';
 
   // Solo i meccanici con timbratura aperta adesso su questa commessa
@@ -3906,11 +3841,6 @@ function showDetailCommessa(id) {
     }
   }, 30000);
 
-  // Popola selettore meccanici e live timbrature
-  popolaSelTimbraturaCommessa();
-  document.getElementById('dc-tim-scan').value = '';
-  document.getElementById('dc-tim-trovato').style.display = 'none';
-  document.getElementById('dc-qr-wrap').style.display = 'none';
   renderTimbratureLiveCommessa(id);
 
   document.getElementById('detail-commessa').style.display='flex';
@@ -3953,7 +3883,6 @@ function showSection(sec) {
   document.getElementById('section-anagrafiche').style.display = sec === 'anagrafiche'  ? 'block' : 'none';
   document.getElementById('section-commesse').style.display    = sec === 'commesse'     ? 'block' : 'none';
   document.getElementById('section-meccanici').style.display   = sec === 'meccanici'    ? 'block' : 'none';
-  document.getElementById('section-timbrature').style.display  = sec === 'timbrature'   ? 'block' : 'none';
   document.getElementById('section-presenze').style.display    = sec === 'presenze'     ? 'block' : 'none';
   document.getElementById('section-magazzino').style.display   = sec === 'magazzino'    ? 'block' : 'none';
   document.getElementById('section-preventivi').style.display   = sec === 'preventivi'   ? 'block' : 'none';
@@ -3990,14 +3919,6 @@ function setSection(sec) {
     closeDetail('detail-cliente'); closeDetail('detail-veicolo'); closeDetail('detail-commessa');
     renderMeccanici();
 
-  } else if (sec === 'timbrature') {
-    document.getElementById('nav-timbrature').classList.add('active');
-    document.getElementById('topbar-title').textContent = 'In lavorazione';
-    document.getElementById('topbar-sub').textContent   = 'Presenze meccanici sulle commesse';
-    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Inserimento manuale';
-    btn.onclick = () => openModalTimbraturaManuale();
-    closeDetail('detail-cliente'); closeDetail('detail-veicolo'); closeDetail('detail-commessa');
-    initTimbrature();
   } else if (sec === 'impostazioni') {
     // Apri modal sopra la sezione corrente senza cambiarla
     setTimeout(() => {
@@ -4286,590 +4207,6 @@ function updateBadgeMeccanici() {
 }
 
 // ===== TIMBRATURE =====
-async function saveTimbrature() { /* gestito da dbSaveTimbratura */ }
-
-function initTimbrature() {
-  renderLiveBoard();
-  updateBadgeTimbrature();
-}
-
-function renderLiveBoard() {
-  const oggi = new Date().toISOString().split('T')[0];
-  const ora  = new Date();
-
-  // CHI STA LAVORANDO ADESSO
-  const liveCards = document.getElementById('t-live-cards');
-  if (!liveCards) return;
-  const attivi = timbrature.filter(t => {
-    if (t.uscita) return false;
-    const cm = commesse.find(x=>x.id===t.comId);
-    return cm && (cm.stato==='wip'||cm.stato==='aperta');
-  });
-  if (!attivi.length) {
-    liveCards.innerHTML = '<div style="grid-column:1/-1;font-size:13px;color:var(--text3);padding:20px 0;text-align:center">Nessun meccanico in lavorazione adesso.</div>';
-  } else {
-    const perMec = {};
-    attivi.forEach(t=>{ if(!perMec[t.mecId]||t.entrata>perMec[t.mecId].entrata) perMec[t.mecId]=t; });
-    liveCards.innerHTML = Object.values(perMec).map(t => {
-      const m  = meccanici.find(x=>x.id===t.mecId);
-      const cm = commesse.find(x=>x.id===t.comId);
-      const cl = cm ? clienti.find(c=>c.id===cm.clienteId) : null;
-      const v  = cm ? veicoli.find(x=>x.id===cm.veicoloId) : null;
-      const mins = Math.floor((ora - new Date(t.entrata))/60000);
-      const dur  = mins>=60 ? `${Math.floor(mins/60)}h ${String(mins%60).padStart(2,'0')}m` : `${mins}m`;
-      const ini  = m ? m.nome.split(' ').map(w=>w[0]).join('').substr(0,2).toUpperCase() : '?';
-      return `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--success);border-radius:var(--radius-lg);padding:14px 16px;box-shadow:var(--shadow)">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-          <div style="width:36px;height:36px;border-radius:50%;background:var(--success);color:white;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0">${ini}</div>
-          <div><div style="font-size:14px;font-weight:700">${m?m.nome:'—'}</div><div style="font-size:11px;color:var(--text3)">${m?.ruolo||''}</div></div>
-          <div style="margin-left:auto;font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:var(--success)">⏱ ${dur}</div>
-        </div>
-        <div style="font-size:12px;color:var(--text2)"><strong>${cm?cm.numero:'—'}</strong>${v?' · '+v.targa:''}${cl?' · '+cl.ragione:''}</div>
-      </div>`;
-    }).join('');
-  }
-
-  // ATTIVITÀ DI OGGI
-  const oggiEl = document.getElementById('t-oggi');
-  if (oggiEl) {
-    const timOggi = timbrature.filter(t => t.entrata && t.entrata.startsWith(oggi));
-    const mecOggi = [...new Set(timOggi.map(t=>t.mecId))];
-    if (!mecOggi.length) {
-      oggiEl.innerHTML = '<div style="grid-column:1/-1;font-size:13px;color:var(--text3);padding:20px 0;text-align:center">Nessuna attività oggi.</div>';
-    } else {
-      oggiEl.innerHTML = mecOggi.map(mecId => {
-        const m = meccanici.find(x=>x.id===mecId);
-        const tMec = timOggi.filter(t=>t.mecId===mecId);
-        const oreTotal = tMec.reduce((s,t)=>{ if(!t.uscita) return s+(ora-new Date(t.entrata))/3600000; return s+(new Date(t.uscita)-new Date(t.entrata))/3600000; },0);
-        const ini = m ? m.nome.split(' ').map(w=>w[0]).join('').substr(0,2).toUpperCase() : '?';
-        const ancoraIn = tMec.some(t=>!t.uscita);
-        return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;box-shadow:var(--shadow)">
-          <div style="display:flex;align-items:center;gap:10px">
-            <div style="width:36px;height:36px;border-radius:50%;background:${ancoraIn?'var(--success)':'var(--surface2)'};color:${ancoraIn?'white':'var(--text2)'};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800">${ini}</div>
-            <div style="flex:1"><div style="font-size:14px;font-weight:700">${m?m.nome:'—'}</div><div style="font-size:11px;color:var(--text3)">${tMec.length} timbr${tMec.length===1?'atura':'ature'}</div></div>
-            <div style="font-family:'DM Mono',monospace;font-size:14px;font-weight:700;color:var(--accent)">${oreTotal.toFixed(1)}h</div>
-          </div>
-        </div>`;
-      }).join('');
-    }
-
-    // ASSENTI OGGI
-    const assentiEl = document.getElementById('t-assenti');
-    if (assentiEl) {
-      const assenti = meccanici.filter(m => !mecOggi.includes(m.id));
-      if (!assenti.length) {
-        assentiEl.innerHTML = '<div style="font-size:13px;color:var(--text3)">Tutti i meccanici hanno timbrato oggi.</div>';
-      } else {
-        assentiEl.innerHTML = assenti.map(m => {
-          const ini = m.nome.split(' ').map(w=>w[0]).join('').substr(0,2).toUpperCase();
-          return `<div style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px 14px">
-            <div style="width:32px;height:32px;border-radius:50%;background:var(--surface2);color:var(--text3);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">${ini}</div>
-            <div><div style="font-size:13px;font-weight:600;color:var(--text2)">${m.nome}</div><div style="font-size:11px;color:var(--text3)">${m.ruolo||''}</div></div>
-          </div>`;
-        }).join('');
-      }
-    }
-  }
-}
-
-// Ora corrente formattata per datetime-local
-function nowLocal() {
-  const d = new Date(); d.setSeconds(0,0); return d.toISOString().slice(0,16);
-}
-function getOra(inputId) {
-  const v = document.getElementById(inputId)?.value;
-  return v ? new Date(v).toISOString() : new Date().toISOString();
-}
-
-// ===== PRESENZA AUTOMATICA DA TIMBRATURA =====
-async function registraPresenzaAutomatica(mecId, ora) {
-  const giàAperta = presenze.find(p=>p.dipId===mecId&&!p.uscita);
-  if (!giàAperta) {
-    await dbSavePresenza({ id:initId(), dipId:mecId, entrata:ora||new Date().toISOString(), uscita:null, createdAt:new Date().toISOString() });
-  }
-}
-
-async function chiudiPresenzaAutomatica(mecId, ora) {
-  const altreAperte = timbrature.filter(t=>t.mecId===mecId&&!t.uscita);
-  if (altreAperte.length > 0) return;
-  const pAperta = presenze.find(p=>p.dipId===mecId&&!p.uscita);
-  if (pAperta) {
-    pAperta.uscita = ora||new Date().toISOString();
-    await dbSavePresenza(pAperta);
-  }
-}
-
-// Chiude tutte le timbrature aperte su una commessa (es. quando viene chiusa manualmente)
-// I meccanici restano "presenti" (la presenza non viene toccata qui)
-async function chiudiTimbratureCommessa(comId, ora) {
-  const aperte = timbrature.filter(t => t.comId === comId && !t.uscita);
-  if (!aperte.length) return;
-  const nomi = [];
-  for (const t of aperte) {
-    t.uscita = ora;
-    await dbSaveTimbratura(t);
-    const mec = meccanici.find(x=>x.id===t.mecId);
-    if (mec) nomi.push(mec.nome);
-  }
-  if (nomi.length) showToast(`Lavorazione chiusa per: ${nomi.join(', ')} — restano presenti in officina`);
-}
-
-// Chiude tutte le timbrature aperte del meccanico su ALTRE commesse
-async function chiudiAltreTimbratureAperte(mecId, comId, ora) {
-  const altreAperte = timbrature.filter(t => t.mecId === mecId && t.comId !== comId && !t.uscita);
-  for (const t of altreAperte) {
-    t.uscita = ora;
-    await dbSaveTimbratura(t);
-    const cm = commesse.find(c=>c.id===t.comId);
-    showToast(`Uscita automatica da ${cm ? cm.numero : 'commessa precedente'} ✓`);
-  }
-}
-
-async function timbraEntrata() {
-  const mecId = document.getElementById('t-meccanico').value;
-  const comId = document.getElementById('t-commessa').value;
-  if (!mecId) { alert('Seleziona un meccanico.'); return; }
-  if (!comId) { alert('Seleziona una commessa.'); return; }
-  const aperta = timbrature.find(t=>t.mecId===mecId&&t.comId===comId&&!t.uscita);
-  if (aperta) { alert('Questo meccanico ha già una timbratura aperta su questa commessa.'); return; }
-  const ora = getOra('t-ora');
-  try {
-    await chiudiAltreTimbratureAperte(mecId, comId, ora);
-    await dbSaveTimbratura({ id:initId(), mecId, comId, entrata:ora, uscita:null, tipo:'lista', createdAt:new Date().toISOString() });
-    await registraPresenzaAutomatica(mecId, ora);
-    showToast('Entrata registrata ✓');
-    renderLive(); updateBadgeTimbrature();
-  } catch(e) { alert('Errore: '+e.message); }
-}
-
-async function timbraUscita() {
-  const mecId = document.getElementById('t-meccanico').value;
-  const comId = document.getElementById('t-commessa').value;
-  if (!mecId) { alert('Seleziona un meccanico.'); return; }
-  if (!comId) { alert('Seleziona una commessa.'); return; }
-  const aperta = timbrature.find(t=>t.mecId===mecId&&t.comId===comId&&!t.uscita);
-  if (!aperta) { alert('Nessuna timbratura di entrata trovata.'); return; }
-  const ora = getOra('t-ora');
-  try {
-    aperta.uscita = ora;
-    await dbSaveTimbratura(aperta);
-    await chiudiPresenzaAutomatica(mecId, ora);
-    showToast('Uscita registrata ✓');
-    renderLive(); updateBadgeTimbrature();
-  } catch(e) { alert('Errore: '+e.message); }
-}
-
-// ===== TIMBRA QR =====
-function cercaCommessaQR() {
-  const val = document.getElementById('t-qr-input').value.trim().toUpperCase();
-  const res = document.getElementById('t-qr-result');
-  if (!val) { res.style.display='none'; return; }
-  const cm = commesse.find(c=>(c.numero||'').toUpperCase()===val);
-  if (!cm) { res.style.display='none'; return; }
-  const cl = clienti.find(x=>x.id===cm.clienteId);
-  const v  = veicoli.find(x=>x.id===cm.veicoloId);
-  document.getElementById('t-qr-desc').textContent = cm.descrizione||cm.desc;
-  document.getElementById('t-qr-meta').textContent = [cm.numero, v?.targa, cl?.ragione].filter(Boolean).join(' · ');
-  res.style.display='block';
-  res.dataset.comId = cm.id;
-}
-
-function timbraQREntrata() {
-  const res = document.getElementById('t-qr-result');
-  const mecId = document.getElementById('t-qr-meccanico').value;
-  if (!mecId) { alert('Seleziona un meccanico.'); return; }
-  if (res.style.display==='none'||!res.dataset.comId) { alert('Inserisci un numero commessa valido.'); return; }
-  const comId = res.dataset.comId;
-  const aperta = timbrature.find(t=>t.mecId===mecId&&t.comId===comId&&!t.uscita);
-  if (aperta) { alert('Timbratura già aperta su questa commessa.'); return; }
-  const ora = new Date().toISOString();
-  chiudiAltreTimbratureAperte(mecId, comId, ora);
-  timbrature.push({ id:initId(), mecId, comId, entrata:ora, uscita:null, tipo:'qr', note:'', createdAt:ora });
-  saveTimbrature();
-  registraPresenzaAutomatica(mecId, ora);
-  showToast('Entrata QR registrata ✓');
-  document.getElementById('t-qr-input').value='';
-  res.style.display='none';
-  renderLive(); renderTimbrature(); updateBadgeTimbrature();
-}
-
-function timbraQRUscita() {
-  const res = document.getElementById('t-qr-result');
-  const mecId = document.getElementById('t-qr-meccanico').value;
-  if (!mecId) { alert('Seleziona un meccanico.'); return; }
-  if (res.style.display==='none'||!res.dataset.comId) { alert('Inserisci un numero commessa valido.'); return; }
-  const comId = res.dataset.comId;
-  const aperta = timbrature.find(t=>t.mecId===mecId&&t.comId===comId&&!t.uscita);
-  if (!aperta) { alert('Nessuna entrata trovata.'); return; }
-  const ora = new Date().toISOString();
-  aperta.uscita = ora;
-  saveTimbrature();
-  chiudiPresenzaAutomatica(mecId, ora);
-  showToast('Uscita QR registrata ✓');
-  document.getElementById('t-qr-input').value='';
-  res.style.display='none';
-  renderLive(); renderTimbrature(); updateBadgeTimbrature();
-}
-
-// ===== LIVE =====
-function renderLive() {
-  
-  
-  
-
-  const aperte = timbrature.filter(t => {
-    if (t.uscita) return false;
-    const cm = commesse.find(x => x.id === t.comId);
-    return cm && (cm.stato === 'aperta' || cm.stato === 'wip');
-  });
-  const el = document.getElementById('t-live-cards');
-  if (!el) return;
-
-  if (!aperte.length) {
-    el.innerHTML = '<div style="font-size:13px;color:var(--text3);grid-column:1/-1;padding:60px 0;text-align:center">Nessun meccanico in lavorazione.</div>';
-    return;
-  }
-
-  // Un record per meccanico — la timbratura più recente
-  const perMeccanico = {};
-  aperte.forEach(t => {
-    if (!perMeccanico[t.mecId] || t.entrata > perMeccanico[t.mecId].entrata)
-      perMeccanico[t.mecId] = t;
-  });
-
-  el.innerHTML = Object.values(perMeccanico).map(t => {
-    const m  = meccanici.find(x => x.id === t.mecId);
-    const cm = commesse.find(x => x.id === t.comId);
-    const cl = cm ? clienti.find(x => x.id === cm.clienteId) : null;
-    const v  = cm ? veicoli.find(x => x.id === cm.veicoloId)  : null;
-    const mins   = Math.floor((new Date() - new Date(t.entrata)) / 60000);
-    const durStr = mins >= 60 ? `${Math.floor(mins/60)}h ${String(mins%60).padStart(2,'0')}m` : `${mins}m`;
-    const initials = m ? m.nome.split(' ').map(w=>w[0]).join('').substr(0,2).toUpperCase() : '??';
-
-    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:10px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <div style="width:36px;height:36px;border-radius:50%;background:var(--success);color:white;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0">${initials}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:600;font-size:14px">${m ? m.nome : '—'}</div>
-          <div style="font-size:11px;color:var(--text3)">${m ? m.ruolo||'' : ''}</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:4px;background:var(--success-light);color:var(--success);border-radius:20px;padding:3px 10px;font-size:12px;font-weight:500;flex-shrink:0">
-          <span style="width:6px;height:6px;border-radius:50%;background:var(--success);animation:pulse 1.5s infinite;display:inline-block"></span>
-          ${durStr}
-        </div>
-      </div>
-      ${cm ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;font-size:12px">
-        <div style="font-family:'DM Mono',monospace;font-weight:600;color:var(--accent);font-size:11px;margin-bottom:2px">${cm.numero}</div>
-        <div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${cm.descrizione||cm.desc}</div>
-        <div style="color:var(--text3);font-size:11px;margin-top:2px">${[v ? v.targa : '', cl ? cl.ragione : ''].filter(Boolean).join(' · ')}</div>
-      </div>` : '<div style="font-size:12px;color:var(--text3)">Nessuna commessa associata</div>'}
-      <button onclick="chiudiTimbratura('${t.id}')" class="btn btn-secondary btn-sm" style="width:100%;justify-content:center">
-        Registra uscita
-      </button>
-    </div>`;
-  }).join('');
-}
-
-function chiudiTimbratura(id) {
-  const t = timbrature.find(x=>x.id===id);
-  if (!t) return;
-  const ora = new Date().toISOString();
-  t.uscita = ora;
-  saveTimbrature();
-  chiudiPresenzaAutomatica(t.mecId, ora);
-  showToast('Uscita registrata ✓');
-  renderLive(); renderTimbrature();
-}
-
-// ===== STORICO =====
-function renderTimbrature() {
-  // Rileggi sempre dati freschi
-  
-  
-  
-
-  const filterData = document.getElementById('t-filter-data')?.value;
-  const filterMec  = document.getElementById('t-filter-mec')?.value || '';
-
-  let filtered = [...timbrature].reverse().filter(t=>{
-    const dataOk = !filterData || t.entrata.startsWith(filterData);
-    const mecOk  = !filterMec  || t.mecId===filterMec;
-    return dataOk && mecOk;
-  });
-
-  const tbody = document.getElementById('tbody-timbrature');
-  const empty = document.getElementById('empty-timbrature');
-  if (!tbody) return;
-
-  if (!filtered.length) { tbody.innerHTML=''; empty.style.display=''; renderRiepilogo(); return; }
-  empty.style.display='none';
-
-  tbody.innerHTML = filtered.map(t=>{
-    const m  = meccanici.find(x=>x.id===t.mecId);
-    const cm = commesse.find(x=>x.id===t.comId);
-    const cl = cm ? clienti.find(x=>x.id===cm.clienteId) : null;
-    const v  = cm ? veicoli.find(x=>x.id===cm.veicoloId)  : null;
-    const ore = calcOre(t.entrata, t.uscita);
-    const aperta = !t.uscita;
-    const tipoLabel = {lista:'Lista',qr:'QR',commessa:'Commessa',mobile:'Mobile'}[t.tipo]||t.tipo;
-    const tipoClass = {lista:'badge-gray',qr:'badge-blue',commessa:'badge-green',mobile:'badge-green'}[t.tipo]||'badge-gray';
-    return `<tr>
-      <td>
-        <div class="cell-with-avatar">
-          <div class="cell-avatar" style="font-size:11px;background:${aperta?'var(--success)':'var(--accent-light)'};color:${aperta?'white':'var(--accent)'}">${m?m.nome.split(' ').map(w=>w[0]).join('').substr(0,2).toUpperCase():'?'}</div>
-          <div>
-            <div class="td-main">${m?m.nome:'—'}</div>
-            <div class="td-sub">${m?m.ruolo||'':''}</div>
-          </div>
-        </div>
-      </td>
-      <td>
-        <div style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:var(--accent)">${cm?cm.numero:'—'}</div>
-        <div style="font-size:12px;font-weight:500">${cm?cm.descrizione||cm.desc:'—'}</div>
-        <div style="font-size:11px;color:var(--text3)">${v?v.targa+' · ':''}${cl?cl.ragione:''}</div>
-      </td>
-      <td style="font-family:'DM Mono',monospace;font-size:12px">${formatDateTime(t.entrata)}</td>
-      <td style="font-family:'DM Mono',monospace;font-size:12px">${t.uscita?formatDateTime(t.uscita):'<span class="badge badge-yellow">Aperta</span>'}</td>
-      <td style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600">${ore}</td>
-      <td><span class="badge ${tipoClass}">${tipoLabel}</span></td>
-      <td><div class="row-actions" style="${aperta?'opacity:1':''}">
-        ${aperta?`<button class="btn btn-primary btn-sm" onclick="chiudiTimbratura('${t.id}')">Chiudi</button>`:''}
-        <button class="btn btn-danger btn-sm" onclick="deleteTimbratura('${t.id}')">Elimina</button>
-      </div></td>
-    </tr>`;
-  }).join('');
-
-  renderRiepilogo();
-}
-
-function calcOre(entrata, uscita) {
-  if (!uscita) {
-    const mins = Math.floor((new Date()-new Date(entrata))/60000);
-    return `${Math.floor(mins/60)}h${String(mins%60).padStart(2,'0')} ⏳`;
-  }
-  const mins = Math.floor((new Date(uscita)-new Date(entrata))/60000);
-  if (mins < 0) return '—';
-  return `${Math.floor(mins/60)}h${String(mins%60).padStart(2,'0')}`;
-}
-
-function formatDateTime(iso) {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-}
-
-function renderRiepilogo() {
-  const el = document.getElementById('t-riepilogo');
-  if (!el) return;
-  const filterData = document.getElementById('t-filter-data')?.value;
-  const sommaMec = {};
-  timbrature.filter(t=>!filterData||t.entrata.startsWith(filterData)).forEach(t=>{
-    if (!t.uscita) return;
-    const mins = Math.floor((new Date(t.uscita)-new Date(t.entrata))/60000);
-    if (mins < 0) return;
-    sommaMec[t.mecId] = (sommaMec[t.mecId]||0) + mins;
-  });
-  if (!Object.keys(sommaMec).length) { el.innerHTML='<div style="font-size:13px;color:var(--text3)">Nessun dato per il giorno selezionato.</div>'; return; }
-  el.innerHTML = Object.entries(sommaMec).map(([id,mins])=>{
-    const m = meccanici.find(x=>x.id===id);
-    const h = Math.floor(mins/60), min2 = mins%60;
-    return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px">
-      <div style="font-size:12px;color:var(--text3);margin-bottom:4px">${m?m.nome:'—'}</div>
-      <div style="font-size:20px;font-weight:600;font-family:'DM Mono',monospace">${h}h ${String(min2).padStart(2,'0')}m</div>
-    </div>`;
-  }).join('');
-}
-
-function deleteTimbratura(id) {
-  if (!confirm('Eliminare questa timbratura?')) return;
-  timbrature = timbrature.filter(t=>t.id!==id);
-  saveTimbrature(); renderLive(); renderTimbrature(); updateBadgeTimbrature();
-}
-
-function resetFiltriT() {
-  document.getElementById('t-filter-data').value = new Date().toISOString().split('T')[0];
-  document.getElementById('t-filter-mec').value  = '';
-  renderTimbrature();
-}
-
-function updateBadgeTimbrature() {
-  const t = timbrature;
-  const c = commesse;
-  const el = document.getElementById('badge-timbrature');
-  if (el) el.textContent = t.filter(x => !x.uscita && c.some(cm => cm.id === x.comId && (cm.stato === 'aperta' || cm.stato === 'wip'))).length;
-}
-
-// ===== TOAST =====
-function showToast(msg) {
-  let toast = document.getElementById('toast');
-  if (!toast) {
-    toast = document.createElement('div');
-    toast.id = 'toast';
-    toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#1A1917;color:white;padding:10px 18px;border-radius:8px;font-size:13px;font-family:"DM Sans",sans-serif;z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none';
-    document.body.appendChild(toast);
-  }
-  toast.textContent = msg;
-  toast.style.opacity = '1';
-  setTimeout(()=>{ toast.style.opacity='0'; }, 2200);
-}
-
-function openModalTimbraturaManuale() {
-  // Popola select meccanici
-  const selMec = document.getElementById('tm-meccanico');
-  selMec.innerHTML = '<option value="">— Seleziona meccanico —</option>' +
-    meccanici.filter(m=>m.attivo!==false).map(m=>`<option value="${m.id}">${m.nome} (${m.ruolo||'—'})</option>`).join('');
-  // Popola select commesse attive
-  const selCom = document.getElementById('tm-commessa');
-  selCom.innerHTML = '<option value="">— Seleziona commessa —</option>' +
-    commesse.filter(c=>c.stato==='aperta'||c.stato==='wip'||c.stato==='standby').map(c=>{
-      const v = veicoli.find(x=>x.id===c.veicoloId);
-      return `<option value="${c.id}">${c.numero} — ${v?v.targa:''} ${c.descrizione||c.desc||''}</option>`;
-    }).join('');
-  // Precompila ora corrente
-  document.getElementById('tm-entrata').value = nowLocal();
-  document.getElementById('tm-uscita').value = '';
-  document.getElementById('modal-timbratura-manuale').style.display = 'flex';
-}
-
-async function salvaTimbraturaManualeForm() {
-  const mecId = document.getElementById('tm-meccanico').value;
-  const comId = document.getElementById('tm-commessa').value;
-  const entrata = document.getElementById('tm-entrata').value;
-  const uscita  = document.getElementById('tm-uscita').value;
-  if (!mecId)    { alert('Seleziona il meccanico.'); return; }
-  if (!comId)    { alert('Seleziona la commessa.'); return; }
-  if (!entrata)  { alert('Inserisci l\'orario di entrata.'); return; }
-  try {
-    await supa.from('timbrature').insert({
-      id: crypto.randomUUID(),
-      mec_id: mecId, com_id: comId,
-      entrata: new Date(entrata).toISOString(),
-      uscita:  uscita ? new Date(uscita).toISOString() : null,
-      created_at: new Date().toISOString()
-    });
-    timbrature = await DB.load('timbrature');
-    closeModal('modal-timbratura-manuale');
-    renderLiveBoard();
-    showToast('Timbratura inserita ✓');
-  } catch(e) { alert('Errore: '+e.message); }
-}
-
-// ===== PRESENZE =====
-let dipendenti = (() => { try { return JSON.parse(localStorage.getItem('officina_dipendenti') || '[]'); } catch(e) { return []; } })();
-// presenze già dichiarata sopra
-let editingDipendenteId = null;
-
-function savePresenze() {
-  localStorage.setItem('officina_dipendenti', JSON.stringify(dipendenti));
-  localStorage.setItem('officina_presenze',   JSON.stringify(presenze));
-}
-
-const TIPO_BADGE = {
-  presenza:     { cls:'badge-blue',   label:'Presenza'     },
-  ferie:        { cls:'badge-green',  label:'Ferie'        },
-  malattia:     { cls:'badge-red',    label:'Malattia'     },
-  permesso:     { cls:'badge-yellow', label:'Permesso'     },
-  straordinario:{ cls:'badge-blue',   label:'Straordinario'},
-};
-
-function renderDipendenti() {
-  const q = (document.getElementById('search-presenze')?.value||'').toLowerCase();
-  const filtered = dipendenti.filter(d => !q || d.nome.toLowerCase().includes(q) || (d.ruolo||'').toLowerCase().includes(q));
-  const tbody = document.getElementById('tbody-dipendenti');
-  const empty = document.getElementById('empty-dipendenti');
-  if (!tbody) return;
-  if (!filtered.length) { tbody.innerHTML=''; empty.style.display=''; return; }
-  empty.style.display='none';
-  const oggi = new Date().toISOString().split('T')[0];
-  tbody.innerHTML = filtered.map(d => {
-    const initials = d.nome.split(' ').map(w=>w[0]).join('').substr(0,2).toUpperCase();
-    const pAperta  = presenze.find(p=>p.dipId===d.id&&!p.uscita);
-    const pOggi    = presenze.find(p=>p.dipId===d.id&&p.entrata.startsWith(oggi));
-    let statoOggi;
-    if (pAperta) {
-      const mins = Math.floor((new Date()-new Date(pAperta.entrata))/60000);
-      const dur = mins>=60?`${Math.floor(mins/60)}h${String(mins%60).padStart(2,'0')}`:`${mins}m`;
-      statoOggi = `<span class="badge badge-green"><span class="badge-dot"></span>In sede · ${dur}</span>`;
-    } else if (pOggi) {
-      statoOggi = `<span class="badge badge-gray">Uscito</span>`;
-    } else {
-      statoOggi = `<span class="badge badge-gray" style="color:var(--text3)">Non registrato</span>`;
-    }
-    return `<tr>
-      <td><div class="cell-with-avatar">
-        <div class="cell-avatar">${initials}</div>
-        <div>
-          <div class="td-main">${d.nome}</div>
-          <div class="td-sub">${d.email||''}</div>
-        </div>
-      </div></td>
-      <td><span class="badge badge-gray">${d.ruolo||'—'}</span></td>
-      <td style="font-family:'DM Mono',monospace;font-size:12px">${d.oreContratto||8}h</td>
-      <td style="font-size:12px">${d.assunzione?formatDate(d.assunzione):'—'}</td>
-      <td>${statoOggi}</td>
-      <td><div class="row-actions" style="opacity:1">
-        <button class="btn btn-ghost btn-sm" onclick="openModalDipendente('${d.id}')">Modifica</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteDipendente('${d.id}')">Elimina</button>
-      </div></td>
-    </tr>`;
-  }).join('');
-}
-
-function deleteDipendente(id) {
-  if (!confirm('Eliminare questo dipendente? Anche le presenze associate verranno rimosse.')) return;
-  presenze   = presenze.filter(p=>p.dipId!==id);
-  dipendenti = dipendenti.filter(d=>d.id!==id);
-  savePresenze(); initPresenze(); showToast('Dipendente eliminato');
-}
-
-function initPresenze() {
-  dipendenti = JSON.parse(localStorage.getItem('officina_dipendenti') || '[]');
-  presenze   = JSON.parse(localStorage.getItem('officina_presenze')   || '[]');
-  const sel = document.getElementById('p-dipendente');
-  if (sel) sel.innerHTML = '<option value="">Seleziona dipendente...</option>' +
-    dipendenti.map(d=>`<option value="${d.id}">${d.nome} — ${d.ruolo||''}</option>`).join('');
-  const oggi = new Date().toISOString().split('T')[0];
-  const fd = document.getElementById('p-filter-data');
-  if (fd && !fd.value) fd.value = oggi;
-  const fm = document.getElementById('p-filter-mese');
-  if (fm && !fm.value) fm.value = oggi.substr(0,7);
-  renderDipendenti();
-  renderLivePresenze();
-  renderPresenze();
-  renderRiepilogoPresenze();
-  updateBadgePresenze();
-}
-
-function presenzaEntrata() {
-  const dipId = document.getElementById('p-dipendente').value;
-  const tipo  = document.getElementById('p-tipo').value;
-  const straord = parseFloat(document.getElementById('p-straordinario').value)||0;
-  if (!dipId) { alert('Seleziona un dipendente.'); return; }
-  if (presenze.find(p=>p.dipId===dipId&&!p.uscita)) { alert('Timbratura già aperta per questo dipendente.'); return; }
-  presenze.push({ id:initId(), dipId, tipo, entrata:getOra('p-ora'), uscita:null, straordinario:straord, createdAt:new Date().toISOString() });
-  savePresenze(); showToast('Entrata registrata ✓');
-  renderLivePresenze(); renderPresenze(); updateBadgePresenze();
-  document.getElementById('p-straordinario').value='';
-}
-
-function presenzaUscita() {
-  const dipId = document.getElementById('p-dipendente').value;
-  if (!dipId) { alert('Seleziona un dipendente.'); return; }
-  const aperta = presenze.find(p=>p.dipId===dipId&&!p.uscita);
-  if (!aperta) { alert('Nessuna entrata aperta.'); return; }
-  aperta.uscita = getOra('p-ora');
-  savePresenze(); showToast('Uscita registrata ✓');
-  renderLivePresenze(); renderPresenze(); updateBadgePresenze();
-}
-
-function chiudiPresenza(id) {
-  const p = presenze.find(x=>x.id===id);
-  if (!p) return;
-  p.uscita = new Date().toISOString();
-  savePresenze(); showToast('Uscita registrata ✓');
-  renderLivePresenze(); renderPresenze(); updateBadgePresenze();
-}
-
 function renderLivePresenze() {
   const aperte = presenze.filter(p=>!p.uscita);
   const el = document.getElementById('p-live');
@@ -5170,87 +4507,77 @@ function salvaManodopera() {
   renderCommesse();
 }
 
-// ===== TIMBRATURA DA COMMESSA =====
-function popolaSelTimbraturaCommessa() {
-  
-  const sel = document.getElementById('dc-tim-mec');
-  if (!sel) return;
-  sel.innerHTML = '<option value="">Seleziona meccanico...</option>' +
-    meccanici.map(m=>`<option value="${m.id}">${m.nome} — ${m.ruolo||''}</option>`).join('');
-}
-
-function cercaMeccanicoDaTesserino(val) {
-  const v = val.trim().toUpperCase();
-  const el  = document.getElementById('dc-tim-trovato');
-  const sel = document.getElementById('dc-tim-mec');
-  el.style.display='none';
-  if (!v) return;
-  const m = meccanici.find(x=>
-    x.id.toUpperCase()===v ||
-    (x.badge||x.tesserino||'').toUpperCase()===v ||
-    x.nome.toUpperCase().includes(v)
-  );
-  if (!m) {
-    el.style.display='block'; el.style.background='var(--danger-light)'; el.style.color='var(--danger)'; el.style.borderColor='#FED7D7';
-    el.textContent='Meccanico non trovato'; return;
-  }
-  sel.value = m.id;
-  el.style.display='block'; el.style.background='var(--accent-light)'; el.style.color='var(--accent)'; el.style.borderColor='#C7D7F8';
-  el.textContent = '✓ ' + m.nome + ' — ' + (m.ruolo||'');
-}
-
-async function confermaTimbraturaCommessa(verso) {
-  const mecId = document.getElementById('dc-tim-mec').value;
-  const comId = selectedCommessaId;
-  if (!mecId) { alert('Seleziona o scansiona un meccanico.'); return; }
-  if (!comId) return;
-  const ora = new Date().toISOString();
-  try {
-    if (verso === 'entrata') {
-      if (timbrature.find(t=>t.mecId===mecId&&t.comId===comId&&!t.uscita)) { alert('Timbratura già aperta per questo meccanico.'); return; }
-      await chiudiAltreTimbratureAperte(mecId, comId, ora);
-      await dbSaveTimbratura({ id:initId(), mecId, comId, entrata:ora, uscita:null, tipo:'commessa', createdAt:ora });
-      await registraPresenzaAutomatica(mecId, ora);
-      showToast('Entrata registrata ✓');
-    } else {
-      const aperta = timbrature.find(t=>t.mecId===mecId&&t.comId===comId&&!t.uscita);
-      if (!aperta) { alert('Nessuna entrata aperta per questo meccanico.'); return; }
-      aperta.uscita = ora;
-      await dbSaveTimbratura(aperta);
-      await chiudiPresenzaAutomatica(mecId, ora);
-      showToast('Uscita registrata ✓');
-    }
-    document.getElementById('dc-tim-scan').value='';
-    document.getElementById('dc-tim-trovato').style.display='none';
-    renderTimbratureLiveCommessa(comId);
-    updateBadgeTimbrature();
-    if(currentSection==='commesse') renderCommesse();
-  } catch(e) { alert('Errore: '+e.message); }
-}
 
 async function chiudiPresenzeAutomatiche() {
   const oggi = new Date().toISOString().split('T')[0];
-  const ore17 = new Date(); ore17.setHours(17,0,0,0);
-  // Cerca timbrature aperte di oggi
-  const aperte = timbrature.filter(t => {
-    if (t.uscita) return false;
-    return (t.entrata||'').startsWith(oggi);
-  });
-  for (const t of aperte) {
-    await supa.from('timbrature').update({uscita:ore17.toISOString()}).eq('id',t.id);
-    t.uscita = ore17.toISOString();
+  // Cerca timbrature aperte di oggi e chiudile con l'ora del meccanico
+  const aperteT = timbrature.filter(t => !t.uscita && (t.entrata||'').startsWith(oggi));
+  for (const t of aperteT) {
+    const mec = meccanici.find(m => m.id === t.mecId);
+    const oraStr = mec?.ora_uscita_automatica || mec?.oraUscitaAutomatica || '20:00';
+    const [hh, mm] = oraStr.split(':').map(Number);
+    const uscitaOra = new Date(); uscitaOra.setHours(hh, mm, 0, 0);
+    await supa.from('timbrature').update({uscita: uscitaOra.toISOString()}).eq('id', t.id);
+    t.uscita = uscitaOra.toISOString();
   }
-  // Cerca presenze aperte di oggi
+  // Cerca presenze aperte di oggi e chiudile con l'ora del dipendente
   const { data: presenzeAperte } = await supa.from('presenze')
-    .select('*').eq('data',oggi).is('uscita',null);
+    .select('*').eq('data', oggi).is('uscita', null);
   for (const p of (presenzeAperte||[])) {
-    await supa.from('presenze').update({uscita:ore17.toISOString(),uscita_automatica:true}).eq('id',p.id);
+    const dipId = p.dip_id || p.dipId || p.mec_id || p.mecId;
+    const mec = meccanici.find(m => m.id === dipId);
+    const oraStr = mec?.ora_uscita_automatica || mec?.oraUscitaAutomatica || '20:00';
+    const [hh, mm] = oraStr.split(':').map(Number);
+    const uscitaOra = new Date(); uscitaOra.setHours(hh, mm, 0, 0);
+    await supa.from('presenze').update({uscita: uscitaOra.toISOString(), uscita_automatica: true}).eq('id', p.id);
   }
-  const tot = aperte.length + (presenzeAperte||[]).length;
+  const tot = aperteT.length + (presenzeAperte||[]).length;
   if (tot > 0) {
     timbrature = await DB.load('timbrature');
-    showToast(`⚠️ ${tot} uscite automatiche registrate alle 17:00`);
+    showToast(`⚠️ ${tot} uscite automatiche registrate`);
   }
+}
+
+function toggleTimbraturaManuale() {
+  const form = document.getElementById('dc-tim-manuale');
+  const btn  = document.getElementById('btn-tim-manuale-toggle');
+  const open = form.style.display === 'none';
+  form.style.display = open ? '' : 'none';
+  btn.textContent = open ? '✕ Chiudi' : '+ Timbratura';
+  if (open) {
+    // Popola select meccanici
+    const sel = document.getElementById('dc-tim-m-mec');
+    sel.innerHTML = '<option value="">Seleziona meccanico...</option>' +
+      meccanici.map(m => `<option value="${m.id}">${m.nome}${m.ruolo ? ' — ' + m.ruolo : ''}</option>`).join('');
+    // Precompila entrata con ora corrente
+    const now = new Date();
+    now.setSeconds(0, 0);
+    document.getElementById('dc-tim-m-entrata').value = now.toISOString().slice(0,16);
+    document.getElementById('dc-tim-m-uscita').value = '';
+  }
+}
+
+async function salvaTimbraturaManuale() {
+  const mecId   = document.getElementById('dc-tim-m-mec').value;
+  const entrataVal = document.getElementById('dc-tim-m-entrata').value;
+  const uscitaVal  = document.getElementById('dc-tim-m-uscita').value;
+  const comId   = selectedCommessaId;
+  if (!mecId)      { alert('Seleziona un meccanico.'); return; }
+  if (!entrataVal) { alert('Inserisci l'orario di entrata.'); return; }
+  if (!comId)      return;
+  const entrata = new Date(entrataVal).toISOString();
+  const uscita  = uscitaVal ? new Date(uscitaVal).toISOString() : null;
+  if (uscita && uscita <= entrata) { alert('L'uscita deve essere successiva all'entrata.'); return; }
+  try {
+    await dbSaveTimbratura({ id: initId(), mecId, comId, entrata, uscita, tipo: 'manuale', createdAt: new Date().toISOString() });
+    await registraPresenzaAutomatica(mecId, entrata);
+    if (uscita) await chiudiPresenzaAutomatica(mecId, uscita);
+    showToast('Timbratura salvata ✓');
+    // Reset form
+    document.getElementById('dc-tim-manuale').style.display = 'none';
+    document.getElementById('btn-tim-manuale-toggle').textContent = '+ Timbratura';
+    renderTimbratureLiveCommessa(comId);
+  } catch(e) { alert('Errore: ' + e.message); }
 }
 
 function renderTimbratureLiveCommessa(comId) {
@@ -5259,12 +4586,6 @@ function renderTimbratureLiveCommessa(comId) {
   if (!el) return;
 
   const isChiusa = cm && (cm.stato === 'chiusa' || cm.stato === 'fatturata');
-
-  // Blocca input timbratura se commessa chiusa/fatturata
-  const timInputArea = document.getElementById('dc-tim-input-area');
-  if (timInputArea) timInputArea.style.display = isChiusa ? 'none' : '';
-  const timChiusaMsg = document.getElementById('dc-tim-chiusa-msg');
-  if (timChiusaMsg) timChiusaMsg.style.display = isChiusa ? '' : 'none';
 
   // Meccanici attualmente in lavorazione su questa commessa
   const attive = timbrature.filter(t => t.comId===comId && !t.uscita);
@@ -5307,6 +4628,8 @@ function renderTimbratureLiveCommessa(comId) {
   }
 
   el.innerHTML = html;
+  const wrap = document.getElementById('dc-tim-live-wrap');
+  if (wrap) wrap.style.display = html ? '' : 'none';
 }
 
 async function chiudiDaCommessa(timId) {
@@ -5319,23 +4642,9 @@ async function chiudiDaCommessa(timId) {
     await chiudiPresenzaAutomatica(t.mecId, ora);
     showToast('Uscita registrata ✓');
     renderTimbratureLiveCommessa(t.comId);
-    updateBadgeTimbrature();
   } catch(e) { alert('Errore: '+e.message); }
 }
 
-function anteprimaCommessa(comId) {
-  const cm  = commesse.find(c=>c.id===comId);
-  if (!cm) return;
-  const cl  = clienti.find(c=>c.id===cm.clienteId);
-  const v   = veicoli.find(x=>x.id===cm.veicoloId);
-  const off = getDatiOfficina();
-  const inGar = isVeicoloInGaranzia(cm.veicoloId);
-  const garScad = v?.garanziaScadenza ? new Date(v.garanziaScadenza).toLocaleDateString('it-IT') : null;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(cm.numero||comId)}&margin=4`;
-  // Usa lo stesso generatore di stampaCommessa
-  const html = generaHtmlCommessa(cm, cl, v, off, inGar, garScad, qrUrl);
-  apriAnteprima(html, `Commessa ${cm.numero}`);
-}
 
 function apriLightboxGestionale(url) {
   const lb = document.createElement('div');
@@ -5358,7 +4667,7 @@ function stampaCommessa(comId) {
   const inGar = isVeicoloInGaranzia(cm.veicoloId);
   const garScad = v?.garanziaScadenza ? new Date(v.garanziaScadenza).toLocaleDateString('it-IT') : null;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(cm.numero||comId)}&margin=4`;
-  apriAnteprima(generaHtmlCommessa(cm, cl, v, off, inGar, garScad, qrUrl), `Commessa ${cm.numero}`);
+  apriStampa(generaHtmlCommessa(cm, cl, v, off, inGar, garScad, qrUrl));
 }
 
 function generaHtmlCommessa(cm, cl, v, off, inGar, garScad, qrUrl) {
@@ -5640,28 +4949,49 @@ ${cm.note ? `
   </div>
 </div>
 
+
+<!-- MODAL STORICO COMMESSE VEICOLO -->
+<div class="modal-overlay" id="modal-storico-veicolo" style="display:none;z-index:400" onclick="if(event.target===this)closeModal('modal-storico-veicolo')">
+  <div class="modal-box" style="width:680px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column">
+    <div class="modal-header" style="flex-shrink:0">
+      <div>
+        <div class="modal-title" id="msv-titolo">Storico commesse</div>
+        <div class="modal-sub" id="msv-sub"></div>
+      </div>
+      <button class="close-btn" onclick="closeModal('modal-storico-veicolo')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div style="padding:0 24px 12px;flex-shrink:0;display:flex;gap:8px;flex-wrap:wrap" id="msv-filtri">
+      <span class="stato-pill active" data-msv="tutti" onclick="setMsvFiltro(this,'tutti')" style="cursor:pointer">Tutte</span>
+      <span class="stato-pill" data-msv="aperta" onclick="setMsvFiltro(this,'aperta')" style="cursor:pointer">Aperte</span>
+      <span class="stato-pill" data-msv="wip" onclick="setMsvFiltro(this,'wip')" style="cursor:pointer">In lavorazione</span>
+      <span class="stato-pill" data-msv="chiusa" onclick="setMsvFiltro(this,'chiusa')" style="cursor:pointer">Chiuse</span>
+      <span class="stato-pill" data-msv="fatturata" onclick="setMsvFiltro(this,'fatturata')" style="cursor:pointer">Fatturate</span>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:0 24px 24px">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="border-bottom:2px solid var(--border);color:var(--text3);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">
+            <th style="padding:8px 0;text-align:left">N°</th>
+            <th style="padding:8px 0;text-align:left">Descrizione</th>
+            <th style="padding:8px 0;text-align:left">Data</th>
+            <th style="padding:8px 0;text-align:right">Importo</th>
+            <th style="padding:8px 0;text-align:center">Stato</th>
+          </tr>
+        </thead>
+        <tbody id="msv-tbody"></tbody>
+      </table>
+      <div id="msv-empty" style="display:none;text-align:center;padding:32px;color:var(--text3);font-size:13px">Nessuna commessa trovata</div>
+    </div>
+  </div>
+</div>
 </body>
 </html>`;
 
   return html;
 }
 
-function toggleQRCommessa() {
-  const wrap = document.getElementById('dc-qr-wrap');
-  if (wrap.style.display==='none') { generaQRCommessa(selectedCommessaId); wrap.style.display='block'; }
-  else wrap.style.display='none';
-}
-
-function generaQRCommessa(comId) {
-  const cm = commesse.find(x=>x.id===comId);
-  if (!cm) return;
-  const url = 'timbra.html?c=' + encodeURIComponent(cm.numero);
-  document.getElementById('dc-qr-link').href = url;
-  document.getElementById('dc-qr-link').textContent = 'Apri pagina mobile';
-  const size = 140;
-  document.getElementById('dc-qr-code').innerHTML =
-    `<img src="https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(url)}" width="${size}" height="${size}" alt="QR ${cm.numero}" style="display:block">`;
-}
 
 // ===== MODAL SCANNER RICAMBI =====
 let scanModalProdottoId = null;
@@ -6586,7 +5916,6 @@ function getTariffa(tipo) {
 // ===== INIT GLOBALE =====
 updateBadgeCommesse();
 updateBadgeMeccanici();
-updateBadgeTimbrature();
 updateBadgePresenze();
 updateBadgeMagazzino();
 updateBadgeApprovazioni();
@@ -7170,7 +6499,7 @@ async function emettiSoloVbDDT() {
   const ddt = await creaVbDDT(righe);
   if (!ddt) return;
   const cl = clienti.find(c=>c.id===ddt.clienteId);
-  apriAnteprima(generaHtmlDDT(ddt, getDatiOfficina(), cl), `DDT ${ddt.numero}`);
+  apriStampa(generaHtmlDDT(ddt, getDatiOfficina(), cl));
   resetVendita();
   showToast(`DDT ${ddt.numero} emesso ✓`);
   setDocTab('ddt');
@@ -7382,7 +6711,7 @@ function renderDDT() {
         <div style="font-size:12px;color:var(--text3)">${formatDate(d.data)} · ${d.causale||''} · ${d.righe?.length||0} art.</div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
-        <button class="btn btn-ghost btn-sm" onclick="anteprimaDDT('${d.id}')">Anteprima</button>
+        
         <button class="btn btn-ghost btn-sm" onclick="ristampaDDT('${d.id}')">Stampa</button>
         ${stato!=='fatturato'?`<button class="btn btn-primary btn-sm" onclick="converteDDTinFattura('${d.id}')">Converti in fattura</button>`:''}
       </div>
@@ -7454,11 +6783,6 @@ async function salvaEStampaDDT() {
   } catch(e) { alert('Errore: '+e.message); }
 }
 
-function anteprimaDDT(id) {
-  const d=ddts.find(x=>x.id===id); if(!d) return;
-  const cl=clienti.find(c=>c.id===d.clienteId);
-  apriAnteprima(generaHtmlDDT(d,getDatiOfficina(),cl), `DDT ${d.numero}`);
-}
 
 function ristampaDDT(id) {
   const d=ddts.find(x=>x.id===id); if(!d) return;
@@ -7534,24 +6858,12 @@ ${_impostazioni.note_doc?`<div style="margin-top:24px;padding-top:16px;border-to
 </body></html>`;
 }
 
-function apriAnteprima(html, titolo) {
-  const modal = document.getElementById('modal-anteprima');
-  const frame = document.getElementById('anteprima-frame');
-  document.getElementById('anteprima-titolo').textContent = titolo || 'Anteprima documento';
-  frame.srcdoc = html;
-  modal.style.display = 'flex';
-  // Salva per stampa
-  modal._html = html;
-}
-
-function stampaAnteprima() {
-  const frame = document.getElementById('anteprima-frame');
-  frame.contentWindow.focus();
-  frame.contentWindow.print();
-}
-
 function apriStampa(html) {
-  apriAnteprima(html);
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 400);
 }
 
 // ═══════════════════════════════════════════════════
@@ -7704,10 +7016,10 @@ async function autoInviaFIC(fatt) {
   if (!accessToken || ficToken.expires_at <= Date.now() + 60_000) {
     if (!ficToken.refresh_token) return;
     try {
-      const res = await fetch('https://api.fattureincloud.it/v2/oauth/token', {
+      const res = await fetch('/.netlify/functions/fic-token', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           grant_type: 'refresh_token', client_id: ficCfg.client_id,
           client_secret: ficCfg.client_secret, refresh_token: ficToken.refresh_token,
         }),
@@ -7729,7 +7041,7 @@ async function autoInviaFIC(fatt) {
     : [{ name:fatt.descrizione||'Servizio officina', qty:1,
          net_price:fatt.imponibile||(fatt.totale||0)/(1+(fatt.iva||22)/100), vat:{value:fatt.iva||22} }];
 
-  const res = await fetch(`https://api.fattureincloud.it/v2/c/${ficCfg.company_id}/issued_documents`, {
+  const res = await fetch(`https://api-v2.fattureincloud.it/v2/c/${ficCfg.company_id}/issued_documents`, {
     method: 'POST',
     headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
     body: JSON.stringify({ data: {
@@ -7749,6 +7061,26 @@ async function autoInviaFIC(fatt) {
   console.info('[FiC auto] Fattura inviata ✓ fic_id=', ficId);
   renderFatture();
 }
+
+
+// ── Beacon admin: registra uscita quando si chiude l'ultima tab ─────────────
+window.addEventListener('beforeunload', () => {
+  if (!currentUser) return;
+  const dip = meccanici.find(m =>
+    (m.email||'').toLowerCase() === (currentUser.email||'').toLowerCase() &&
+    (m.ruolo||'').toLowerCase() === 'amministrazione'
+  );
+  if (!dip) return;
+  const count = parseInt(localStorage.getItem('ormia_admin_tabs') || '1') - 1;
+  localStorage.setItem('ormia_admin_tabs', Math.max(0, count));
+  if (count <= 0) {
+    // Ultima tab — invia beacon per chiudere la presenza
+    navigator.sendBeacon('/.netlify/functions/chiudi-presenza',
+      JSON.stringify({ dipId: dip.id, ora: new Date().toISOString() })
+    );
+    localStorage.setItem('ormia_admin_tabs', '0');
+  }
+});
 
 // ── Helper: aggiorna alert moroso su un elemento dato il cliente ──────────────
 function _aggiornaAlertMoroso(alertEl, clienteId) {
@@ -8666,6 +7998,59 @@ function initDocumenti() {
 <script>
 checkSession();
 initDocumenti();
+
+// ── Storico commesse veicolo ─────────────────────────────
+let _msvVeicoloId = null;
+let _msvFiltro = 'tutti';
+
+function apriStoricoVeicolo() {
+  _msvVeicoloId = selectedVeicoloId;
+  _msvFiltro = 'tutti';
+  const v = veicoli.find(x=>x.id===_msvVeicoloId);
+  const targa = v ? v.targa : '';
+  const modello = v ? [v.marca,v.modello].filter(Boolean).join(' ') : '';
+  document.getElementById('msv-titolo').textContent = 'Storico commesse — ' + targa;
+  document.getElementById('msv-sub').textContent = modello;
+  document.querySelectorAll('#msv-filtri [data-msv]').forEach(el => {
+    el.classList.toggle('active', el.dataset.msv === 'tutti');
+  });
+  renderMsv();
+  document.getElementById('modal-storico-veicolo').style.display = 'flex';
+}
+
+function setMsvFiltro(el, filtro) {
+  _msvFiltro = filtro;
+  document.querySelectorAll('#msv-filtri [data-msv]').forEach(e => e.classList.remove('active'));
+  el.classList.add('active');
+  renderMsv();
+}
+
+function renderMsv() {
+  const statoColors = {aperta:'var(--accent)',wip:'var(--warning)',standby:'#6D28D9',chiusa:'var(--success)',fatturata:'#6366F1'};
+  const statoLabels = {aperta:'Aperta',wip:'In lavorazione',standby:'Standby',chiusa:'Chiusa',fatturata:'Fatturata'};
+  let rows = commesse.filter(c => c.veicoloId === _msvVeicoloId);
+  if (_msvFiltro !== 'tutti') rows = rows.filter(c => c.stato === _msvFiltro);
+  rows.sort((a,b) => new Date(b.dataApertura||b.createdAt) - new Date(a.dataApertura||a.createdAt));
+  const tbody = document.getElementById('msv-tbody');
+  const empty = document.getElementById('msv-empty');
+  if (!rows.length) {
+    tbody.innerHTML = '';
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+  tbody.innerHTML = rows.map(cm => {
+    const tot = ((cm.voci||[]).reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0)).toFixed(2);
+    return `<tr onclick="closeModal('modal-storico-veicolo');showDetailCommessa('${cm.id}')" style="border-bottom:1px solid var(--border);cursor:pointer" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <td style="padding:10px 0;font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);white-space:nowrap">${cm.numero||'—'}</td>
+      <td style="padding:10px 8px;font-weight:500;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cm.descrizione||cm.desc||'—'}</td>
+      <td style="padding:10px 8px;color:var(--text3);white-space:nowrap">${cm.dataApertura?formatDate(cm.dataApertura):'—'}</td>
+      <td style="padding:10px 0;text-align:right;font-family:'DM Mono',monospace;white-space:nowrap">€ ${tot}</td>
+      <td style="padding:10px 0;text-align:center"><span style="font-size:10px;font-weight:700;color:${statoColors[cm.stato]||'#999'}">${statoLabels[cm.stato]||cm.stato}</span></td>
+    </tr>`;
+  }).join('');
+}
+
 </script>
 
 <!-- ═══════════════ MODAL DDT ═══════════════ -->
@@ -8707,23 +8092,6 @@ initDocumenti();
 </div>
 
 <!-- ═══════════════ MODAL ANTEPRIMA ═══════════════ -->
-<div class="modal-overlay" id="modal-anteprima" style="display:none;align-items:stretch" onclick="closeModalOnBg(event,'modal-anteprima')">
-  <div class="modal" style="max-width:860px;width:95vw;height:90vh;display:flex;flex-direction:column;padding:0">
-    <div class="modal-header" style="padding:14px 20px;flex-shrink:0">
-      <div class="modal-title" id="anteprima-titolo">Anteprima</div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <button class="btn btn-primary btn-sm" onclick="stampaAnteprima()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-          Stampa / Salva PDF
-        </button>
-        <button class="close-btn" onclick="closeModal('modal-anteprima')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-    </div>
-    <iframe id="anteprima-frame" style="flex:1;border:none;border-radius:0 0 var(--radius-lg) var(--radius-lg);background:white"></iframe>
-  </div>
-</div>
 
 
 <!-- MODAL IMPOSTAZIONI -->
@@ -9004,5 +8372,43 @@ initDocumenti();
   </div>
 </div>
 
+
+<!-- MODAL STORICO COMMESSE VEICOLO -->
+<div class="modal-overlay" id="modal-storico-veicolo" style="display:none;z-index:400" onclick="if(event.target===this)closeModal('modal-storico-veicolo')">
+  <div class="modal-box" style="width:680px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column">
+    <div class="modal-header" style="flex-shrink:0">
+      <div>
+        <div class="modal-title" id="msv-titolo">Storico commesse</div>
+        <div class="modal-sub" id="msv-sub"></div>
+      </div>
+      <button class="close-btn" onclick="closeModal('modal-storico-veicolo')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div style="padding:0 24px 12px;flex-shrink:0;display:flex;gap:8px;flex-wrap:wrap" id="msv-filtri">
+      <span class="stato-pill active" data-msv="tutti" onclick="setMsvFiltro(this,'tutti')" style="cursor:pointer">Tutte</span>
+      <span class="stato-pill" data-msv="aperta" onclick="setMsvFiltro(this,'aperta')" style="cursor:pointer">Aperte</span>
+      <span class="stato-pill" data-msv="wip" onclick="setMsvFiltro(this,'wip')" style="cursor:pointer">In lavorazione</span>
+      <span class="stato-pill" data-msv="chiusa" onclick="setMsvFiltro(this,'chiusa')" style="cursor:pointer">Chiuse</span>
+      <span class="stato-pill" data-msv="fatturata" onclick="setMsvFiltro(this,'fatturata')" style="cursor:pointer">Fatturate</span>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:0 24px 24px">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="border-bottom:2px solid var(--border);color:var(--text3);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">
+            <th style="padding:8px 0;text-align:left">N°</th>
+            <th style="padding:8px 0;text-align:left">Descrizione</th>
+            <th style="padding:8px 0;text-align:left">Data</th>
+            <th style="padding:8px 0;text-align:right">Importo</th>
+            <th style="padding:8px 0;text-align:center">Stato</th>
+          </tr>
+        </thead>
+        <tbody id="msv-tbody"></tbody>
+      </table>
+      <div id="msv-empty" style="display:none;text-align:center;padding:32px;color:var(--text3);font-size:13px">Nessuna commessa trovata</div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
