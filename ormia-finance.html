@@ -1430,7 +1430,13 @@ function caricaFormFIC() {
   updateFicTokenStatus();
 }
 
-// ── ficFetch con auto-refresh ─────────────────────
+// ── FiC token ─────────────────────────────────────
+async function getFicAccessToken() {
+  if (_ficToken?.access_token) return _ficToken.access_token;
+  throw new Error('Token FiC non configurato. Vai su Integrazioni → Fatture in Cloud e incolla il token.');
+}
+
+// ── ficFetch ──────────────────────────────────────
 async function ficFetch(path, opts = {}) {
   const token = await getFicAccessToken();
   const url = 'https://api.fattureincloud.it/v2' + path;
