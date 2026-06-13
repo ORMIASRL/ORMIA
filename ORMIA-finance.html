@@ -445,7 +445,7 @@ tr:hover td { background:var(--surface2); }
             <div style="font-size:13px;color:var(--text3);margin-bottom:16px">Connessione OAuth2 — credenziali da <strong>developer.sumup.com → Le tue app</strong></div>
             <div class="alert alert-info" style="margin-bottom:16px">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              Redirect URI da registrare su SumUp: <code style="font-size:11px">https://ormiaofficina.netlify.app/ormia-finance</code>
+              Redirect URI da registrare su SumUp: <code style="font-size:11px">https://ormiaofficina.netlify.app/ORMIA-finance.html</code>
             </div>
             <div class="form-grid">
               <div class="form-group">
@@ -454,7 +454,7 @@ tr:hover td { background:var(--surface2); }
               </div>
               <div class="form-group">
                 <label>Redirect URI</label>
-                <input type="text" id="sumup-redirect-uri" placeholder="https://ormiaofficina.netlify.app/ormia-finance" style="font-family:'DM Mono',monospace;font-size:12px">
+                <input type="text" id="sumup-redirect-uri" placeholder="https://ormiaofficina.netlify.app/ORMIA-finance.html" style="font-family:'DM Mono',monospace;font-size:12px">
               </div>
               <div class="form-group">
                 <label>Client Secret</label>
@@ -1489,7 +1489,7 @@ function scambiaCodiceFIC(code) {
       grant_type:    'authorization_code',
       client_id:     _ficConfig.client_id,
       client_secret: _ficConfig.client_secret,
-      redirect_uri:  'https://ormiaofficina.netlify.app/ormia-finance',
+      redirect_uri:  'https://ormiaofficina.netlify.app/ORMIA-finance.html',
       code:          code,
     }),
   }).then(function(r) {
@@ -1509,7 +1509,7 @@ function autorizzaFIC() {
     var url   = FIC_AUTH_URL
       + '?response_type=code'
       + '&client_id='    + encodeURIComponent(_ficConfig.client_id)
-      + '&redirect_uri=' + encodeURIComponent('https://ormiaofficina.netlify.app/ormia-finance')
+      + '&redirect_uri=' + encodeURIComponent('https://ormiaofficina.netlify.app/ORMIA-finance.html')
       + '&scope='        + encodeURIComponent(scope)
       + '&state=fic';
     console.log('[FiC] autorizzaFIC redirect ->', url);
@@ -1535,7 +1535,7 @@ function updateFicTokenStatus() {
 function caricaFormSumUp() {
   const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
   set('sumup-client-id',    _sumupConfig.client_id   || '');
-  set('sumup-redirect-uri', _sumupConfig.redirect_uri|| 'https://ormiaofficina.netlify.app/ormia-finance');
+  set('sumup-redirect-uri', _sumupConfig.redirect_uri|| 'https://ormiaofficina.netlify.app/ORMIA-finance.html');
   set('sumup-merchant',     _sumupConfig.merchant    || '');
   const panel = document.getElementById('sumup-auth-panel');
   if (panel) panel.style.display = _sumupConfig.client_id ? '' : 'none';
@@ -1745,7 +1745,7 @@ async function getSumUpAccessToken() {
 function autorizzaSumUp() {
   if (!_sumupConfig.client_id) { alert('Salva prima la configurazione SumUp.'); return; }
   const redirectUri = document.getElementById('sumup-redirect-uri')?.value?.trim()
-    || 'https://ormiaofficina.netlify.app/ormia-finance';
+    || 'https://ormiaofficina.netlify.app/ORMIA-finance.html';
   const authUrl = `${SUMUP_AUTH_URL}?response_type=code`
     + `&client_id=${encodeURIComponent(_sumupConfig.client_id)}`
     + `&redirect_uri=${encodeURIComponent(redirectUri)}`
@@ -1760,7 +1760,7 @@ async function completaAutorizzazioneSumUp() {
   let code = input;
   try { const u = new URL(input); code = u.searchParams.get('code') || input; } catch(_) {}
   const redirectUri = document.getElementById('sumup-redirect-uri')?.value?.trim()
-    || 'https://ormiaofficina.netlify.app/ormia-finance';
+    || 'https://ormiaofficina.netlify.app/ORMIA-finance.html';
   const el = document.getElementById('sumup-auth-result');
   el.style.display = ''; el.innerHTML = '<span style="color:var(--text3)">Scambio codice…</span>';
   try {
@@ -1823,7 +1823,7 @@ function salvaSumUp() {
     client_id:     document.getElementById('sumup-client-id').value.trim(),
     client_secret: document.getElementById('sumup-client-secret').value.trim(),
     merchant:      document.getElementById('sumup-merchant').value.trim(),
-    redirect_uri:  document.getElementById('sumup-redirect-uri')?.value?.trim() || 'https://ormiaofficina.netlify.app/ormia-finance',
+    redirect_uri:  document.getElementById('sumup-redirect-uri')?.value?.trim() || 'https://ormiaofficina.netlify.app/ORMIA-finance.html',
   };
   localStorage.setItem('ormia_sumup_config', JSON.stringify(_sumupConfig));
   _sumupToken = null; localStorage.removeItem('ormia_sumup_token');
