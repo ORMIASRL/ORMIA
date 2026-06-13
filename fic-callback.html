@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FiC Callback…</title>
+  <style>
+    body { font-family: system-ui, sans-serif; display:flex; align-items:center;
+           justify-content:center; min-height:100vh; margin:0; background:#f8fafc; }
+    .box { text-align:center; color:#64748b; }
+    .spinner { width:32px; height:32px; border:3px solid #e2e8f0;
+               border-top-color:#6366f1; border-radius:50%;
+               animation:spin .8s linear infinite; margin:0 auto 16px; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="spinner"></div>
+    <div>Autorizzazione FiC in corso…</div>
+  </div>
+  <script>
+    (function() {
+      var p = new URLSearchParams(window.location.search);
+      if (p.get('code'))  sessionStorage.setItem('_ficPendingCode', p.get('code'));
+      if (p.get('error')) sessionStorage.setItem('_ficOAuthError',  p.get('error_description') || p.get('error'));
+      // Torna su Finance
+      window.location.replace('https://ormiaofficina.netlify.app/ormia-finance');
+    })();
+  </script>
+</body>
+</html>
