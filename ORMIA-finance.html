@@ -452,7 +452,19 @@ tr:hover td { background:var(--surface2); }
                 <label>Client ID</label>
                 <input type="text" id="sumup-client-id" placeholder="cc_classic_…" style="font-family:'DM Mono',monospace;font-size:12px">
               </div>
+              <div class="form-group">
+                <label>Redirect URI</label>
+                <input type="text" id="sumup-redirect-uri" placeholder="https://ormiaofficina.netlify.app/ormia-finance" style="font-family:'DM Mono',monospace;font-size:12px">
               </div>
+              <div class="form-group">
+                <label>Client Secret</label>
+                <input type="password" id="sumup-client-secret" placeholder="Client Secret">
+              </div>
+              <div class="form-group">
+                <label>Merchant Code <span style="font-weight:400;color:var(--text3)">(da profilo SumUp)</span></label>
+                <input type="text" id="sumup-merchant" placeholder="Es. MC12345678" style="font-family:'DM Mono',monospace">
+              </div>
+            </div>
             <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:16px">
               <button class="btn btn-success" onclick="salvaSumUp()">Salva configurazione</button>
             </div>
@@ -518,7 +530,15 @@ tr:hover td { background:var(--surface2); }
                 <label>Company ID</label>
                 <input type="text" id="fic-company-id" placeholder="Es. 12345" style="font-family:'DM Mono',monospace">
               </div>
+              <div class="form-group">
+                <label>Client ID</label>
+                <input type="text" id="fic-client-id" placeholder="Client ID" style="font-family:'DM Mono',monospace;font-size:12px">
               </div>
+              <div class="form-group">
+                <label>Client Secret</label>
+                <input type="password" id="fic-client-secret" placeholder="Client Secret">
+              </div>
+            </div>
             <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:16px">
               <button class="btn btn-success" onclick="salvaFIC()">Salva configurazione</button>
             </div>
@@ -534,7 +554,22 @@ tr:hover td { background:var(--surface2); }
                   Autorizza FiC
                 </button>
               </div>
-              <div id="fic-auth-step2" style="display:none"></div>
+              <div id="fic-auth-step2" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px">
+                <div style="font-size:12px;font-weight:700;margin-bottom:6px">📋 Completa l'autorizzazione</div>
+                <div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.7">
+                  1. Si è aperta la pagina di login FiC — accedi e autorizza ORMIA<br>
+                  2. Dopo aver autorizzato, copia l'URL completo della pagina di redirect<br>
+                  3. Incollalo qui sotto (o solo il valore del parametro <code>?code=</code>)
+                </div>
+                <div class="form-group" style="margin-bottom:8px">
+                  <input type="text" id="fic-auth-code" placeholder="Incolla URL di redirect o codice…" style="font-size:12px;font-family:'DM Mono',monospace">
+                </div>
+                <div style="display:flex;gap:8px">
+                  <button class="btn btn-success btn-sm" onclick="completaAutorizzazioneFIC()">✓ Completa</button>
+                  <button class="btn btn-ghost btn-sm" onclick="document.getElementById('fic-auth-step2').style.display='none'">Annulla</button>
+                </div>
+                <div id="fic-auth-result" style="margin-top:10px;font-size:12px;display:none"></div>
+              </div>
             </div>
           </div><!-- /config card -->
 
@@ -646,7 +681,7 @@ let _sumupToken  = JSON.parse(localStorage.getItem('ormia_sumup_token') ||'null'
 let _sumupPoll   = null;
 let _ficConfig   = JSON.parse(localStorage.getItem('ormia_fic_config')||'{}');
 let _ficToken    = JSON.parse(localStorage.getItem('ormia_fic_token') ||'null');
-(function(){var p=new URLSearchParams(window.location.search);if(p.get('state')==='fic'&&p.get('code')){window._ficPendingCode=p.get('code');window.history.replaceState({},'',window.location.pathname);}})();
+      (function(){var p=new URLSearchParams(window.location.search);if(p.get('state')==='fic'&&p.get('code')){window._ficPendingCode=p.get('code');window.history.replaceState({},'',window.location.pathname);}})();
 let _ficPolling  = null;
 
 // ══════════════════════════════════════════════════
@@ -675,6 +710,7 @@ async function initAuth() {
 }
 
 async function showApp() {
+    if(window._ficPendingCode){var _c=window._ficPendingCode;window._ficPendingCode=null;setSection('integrazioni');showToastFin('Autorizzazione FiC in corso...');scambiaCodiceFIC(_c).then(function(){showToastFin('FiC autorizzato!');checkIntegrazioni();updateFicTokenStatus();}).catch(function(e){showToastFin('Errore: '+e.message);});}
   document.getElementById('app-login').style.display = 'none';
   document.getElementById('app-main').style.display = 'block';
   document.getElementById('fin-user-name').textContent = currentUser?.email||'—';
@@ -683,7 +719,6 @@ async function showApp() {
   checkIntegrazioni();
   avviaPollingFIC();
   avviaRealtimeFin();
-  if(window._ficPendingCode){var _c=window._ficPendingCode;window._ficPendingCode=null;setSection('integrazioni');showToastFin('Autorizzazione FiC in corso...');scambiaCodiceFIC(_c).then(function(){showToastFin('FiC autorizzato!');checkIntegrazioni();updateFicTokenStatus();}).catch(function(e){showToastFin('Errore: '+e.message);});}
 }
 
 function avviaRealtimeFin() {
@@ -1410,34 +1445,48 @@ async function getFicAccessToken() {
 }
 
 async function _refreshFicToken() {
-  const res = await fetch(FIC_TOKEN_URL, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ grant_type: 'refresh_token', client_id: _ficConfig.client_id, client_secret: _ficConfig.client_secret, refresh_token: _ficToken.refresh_token }),
-  });
-  if (!res.ok) { _ficToken = null; localStorage.removeItem('ormia_fic_token'); throw new Error('Refresh token scaduto'); }
-  const d = await res.json(); _saveFicToken(d); return d.access_token;
-}
+    const res = await fetch(FIC_TOKEN_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({grant_type:'refresh_token',client_id:_ficConfig.client_id,client_secret:_ficConfig.client_secret,refresh_token:_ficToken.refresh_token}),
+    });
+    if(!res.ok){_ficToken=null;localStorage.removeItem('ormia_fic_token');throw new Error('Refresh token scaduto');}
+    const d=await res.json(); _saveFicToken(d); return d.access_token;
+  }
 
 async function scambiaCodiceFIC(code) {
-  const redirectUri = 'https://ormiaofficina.netlify.app/ORMIA-finance.html';
-  const res = await fetch(FIC_TOKEN_URL, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ grant_type: 'authorization_code', client_id: _ficConfig.client_id, client_secret: _ficConfig.client_secret, redirect_uri: redirectUri, code }),
-  });
-  if (!res.ok) { const err = await res.json().catch(function(){return{};}); throw new Error(err.error_description || err.error || 'Errore ' + res.status); }
-  _saveFicToken(await res.json());
-}
+    const redirectUri='https://ormiaofficina.netlify.app/ORMIA-finance.html';
+    const res=await fetch(FIC_TOKEN_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({grant_type:'authorization_code',client_id:_ficConfig.client_id,client_secret:_ficConfig.client_secret,redirect_uri:redirectUri,code}),
+    });
+    if(!res.ok){const err=await res.json().catch(function(){return{};});throw new Error(err.error_description||err.error||'Errore '+res.status);}
+    _saveFicToken(await res.json());
+  }
 
 function autorizzaFIC() {
-  if (!_ficConfig.client_id) { alert('Salva prima la configurazione FiC.'); return; }
-  if (!_ficConfig.company_id) { alert('Inserisci il Company ID FiC e salva prima di autorizzare.'); return; }
-  var cid = _ficConfig.company_id;
-  var scopes = ['c:'+cid+':issued_documents:r','c:'+cid+':issued_documents:a','c:'+cid+':issued_documents:e','c:'+cid+':issued_documents:d'].join(';');
-  var authUrl = FIC_AUTH_URL + '?response_type=code&client_id=' + encodeURIComponent(_ficConfig.client_id) + '&redirect_uri=' + encodeURIComponent('https://ormiaofficina.netlify.app/ORMIA-finance.html') + '&scope=' + encodeURIComponent(scopes) + '&state=fic';
-  window.location.href = authUrl;
-}
+    if(!_ficConfig.client_id){alert('Salva prima la configurazione FiC.');return;}
+    if(!_ficConfig.company_id){alert('Inserisci il Company ID FiC e salva prima di autorizzare.');return;}
+    var cid=_ficConfig.company_id;
+    var scopes=['c:'+cid+':issued_documents:r','c:'+cid+':issued_documents:a','c:'+cid+':issued_documents:e','c:'+cid+':issued_documents:d'].join(';');
+    var authUrl='https://api-v2.fattureincloud.it/oauth/authorize'+'?response_type=code&client_id='+encodeURIComponent(_ficConfig.client_id)+'&redirect_uri='+encodeURIComponent('https://ormiaofficina.netlify.app/ORMIA-finance.html')+'&scope='+encodeURIComponent(scopes)+'&state=fic';
+    window.location.href=authUrl;
+  }
 
-async function completaAutorizzazioneFIC() {}
+async function completaAutorizzazioneFIC() {
+  const input = document.getElementById('fic-auth-code').value.trim();
+  if (!input) { alert("Incolla l'URL di redirect o il codice."); return; }
+  let code = input;
+  try { const u = new URL(input); code = u.searchParams.get('code') || input; } catch(_) {}
+  const el = document.getElementById('fic-auth-result');
+  el.style.display = ''; el.innerHTML = '<span style="color:var(--text3)">Scambio codice…</span>';
+  try {
+    await scambiaCodiceFIC(code);
+    el.innerHTML = '<span style="color:var(--success)">✓ Autorizzazione completata — FiC collegato!</span>';
+    document.getElementById('fic-auth-step2').style.display = 'none';
+  } catch(e) {
+    el.innerHTML = `<span style="color:var(--danger)">✗ ${e.message}</span>`;
+  }
+}
 
 function updateFicTokenStatus() {
   const el = document.getElementById('fic-token-status');
@@ -1463,11 +1512,11 @@ function caricaFormSumUp() {
 }
 
 function caricaFormFIC() {
-  var set = function(id,val){var el=document.getElementById(id);if(el)el.value=val||'';};
-  set('fic-company-id',_ficConfig.company_id||''); set('fic-client-id',_ficConfig.client_id||''); set('fic-client-secret',_ficConfig.client_secret||'');
-  var panel=document.getElementById('fic-auth-panel'); if(panel) panel.style.display=_ficConfig.client_id?'':'none';
-  updateFicTokenStatus();
-}
+    var set=function(id,val){var el=document.getElementById(id);if(el)el.value=val||'';};
+    set('fic-company-id',_ficConfig.company_id||'');set('fic-client-id',_ficConfig.client_id||'');set('fic-client-secret',_ficConfig.client_secret||'');
+    var panel=document.getElementById('fic-auth-panel');if(panel)panel.style.display=_ficConfig.client_id?'':'none';
+    updateFicTokenStatus();
+  }
 
 // ── ficFetch con auto-refresh ─────────────────────
 async function ficFetch(path, opts = {}) {
@@ -1751,13 +1800,13 @@ function salvaSumUp() {
 }
 
 function salvaFIC() {
-  _ficConfig = { company_id: document.getElementById('fic-company-id').value.trim(), client_id: document.getElementById('fic-client-id').value.trim(), client_secret: document.getElementById('fic-client-secret').value.trim() };
-  localStorage.setItem('ormia_fic_config', JSON.stringify(_ficConfig));
-  _ficToken = null; localStorage.removeItem('ormia_fic_token');
-  checkIntegrazioni(); updateFicTokenStatus();
-  var panel=document.getElementById('fic-auth-panel'); if(panel) panel.style.display=_ficConfig.client_id?'':'none';
-  showToastFin('Configurazione salvata - ora clicca Autorizza FiC');
-}
+    _ficConfig={company_id:document.getElementById('fic-company-id').value.trim(),client_id:document.getElementById('fic-client-id').value.trim(),client_secret:document.getElementById('fic-client-secret').value.trim()};
+    localStorage.setItem('ormia_fic_config',JSON.stringify(_ficConfig));
+    _ficToken=null;localStorage.removeItem('ormia_fic_token');
+    checkIntegrazioni();updateFicTokenStatus();
+    var panel=document.getElementById('fic-auth-panel');if(panel)panel.style.display=_ficConfig.client_id?'':'none';
+    showToastFin('Configurazione salvata - ora clicca Autorizza FiC');
+  }
 
 async function testSumUp() {
   try {
