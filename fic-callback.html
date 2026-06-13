@@ -3,27 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FiC Callback…</title>
+  <title>FiC Callback</title>
   <style>
     body { font-family: system-ui, sans-serif; display:flex; align-items:center;
            justify-content:center; min-height:100vh; margin:0; background:#f8fafc; }
-    .box { text-align:center; color:#64748b; max-width:480px; padding:24px; }
-    .spinner { width:32px; height:32px; border:3px solid #e2e8f0;
-               border-top-color:#6366f1; border-radius:50%;
-               animation:spin .8s linear infinite; margin:0 auto 16px; }
-    @keyframes spin { to { transform:rotate(360deg); } }
-    .debug { margin-top:16px; font-family:monospace; font-size:12px;
-             background:#f1f5f9; border-radius:8px; padding:12px;
-             text-align:left; word-break:break-all; }
-    .ok  { color:#16a34a; font-weight:600; }
-    .err { color:#dc2626; font-weight:600; }
+    .box { text-align:center; color:#64748b; max-width:520px; padding:32px; }
+    .debug { margin-top:16px; font-family:monospace; font-size:13px;
+             background:#f1f5f9; border-radius:8px; padding:16px;
+             text-align:left; word-break:break-all; line-height:1.8; }
+    .ok  { color:#16a34a; font-weight:700; font-size:18px; }
+    .err { color:#dc2626; font-weight:700; font-size:18px; }
+    .warn { color:#d97706; font-weight:700; font-size:18px; }
+    .btn { margin-top:20px; display:inline-block; padding:10px 24px;
+           background:#6366f1; color:#fff; border-radius:8px; text-decoration:none;
+           font-weight:600; cursor:pointer; border:none; font-size:15px; }
+    .redirect-note { margin-top:12px; font-size:13px; color:#94a3b8; }
   </style>
 </head>
 <body>
   <div class="box">
-    <div class="spinner"></div>
-    <div id="msg">Autorizzazione FiC in corso…</div>
+    <div id="msg"></div>
     <div class="debug" id="dbg"></div>
+    <div class="redirect-note" id="redirect-note"></div>
+    <br>
+    <button class="btn" id="btn-continue">Continua →</button>
   </div>
   <script>
     (function() {
@@ -31,25 +34,45 @@
       var code = p.get('code');
       var err  = p.get('error');
       var desc = p.get('error_description');
-      var dbg  = document.getElementById('dbg');
+      var state = p.get('state') || '';
       var msg  = document.getElementById('msg');
+      var dbg  = document.getElementById('dbg');
+      var note = document.getElementById('redirect-note');
+      var btn  = document.getElementById('btn-continue');
+
+      // Determina destinazione dal parametro state
+      var dest = 'https://ormiaofficina.netlify.app/ormia-finance';
+      if (state === 'fic-test') {
+        dest = 'https://ormiaofficina.netlify.app/fic-test';
+      }
+
+      btn.onclick = function() { window.location.replace(dest); };
 
       if (code) {
         sessionStorage.setItem('_ficPendingCode', code);
+        sessionStorage.setItem('_ficOAuthState', state);
         msg.innerHTML = '<span class="ok">✓ Codice ricevuto</span>';
-        dbg.innerHTML = 'code: <b>' + code.substring(0,12) + '…</b><br>lunghezza: ' + code.length + ' char';
+        dbg.innerHTML =
+          'code: <b>' + code.substring(0, 20) + '…</b><br>' +
+          'lunghezza: ' + code.length + ' caratteri<br>' +
+          (state ? 'state: <b>' + state + '</b>' : '');
+        note.textContent = 'Redirect verso: ' + dest;
+
+        // Auto-redirect dopo 2s
+        setTimeout(function() { window.location.replace(dest); }, 2000);
+
       } else if (err) {
         sessionStorage.setItem('_ficOAuthError', desc || err);
         msg.innerHTML = '<span class="err">✗ Errore FiC</span>';
-        dbg.innerHTML = 'error: <b>' + err + '</b>' + (desc ? '<br>description: ' + desc : '');
+        dbg.innerHTML =
+          'error: <b>' + err + '</b>' +
+          (desc ? '<br>description: <b>' + desc + '</b>' : '') +
+          (state ? '<br>state: <b>' + state + '</b>' : '') +
+          '<br><br>URL completo:<br>' + window.location.href;
       } else {
-        msg.innerHTML = '<span class="err">⚠ Nessun parametro</span>';
-        dbg.innerHTML = 'URL ricevuto: ' + window.location.href;
+        msg.innerHTML = '<span class="warn">⚠ Nessun parametro ricevuto</span>';
+        dbg.innerHTML = 'URL completo:<br>' + window.location.href;
       }
-
-      setTimeout(function() {
-        window.location.replace('https://ormiaofficina.netlify.app/ormia-finance');
-      }, 3000);
     })();
   </script>
 </body>

@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FiC OAuth2 — Test</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0f172a;
+      --surface: #1e293b;
+      --border:  #334155;
+      --text:    #f1f5f9;
+      --text2:   #94a3b8;
+      --text3:   #64748b;
+      --accent:  #6366f1;
+      --success: #22c55e;
+      --danger:  #ef4444;
+      --warn:    #f59e0b;
+      --mono:    'DM Mono', 'Fira Code', monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+      padding: 32px 16px;
+    }
+
+    .page { max-width: 780px; margin: 0 auto; }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .subtitle { color: var(--text3); font-size: 13px; margin-bottom: 32px; }
+
+    /* Steps */
+    .step {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 16px;
+      overflow: hidden;
+      transition: border-color .2s;
+    }
+    .step.active   { border-color: var(--accent); }
+    .step.done     { border-color: var(--success); opacity: .85; }
+    .step.error    { border-color: var(--danger); }
+    .step.disabled { opacity: .4; pointer-events: none; }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .step-num {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; flex-shrink: 0;
+    }
+    .step.active  .step-num { background: var(--accent); color: #fff; }
+    .step.done    .step-num { background: var(--success); color: #fff; }
+    .step.error   .step-num { background: var(--danger);  color: #fff; }
+    .step-title { font-weight: 600; font-size: 15px; }
+    .step-badge {
+      margin-left: auto;
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--text3);
+      padding: 2px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+    .step.done .step-badge   { color: var(--success); border-color: var(--success); }
+    .step.active .step-badge { color: var(--accent);  border-color: var(--accent); }
+    .step.error .step-badge  { color: var(--danger);  border-color: var(--danger); }
+
+    .step-body { padding: 0 20px 20px; border-top: 1px solid var(--border); }
+
+    /* Form elements */
+    label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px; margin-top: 14px; }
+    input, textarea, select {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 13px;
+      padding: 9px 12px;
+      outline: none;
+      transition: border-color .15s;
+    }
+    input:focus, textarea:focus { border-color: var(--accent); }
+    input[type="password"] { font-family: var(--mono); letter-spacing: .1em; }
+    textarea { font-family: var(--mono); resize: vertical; min-height: 80px; }
+
+    .scope-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .scope-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 7px 10px;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: var(--mono);
+      color: var(--text2);
+      transition: border-color .15s, color .15s;
+    }
+    .scope-item input[type="checkbox"] {
+      width: auto; padding: 0;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .scope-item:has(input:checked) {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: opacity .15s, transform .1s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-primary  { background: var(--accent);  color: #fff; }
+    .btn-success  { background: var(--success); color: #fff; }
+    .btn-outline  { background: transparent; color: var(--text2); border: 1px solid var(--border); }
+    .btn-danger   { background: var(--danger);  color: #fff; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+    .btn-row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+
+    /* Code / result */
+    .code-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text2);
+      word-break: break-all;
+      line-height: 1.6;
+      margin-top: 8px;
+      max-height: 320px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      font-size: 13px;
+    }
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--text3);
+      flex-shrink: 0;
+    }
+    .dot.green  { background: var(--success); }
+    .dot.red    { background: var(--danger); }
+    .dot.yellow { background: var(--warn); }
+    .dot.blue   { background: var(--accent); }
+
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: var(--mono);
+    }
+    .pill-green  { background: rgba(34,197,94,.15);  color: var(--success); }
+    .pill-red    { background: rgba(239,68,68,.15);  color: var(--danger); }
+    .pill-blue   { background: rgba(99,102,241,.15); color: var(--accent); }
+    .pill-yellow { background: rgba(245,158,11,.15); color: var(--warn); }
+
+    .token-preview {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      margin-top: 10px;
+    }
+    .token-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+    }
+    .token-row:last-child { border-bottom: none; }
+    .token-key   { color: var(--text3); font-family: var(--mono); }
+    .token-value { color: var(--text);  font-family: var(--mono); font-size: 11px; text-align:right; max-width:60%; word-break:break-all; }
+
+    .company-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-top: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: border-color .15s;
+    }
+    .company-card:hover { border-color: var(--accent); }
+    .company-card.selected { border-color: var(--success); }
+    .company-name { font-weight: 600; font-size: 14px; }
+    .company-id   { font-family: var(--mono); font-size: 11px; color: var(--text3); }
+
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .alert {
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-top: 12px;
+    }
+    .alert-info    { background: rgba(99,102,241,.12); border: 1px solid rgba(99,102,241,.3); color: var(--accent); }
+    .alert-success { background: rgba(34,197,94,.12);  border: 1px solid rgba(34,197,94,.3);  color: var(--success); }
+    .alert-error   { background: rgba(239,68,68,.12);  border: 1px solid rgba(239,68,68,.3);  color: var(--danger); }
+    .alert-warn    { background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.3); color: var(--warn); }
+
+    .divider { height: 1px; background: var(--border); margin: 14px 0; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <h1>🔐 FiC OAuth2 — Test</h1>
+  <p class="subtitle">Pagina di test per il flusso OAuth2 di Fatture in Cloud. I dati sono salvati solo in localStorage.</p>
+
+  <!-- ─── STEP 1: Configurazione ─── -->
+  <div class="step active" id="step1">
+    <div class="step-header" onclick="toggleStep('step1')">
+      <div class="step-num">1</div>
+      <div class="step-title">Configurazione</div>
+      <div class="step-badge" id="badge1">da configurare</div>
+    </div>
+    <div class="step-body">
+      <label>Client ID</label>
+      <input type="text" id="cfg-client-id" placeholder="0Xo9XEyBPWyihZzdEG2seVnFCnjknxc4"
+             style="font-family:var(--mono);font-size:12px">
+
+      <label>Client Secret <span style="color:var(--text3);font-weight:400">(salvato solo in localStorage, mai nel codice)</span></label>
+      <input type="password" id="cfg-client-secret" placeholder="Il tuo client secret FiC"
+             style="font-family:var(--mono);font-size:12px">
+
+      <label>Redirect URI</label>
+      <input type="text" id="cfg-redirect-uri" value="https://ormiaofficina.netlify.app/fic-callback"
+             style="font-family:var(--mono);font-size:12px">
+
+      <label>Scope — seleziona le autorizzazioni</label>
+      <div class="scope-grid">
+        <label class="scope-item">
+          <input type="checkbox" name="scope" value="situation:r" checked>
+          situation:r
+        </label>
+        <label class="scope-item">
+          <input type="checkbox" name="scope" value="entity.clients:r" checked>
+          entity.clients:r
+        </label>
+        <label class="scope-item">
+          <input type="checkbox" name="scope" value="entity.clients:a">
+          entity.clients:a
+        </label>
+        <label class="scope-item">
+          <input type="checkbox" name="scope" value="entity.suppliers:r">
+          entity.suppliers:r
+        </label>
+        <label class="scope-item">
+          <input type="checkbox" name="scope" value="issued_documents.invoices:r" checked>
+          issued_documents.invoices:r
+        </label>
+        <label class="scope-item">
+          <input type="checkbox" name="scope" value="issued_documents.invoices:a">
+          issued_documents.invoices:a
+        </label>
+        <label class="scope-item">
+          <input type="checkbox" name="scope" value="issued_documents.credit_notes:r">
+          issued_documents.credit_notes:r
+        </label>
+        <label class="scope-item">
+          <input type="checkbox" name="scope" value="issued_documents.quotes:r">
+          issued_documents.quotes:r
+        </label>
+        <label class="scope-item">
+          <input type="checkbox" name="scope" value="received_documents:r" checked>
+          received_documents:r
+        </label>
+        <label class="scope-item">
+          <input type="checkbox" name="scope" value="cashbook:r">
+          cashbook:r
+        </label>
+        <label class="scope-item">
+          <input type="checkbox" name="scope" value="receipts:r">
+          receipts:r
+        </label>
+        <label class="scope-item">
+          <input type="checkbox" name="scope" value="settings:r">
+          settings:r
+        </label>
+      </div>
+
+      <label>Scope selezionati (anteprima)</label>
+      <div class="code-box" id="scope-preview" style="min-height:auto;padding:8px 12px"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="salvaConfig()">Salva configurazione</button>
+        <button class="btn btn-outline btn-sm" onclick="resetTutto()">Reset completo</button>
+      </div>
+      <div id="cfg-status" class="status-row" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- ─── STEP 2: Autorizza ─── -->
+  <div class="step disabled" id="step2">
+    <div class="step-header" onclick="toggleStep('step2')">
+      <div class="step-num">2</div>
+      <div class="step-title">Autorizza con FiC</div>
+      <div class="step-badge" id="badge2">in attesa</div>
+    </div>
+    <div class="step-body">
+      <div class="alert alert-info">
+        Cliccando "Autorizza" verrai reindirizzato al portale FiC. Dopo aver accettato le autorizzazioni,
+        tornerai automaticamente su questa pagina con il codice OAuth.
+      </div>
+
+      <label>URL di autorizzazione (generato automaticamente)</label>
+      <div class="code-box" id="auth-url-preview" style="min-height:auto;font-size:11px;padding:8px 12px;word-break:break-all"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="avviaOAuth()" id="btn-autorizza">
+          🔐 Autorizza con FiC
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="aggiornaUrlPreview()">Aggiorna anteprima URL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── STEP 3: Scambia codice ─── -->
+  <div class="step disabled" id="step3">
+    <div class="step-header" onclick="toggleStep('step3')">
+      <div class="step-num">3</div>
+      <div class="step-title">Scambia codice → Token</div>
+      <div class="step-badge" id="badge3">in attesa</div>
+    </div>
+    <div class="step-body">
+      <div class="alert alert-info" id="code-alert">
+        Dopo l'autorizzazione il codice apparirà automaticamente qui.
+        Puoi anche incollarlo manualmente.
+      </div>
+
+      <label>Codice OAuth (dal callback)</label>
+      <textarea id="auth-code" rows="3" placeholder="Incolla il codice OAuth qui...
+Il codice inizia con 'c/' ed è valido per 60 secondi."></textarea>
+
+      <div class="btn-row">
+        <button class="btn btn-success" onclick="scambiaCode()" id="btn-scambia">
+          ⚡ Scambia codice → Token
+        </button>
+      </div>
+      <div id="exchange-status" class="status-row" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- ─── STEP 4: Token ─── -->
+  <div class="step disabled" id="step4">
+    <div class="step-header" onclick="toggleStep('step4')">
+      <div class="step-num">4</div>
+      <div class="step-title">Token ottenuto</div>
+      <div class="step-badge" id="badge4">in attesa</div>
+    </div>
+    <div class="step-body">
+      <div class="token-preview" id="token-preview">
+        <!-- populated by JS -->
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="getCompanies()" id="btn-companies">
+          🏢 Recupera Companies
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── STEP 5: Companies ─── -->
+  <div class="step disabled" id="step5">
+    <div class="step-header" onclick="toggleStep('step5')">
+      <div class="step-num">5</div>
+      <div class="step-title">Seleziona Company</div>
+      <div class="step-badge" id="badge5">in attesa</div>
+    </div>
+    <div class="step-body">
+      <div id="companies-list">
+        <!-- populated by JS -->
+      </div>
+      <div id="selected-company-info" style="margin-top:12px;display:none">
+        <div class="status-row">
+          <div class="dot green"></div>
+          <span id="selected-company-text" style="color:var(--success)"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── STEP 6: Test API ─── -->
+  <div class="step disabled" id="step6">
+    <div class="step-header" onclick="toggleStep('step6')">
+      <div class="step-num">6</div>
+      <div class="step-title">Test API</div>
+      <div class="step-badge" id="badge6">in attesa</div>
+    </div>
+    <div class="step-body">
+      <label>Endpoint da chiamare</label>
+      <select id="test-endpoint">
+        <option value="/issued_documents?type=invoice&per_page=5">Fatture emesse (ultime 5)</option>
+        <option value="/issued_documents?type=credit_note&per_page=5">Note credito (ultime 5)</option>
+        <option value="/issued_documents?type=quote&per_page=5">Preventivi (ultimi 5)</option>
+        <option value="/received_documents?per_page=5">Documenti ricevuti (ultimi 5)</option>
+        <option value="/entities/clients?per_page=5">Clienti (primi 5)</option>
+        <option value="/entities/suppliers?per_page=5">Fornitori (primi 5)</option>
+        <option value="/cashbook?per_page=5">Prima nota (ultimi 5)</option>
+        <option value="/settings/payment_methods">Metodi di pagamento</option>
+        <option value="/settings/payment_accounts">Conti di pagamento</option>
+        <option value="custom">→ Personalizzato…</option>
+      </select>
+
+      <div id="custom-endpoint-wrap" style="display:none">
+        <label>Path personalizzato (es. /issued_documents/123)</label>
+        <input type="text" id="custom-endpoint" placeholder="/issued_documents/123"
+               style="font-family:var(--mono);font-size:12px">
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="testApi()" id="btn-test">
+          ▶ Esegui chiamata
+        </button>
+      </div>
+
+      <div id="api-status" class="status-row" style="display:none"></div>
+      <div class="code-box" id="api-result" style="display:none"></div>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+// ─── State ───
+var _cfg   = null;  // {client_id, client_secret, redirect_uri, scope[]}
+var _token = null;  // {access_token, refresh_token, token_type, expires_in}
+var _companyId = null;
+
+var FIC_AUTH_URL  = 'https://api-v2.fattureincloud.it/oauth/authorize';
+var NETLIFY_TOKEN = '/.netlify/functions/fic-token';
+var NETLIFY_API   = '/.netlify/functions/fic-api';
+
+// ─── Init ───
+(function init() {
+  // Carica config da localStorage
+  try {
+    var saved = localStorage.getItem('ormia_fic_test_config');
+    if (saved) {
+      _cfg = JSON.parse(saved);
+      riempiForm();
+    }
+  } catch(e) {}
+
+  // Carica token da localStorage
+  try {
+    var tok = localStorage.getItem('ormia_fic_test_token');
+    if (tok) {
+      _token = JSON.parse(tok);
+      mostraToken();
+    }
+  } catch(e) {}
+
+  // Controlla se c'è un codice pendente (da sessionStorage dopo callback)
+  var pendingCode = sessionStorage.getItem('_ficPendingCode');
+  var oauthErr    = sessionStorage.getItem('_ficOAuthError');
+
+  if (pendingCode) {
+    sessionStorage.removeItem('_ficPendingCode');
+    sessionStorage.removeItem('_ficOAuthState');
+    document.getElementById('auth-code').value = pendingCode;
+    // Evidenzia step 3
+    attivaStep('step3', 'codice ricevuto ✓');
+    document.getElementById('code-alert').className = 'alert alert-success';
+    document.getElementById('code-alert').textContent =
+      '✓ Codice OAuth ricevuto dal callback. Clicca "Scambia codice" per ottenere il token.';
+  } else if (oauthErr) {
+    sessionStorage.removeItem('_ficOAuthError');
+    attivaStep('step3', 'errore callback');
+    setStep('step3', 'error');
+    document.getElementById('code-alert').className = 'alert alert-error';
+    document.getElementById('code-alert').textContent = '✗ Errore FiC: ' + oauthErr;
+  }
+
+  // Se c'è già un token, mostrine lo stato
+  if (_token && _token.access_token) {
+    setStep('step1', 'done'); setBadge('badge1', 'salvato ✓');
+    setStep('step2', 'done'); setBadge('badge2', 'completato ✓');
+    setStep('step3', 'done'); setBadge('badge3', 'completato ✓');
+    setStep('step4', 'active'); setBadge('badge4', 'token attivo');
+    setStep('step5', 'active');
+    setStep('step6', 'active');
+  } else if (_cfg) {
+    setStep('step1', 'done'); setBadge('badge1', 'salvato ✓');
+    setStep('step2', 'active'); setBadge('badge2', 'pronto');
+    setStep('step3', 'active');
+    aggiornaUrlPreview();
+  }
+
+  // Aggiorna scope preview
+  aggiornaScopes();
+  document.querySelectorAll('input[name="scope"]').forEach(function(cb) {
+    cb.addEventListener('change', aggiornaScopes);
+  });
+
+  // Custom endpoint select
+  document.getElementById('test-endpoint').addEventListener('change', function() {
+    var wrap = document.getElementById('custom-endpoint-wrap');
+    wrap.style.display = this.value === 'custom' ? 'block' : 'none';
+  });
+})();
+
+// ─── Scope helpers ───
+function getScopes() {
+  return Array.from(document.querySelectorAll('input[name="scope"]:checked'))
+    .map(function(cb) { return cb.value; });
+}
+
+function aggiornaScopes() {
+  var scopes = getScopes();
+  document.getElementById('scope-preview').textContent =
+    scopes.length ? scopes.join(' ') : '— nessuno scope selezionato —';
+  aggiornaUrlPreview();
+}
+
+// ─── Form helpers ───
+function riempiForm() {
+  if (!_cfg) return;
+  var set = function(id, val) {
+    var el = document.getElementById(id);
+    if (el && val !== undefined) el.value = val;
+  };
+  set('cfg-client-id',     _cfg.client_id     || '');
+  set('cfg-client-secret', _cfg.client_secret || '');
+  set('cfg-redirect-uri',  _cfg.redirect_uri  || 'https://ormiaofficina.netlify.app/fic-callback');
+
+  // Ripristina scope selezionati
+  if (_cfg.scopes && _cfg.scopes.length) {
+    document.querySelectorAll('input[name="scope"]').forEach(function(cb) {
+      cb.checked = _cfg.scopes.indexOf(cb.value) !== -1;
+    });
+    aggiornaScopes();
+  }
+}
+
+// ─── Step UI helpers ───
+function setStep(id, cls) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'step ' + (cls || '');
+}
+function setBadge(id, text) {
+  var el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+function attivaStep(id, badge) {
+  setStep(id, 'active');
+  if (badge) {
+    var step = id.replace('step', '');
+    setBadge('badge' + step, badge);
+  }
+}
+function toggleStep(id) {
+  var body = document.querySelector('#' + id + ' .step-body');
+  if (!body) return;
+  body.style.display = (body.style.display === 'none') ? '' : 'none';
+}
+
+function showStatus(elId, ok, msg) {
+  var el = document.getElementById(elId);
+  if (!el) return;
+  el.style.display = 'flex';
+  el.innerHTML =
+    '<div class="dot ' + (ok ? 'green' : 'red') + '"></div>' +
+    '<span style="color:' + (ok ? 'var(--success)' : 'var(--danger)') + '">' + msg + '</span>';
+}
+
+// ─── STEP 1: Salva config ───
+function salvaConfig() {
+  var client_id     = document.getElementById('cfg-client-id').value.trim();
+  var client_secret = document.getElementById('cfg-client-secret').value.trim();
+  var redirect_uri  = document.getElementById('cfg-redirect-uri').value.trim();
+  var scopes        = getScopes();
+
+  if (!client_id)     { showStatus('cfg-status', false, 'Client ID obbligatorio'); return; }
+  if (!client_secret) { showStatus('cfg-status', false, 'Client Secret obbligatorio'); return; }
+  if (!redirect_uri)  { showStatus('cfg-status', false, 'Redirect URI obbligatorio'); return; }
+  if (!scopes.length) { showStatus('cfg-status', false, 'Seleziona almeno uno scope'); return; }
+
+  _cfg = { client_id: client_id, client_secret: client_secret,
+           redirect_uri: redirect_uri, scopes: scopes };
+  localStorage.setItem('ormia_fic_test_config', JSON.stringify(_cfg));
+
+  setStep('step1', 'done'); setBadge('badge1', 'salvato ✓');
+  setStep('step2', 'active'); setBadge('badge2', 'pronto');
+  setStep('step3', 'active');
+  showStatus('cfg-status', true, 'Configurazione salvata in localStorage ✓');
+  aggiornaUrlPreview();
+}
+
+// ─── STEP 2: URL preview + OAuth ───
+function aggiornaUrlPreview() {
+  if (!_cfg && !document.getElementById('cfg-client-id').value.trim()) return;
+  var client_id    = (_cfg && _cfg.client_id)    || document.getElementById('cfg-client-id').value.trim();
+  var redirect_uri = (_cfg && _cfg.redirect_uri) || document.getElementById('cfg-redirect-uri').value.trim();
+  var scopes       = getScopes();
+  if (!client_id || !redirect_uri || !scopes.length) return;
+
+  var params = new URLSearchParams({
+    response_type: 'code',
+    client_id:     client_id,
+    redirect_uri:  redirect_uri,
+    scope:         scopes.join(' '),
+    state:         'fic-test',
+  });
+  var url = FIC_AUTH_URL + '?' + params.toString();
+  document.getElementById('auth-url-preview').textContent = url;
+  return url;
+}
+
+function avviaOAuth() {
+  if (!_cfg) { alert('Prima salva la configurazione (Step 1)'); return; }
+  var url = aggiornaUrlPreview();
+  if (!url) { alert('Configurazione incompleta'); return; }
+  setStep('step2', 'active'); setBadge('badge2', 'in attesa FiC…');
+  window.location.href = url;
+}
+
+// ─── STEP 3: Scambia codice ───
+async function scambiaCode() {
+  var code = document.getElementById('auth-code').value.trim();
+  if (!code) { showStatus('exchange-status', false, 'Inserisci il codice OAuth'); return; }
+  if (!_cfg) { showStatus('exchange-status', false, 'Configura client_id e client_secret (Step 1)'); return; }
+
+  var btn = document.getElementById('btn-scambia');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Scambio in corso…';
+  showStatus('exchange-status', true, 'Chiamata a Netlify function…');
+
+  try {
+    var res = await fetch(NETLIFY_TOKEN, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code:          code,
+        client_id:     _cfg.client_id,
+        client_secret: _cfg.client_secret,
+        redirect_uri:  _cfg.redirect_uri,
+        grant_type:    'authorization_code',
+      }),
+    });
+
+    var data = await res.json();
+
+    if (!res.ok || data.error) {
+      var errMsg = data.error_description || data.error || ('HTTP ' + res.status);
+      showStatus('exchange-status', false, 'Errore: ' + errMsg);
+      setStep('step3', 'error'); setBadge('badge3', 'errore');
+      return;
+    }
+
+    // Successo
+    _token = data;
+    localStorage.setItem('ormia_fic_test_token', JSON.stringify(_token));
+
+    setStep('step3', 'done'); setBadge('badge3', 'completato ✓');
+    setStep('step4', 'active'); setBadge('badge4', 'token attivo');
+    setStep('step5', 'active');
+    setStep('step6', 'active');
+    showStatus('exchange-status', true, 'Token ottenuto! Access token salvato in localStorage.');
+    mostraToken();
+
+  } catch(e) {
+    showStatus('exchange-status', false, 'Errore rete: ' + e.message);
+    setStep('step3', 'error'); setBadge('badge3', 'errore');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⚡ Scambia codice → Token';
+  }
+}
+
+// ─── STEP 4: Mostra token ───
+function mostraToken() {
+  if (!_token) return;
+  var el = document.getElementById('token-preview');
+  var tok = _token.access_token || '';
+  var masked = tok.length > 16
+    ? tok.substring(0, 8) + '…' + tok.substring(tok.length - 8)
+    : tok;
+
+  el.innerHTML =
+    row('token_type',   _token.token_type || 'Bearer') +
+    row('access_token', masked) +
+    row('prefix',       tok.startsWith('a/') ? '✓ a/ (Access Token)' : tok.startsWith('c/') ? '⚠ c/ (Authorization Code — scaduto!)' : '? prefisso sconosciuto') +
+    row('expires_in',   _token.expires_in ? formatSeconds(_token.expires_in) : '—') +
+    row('refresh_token',_token.refresh_token ? _token.refresh_token.substring(0,12) + '…' : '—') +
+    row('scope',        _token.scope || '—');
+
+  setStep('step4', 'active'); setBadge('badge4', 'token attivo ✓');
+}
+
+function row(k, v) {
+  return '<div class="token-row">' +
+    '<span class="token-key">' + k + '</span>' +
+    '<span class="token-value">' + v + '</span>' +
+    '</div>';
+}
+
+function formatSeconds(s) {
+  if (s >= 86400) return (s/86400|0) + ' giorni';
+  if (s >= 3600)  return (s/3600|0) + ' ore';
+  return s + ' secondi';
+}
+
+// ─── STEP 5: Companies ───
+async function getCompanies() {
+  if (!_token) { alert('Prima ottieni il token (Step 3)'); return; }
+  var btn = document.getElementById('btn-companies');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Caricamento…';
+
+  try {
+    var res = await ficFetch('/user/companies');
+    var companies = res.data || [];
+    var listEl = document.getElementById('companies-list');
+
+    if (!companies.length) {
+      listEl.innerHTML = '<div class="alert alert-warn">Nessuna company trovata</div>';
+      return;
+    }
+
+    listEl.innerHTML = '<p style="font-size:12px;color:var(--text3);margin-bottom:8px">' +
+      'Clicca su una company per selezionarla come target delle chiamate API:</p>';
+
+    companies.forEach(function(c) {
+      var card = document.createElement('div');
+      card.className = 'company-card';
+      card.innerHTML =
+        '<div>' +
+          '<div class="company-name">' + (c.name || 'Senza nome') + '</div>' +
+          '<div class="company-id">ID: ' + c.id + ' · ' + (c.type || '') + '</div>' +
+        '</div>' +
+        '<span class="pill pill-blue">seleziona</span>';
+      card.onclick = function() {
+        document.querySelectorAll('.company-card').forEach(function(el) {
+          el.className = 'company-card';
+          el.querySelector('.pill').textContent = 'seleziona';
+          el.querySelector('.pill').className = 'pill pill-blue';
+        });
+        card.className = 'company-card selected';
+        card.querySelector('.pill').textContent = '✓ selezionata';
+        card.querySelector('.pill').className = 'pill pill-green';
+        _companyId = c.id;
+        var info = document.getElementById('selected-company-info');
+        info.style.display = 'block';
+        document.getElementById('selected-company-text').textContent =
+          'Company selezionata: ' + c.name + ' (ID: ' + c.id + ')';
+        setStep('step5', 'done'); setBadge('badge5', c.name + ' ✓');
+        setStep('step6', 'active'); setBadge('badge6', 'pronto');
+      };
+      listEl.appendChild(card);
+    });
+
+  } catch(e) {
+    document.getElementById('companies-list').innerHTML =
+      '<div class="alert alert-error">✗ Errore: ' + e.message + '</div>';
+    setStep('step5', 'error'); setBadge('badge5', 'errore');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🏢 Recupera Companies';
+  }
+}
+
+// ─── STEP 6: Test API ───
+async function testApi() {
+  if (!_token) { alert('Prima ottieni il token (Step 3)'); return; }
+  if (!_companyId) { alert('Prima seleziona una company (Step 5)'); return; }
+
+  var sel = document.getElementById('test-endpoint').value;
+  var path = sel === 'custom'
+    ? document.getElementById('custom-endpoint').value.trim()
+    : sel;
+
+  if (!path) { alert('Inserisci il path endpoint'); return; }
+
+  var btn = document.getElementById('btn-test');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Chiamata in corso…';
+
+  var statusEl = document.getElementById('api-status');
+  var resultEl = document.getElementById('api-result');
+  statusEl.style.display = 'none';
+  resultEl.style.display = 'none';
+
+  try {
+    var fullPath = '/c/' + _companyId + path;
+    var data = await ficFetch(fullPath);
+
+    statusEl.style.display = 'flex';
+    statusEl.innerHTML =
+      '<div class="dot green"></div>' +
+      '<span style="color:var(--success)">✓ Risposta ricevuta — path: ' + fullPath + '</span>';
+
+    resultEl.style.display = 'block';
+    resultEl.textContent = JSON.stringify(data, null, 2);
+
+    setStep('step6', 'done'); setBadge('badge6', 'successo ✓');
+
+  } catch(e) {
+    statusEl.style.display = 'flex';
+    statusEl.innerHTML =
+      '<div class="dot red"></div>' +
+      '<span style="color:var(--danger)">✗ Errore: ' + e.message + '</span>';
+    resultEl.style.display = 'block';
+    resultEl.textContent = e.message;
+    setStep('step6', 'error'); setBadge('badge6', 'errore');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ Esegui chiamata';
+  }
+}
+
+// ─── ficFetch — chiama via proxy Netlify ───
+async function ficFetch(path, opts) {
+  opts = opts || {};
+  if (!_token || !_token.access_token) throw new Error('Token non disponibile');
+
+  var res = await fetch(NETLIFY_API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      token:   _token.access_token,
+      path:    path,
+      method:  opts.method  || 'GET',
+      payload: opts.payload || undefined,
+    }),
+  });
+
+  var data = await res.json();
+
+  if (!res.ok) {
+    var msg = (data.error && data.error.message) || data.message || data.error || ('HTTP ' + res.status);
+    throw new Error(msg);
+  }
+
+  return data;
+}
+
+// ─── Reset ───
+function resetTutto() {
+  if (!confirm('Cancella configurazione e token salvati?')) return;
+  localStorage.removeItem('ormia_fic_test_config');
+  localStorage.removeItem('ormia_fic_test_token');
+  sessionStorage.removeItem('_ficPendingCode');
+  sessionStorage.removeItem('_ficOAuthError');
+  _cfg = null; _token = null; _companyId = null;
+  window.location.reload();
+}
+</script>
+</body>
+</html>
