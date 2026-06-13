@@ -554,22 +554,6 @@ tr:hover td { background:var(--surface2); }
                   Autorizza FiC
                 </button>
               </div>
-              <div id="fic-auth-step2" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px">
-                <div style="font-size:12px;font-weight:700;margin-bottom:6px">📋 Completa l'autorizzazione</div>
-                <div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.7">
-                  1. Si è aperta la pagina di login FiC — accedi e autorizza ORMIA<br>
-                  2. Dopo aver autorizzato, copia l'URL completo della pagina di redirect<br>
-                  3. Incollalo qui sotto (o solo il valore del parametro <code>?code=</code>)
-                </div>
-                <div class="form-group" style="margin-bottom:8px">
-                  <input type="text" id="fic-auth-code" placeholder="Incolla URL di redirect o codice…" style="font-size:12px;font-family:'DM Mono',monospace">
-                </div>
-                <div style="display:flex;gap:8px">
-                  <button class="btn btn-success btn-sm" onclick="completaAutorizzazioneFIC()">✓ Completa</button>
-                  <button class="btn btn-ghost btn-sm" onclick="document.getElementById('fic-auth-step2').style.display='none'">Annulla</button>
-                </div>
-                <div id="fic-auth-result" style="margin-top:10px;font-size:12px;display:none"></div>
-              </div>
             </div>
           </div><!-- /config card -->
 
@@ -681,12 +665,12 @@ let _sumupToken  = JSON.parse(localStorage.getItem('ormia_sumup_token') ||'null'
 let _sumupPoll   = null;
 let _ficConfig   = JSON.parse(localStorage.getItem('ormia_fic_config')||'{}');
 let _ficToken    = JSON.parse(localStorage.getItem('ormia_fic_token') ||'null');
-      (function(){
-    var p=new URLSearchParams(window.location.search);
-    if(p.get('state')==='fic'){
-      if(p.get('code')){window._ficPendingCode=p.get('code');}
-      else if(p.get('error')){window._ficOAuthError=p.get('error_description')||p.get('error');}
-      window.history.replaceState({},'',window.location.pathname);
+  (function(){
+    var p = new URLSearchParams(window.location.search);
+    if(p.get('state') === 'fic') {
+      if(p.get('code'))  window._ficPendingCode = p.get('code');
+      if(p.get('error')) window._ficOAuthError  = p.get('error_description') || p.get('error');
+      window.history.replaceState({}, '', window.location.pathname);
     }
   })();
 let _ficPolling  = null;
@@ -722,7 +706,7 @@ async function showApp() {
   document.getElementById('fin-user-name').textContent = currentUser?.email||'—';
   await loadAll();
   setSection('dashboard');
-  // FiC OAuth2 callback
+  // OAuth2 FiC callback
   if(window._ficOAuthError){showToastFin('Errore FiC: '+window._ficOAuthError);window._ficOAuthError=null;}
   if(window._ficPendingCode){var _c=window._ficPendingCode;window._ficPendingCode=null;setSection('integrazioni');showToastFin('Autorizzazione FiC in corso...');scambiaCodiceFIC(_c).then(function(){showToastFin('FiC autorizzato!');checkIntegrazioni();updateFicTokenStatus();}).catch(function(e){showToastFin('Errore FiC: '+e.message);});}
   checkIntegrazioni();
@@ -1454,53 +1438,48 @@ async function getFicAccessToken() {
 }
 
 async function _refreshFicToken() {
-    const res = await fetch(FIC_TOKEN_URL, {
+    return fetch(FIC_TOKEN_URL, {
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({grant_type:'refresh_token',client_id:_ficConfig.client_id,client_secret:_ficConfig.client_secret,refresh_token:_ficToken.refresh_token}),
-    });
-    if(!res.ok){_ficToken=null;localStorage.removeItem('ormia_fic_token');throw new Error('Refresh token scaduto');}
-    const d=await res.json(); _saveFicToken(d); return d.access_token;
+    }).then(function(r){
+      if(!r.ok){_ficToken=null;localStorage.removeItem('ormia_fic_token');throw new Error('Refresh token scaduto');}
+      return r.json();
+    }).then(function(d){_saveFicToken(d);return d.access_token;});
   }
 
 async function scambiaCodiceFIC(code) {
-    const redirectUri='https://ormiaofficina.netlify.app/ORMIA-finance.html';
-    const res=await fetch(FIC_TOKEN_URL, {
+    return fetch(FIC_TOKEN_URL, {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({grant_type:'authorization_code',client_id:_ficConfig.client_id,client_secret:_ficConfig.client_secret,redirect_uri:redirectUri,code}),
-    });
-    if(!res.ok){const err=await res.json().catch(function(){return{};});throw new Error(err.error_description||err.error||'Errore '+res.status);}
-    _saveFicToken(await res.json());
+      body:JSON.stringify({grant_type:'authorization_code',client_id:_ficConfig.client_id,client_secret:_ficConfig.client_secret,redirect_uri:'https://ormiaofficina.netlify.app/ORMIA-finance.html',code:code}),
+    }).then(function(r){
+      if(!r.ok){return r.json().catch(function(){return{};}).then(function(e){throw new Error(e.error_description||e.error||'Errore '+r.status);});}
+      return r.json();
+    }).then(function(d){_saveFicToken(d);});
   }
 
 function autorizzaFIC() {
-    if(!_ficConfig.client_id){alert('Salva prima la configurazione FiC.');return;}
-    if(!_ficConfig.company_id){alert('Inserisci il Company ID FiC e salva prima di autorizzare.');return;}
-    var cid=_ficConfig.company_id;
-    var scopes=['c:'+cid+':issued_documents:r','c:'+cid+':issued_documents:a','c:'+cid+':issued_documents:e','c:'+cid+':issued_documents:d'].join(';');
-    var authUrl='https://api-v2.fattureincloud.it/oauth/authorize'
-      +'?response_type=code'
-      +'&client_id='+encodeURIComponent(_ficConfig.client_id)
-      +'&redirect_uri='+encodeURIComponent('https://ormiaofficina.netlify.app/ORMIA-finance.html')
-      +'&scope='+encodeURIComponent(scopes)
-      +'&state=fic';
-    window.location.href=authUrl;
+    try {
+      var cfg = _ficConfig || {};
+      if(!cfg.client_id){alert('Compila e salva prima Client ID e Client Secret FiC.');return;}
+      if(!cfg.company_id){alert('Inserisci il Company ID FiC e salva.');return;}
+      var cid = String(cfg.company_id);
+      var scope = ['c:'+cid+':issued_documents:r',
+                   'c:'+cid+':issued_documents:a',
+                   'c:'+cid+':issued_documents:e',
+                   'c:'+cid+':issued_documents:d'].join(';');
+      var url = 'https://api-v2.fattureincloud.it/oauth/authorize'
+               +'?response_type=code'
+               +'&client_id='+encodeURIComponent(cfg.client_id)
+               +'&redirect_uri='+encodeURIComponent('https://ormiaofficina.netlify.app/ORMIA-finance.html')
+               +'&scope='+encodeURIComponent(scope)
+               +'&state=fic';
+      window.location.href = url;
+    } catch(err) {
+      alert('Errore autorizzaFIC: '+err.message);
+    }
   }
 
-async function completaAutorizzazioneFIC() {
-  const input = document.getElementById('fic-auth-code').value.trim();
-  if (!input) { alert("Incolla l'URL di redirect o il codice."); return; }
-  let code = input;
-  try { const u = new URL(input); code = u.searchParams.get('code') || input; } catch(_) {}
-  const el = document.getElementById('fic-auth-result');
-  el.style.display = ''; el.innerHTML = '<span style="color:var(--text3)">Scambio codice…</span>';
-  try {
-    await scambiaCodiceFIC(code);
-    el.innerHTML = '<span style="color:var(--success)">✓ Autorizzazione completata — FiC collegato!</span>';
-    document.getElementById('fic-auth-step2').style.display = 'none';
-  } catch(e) {
-    el.innerHTML = `<span style="color:var(--danger)">✗ ${e.message}</span>`;
-  }
-}
+
 
 function updateFicTokenStatus() {
   const el = document.getElementById('fic-token-status');
@@ -1526,11 +1505,13 @@ function caricaFormSumUp() {
 }
 
 function caricaFormFIC() {
-    var set=function(id,val){var el=document.getElementById(id);if(el)el.value=val||'';};
-    set('fic-company-id',_ficConfig.company_id||'');
-    set('fic-client-id',_ficConfig.client_id||'');
-    set('fic-client-secret',_ficConfig.client_secret||'');
-    var panel=document.getElementById('fic-auth-panel');if(panel)panel.style.display=_ficConfig.client_id?'':'none';
+    var cfg = _ficConfig || {};
+    var set = function(id, v){var el=document.getElementById(id);if(el)el.value=v||'';};
+    set('fic-company-id',    cfg.company_id||'');
+    set('fic-client-id',     cfg.client_id||'');
+    set('fic-client-secret', cfg.client_secret||'');
+    var panel = document.getElementById('fic-auth-panel');
+    if(panel) panel.style.display = cfg.client_id ? '' : 'none';
     updateFicTokenStatus();
   }
 
@@ -1816,12 +1797,17 @@ function salvaSumUp() {
 }
 
 function salvaFIC() {
-    _ficConfig={company_id:document.getElementById('fic-company-id').value.trim(),client_id:document.getElementById('fic-client-id').value.trim(),client_secret:document.getElementById('fic-client-secret').value.trim()};
-    localStorage.setItem('ormia_fic_config',JSON.stringify(_ficConfig));
-    _ficToken=null;localStorage.removeItem('ormia_fic_token');
-    checkIntegrazioni();updateFicTokenStatus();
-    var panel=document.getElementById('fic-auth-panel');if(panel)panel.style.display=_ficConfig.client_id?'':'none';
-    showToastFin('Configurazione salvata - ora clicca Autorizza FiC');
+    _ficConfig = {
+      company_id:   (document.getElementById('fic-company-id')||{}).value||'',
+      client_id:    (document.getElementById('fic-client-id')||{}).value||'',
+      client_secret:(document.getElementById('fic-client-secret')||{}).value||'',
+    };
+    localStorage.setItem('ormia_fic_config', JSON.stringify(_ficConfig));
+    _ficToken = null; localStorage.removeItem('ormia_fic_token');
+    checkIntegrazioni(); updateFicTokenStatus();
+    var panel = document.getElementById('fic-auth-panel');
+    if(panel) panel.style.display = _ficConfig.client_id ? '' : 'none';
+    showToastFin('Configurazione salvata — ora clicca Autorizza FiC');
   }
 
 async function testSumUp() {
