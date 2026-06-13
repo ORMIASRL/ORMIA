@@ -452,19 +452,6 @@ tr:hover td { background:var(--surface2); }
                 <label>Client ID</label>
                 <input type="text" id="sumup-client-id" placeholder="cc_classic_…" style="font-family:'DM Mono',monospace;font-size:12px">
               </div>
-              <div class="form-group">
-                <label>Redirect URI</label>
-                <input type="text" id="sumup-redirect-uri" placeholder="https://ormiaofficina.netlify.app/ormia-finance" style="font-family:'DM Mono',monospace;font-size:12px">
-              </div>
-              <div class="form-group">
-                <label>Client Secret</label>
-                <input type="password" id="sumup-client-secret" placeholder="Client Secret">
-              </div>
-              <div class="form-group">
-                <label>Merchant Code <span style="font-weight:400;color:var(--text3)">(da profilo SumUp)</span></label>
-                <input type="text" id="sumup-merchant" placeholder="Es. MC12345678" style="font-family:'DM Mono',monospace">
-              </div>
-            </div>
             <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:16px">
               <button class="btn btn-success" onclick="salvaSumUp()">Salva configurazione</button>
             </div>
@@ -530,15 +517,6 @@ tr:hover td { background:var(--surface2); }
                 <label>Company ID</label>
                 <input type="text" id="fic-company-id" placeholder="Es. 12345" style="font-family:'DM Mono',monospace">
               </div>
-              <div class="form-group">
-                <label>Client ID</label>
-                <input type="text" id="fic-client-id" placeholder="Client ID" style="font-family:'DM Mono',monospace;font-size:12px">
-              </div>
-              <div class="form-group">
-                <label>Client Secret</label>
-                <input type="password" id="fic-client-secret" placeholder="Client Secret">
-              </div>
-            </div>
             <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:16px">
               <button class="btn btn-success" onclick="salvaFIC()">Salva configurazione</button>
             </div>
@@ -555,6 +533,7 @@ tr:hover td { background:var(--surface2); }
                 </button>
               </div>
               <div id="fic-auth-step2" style="display:none"></div>
+              </div>
             </div>
           </div><!-- /config card -->
 
@@ -1423,7 +1402,7 @@ function annullaPOS() {
 // ══════════════════════════════════════════════════
 
 const FIC_TOKEN_URL = '/.netlify/functions/fic-token';
-const FIC_AUTH_URL  = 'https://api-v2.fattureincloud.it/oauth/authorize';
+const FIC_AUTH_URL  = 'https://api.fattureincloud.it/v2/oauth/authorize';
 
 // ── Token management ─────────────────────────────
 function _saveFicToken(d) {
@@ -1478,7 +1457,7 @@ async function scambiaCodiceFIC(code) {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error_description || err.error || `Errore ${res.status}`);
+    throw new Error(err.error_description || err.error || 'Errore ' + res.status);
   }
   _saveFicToken(await res.json());
 }
@@ -1487,18 +1466,21 @@ function autorizzaFIC() {
   if (!_ficConfig.client_id) { alert('Salva prima la configurazione FiC.'); return; }
   if (!_ficConfig.company_id) { alert('Inserisci il Company ID FiC e salva prima di autorizzare.'); return; }
   const redirectUri = 'https://ormiaofficina.netlify.app/ORMIA-finance.html';
-  const scopes = 'issued_documents.invoices:r issued_documents.invoices:a issued_documents.credit_notes:r issued_documents.credit_notes:a situation:r';
-  const authUrl = `${FIC_AUTH_URL}?response_type=code`
-    + `&client_id=${encodeURIComponent(_ficConfig.client_id)}`
-    + `&redirect_uri=${encodeURIComponent(redirectUri)}`
-    + `&scope=${encodeURIComponent(scopes)}`
-    + `&state=fic`;
+  const cid = _ficConfig.company_id;
+  const scopes = [
+    'c:' + cid + ':issued_documents:r',
+    'c:' + cid + ':issued_documents:a',
+    'c:' + cid + ':issued_documents:e',
+    'c:' + cid + ':issued_documents:d',
+  ].join(';');
+  const authUrl = FIC_AUTH_URL + '?response_type=code'
+    + '&client_id=' + encodeURIComponent(_ficConfig.client_id)
+    + '&redirect_uri=' + encodeURIComponent(redirectUri)
+    + '&scope=' + encodeURIComponent(scopes)
+    + '&state=fic';
   window.location.href = authUrl;
 }
 
-async function completaAutorizzazioneFIC() {
-  const input = document.getElementById('fic-auth-code').value.trim();
-  if (!input) { alert("Incolla l'URL di redirect o il codice."); return; }
   let code = input;
   try { const u = new URL(input); code = u.searchParams.get('code') || input; } catch(_) {}
   const el = document.getElementById('fic-auth-result');
@@ -1536,10 +1518,16 @@ function caricaFormSumUp() {
 }
 
 function caricaFormFIC() {
-  const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+  set('fic-company-id',    _ficConfig.company_id   || '');
+  set('fic-client-id',     _ficConfig.client_id    || '');
+  set('fic-client-secret', _ficConfig.client_secret|| '');
+  const panel = document.getElementById('fic-auth-panel');
+  if (panel) panel.style.display = _ficConfig.client_id ? '' : 'none';
+  updateFicTokenStatus();
+};
   set('fic-company-id',   _ficConfig.company_id  || '');
   set('fic-client-id',    _ficConfig.client_id   || '');
-  set('fic-client-secret', _ficConfig.client_secret || '');
   const panel = document.getElementById('fic-auth-panel');
   if (panel) panel.style.display = _ficConfig.client_id ? '' : 'none';
   updateFicTokenStatus();
@@ -1548,7 +1536,7 @@ function caricaFormFIC() {
 // ── ficFetch con auto-refresh ─────────────────────
 async function ficFetch(path, opts = {}) {
   const token = await getFicAccessToken();
-  const url = 'https://api-v2.fattureincloud.it' + path;
+  const url = 'https://api.fattureincloud.it/v2' + path;
   const doReq = async (tok) => fetch(url, {
     ...opts,
     headers: { 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json', ...(opts.headers||{}) },
