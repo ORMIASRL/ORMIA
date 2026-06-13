@@ -530,6 +530,10 @@ tr:hover td { background:var(--surface2); }
                 <label>Company ID</label>
                 <input type="text" id="fic-company-id" placeholder="Es. 12345" style="font-family:'DM Mono',monospace">
               </div>
+              <div class="form-group">
+                <label>Redirect URI <span style="font-weight:400;color:var(--text3)">(copia dal portale FiC)</span></label>
+                <input type="text" id="fic-redirect-uri" placeholder="https://ormiaofficina.netlify.app/ormia-finance" style="font-family:'DM Mono',monospace;font-size:12px">
+              </div>
 
               <div class="form-group">
                 <label>Client ID</label>
@@ -1489,7 +1493,7 @@ function scambiaCodiceFIC(code) {
       grant_type:    'authorization_code',
       client_id:     _ficConfig.client_id,
       client_secret: _ficConfig.client_secret,
-      redirect_uri:  'https://ormiaofficina.netlify.app/ormia-finance',
+      redirect_uri:  (_ficConfig.redirect_uri||'https://ormiaofficina.netlify.app/ormia-finance').trim(),
       code:          code,
     }),
   }).then(function(r) {
@@ -1509,7 +1513,7 @@ function autorizzaFIC() {
     var url   = FIC_AUTH_URL
       + '?response_type=code'
       + '&client_id='    + encodeURIComponent(_ficConfig.client_id)
-      + '&redirect_uri=' + encodeURIComponent('https://ormiaofficina.netlify.app/ormia-finance')
+      + '&redirect_uri=' + encodeURIComponent((_ficConfig.redirect_uri||'https://ormiaofficina.netlify.app/ormia-finance').trim())
       + '&scope='        + encodeURIComponent(scope)
       + '&state=fic';
     console.log('[FiC] autorizzaFIC redirect ->', url);
@@ -1545,6 +1549,7 @@ function caricaFormSumUp() {
 function caricaFormFIC() {
   const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
   set('fic-company-id',    _ficConfig.company_id   || '');
+  set('fic-redirect-uri',  _ficConfig.redirect_uri  || '');
   set('fic-client-id',     _ficConfig.client_id    || '');
   set('fic-client-secret', _ficConfig.client_secret || '');
   const panel = document.getElementById('fic-auth-panel');
@@ -1836,6 +1841,7 @@ function salvaSumUp() {
 function salvaFIC() {
   _ficConfig = {
     company_id:    document.getElementById('fic-company-id').value.trim(),
+    redirect_uri:  document.getElementById('fic-redirect-uri')?.value?.trim() || 'https://ormiaofficina.netlify.app/ormia-finance',
     client_id:     document.getElementById('fic-client-id').value.trim(),
     client_secret: document.getElementById('fic-client-secret').value.trim(),
   };
