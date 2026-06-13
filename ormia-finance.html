@@ -1509,7 +1509,7 @@ function autorizzaFIC() {
     if (!_ficConfig.client_id)  { showToastFin('⚠ Salva prima Client ID e Client Secret FiC.'); return; }
     if (!_ficConfig.company_id) { showToastFin('⚠ Inserisci il Company ID FiC e salva.'); return; }
     var cid   = String(_ficConfig.company_id);
-    var scope = ['c:'+cid+':issued_documents:r','c:'+cid+':issued_documents:a','c:'+cid+':issued_documents:e'].join(' ');
+    var scope = 'issued_documents:r issued_documents:a issued_documents:e';
     var url   = FIC_AUTH_URL
       + '?response_type=code'
       + '&client_id='    + encodeURIComponent(_ficConfig.client_id)
