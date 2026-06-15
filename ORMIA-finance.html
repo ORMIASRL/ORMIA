@@ -170,10 +170,6 @@ tr:hover td { background:var(--surface2); }
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
         Dashboard
       </div>
-      <div class="nav-item" id="nav-incassa" onclick="setSection('incassa')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-        Incassa
-      </div>
       <div class="nav-label">Fatturazione</div>
       <div class="nav-item" id="nav-fatture" onclick="setSection('fatture')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -212,10 +208,6 @@ tr:hover td { background:var(--surface2); }
         <div style="font-size:12px;color:var(--text3)" id="topbar-sub">Panoramica finanziaria</div>
       </div>
       <div style="display:flex;align-items:center;gap:10px">
-        <button class="btn btn-pos" onclick="apriIncassaRapido()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-          Incassa
-        </button>
         <a href="ORMIA.html" class="btn btn-secondary">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="15 18 9 12 15 6"/></svg>
           Gestionale
@@ -271,77 +263,6 @@ tr:hover td { background:var(--surface2); }
               </table>
               <div id="empty-scadenze-fatt" class="empty-state" style="padding:24px">Nessuna scadenza imminente</div>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ══ SEZIONE INCASSA ══ -->
-      <div id="section-incassa" style="display:none">
-        <div style="display:grid;grid-template-columns:1fr 380px;gap:24px;align-items:start">
-
-          <!-- Form incasso rapido -->
-          <div class="table-wrap" style="padding:20px">
-            <div style="font-size:15px;font-weight:700;margin-bottom:20px">Nuovo incasso</div>
-            <div class="form-grid">
-              <div class="form-group">
-                <label>Cliente</label>
-                <select id="inc-cliente" onchange="onIncClienteChange()">
-                  <option value="">— Seleziona —</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Fattura collegata</label>
-                <select id="inc-fattura">
-                  <option value="">— Nessuna / Acconto —</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Importo (€) *</label>
-                <input type="number" id="inc-importo" placeholder="0.00" step="0.01" min="0" style="font-family:'DM Mono',monospace;font-size:18px;font-weight:700">
-              </div>
-              <div class="form-group">
-                <label>Data</label>
-                <input type="date" id="inc-data">
-              </div>
-              <div class="form-group span-2">
-                <label>Metodo di pagamento *</label>
-                <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:4px">
-                  <button class="metodo-btn active" data-metodo="contanti" onclick="selMetodo(this)">💵 Contanti</button>
-                  <button class="metodo-btn" data-metodo="carta" onclick="selMetodo(this)">💳 Carta</button>
-                  <button class="metodo-btn" data-metodo="bonifico" onclick="selMetodo(this)">🏦 Bonifico</button>
-                  <button class="metodo-btn" data-metodo="riba" onclick="selMetodo(this)">📄 Ri.Ba.</button>
-                  <button class="metodo-btn" data-metodo="sumup" onclick="selMetodo(this)" id="btn-metodo-sumup">📱 POS</button>
-                </div>
-              </div>
-              <div class="form-group span-2">
-                <label>Riferimento <span style="font-weight:400;color:var(--text3)">(opzionale)</span></label>
-                <input type="text" id="inc-riferimento" placeholder="N° transazione, causale bonifico…">
-              </div>
-              <div class="form-group span-2">
-                <label>Note</label>
-                <input type="text" id="inc-note" placeholder="Note interne…">
-              </div>
-            </div>
-            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
-              <button class="btn btn-secondary" onclick="resetIncasso()">Reset</button>
-              <button class="btn btn-pos" id="btn-paga-pos" style="display:none" onclick="pagaConPOS()">
-                📱 Invia al POS · <span id="btn-pos-importo">€ 0</span>
-              </button>
-              <button class="btn btn-success" onclick="salvaIncasso()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px"><polyline points="20 6 9 17 4 12"/></svg>
-                Registra incasso
-              </button>
-            </div>
-          </div>
-
-          <!-- Sidebar incassi recenti + fatture aperte -->
-          <div>
-            <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--text3);margin-bottom:10px">Fatture aperte cliente</div>
-            <div id="inc-fatture-cliente" style="margin-bottom:20px">
-              <div style="font-size:12px;color:var(--text3);padding:8px 0">Seleziona un cliente</div>
-            </div>
-            <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--text3);margin-bottom:10px">Ultimi incassi</div>
-            <div id="inc-recenti"></div>
           </div>
         </div>
       </div>
@@ -410,25 +331,73 @@ tr:hover td { background:var(--surface2); }
 
       <!-- ══ SEZIONE SUMUP ══ -->
       <div id="section-sumup" style="display:none">
-        <div style="max-width:600px">
-          <div class="table-wrap" style="padding:24px;margin-bottom:20px">
+        <div style="max-width:620px">
+          <div class="table-wrap" style="padding:24px;margin-bottom:16px">
             <div style="font-size:15px;font-weight:700;margin-bottom:4px">Configurazione SumUp</div>
-            <div style="font-size:13px;color:var(--text3);margin-bottom:20px">Collega il tuo terminale SumUp per accettare pagamenti direttamente dal gestionale</div>
-            <div class="alert alert-warning">
+            <div style="font-size:13px;color:var(--text3);margin-bottom:16px">Connessione OAuth2 — credenziali da <strong>developer.sumup.com → Le tue app</strong></div>
+            <div class="alert alert-info" style="margin-bottom:16px">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              Richiede account SumUp Business e app <strong>developer.sumup.com</strong>
+              Redirect URI da registrare su SumUp: <code style="font-size:11px">https://ormiaofficina.netlify.app/ormia-finance</code>
             </div>
-            <div class="form-group"><label>Client ID</label><input type="text" id="sumup-client-id" placeholder="Inserisci il Client ID dell'app SumUp"></div>
-            <div class="form-group"><label>Client Secret</label><input type="password" id="sumup-client-secret" placeholder="Inserisci il Client Secret"></div>
-            <div class="form-group"><label>Merchant Code</label><input type="text" id="sumup-merchant" placeholder="Es. MC12345678"></div>
-            <div style="display:flex;gap:8px;justify-content:flex-end">
-              <button class="btn btn-secondary" onclick="testSumUp()">Test connessione</button>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Client ID</label>
+                <input type="text" id="sumup-client-id" placeholder="cc_classic_…" style="font-family:'DM Mono',monospace;font-size:12px">
+              </div>
+              <div class="form-group">
+                <label>Redirect URI</label>
+                <input type="text" id="sumup-redirect-uri" placeholder="https://ormiaofficina.netlify.app/ormia-finance" style="font-family:'DM Mono',monospace;font-size:12px">
+              </div>
+              <div class="form-group">
+                <label>Client Secret</label>
+                <input type="password" id="sumup-client-secret" placeholder="Client Secret">
+              </div>
+              <div class="form-group">
+                <label>Merchant Code <span style="font-weight:400;color:var(--text3)">(da profilo SumUp)</span></label>
+                <input type="text" id="sumup-merchant" placeholder="Es. MC12345678" style="font-family:'DM Mono',monospace">
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:16px">
               <button class="btn btn-success" onclick="salvaSumUp()">Salva configurazione</button>
             </div>
-            <div id="sumup-test-result" style="margin-top:12px;font-size:13px;display:none"></div>
+            <!-- AUTH PANEL -->
+            <div id="sumup-auth-panel" style="border-top:1px solid var(--border);padding-top:16px;display:none">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                <div>
+                  <div style="font-size:13px;font-weight:700">Stato autorizzazione</div>
+                  <div id="sumup-token-status" style="font-size:12px;color:var(--text3);margin-top:2px">—</div>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="autorizzaSumUp()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                  Autorizza SumUp
+                </button>
+              </div>
+              <div id="sumup-auth-step2" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px">
+                <div style="font-size:12px;font-weight:700;margin-bottom:6px">📋 Completa l'autorizzazione</div>
+                <div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.7">
+                  1. Si è aperta la pagina SumUp — accedi e autorizza ORMIA<br>
+                  2. Dopo aver autorizzato, copia l'URL completo della pagina di redirect<br>
+                  3. Incollalo qui sotto (o solo il valore del parametro <code>?code=</code>)
+                </div>
+                <div class="form-group" style="margin-bottom:8px">
+                  <input type="text" id="sumup-auth-code" placeholder="Incolla URL di redirect o codice…" style="font-size:12px;font-family:'DM Mono',monospace">
+                </div>
+                <div style="display:flex;gap:8px">
+                  <button class="btn btn-primary btn-sm" onclick="completaAutorizzazioneSumUp()">Completa autorizzazione</button>
+                  <button class="btn btn-ghost btn-sm" onclick="document.getElementById('sumup-auth-step2').style.display='none'">Annulla</button>
+                </div>
+                <div id="sumup-auth-result" style="margin-top:8px;font-size:12px;display:none"></div>
+              </div>
+            </div>
           </div>
           <div class="table-wrap" style="padding:20px">
-            <div style="font-size:14px;font-weight:700;margin-bottom:12px">Ultimi pagamenti POS</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div style="font-size:14px;font-weight:700">Ultimi pagamenti POS</div>
+              <button class="btn btn-ghost btn-sm" onclick="caricaTransazioniSumUp()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.96"/></svg>
+                Aggiorna
+              </button>
+            </div>
             <div id="lista-pagamenti-sumup">
               <div class="empty-state"><p>Nessun pagamento POS registrato</p></div>
             </div>
@@ -520,7 +489,6 @@ tr:hover td { background:var(--surface2); }
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.62"/></svg>
                 Sincronizza ora
               </button>
-              <button class="btn btn-secondary" onclick="configuraPollingSinc()">Imposta polling automatico</button>
             </div>
           </div>
         </div>
@@ -531,53 +499,7 @@ tr:hover td { background:var(--surface2); }
 </div>
 
 <!-- MODAL INCASSO RAPIDO -->
-<div class="modal-overlay" id="modal-incassa-rapido" style="display:none" onclick="if(event.target.classList.contains('modal-overlay'))this.style.display='none'">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">Incasso rapido</div>
-      <button class="close-btn" onclick="document.getElementById('modal-incassa-rapido').style.display='none'">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group"><label>Importo (€) *</label><input type="number" id="ir-importo" placeholder="0.00" step="0.01" style="font-size:24px;font-weight:700;font-family:'DM Mono',monospace"></div>
-      <div class="form-group"><label>Cliente</label><select id="ir-cliente"><option value="">— Occasionale —</option></select></div>
-      <div class="form-group"><label>Metodo *</label>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-          <button class="metodo-btn active" data-metodo="contanti" onclick="selMetodoRapido(this)">💵 Contanti</button>
-          <button class="metodo-btn" data-metodo="carta" onclick="selMetodoRapido(this)">💳 Carta</button>
-          <button class="metodo-btn" data-metodo="sumup" onclick="selMetodoRapido(this)">📱 POS</button>
-        </div>
-      </div>
-      <div class="form-group"><label>Note</label><input type="text" id="ir-note" placeholder="Descrizione pagamento…"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="document.getElementById('modal-incassa-rapido').style.display='none'">Annulla</button>
-      <button class="btn btn-pos" id="ir-btn-pos" style="display:none" onclick="pagaConPOSRapido()">📱 Invia al POS</button>
-      <button class="btn btn-success" onclick="salvaIncassoRapido()">✓ Registra</button>
-    </div>
-  </div>
-</div>
 
-<!-- MODAL POS IN CORSO -->
-<div class="modal-overlay" id="modal-pos" style="display:none">
-  <div class="modal" style="max-width:380px;text-align:center">
-    <div class="modal-body" style="padding:32px">
-      <div style="font-size:40px;margin-bottom:12px" id="pos-icona">📱</div>
-      <div style="font-size:16px;font-weight:700" id="pos-titolo">Pagamento in corso</div>
-      <div class="pos-amount" id="pos-importo-display">€ 0,00</div>
-      <div style="font-size:13px;color:var(--text3)" id="pos-messaggio">Il POS sta elaborando il pagamento…</div>
-      <div id="pos-spinner" style="margin:16px auto;width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite"></div>
-      <button id="pos-annulla" class="btn btn-secondary" style="margin-top:8px" onclick="annullaPOS()">Annulla</button>
-    </div>
-  </div>
-</div>
-
-<style>
-.metodo-btn { padding:10px 8px; border:1.5px solid var(--border); border-radius:var(--radius); background:var(--surface); cursor:pointer; font-size:12px; font-weight:600; font-family:'DM Sans',sans-serif; transition:all .12s; text-align:center; }
-.metodo-btn.active { border-color:var(--accent); background:var(--accent-light); color:var(--accent); }
-@keyframes spin { to { transform:rotate(360deg); } }
-</style>
 
 <script>
 const SUPA_URL = 'https://crcfwmkemnwippplteqm.supabase.co';
@@ -586,18 +508,21 @@ const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 let currentUser = null;
 let _fatture = [], _incassi = [], _clienti = [], _commesse = [];
-let _metodoSelezionato = 'contanti';
-let _metodoRapido = 'contanti';
 let _fattStatoFil = '';
 
 // ── CREDENZIALI INTEGRAZIONI ───────────────────────
 let _sumupConfig = JSON.parse(localStorage.getItem('ormia_sumup_config')||'{}');
 let _ficConfig   = JSON.parse(localStorage.getItem('ormia_fic_config')||'{}');
-let _ficToken    = JSON.parse(localStorage.getItem('ormia_fic_token')||'null');
+let _ficToken    = JSON.parse(localStorage.getItem('ormia_fic_token') ||'null');
+let _sumupToken  = JSON.parse(localStorage.getItem('ormia_sumup_token')||'null');
+let _sumupPoll   = null;
+
 const FIC_COMPANY_ID   = '1603640';
 const FIC_REDIRECT_URI = 'https://ormiaofficina.netlify.app/fic-callback';
 const FIC_AUTH_URL     = 'https://api-v2.fattureincloud.it/oauth/authorize';
-const FIC_SCOPE        = 'situation:r entity.clients:r issued_documents.invoices:r issued_documents.invoices:a issued_documents.credit_notes:r received_documents:r';
+const FIC_SCOPE        = 'issued_documents:a issued_documents:r issued_documents:e entity_contacts:r';
+const SUMUP_TOKEN_URL  = 'https://api.sumup.com/token';
+const SUMUP_AUTH_URL   = 'https://api.sumup.com/authorize';
 
 // ══════════════════════════════════════════════════
 // AUTH
@@ -630,25 +555,29 @@ async function showApp() {
   document.getElementById('fin-user-name').textContent = currentUser?.email||'—';
   await loadAll();
 
-  // OAuth2 FiC callback: scambia il codice se presente
+  // Handle FiC OAuth2 callback
   const ficPendingCode = sessionStorage.getItem('_ficPendingCode');
   if (ficPendingCode) {
     sessionStorage.removeItem('_ficPendingCode');
-    sessionStorage.removeItem('_ficOAuthState');
     setSection('fic');
     await scambiaCodeFIC(ficPendingCode);
   } else {
-    const ficErr = sessionStorage.getItem('_ficOAuthError');
-    if (ficErr) {
-      sessionStorage.removeItem('_ficOAuthError');
+    // Check URL params directly (in case this page is the redirect URI)
+    const urlParams = new URLSearchParams(window.location.search);
+    const ficCode = urlParams.get('code');
+    const ficState = urlParams.get('state');
+    if (ficCode && (ficState === 'fic-finance' || ficState === 'fic')) {
+      history.replaceState({}, '', window.location.pathname);
       setSection('fic');
-      showToastFin('Errore FiC: ' + ficErr);
+      await scambiaCodeFIC(ficCode);
     } else {
       setSection('dashboard');
     }
   }
+
   checkIntegrazioni();
   aggiornaPannelloFIC();
+  caricaFormSumUp();
 }
 
 // ══════════════════════════════════════════════════
@@ -671,23 +600,19 @@ async function loadAll() {
 function populateClienteSelects() {
   const opts = '<option value="">— Seleziona —</option>' +
     _clienti.map(c=>`<option value="${c.id}">${c.ragione}</option>`).join('');
-  ['inc-cliente','ir-cliente'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.innerHTML = opts;
-  });
+  // cliente selects removed with Incassa section
 }
 
 // ══════════════════════════════════════════════════
 // NAVIGAZIONE
 // ══════════════════════════════════════════════════
 function setSection(sec) {
-  ['dashboard','incassa','fatture','riconciliazione','sumup','fic'].forEach(s => {
+  ['dashboard','fatture','riconciliazione','sumup','fic'].forEach(s => {
     document.getElementById('section-'+s).style.display = s===sec ? '' : 'none';
     document.getElementById('nav-'+s)?.classList.toggle('active', s===sec);
   });
   const titles = {
     dashboard: ['Dashboard','Panoramica finanziaria'],
-    incassa:   ['Incassa','Registra pagamenti'],
     fatture:   ['Fatture','Lista e stato fatture'],
     riconciliazione: ['Riconciliazione','Abbina pagamenti alle fatture'],
     sumup:     ['SumUp POS','Configurazione terminale'],
@@ -697,9 +622,7 @@ function setSection(sec) {
   document.getElementById('topbar-title').textContent = title;
   document.getElementById('topbar-sub').textContent   = sub;
   if (sec==='dashboard')       renderDashboard();
-  if (sec==='incassa')         renderIncassa();
   if (sec==='fatture')         renderFattureFin();
-  if (sec==='fic')            aggiornaPannelloFIC();
   if (sec==='riconciliazione') renderRiconciliazione();
 }
 
@@ -771,110 +694,8 @@ function renderDashboard() {
 // ══════════════════════════════════════════════════
 // INCASSA
 // ══════════════════════════════════════════════════
-function renderIncassa() {
-  document.getElementById('inc-data').value = new Date().toISOString().split('T')[0];
-  renderIncassiRecenti();
-}
 
-function onIncClienteChange() {
-  const cId = document.getElementById('inc-cliente').value;
-  const selFatt = document.getElementById('inc-fattura');
-  const listEl = document.getElementById('inc-fatture-cliente');
-  if (!cId) { selFatt.innerHTML='<option value="">— Nessuna / Acconto —</option>'; listEl.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px 0">Seleziona un cliente</div>'; return; }
-  const fattAperte = _fatture.filter(f=>f.clienteId===cId&&(f.stato==='emessa'||f.stato==='scaduta'||f.stato==='attesa'));
-  selFatt.innerHTML = '<option value="">— Nessuna / Acconto —</option>' +
-    fattAperte.map(f=>`<option value="${f.id}">${f.numero} — € ${(f.totale||0).toFixed(2)} (${f.stato})</option>`).join('');
-  if (!fattAperte.length) {
-    listEl.innerHTML = '<div style="font-size:12px;color:var(--success)">✓ Nessuna fattura aperta</div>';
-  } else {
-    listEl.innerHTML = fattAperte.map(f=>`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="document.getElementById('inc-fattura').value='${f.id}';document.getElementById('inc-importo').value='${f.totale||0}'">
-      <div>
-        <div style="font-size:12px;font-family:'DM Mono',monospace;font-weight:700">${f.numero||'—'}</div>
-        <div style="font-size:11px;color:var(--text3)">${formatDateFin(f.scadenza)}</div>
-      </div>
-      <div style="font-family:'DM Mono',monospace;font-weight:700;color:${f.stato==='scaduta'?'var(--danger)':'var(--accent)'}">€ ${(f.totale||0).toFixed(2)}</div>
-    </div>`).join('');
-  }
-}
 
-function selMetodo(btn) {
-  document.querySelectorAll('#section-incassa .metodo-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  _metodoSelezionato = btn.dataset.metodo;
-  const posBtn = document.getElementById('btn-paga-pos');
-  const importo = parseFloat(document.getElementById('inc-importo').value)||0;
-  if (_metodoSelezionato==='sumup') {
-    posBtn.style.display = '';
-    document.getElementById('btn-pos-importo').textContent = '€ '+importo.toFixed(2);
-  } else posBtn.style.display = 'none';
-}
-
-function selMetodoRapido(btn) {
-  document.querySelectorAll('#modal-incassa-rapido .metodo-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  _metodoRapido = btn.dataset.metodo;
-  document.getElementById('ir-btn-pos').style.display = _metodoRapido==='sumup' ? '' : 'none';
-}
-
-async function salvaIncasso() {
-  const importo = parseFloat(document.getElementById('inc-importo').value)||0;
-  const metodo  = _metodoSelezionato;
-  if (!importo) { alert('Inserisci l\'importo.'); return; }
-  const row = {
-    id: crypto.randomUUID(),
-    cliente_id: document.getElementById('inc-cliente').value||null,
-    fattura_id: document.getElementById('inc-fattura').value||null,
-    importo, metodo,
-    riferimento: document.getElementById('inc-riferimento').value.trim()||null,
-    note: document.getElementById('inc-note').value.trim()||null,
-    data: new Date(document.getElementById('inc-data').value).toISOString(),
-    riconciliato: !!document.getElementById('inc-fattura').value,
-  };
-  try {
-    await supa.from('incassi').insert(row);
-    // Se collegato a fattura, aggiorna stato
-    if (row.fattura_id) {
-      await supa.from('fatture').update({stato:'pagata', data_pagamento:row.data, incasso_id:row.id}).eq('id',row.fattura_id);
-    }
-    await loadAll();
-    resetIncasso();
-    showToastFin('Incasso registrato ✓');
-    renderDashboard();
-  } catch(e) { alert('Errore: '+e.message); }
-}
-
-async function salvaIncassoRapido() {
-  const importo = parseFloat(document.getElementById('ir-importo').value)||0;
-  if (!importo) { alert('Inserisci l\'importo.'); return; }
-  const row = {
-    id: crypto.randomUUID(),
-    cliente_id: document.getElementById('ir-cliente').value||null,
-    importo, metodo: _metodoRapido,
-    note: document.getElementById('ir-note').value.trim()||null,
-    data: new Date().toISOString(),
-    riconciliato: false,
-  };
-  try {
-    await supa.from('incassi').insert(row);
-    await loadAll();
-    document.getElementById('modal-incassa-rapido').style.display = 'none';
-    showToastFin('Incasso registrato ✓');
-  } catch(e) { alert('Errore: '+e.message); }
-}
-
-function resetIncasso() {
-  document.getElementById('inc-importo').value = '';
-  document.getElementById('inc-cliente').value = '';
-  document.getElementById('inc-fattura').innerHTML = '<option value="">— Nessuna / Acconto —</option>';
-  document.getElementById('inc-riferimento').value = '';
-  document.getElementById('inc-note').value = '';
-  document.getElementById('inc-fatture-cliente').innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0">Seleziona un cliente</div>';
-}
-
-function renderIncassiRecenti() {
-  const el = document.getElementById('inc-recenti');
-  const ultimi = _incassi.slice(0,5);
-  if (!ultimi.length) { el.innerHTML='<div style="font-size:12px;color:var(--text3)">Nessun incasso recente</div>'; return; }
   el.innerHTML = ultimi.map(i => {
     const cl = _clienti.find(c=>c.id===i.clienteId);
     return `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--success);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px">
@@ -1052,85 +873,11 @@ async function riconciliaManuale(incassoId) {
   await confermRiconciliazione(incassoId, f.id);
 }
 
-// ══════════════════════════════════════════════════
-// POS SUMUP
-// ══════════════════════════════════════════════════
-async function pagaConPOS() {
-  const importo = parseFloat(document.getElementById('inc-importo').value)||0;
-  if (!importo) { alert('Inserisci l\'importo prima.'); return; }
-  await avviaPagamentoPOS(importo, 'inc');
-}
-
-async function pagaConPOSRapido() {
-  const importo = parseFloat(document.getElementById('ir-importo').value)||0;
-  if (!importo) { alert('Inserisci l\'importo prima.'); return; }
-  await avviaPagamentoPOS(importo, 'rapido');
-}
-
-async function avviaPagamentoPOS(importo, origine) {
-  if (!_sumupConfig.client_id) {
-    alert('SumUp non configurato. Vai su Integrazioni → SumUp POS.');
-    return;
-  }
-  // Mostra modal POS in corso
-  document.getElementById('pos-importo-display').textContent = '€ '+importo.toFixed(2).replace('.',',');
-  document.getElementById('pos-titolo').textContent = 'Pagamento in corso';
-  document.getElementById('pos-messaggio').textContent = 'Il POS sta elaborando il pagamento…';
-  document.getElementById('pos-icona').textContent = '📱';
-  document.getElementById('pos-spinner').style.display = '';
-  document.getElementById('pos-annulla').style.display = '';
-  document.getElementById('modal-pos').style.display = 'flex';
-
-  try {
-    // ── PLACEHOLDER SUMUP API ──
-    // Quando avrai le credenziali, sostituisci con la chiamata reale:
-    // const resp = await fetch('https://api.sumup.com/v0.1/checkouts', {
-    //   method: 'POST',
-    //   headers: { 'Authorization': 'Bearer '+_sumupToken, 'Content-Type':'application/json' },
-    //   body: JSON.stringify({ amount: importo, currency: 'EUR', checkout_reference: crypto.randomUUID(), merchant_code: _sumupConfig.merchant })
-    // });
-    // Per ora simuliamo dopo 3 secondi
-    await new Promise(r=>setTimeout(r,3000));
-    const transactionId = 'SIMUL-'+Date.now();
-    // Successo simulato
-    posSuccesso(transactionId, importo, origine);
-  } catch(e) {
-    posErrore(e.message);
-  }
-}
-
-function posSuccesso(transactionId, importo, origine) {
-  document.getElementById('pos-icona').textContent = '✅';
-  document.getElementById('pos-titolo').textContent = 'Pagamento approvato!';
-  document.getElementById('pos-messaggio').textContent = 'Transazione: '+transactionId;
-  document.getElementById('pos-spinner').style.display = 'none';
-  document.getElementById('pos-annulla').style.display = 'none';
-  // Precompila riferimento
-  if (origine==='inc') document.getElementById('inc-riferimento').value = transactionId;
-  if (origine==='rapido') document.getElementById('ir-note').value = 'POS: '+transactionId;
-  setTimeout(() => {
-    document.getElementById('modal-pos').style.display = 'none';
-    if (origine==='inc') salvaIncasso();
-    if (origine==='rapido') salvaIncassoRapido();
-  }, 1500);
-}
-
-function posErrore(msg) {
-  document.getElementById('pos-icona').textContent = '❌';
-  document.getElementById('pos-titolo').textContent = 'Pagamento rifiutato';
-  document.getElementById('pos-messaggio').textContent = msg;
-  document.getElementById('pos-spinner').style.display = 'none';
-}
-
-function annullaPOS() {
-  document.getElementById('modal-pos').style.display = 'none';
-}
 
 // ══════════════════════════════════════════════════
 // FATTURE IN CLOUD — OAuth2
 // ══════════════════════════════════════════════════
 
-// ── Proxy call via Netlify ──
 async function ficFetch(path, opts = {}) {
   if (!_ficToken?.access_token) throw new Error('Token FiC non disponibile. Vai su Integrazioni → Fatture in Cloud e connetti il tuo account.');
   const res = await fetch('/.netlify/functions/fic-api', {
@@ -1147,8 +894,7 @@ async function ficFetch(path, opts = {}) {
   if (!res.ok) {
     const msg = data?.error?.message || data?.message || data?.error || ('HTTP ' + res.status);
     if (res.status === 401) {
-      _ficToken = null;
-      localStorage.removeItem('ormia_fic_token');
+      _ficToken = null; localStorage.removeItem('ormia_fic_token');
       checkIntegrazioni(); aggiornaPannelloFIC();
       throw new Error('Token FiC scaduto. Riconnetti il tuo account.');
     }
@@ -1157,7 +903,6 @@ async function ficFetch(path, opts = {}) {
   return data;
 }
 
-// ── Avvia OAuth2 ──
 function connettiOAuthFIC() {
   const cid = document.getElementById('fic-client-id')?.value?.trim() || _ficConfig.client_id;
   const cs  = document.getElementById('fic-client-secret')?.value?.trim() || _ficConfig.client_secret;
@@ -1168,12 +913,8 @@ function connettiOAuthFIC() {
   window.location.href = FIC_AUTH_URL + '?' + params.toString();
 }
 
-// ── Scambia codice → token ──
 async function scambiaCodeFIC(code) {
-  if (!_ficConfig.client_id || !_ficConfig.client_secret) {
-    showToastFin('Credenziali FiC mancanti — riconnetti');
-    return;
-  }
+  if (!_ficConfig.client_id || !_ficConfig.client_secret) { showToastFin('Credenziali FiC mancanti — riconnetti'); return; }
   showToastFin('Scambio codice FiC in corso…');
   try {
     const res = await fetch('/.netlify/functions/fic-token', {
@@ -1185,25 +926,18 @@ async function scambiaCodeFIC(code) {
     if (!res.ok || data.error) throw new Error(data.error_description || data.error || 'HTTP ' + res.status);
     _ficToken = data;
     localStorage.setItem('ormia_fic_token', JSON.stringify(_ficToken));
-    checkIntegrazioni();
-    aggiornaPannelloFIC();
+    checkIntegrazioni(); aggiornaPannelloFIC();
     showToastFin('Fatture in Cloud collegato ✓');
-  } catch(e) {
-    showToastFin('Errore FiC: ' + e.message);
-  }
+  } catch(e) { showToastFin('Errore FiC: ' + e.message); }
 }
 
-// ── Scollega ──
 function scollegaFIC() {
   if (!confirm('Scollegare Fatture in Cloud?')) return;
-  _ficToken = null;
-  localStorage.removeItem('ormia_fic_token');
-  checkIntegrazioni();
-  aggiornaPannelloFIC();
+  _ficToken = null; localStorage.removeItem('ormia_fic_token');
+  checkIntegrazioni(); aggiornaPannelloFIC();
   showToastFin('Fatture in Cloud scollegato');
 }
 
-// ── Aggiorna pannello FiC ──
 function aggiornaPannelloFIC() {
   const dot    = document.getElementById('fic-status-dot');
   const text   = document.getElementById('fic-status-text');
@@ -1211,7 +945,6 @@ function aggiornaPannelloFIC() {
   const info   = document.getElementById('fic-token-info');
   const btnDis = document.getElementById('btn-scollega-fic');
   if (!dot) return;
-
   if (_ficToken?.access_token) {
     dot.style.background = 'var(--success)';
     text.textContent = 'Connesso ✓';
@@ -1223,7 +956,6 @@ function aggiornaPannelloFIC() {
     if (el) el.textContent = tok.substring(0,8)+'…'+tok.substring(tok.length-6);
     const elC = document.getElementById('fic-info-company');
     if (elC) elC.textContent = FIC_COMPANY_ID;
-    // Pre-fill client_id field
     const cidEl = document.getElementById('fic-client-id');
     if (cidEl && _ficConfig.client_id) cidEl.value = _ficConfig.client_id;
   } else {
@@ -1232,18 +964,13 @@ function aggiornaPannelloFIC() {
     if (form) form.style.display = '';
     if (info) info.style.display = 'none';
     if (btnDis) btnDis.style.display = 'none';
-    // Pre-fill fields if config saved
     const cidEl = document.getElementById('fic-client-id');
     if (cidEl && _ficConfig.client_id) cidEl.value = _ficConfig.client_id;
   }
 }
 
-// ── Sincronizza fatture da FiC → Supabase ──
 async function sincronizzaFIC() {
-  if (!_ficToken?.access_token) {
-    showToastFin('FiC non collegato — vai su Integrazioni → Fatture in Cloud');
-    return;
-  }
+  if (!_ficToken?.access_token) { showToastFin('FiC non collegato — vai su Integrazioni → Fatture in Cloud'); return; }
   showToastFin('Sincronizzazione FiC avviata…');
   try {
     const res = await ficFetch('/c/' + FIC_COMPANY_ID + '/issued_documents?type=invoice&per_page=50');
@@ -1258,12 +985,9 @@ async function sincronizzaFIC() {
         aggiornate++;
       }
     }
-    await loadAll();
-    renderFattureFin();
+    await loadAll(); renderFattureFin();
     showToastFin(`Sincronizzazione completata — ${aggiornate} fatture aggiornate ✓`);
-  } catch(e) {
-    showToastFin('Errore sincronizzazione FiC: ' + e.message);
-  }
+  } catch(e) { showToastFin('Errore sincronizzazione FiC: ' + e.message); }
 }
 
 async function inviaSuFIC(fatturaId) {
@@ -1273,52 +997,166 @@ async function inviaSuFIC(fatturaId) {
   showToastFin('Invio fattura a FiC…');
   try {
     const cliente = _clienti.find(c => c.id === fatt.clienteId);
-    const payload = {
-      data: { invoice: {
-        type: 'invoice',
-        number: { value: fatt.numero || '' },
-        date: fatt.data || new Date().toISOString().slice(0,10),
-        subject: fatt.descrizione || '',
-        amount_net: fatt.importo || 0,
-        amount_gross: fatt.totale || fatt.importo || 0,
-        entity: cliente ? { name: cliente.ragione } : undefined,
-      }},
-    };
-    const res = await ficFetch('/c/' + FIC_COMPANY_ID + '/issued_documents', { method: 'POST', payload: payload });
+    const payload = { data: { invoice: {
+      type: 'invoice',
+      number: { value: fatt.numero || '' },
+      date: fatt.data || new Date().toISOString().slice(0,10),
+      subject: fatt.descrizione || '',
+      amount_net: fatt.importo || 0,
+      amount_gross: fatt.totale || fatt.importo || 0,
+      entity: cliente ? { name: cliente.ragione } : undefined,
+    }}};
+    const res = await ficFetch('/c/' + FIC_COMPANY_ID + '/issued_documents', { method: 'POST', payload });
     const ficId = String(res?.data?.document?.id || 'FIC-'+Date.now());
     await supa.from('fatture').update({ fic_id: ficId, fic_stato: 'emessa' }).eq('id', fatturaId);
-    await loadAll();
-    renderFattureFin();
+    await loadAll(); renderFattureFin();
     showToastFin('Fattura inviata a Fatture in Cloud ✓');
-  } catch(e) {
-    showToastFin('Errore invio FiC: ' + e.message);
-  }
+  } catch(e) { showToastFin('Errore invio FiC: ' + e.message); }
 }
 
 async function sincronizzaFICManuale() { await sincronizzaFIC(); }
 
 // ══════════════════════════════════════════════════
+// SUMUP — OAuth2
+// ══════════════════════════════════════════════════
+
+function _saveSumUpToken(d) {
+  _sumupToken = {
+    access_token:  d.access_token,
+    refresh_token: d.refresh_token || _sumupToken?.refresh_token,
+    expires_at:    Date.now() + (d.expires_in || 3600) * 1000,
+  };
+  localStorage.setItem('ormia_sumup_token', JSON.stringify(_sumupToken));
+  checkIntegrazioni(); updateSumUpTokenStatus();
+}
+
+async function getSumUpAccessToken() {
+  if (_sumupToken?.access_token && _sumupToken.expires_at > Date.now() + 60_000)
+    return _sumupToken.access_token;
+  if (_sumupToken?.refresh_token) {
+    try {
+      const res = await fetch(SUMUP_TOKEN_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token', client_id: _sumupConfig.client_id,
+          client_secret: _sumupConfig.client_secret, refresh_token: _sumupToken.refresh_token,
+        }),
+      });
+      if (res.ok) { _saveSumUpToken(await res.json()); return _sumupToken.access_token; }
+    } catch(_) {}
+  }
+  throw new Error('SumUp non autorizzato. Vai su Integrazioni → SumUp POS e autorizza.');
+}
+
+function autorizzaSumUp() {
+  if (!_sumupConfig.client_id) { alert('Salva prima la configurazione SumUp.'); return; }
+  const redirectUri = document.getElementById('sumup-redirect-uri')?.value?.trim()
+    || 'https://ormiaofficina.netlify.app/ormia-finance';
+  const authUrl = SUMUP_AUTH_URL + '?response_type=code'
+    + '&client_id=' + encodeURIComponent(_sumupConfig.client_id)
+    + '&redirect_uri=' + encodeURIComponent(redirectUri)
+    + '&scope=' + encodeURIComponent('payments transactions.history');
+  window.open(authUrl, '_blank');
+  document.getElementById('sumup-auth-step2').style.display = '';
+}
+
+async function completaAutorizzazioneSumUp() {
+  const input = document.getElementById('sumup-auth-code').value.trim();
+  if (!input) { alert("Incolla l'URL di redirect o il codice."); return; }
+  let code = input;
+  try { const u = new URL(input); code = u.searchParams.get('code') || input; } catch(_) {}
+  const redirectUri = document.getElementById('sumup-redirect-uri')?.value?.trim()
+    || 'https://ormiaofficina.netlify.app/ormia-finance';
+  const el = document.getElementById('sumup-auth-result');
+  el.style.display = ''; el.innerHTML = '<span style="color:var(--text3)">Scambio codice…</span>';
+  try {
+    const res = await fetch(SUMUP_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code', client_id: _sumupConfig.client_id,
+        client_secret: _sumupConfig.client_secret, redirect_uri: redirectUri, code,
+      }),
+    });
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error_description||e.error||`Errore ${res.status}`); }
+    _saveSumUpToken(await res.json());
+    el.innerHTML = '<span style="color:var(--success)">✓ Autorizzazione completata — SumUp collegato!</span>';
+    document.getElementById('sumup-auth-step2').style.display = 'none';
+  } catch(e) { el.innerHTML = `<span style="color:var(--danger)">✗ ${e.message}</span>`; }
+}
+
+function updateSumUpTokenStatus() {
+  const el = document.getElementById('sumup-token-status');
+  if (!el) return;
+  if (_sumupToken?.access_token && _sumupToken.expires_at > Date.now()) {
+    const exp = new Date(_sumupToken.expires_at).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+    el.innerHTML = `<span style="color:var(--success)">✓ Token valido fino alle ${exp}</span>`;
+  } else if (_sumupToken?.refresh_token) {
+    el.innerHTML = '<span style="color:var(--warning)">⚠ Token scaduto — rinnovato auto al prossimo uso</span>';
+  } else {
+    el.innerHTML = '<span style="color:var(--danger)">✗ Non autorizzato — clicca "Autorizza SumUp"</span>';
+  }
+}
+
+async function caricaTransazioniSumUp() {
+  const el = document.getElementById('lista-pagamenti-sumup');
+  el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">Caricamento…</div>';
+  try {
+    const token = await getSumUpAccessToken();
+    const res = await fetch('https://api.sumup.com/v0.1/me/transactions/history?limit=20', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!res.ok) throw new Error('Errore ' + res.status);
+    const d = await res.json();
+    const items = d.items || [];
+    if (!items.length) { el.innerHTML = '<div class="empty-state"><p>Nessuna transazione</p></div>'; return; }
+    el.innerHTML = items.map(t => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-size:13px;font-weight:600">${t.status === 'SUCCESSFUL' ? '✓' : '✗'} € ${(t.amount||0).toFixed(2).replace('.',',')}</div>
+          <div style="font-size:11px;color:var(--text3)">${new Date(t.timestamp).toLocaleString('it-IT')} — ${t.payment_type||'—'}</div>
+          <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3)">${t.transaction_code||t.id}</div>
+        </div>
+        <span style="font-size:11px;padding:2px 8px;border-radius:12px;background:${t.status==='SUCCESSFUL'?'var(--success-light)':'var(--danger-light)'};color:${t.status==='SUCCESSFUL'?'var(--success)':'var(--danger)'}">${t.status}</span>
+      </div>`).join('');
+  } catch(e) { el.innerHTML = `<div class="empty-state"><p style="color:var(--danger)">${e.message}</p></div>`; }
+}
+
+function caricaFormSumUp() {
+  const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+  set('sumup-client-id',    _sumupConfig.client_id   || '');
+  set('sumup-redirect-uri', _sumupConfig.redirect_uri|| 'https://ormiaofficina.netlify.app/ormia-finance');
+  set('sumup-merchant',     _sumupConfig.merchant    || '');
+  const panel = document.getElementById('sumup-auth-panel');
+  if (panel) panel.style.display = _sumupConfig.client_id ? '' : 'none';
+  updateSumUpTokenStatus();
+}
+
+// ══════════════════════════════════════════════════
 // CONFIGURAZIONI
 // ══════════════════════════════════════════════════
+
 function salvaSumUp() {
   _sumupConfig = {
-    client_id: document.getElementById('sumup-client-id').value.trim(),
+    client_id:     document.getElementById('sumup-client-id').value.trim(),
     client_secret: document.getElementById('sumup-client-secret').value.trim(),
-    merchant: document.getElementById('sumup-merchant').value.trim(),
+    merchant:      document.getElementById('sumup-merchant').value.trim(),
+    redirect_uri:  document.getElementById('sumup-redirect-uri')?.value?.trim() || 'https://ormiaofficina.netlify.app/ormia-finance',
   };
   localStorage.setItem('ormia_sumup_config', JSON.stringify(_sumupConfig));
-  checkIntegrazioni();
-  showToastFin('Configurazione SumUp salvata ✓');
+  _sumupToken = null; localStorage.removeItem('ormia_sumup_token');
+  checkIntegrazioni(); updateSumUpTokenStatus();
+  const panel = document.getElementById('sumup-auth-panel');
+  if (panel) panel.style.display = _sumupConfig.client_id ? '' : 'none';
+  showToastFin('Configurazione salvata ✓ — ora clicca "Autorizza SumUp"');
 }
 
 async function testSumUp() {
-  const el = document.getElementById('sumup-test-result');
-  el.style.display = '';
-  el.innerHTML = '<span style="color:var(--text3)">Test in corso…</span>';
-  setTimeout(()=>{
-    if (_sumupConfig.client_id) el.innerHTML = '<span style="color:var(--success)">✓ Connessione riuscita (simulata)</span>';
-    else el.innerHTML = '<span style="color:var(--danger)">✗ Inserisci le credenziali prima</span>';
-  },1000);
+  try {
+    await caricaTransazioniSumUp();
+    showToastFin('✓ SumUp risponde correttamente');
+  } catch(e) { alert('Test SumUp: ' + e.message); }
 }
 
 async function testFIC() {
@@ -1333,16 +1171,19 @@ async function testFIC() {
   try {
     await ficFetch('/user/companies');
     el.innerHTML = '<span style="color:var(--success)">✓ Connessione FiC funzionante</span>';
-  } catch(e) {
-    el.innerHTML = '<span style="color:var(--danger)">✗ ' + e.message + '</span>';
-  }
+  } catch(e) { el.innerHTML = '<span style="color:var(--danger)">✗ ' + e.message + '</span>'; }
 }
 
 function checkIntegrazioni() {
   const sumupBadge = document.getElementById('badge-sumup');
   const ficBadge   = document.getElementById('badge-fic');
-  if (_sumupConfig.client_id) { sumupBadge.textContent='Collegato'; sumupBadge.className='conn-badge ok'; }
-  else { sumupBadge.textContent='Non collegato'; sumupBadge.className='conn-badge ko'; }
+  if (_sumupToken?.access_token || _sumupToken?.refresh_token) {
+    sumupBadge.textContent='Collegato'; sumupBadge.className='conn-badge ok';
+  } else if (_sumupConfig.client_id) {
+    sumupBadge.textContent='Configurato'; sumupBadge.className='conn-badge warn';
+  } else {
+    sumupBadge.textContent='Non collegato'; sumupBadge.className='conn-badge ko';
+  }
   if (_ficToken?.access_token) { ficBadge.textContent='Collegato'; ficBadge.className='conn-badge ok'; }
   else { ficBadge.textContent='Non collegato'; ficBadge.className='conn-badge ko'; }
 }
@@ -1350,13 +1191,6 @@ function checkIntegrazioni() {
 // ══════════════════════════════════════════════════
 // UTILS
 // ══════════════════════════════════════════════════
-function apriIncassaRapido() {
-  document.getElementById('ir-importo').value = '';
-  document.getElementById('ir-note').value = '';
-  document.getElementById('ir-cliente').value = '';
-  document.getElementById('modal-incassa-rapido').style.display = 'flex';
-  setTimeout(()=>document.getElementById('ir-importo').focus(),100);
-}
 
 function formatDateFin(d) {
   if (!d) return '—';
@@ -1380,7 +1214,7 @@ function showToastFin(msg) {
 }
 
 function configuraPollingSinc() {
-  showToastFin('Polling automatico: funzione disponibile dopo integrazione FiC');
+  showToastFin('Polling automatico attivo durante la sessione');
 }
 
 // ══════════════════════════════════════════════════
