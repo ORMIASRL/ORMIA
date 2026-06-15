@@ -2518,6 +2518,10 @@ function init() {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
         Fattura
       </button>
+      <button class="btn btn-success btn-sm" id="dc-btn-pos" onclick="emettiFatturaCommessa(selectedCommessaId,'pos')" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        POS
+      </button>
       <button class="btn btn-secondary btn-sm" onclick="editCommessa()">Modifica</button>
       <button class="close-btn" onclick="closeDetail('detail-commessa')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -3832,6 +3836,8 @@ function showDetailCommessa(id) {
   // Mostra tasto Fattura solo se commessa chiusa o fatturata
   const btnFatt = document.getElementById('dc-btn-fattura');
   if (btnFatt) btnFatt.style.display = (cm.stato==='chiusa'||cm.stato==='fatturata') ? '' : 'none';
+  const btnPos = document.getElementById('dc-btn-pos');
+  if (btnPos) btnPos.style.display = cm.stato==='chiusa' ? '' : 'none';
   document.getElementById('dc-data').textContent = formatDate(cm.dataApertura)||'—';
 
   // Solo i meccanici con timbratura aperta adesso su questa commessa
@@ -5640,6 +5646,37 @@ ${cm.note ? `
   </div>
 </div>
 
+<!-- ═══ MODAL POS GESTIONALE ═══ -->
+<div id="modal-pos-ormia" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:2000;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border-radius:16px;padding:32px 28px;width:320px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35)">
+    <div id="pos-ormia-icona" style="font-size:52px;margin-bottom:16px">📱</div>
+    <div id="pos-ormia-importo" style="font-size:30px;font-weight:800;font-family:'DM Mono',monospace;margin-bottom:8px">€ 0,00</div>
+    <div id="pos-ormia-titolo" style="font-size:15px;font-weight:700;margin-bottom:6px">Pagamento in corso</div>
+    <div id="pos-ormia-msg" style="font-size:13px;color:var(--text3);margin-bottom:20px;line-height:1.5">Avvio checkout…</div>
+    <div id="pos-ormia-spinner" style="width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px"></div>
+    <button id="pos-ormia-annulla" class="btn btn-secondary" onclick="annullaPOSormia()" style="width:100%">Annulla</button>
+  </div>
+</div>
+
+<!-- ═══ DIALOG POST-FATTURA ═══ -->
+<div id="modal-post-fattura" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border-radius:16px;padding:28px;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="font-size:16px;font-weight:700;margin-bottom:4px">Fattura emessa ✓</div>
+    <div style="font-size:13px;color:var(--text3);margin-bottom:20px">
+      <span id="pf-numero" style="font-family:'DM Mono',monospace;font-weight:600"></span>
+      &nbsp;·&nbsp;<span id="pf-cliente"></span>
+      &nbsp;·&nbsp;<strong id="pf-totale"></strong>
+    </div>
+    <div style="font-size:13px;font-weight:600;margin-bottom:12px">Inviare al cliente?</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-primary" onclick="pfStampa()">🖨&nbsp; Stampa PDF</button>
+      <button class="btn btn-secondary" onclick="pfEmail()">✉️&nbsp; Invia email</button>
+      <button class="btn btn-secondary" onclick="pfEntrambi()">Stampa + email</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-post-fattura').style.display='none'">No, grazie</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>`;
 
@@ -6764,15 +6801,14 @@ updateBadgeApprovazioni();
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-fattura')">Annulla</button>
-      <button class="btn btn-secondary" onclick="salvaEInviaFattura()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-        Salva e invia email
+      <button class="btn btn-primary" onclick="emettiFattura()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Fattura
       </button>
-      <button class="btn btn-secondary" onclick="salvaEStampaFattura()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-        Salva e stampa
+      <button class="btn btn-success" onclick="emettiFatturaConPOS()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        POS
       </button>
-      <button class="btn btn-primary" onclick="salvaFattura()">Salva</button>
     </div>
   </div>
 </div><!-- /modal-fattura -->
@@ -7384,7 +7420,7 @@ function renderDDT() {
       <div style="display:flex;gap:6px;flex-shrink:0">
         <button class="btn btn-ghost btn-sm" onclick="anteprimaDDT('${d.id}')">Anteprima</button>
         <button class="btn btn-ghost btn-sm" onclick="ristampaDDT('${d.id}')">Stampa</button>
-        ${stato!=='fatturato'?`<button class="btn btn-primary btn-sm" onclick="converteDDTinFattura('${d.id}')">Converti in fattura</button>`:''}
+        ${stato!=='fatturato'?`<button class="btn btn-primary btn-sm" onclick="converteDDTinFattura('${d.id}')">Fattura</button><button class="btn btn-success btn-sm" onclick="converteDDTinFatturaPOS('${d.id}')">POS</button>`:''}
       </div>
     </div>`;
   }).join('');
@@ -7571,7 +7607,7 @@ function genNumFattura() {
   return `FT-${new Date().getFullYear()}-${String(_impostazioni.num_fatt||1).padStart(4,'0')}`;
 }
 
-function emettiFatturaCommessa(comId) {
+function emettiFatturaCommessa(comId, hint) {
   const cm = commesse.find(c=>c.id===comId);
   if (!cm) return;
   const cl = clienti.find(c=>c.id===cm.clienteId);
@@ -7585,7 +7621,7 @@ function emettiFatturaCommessa(comId) {
   if (!righe.length) { alert('La commessa non ha voci da fatturare.'); return; }
   apriFatturaModal({origine:'commessa',origineId:comId,clienteId:cm.clienteId,
     descrizione:`Commessa ${cm.numero} — ${cm.descrizione||cm.desc}`,
-    veicolo:v?`${v.targa} ${[v.marca,v.modello].filter(Boolean).join(' ')}`:'',righe});
+    veicolo:v?`${v.targa} ${[v.marca,v.modello].filter(Boolean).join(' ')}`:'',righe, _hint:hint});
   // Assicurati che il modal documenti sia aperto
   if (document.getElementById('modal-documenti').style.display !== 'block') apriDocumenti();
 }
@@ -7777,8 +7813,154 @@ function _aggiornaAlertMoroso(alertEl, clienteId) {
   }
 }
 
-async function salvaEStampaFattura()  { const f=await salvaFattura(); if(f) setTimeout(()=>stampaFattura(f.id),100); }
-async function salvaEInviaFattura()   { const f=await salvaFattura(); if(f) setTimeout(()=>inviaEmailFattura(f.id),200); }
+// ── Emetti da modal ──────────────────────────────────────────────────────────
+async function emettiFattura() {
+  const f = await salvaFattura();
+  if (!f) return;
+  closeModal('modal-fattura');
+  mostraDialogPostFattura(f);
+}
+
+async function emettiFatturaConPOS() {
+  const f = await salvaFattura();
+  if (!f) return;
+  closeModal('modal-fattura');
+  await avviaPOSfattura(f);
+}
+
+// ── Dialog post-emissione ─────────────────────────────────────────────────────
+function mostraDialogPostFattura(f) {
+  const d = document.getElementById('modal-post-fattura');
+  if (!d) return;
+  document.getElementById('pf-numero').textContent  = f.numero;
+  document.getElementById('pf-cliente').textContent = f.clRagione || '—';
+  document.getElementById('pf-totale').textContent  = '€ ' + (f.totale||0).toFixed(2);
+  d.style.display = 'flex';
+  d._fatt = f;
+}
+
+function pfStampa()    { const f=document.getElementById('modal-post-fattura')._fatt; document.getElementById('modal-post-fattura').style.display='none'; if(f) stampaFattura(f.id); }
+function pfEmail()     { const f=document.getElementById('modal-post-fattura')._fatt; document.getElementById('modal-post-fattura').style.display='none'; if(f) inviaEmailFattura(f.id); }
+function pfEntrambi()  { const f=document.getElementById('modal-post-fattura')._fatt; document.getElementById('modal-post-fattura').style.display='none'; if(f){ stampaFattura(f.id); setTimeout(()=>inviaEmailFattura(f.id),500); } }
+
+// ── SumUp POS ─────────────────────────────────────────────────────────────────
+let _sumupToken  = JSON.parse(localStorage.getItem('ormia_sumup_token')  || 'null');
+let _sumupConfig = JSON.parse(localStorage.getItem('ormia_sumup_config') || '{}');
+let _sumupPoll   = null;
+
+function _saveSumUpToken(d) {
+  _sumupToken = { access_token:d.access_token, refresh_token:d.refresh_token||_sumupToken?.refresh_token,
+    expires_at:Date.now()+(d.expires_in||3600)*1000 };
+  localStorage.setItem('ormia_sumup_token', JSON.stringify(_sumupToken));
+}
+
+async function getSumUpAccessToken() {
+  if (_sumupToken?.access_token && _sumupToken.expires_at > Date.now()+60000)
+    return _sumupToken.access_token;
+  if (_sumupToken?.refresh_token) {
+    try {
+      const res = await fetch('https://api.sumup.com/token', { method:'POST',
+        headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body:new URLSearchParams({ grant_type:'refresh_token', client_id:_sumupConfig.client_id,
+          client_secret:_sumupConfig.client_secret, refresh_token:_sumupToken.refresh_token }) });
+      if (res.ok) { _saveSumUpToken(await res.json()); return _sumupToken.access_token; }
+    } catch(_) {}
+  }
+  throw new Error('SumUp non autorizzato — apri Finance → Integrazioni → SumUp e autorizza.');
+}
+
+async function avviaPOSfattura(fatt) {
+  const modal = document.getElementById('modal-pos-ormia');
+  if (!modal) return;
+  document.getElementById('pos-ormia-importo').textContent = '€ '+(fatt.totale||0).toFixed(2).replace('.',',');
+  document.getElementById('pos-ormia-icona').textContent   = '📱';
+  document.getElementById('pos-ormia-titolo').textContent  = 'Pagamento in corso';
+  document.getElementById('pos-ormia-msg').textContent     = 'Creazione checkout…';
+  document.getElementById('pos-ormia-spinner').style.display = '';
+  document.getElementById('pos-ormia-annulla').style.display = '';
+  document.getElementById('pos-ormia-annulla').textContent = 'Annulla';
+  modal.style.display = 'flex';
+  try {
+    const token = await getSumUpAccessToken();
+    const ref = 'ORMIA-'+fatt.numero+'-'+Date.now();
+    const res = await fetch('https://api.sumup.com/v0.1/checkouts', { method:'POST',
+      headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+      body:JSON.stringify({ amount:fatt.totale, currency:'EUR',
+        checkout_reference:ref, merchant_code:_sumupConfig.merchant }) });
+    if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(e.message||'Errore SumUp '+res.status); }
+    const checkout = await res.json();
+    document.getElementById('pos-ormia-msg').textContent = 'In attesa conferma dal terminale…';
+    const checkoutId = checkout.id;
+    let attempts = 0;
+    _sumupPoll = setInterval(async () => {
+      if (++attempts > 60) {
+        clearInterval(_sumupPoll); _sumupPoll=null;
+        document.getElementById('pos-ormia-icona').textContent   = '⏱';
+        document.getElementById('pos-ormia-titolo').textContent  = 'Timeout';
+        document.getElementById('pos-ormia-msg').textContent     = 'Nessuna risposta. Fattura emessa — riconcilia in Finance.';
+        document.getElementById('pos-ormia-spinner').style.display = 'none';
+        document.getElementById('pos-ormia-annulla').textContent = 'Chiudi';
+        return;
+      }
+      try {
+        const sr = await fetch(`https://api.sumup.com/v0.1/checkouts/${checkoutId}`,
+          { headers:{'Authorization':'Bearer '+token} });
+        const st = await sr.json();
+        if (st.status==='PAID') {
+          clearInterval(_sumupPoll); _sumupPoll=null;
+          await posOrmiaSuccesso(fatt, st.transactions?.[0]?.id||checkoutId);
+        } else if (st.status==='FAILED'||st.status==='CANCELLED') {
+          clearInterval(_sumupPoll); _sumupPoll=null;
+          document.getElementById('pos-ormia-icona').textContent  = '❌';
+          document.getElementById('pos-ormia-titolo').textContent = 'Pagamento '+st.status.toLowerCase();
+          document.getElementById('pos-ormia-msg').textContent    = 'Riprova o incassa manualmente.';
+          document.getElementById('pos-ormia-spinner').style.display = 'none';
+        }
+      } catch(e) { console.warn('[SumUp poll]', e.message); }
+    }, 3000);
+  } catch(e) {
+    document.getElementById('pos-ormia-icona').textContent  = '❌';
+    document.getElementById('pos-ormia-titolo').textContent = 'Errore';
+    document.getElementById('pos-ormia-msg').textContent    = e.message;
+    document.getElementById('pos-ormia-spinner').style.display = 'none';
+  }
+}
+
+async function posOrmiaSuccesso(fatt, txId) {
+  document.getElementById('pos-ormia-icona').textContent   = '✅';
+  document.getElementById('pos-ormia-titolo').textContent  = 'Pagamento approvato!';
+  document.getElementById('pos-ormia-msg').textContent     = 'Transazione: '+txId;
+  document.getElementById('pos-ormia-spinner').style.display = 'none';
+  document.getElementById('pos-ormia-annulla').style.display = 'none';
+  try {
+    const oggi = new Date().toISOString().split('T')[0];
+    await supa.from('fatture').update({ stato:'pagata', data_pagamento:new Date().toISOString() }).eq('id', fatt.id);
+    await supa.from('incassi').insert({ id:crypto.randomUUID(), fattura_id:fatt.id,
+      cliente_id:fatt.clienteId, importo:fatt.totale, data:oggi,
+      metodo:'pos', riferimento:'SumUp: '+txId, riconciliato:true,
+      created_at:new Date().toISOString() });
+    showToast('✅ Pagato — fattura riconciliata');
+  } catch(e) { console.warn('[POS riconcilia]', e.message); }
+  setTimeout(() => {
+    document.getElementById('modal-pos-ormia').style.display = 'none';
+    mostraDialogPostFattura(fatt);
+  }, 1800);
+}
+
+function annullaPOSormia() {
+  if (_sumupPoll) { clearInterval(_sumupPoll); _sumupPoll=null; }
+  document.getElementById('modal-pos-ormia').style.display = 'none';
+}
+
+// ── DDT → Fattura con POS ─────────────────────────────────────────────────────
+function converteDDTinFatturaPOS(id) {
+  const d = ddts.find(x=>x.id===id);
+  if (!d) return;
+  apriFatturaModal({ origine:'ddt', origineId:id, clienteId:d.clienteId||null,
+    descrizione:`DDT ${d.numero}`, veicolo:'',
+    righe:(d.righe||[]).map(r=>({desc:r.desc,qta:r.qta||1,prezzo:r.prezzo||0})),
+    _hint:'pos' });
+}
 
 function renderFatture() {
   const q = (document.getElementById('search-fatture')?.value||'').toLowerCase();
