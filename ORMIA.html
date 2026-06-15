@@ -7694,26 +7694,27 @@ async function autoInviaFIC(fatt) {
   // Legge config FiC salvata da ORMIA-finance.html (stesso localStorage)
   let ficCfg = {};
   try { ficCfg = JSON.parse(localStorage.getItem('ormia_fic_config') || '{}'); } catch(_) {}
-  if (!ficCfg.company_id || !ficCfg.client_id) return; // FiC non configurato, skip silenzioso
+  if (!ficCfg.client_id) return; // FiC non configurato, skip silenzioso
+  const FIC_COMPANY_ID = '1603640';
   let ficToken = {};
   try { ficToken = JSON.parse(localStorage.getItem('ormia_fic_token') || '{}'); } catch(_) {}
   if (!ficToken.access_token && !ficToken.refresh_token) return; // non autorizzato
 
   // Se il token è scaduto e c'è un refresh, proviamo a rinnovarlo
   let accessToken = ficToken.access_token;
-  if (!accessToken || ficToken.expires_at <= Date.now() + 60_000) {
+  if (!accessToken || (ficToken.expires_at && ficToken.expires_at <= Date.now() + 60000)) {
     if (!ficToken.refresh_token) return;
     try {
-      const res = await fetch('https://api.fattureincloud.it/v2/oauth/token', {
+      const res = await fetch('/.netlify/functions/fic-token', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          grant_type: 'refresh_token', client_id: ficCfg.client_id,
-          client_secret: ficCfg.client_secret, refresh_token: ficToken.refresh_token,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ grant_type:'refresh_token', client_id:ficCfg.client_id,
+          client_secret:ficCfg.client_secret, redirect_uri:'https://ormiaofficina.netlify.app/fic-callback',
+          refresh_token:ficToken.refresh_token }),
       });
       if (!res.ok) return;
       const d = await res.json();
+      if (d.error) return;
       accessToken = d.access_token;
       localStorage.setItem('ormia_fic_token', JSON.stringify({
         access_token: d.access_token, refresh_token: d.refresh_token || ficToken.refresh_token,
@@ -7729,20 +7730,27 @@ async function autoInviaFIC(fatt) {
     : [{ name:fatt.descrizione||'Servizio officina', qty:1,
          net_price:fatt.imponibile||(fatt.totale||0)/(1+(fatt.iva||22)/100), vat:{value:fatt.iva||22} }];
 
-  const res = await fetch(`https://api.fattureincloud.it/v2/c/${ficCfg.company_id}/issued_documents`, {
+  const res = await fetch('/.netlify/functions/fic-api', {
     method: 'POST',
-    headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ data: {
-      type:'invoice', date:(fatt.data||new Date().toISOString()).split('T')[0], number:fatt.numero,
-      entity:{ name:fatt.clRagione||cl?.ragione||'Cliente', vat_number:fatt.clPiva||cl?.piva||'',
-               tax_code:fatt.clCf||cl?.cf||'', ei_code:fatt.clSdi||cl?.sdi||'',
-               certified_email:fatt.clPec||cl?.pec||'' },
-      items_list: items,
-    }}),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: accessToken,
+      path: '/c/' + FIC_COMPANY_ID + '/issued_documents', method: 'POST',
+      payload: { data: {
+        type:'invoice', date:(fatt.data||new Date().toISOString()).split('T')[0], number:fatt.numero,
+        entity:{ name:fatt.clRagione||cl?.ragione||'Cliente', vat_number:fatt.clPiva||cl?.piva||'',
+                 tax_code:fatt.clCf||cl?.cf||'', ei_code:fatt.clSdi||cl?.sdi||'',
+                 certified_email:fatt.clPec||cl?.pec||'' },
+        items_list: items,
+      }},
+    }),
   });
-  if (!res.ok) { console.warn('[FiC auto] Errore invio:', res.status, await res.text()); return; }
+  if (!res.ok) {
+    const err = await res.json().catch(()=>({}));
+    throw new Error(err?.error?.message || err?.message || 'HTTP ' + res.status);
+  }
   const d = await res.json();
-  const ficId = String(d.data.id);
+  const ficId = String(d?.data?.id || d?.data?.document?.id || '');
+  if (!ficId) throw new Error('FiC non ha restituito un ID');
   await supa.from('fatture').update({ fic_id: ficId, fic_stato: 'confermata' }).eq('id', fatt.id);
   const idx = fatture.findIndex(x => x.id === fatt.id);
   if (idx >= 0) { fatture[idx].ficId = ficId; fatture[idx].ficStato = 'confermata'; }
