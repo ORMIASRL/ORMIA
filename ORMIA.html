@@ -1120,6 +1120,7 @@
         <div class="stats-row" style="margin-bottom:16px">
           <div class="stat-card"><div class="stat-label">Prodotti totali</div><div class="stat-value" id="mag-stat-tot">0</div></div>
           <div class="stat-card"><div class="stat-label">Sotto scorta minima</div><div class="stat-value" id="mag-stat-alert" style="color:var(--danger)">0</div></div>
+          <div class="stat-card"><div class="stat-label">Ordini in attesa</div><div class="stat-value" id="mag-stat-ordini" style="color:var(--warning)">0</div></div>
           <div class="stat-card"><div class="stat-label">Valore totale</div><div class="stat-value" id="mag-stat-valore" style="font-size:16px">€ 0</div></div>
         </div>
 
@@ -1127,6 +1128,7 @@
         <div class="tabs" style="margin-bottom:16px">
           <div class="tab active" id="mtab-prodotti"    onclick="setMagTab('prodotti')">Prodotti</div>
           <div class="tab"        id="mtab-movimenti"   onclick="setMagTab('movimenti')">Movimenti</div>
+          <div class="tab"        id="mtab-ordini"      onclick="setMagTab('ordini')">Ordini fornitori</div>
           <div class="tab"        id="mtab-approvazioni" onclick="setMagTab('approvazioni')" style="position:relative">
             Da approvare
             <span id="mtab-badge-appr" style="position:absolute;top:-4px;right:-4px;background:var(--danger);color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;display:none">0</span>
@@ -1151,9 +1153,6 @@
               <option value="low">Sotto scorta</option>
               <option value="esaurito">Esaurito</option>
             </select>
-          </div>
-          <div id="mag-banner-critica" style="display:none;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;font-size:12px;color:var(--text3);align-items:center;justify-content:space-between;gap:10px">
-            <span>⚠️ Vista critica — solo prodotti <strong>esauriti</strong> e <strong>sotto scorta</strong>.</span>
           </div>
           <div class="table-wrap">
             <table>
@@ -1197,6 +1196,21 @@
             <div class="empty-state" id="empty-movimenti" style="display:none">
               <p>Nessun movimento registrato.</p>
             </div>
+          </div>
+        </div>
+
+        <!-- TAB ORDINI -->
+        <div id="msec-ordini" style="display:none">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:16px;box-shadow:var(--shadow)">
+            <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Prodotti da riordinare</div>
+            <div id="mag-riordino"></div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Data</th><th>Prodotto</th><th>Fornitore</th><th>Q.tà ordinata</th><th>Stato</th><th></th></tr></thead>
+              <tbody id="tbody-ordini"></tbody>
+            </table>
+            <div class="empty-state" id="empty-ordini" style="display:none"><p>Nessun ordine ancora.</p></div>
           </div>
         </div>
 
@@ -2206,15 +2220,10 @@ function showDetailVeicolo(id) {
   dvCount.textContent = comVeicolo.length + ' commess' + (comVeicolo.length===1?'a':'e');
   const statoColors = {aperta:'var(--accent)',wip:'var(--warning)',standby:'#6D28D9',chiusa:'var(--success)',fatturata:'#6366F1'};
   const statoLabels = {aperta:'Aperta',wip:'In lavorazione',standby:'Standby',chiusa:'Chiusa',fatturata:'Fatturata'};
-  const _PAGE = 5;
-  function renderStorico(showAll) {
-    if (!comVeicolo.length) {
-      dvList.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0">Nessuna commessa registrata.</div>';
-      return;
-    }
-    const vis = showAll ? comVeicolo : comVeicolo.slice(0, _PAGE);
-    const rest = comVeicolo.length - _PAGE;
-    dvList.innerHTML = vis.map(cm=>`
+  if (!comVeicolo.length) {
+    dvList.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0">Nessuna commessa registrata.</div>';
+  } else {
+    dvList.innerHTML = comVeicolo.map(cm=>`
       <div onclick="showDetailCommessa('${cm.id}')" style="padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:10px;background:var(--surface)" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='var(--surface)'">
         <div style="width:6px;height:6px;border-radius:50%;background:${statoColors[cm.stato]||'#999'};flex-shrink:0"></div>
         <div style="flex:1;min-width:0">
@@ -2225,12 +2234,8 @@ function showDetailVeicolo(id) {
           <div style="font-size:11px;color:var(--text3)">${cm.dataApertura?formatDate(cm.dataApertura):''}</div>
           <span style="font-size:10px;font-weight:700;color:${statoColors[cm.stato]||'#999'}">${statoLabels[cm.stato]||cm.stato}</span>
         </div>
-      </div>`).join('') +
-      (!showAll && comVeicolo.length > _PAGE
-        ? `<button onclick="renderStorico(true)" style="width:100%;padding:8px;border:1px dashed var(--border);border-radius:var(--radius);background:none;cursor:pointer;font-size:12px;color:var(--text3);margin-top:2px">Mostra altre ${rest} commess${rest===1?'a':'e'} ▾</button>`
-        : '');
+      </div>`).join('');
   }
-  renderStorico(false);
 
   const scadenze = [
     {label:'Revisione', val:v.revisione},
@@ -2501,12 +2506,18 @@ function init() {
       <div class="detail-sub" id="dc-cliente-veicolo"></div>
     </div>
     <div style="display:flex;gap:6px;align-items:flex-start">
-
+      <button class="btn btn-secondary btn-sm" onclick="anteprimaCommessa(selectedCommessaId)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        Anteprima
+      </button>
       <button class="btn btn-secondary btn-sm" onclick="stampaCommessa(selectedCommessaId)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
         Stampa
       </button>
-
+      <button class="btn btn-secondary btn-sm" id="dc-btn-fattura" onclick="emettiFatturaCommessa(selectedCommessaId)" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+        Fattura
+      </button>
       <button class="btn btn-secondary btn-sm" onclick="editCommessa()">Modifica</button>
       <button class="close-btn" onclick="closeDetail('detail-commessa')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -2514,24 +2525,6 @@ function init() {
     </div>
   </div>
   <div id="dc-alert-moroso" style="display:none;padding:0 16px"></div>
-
-  <!-- SEZIONE PAGAMENTO -->
-  <div class="detail-section" id="dc-pagamento-section" style="display:none">
-    <div class="detail-section-title">💳 Incassa</div>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      <button class="btn btn-secondary" id="dc-btn-fattura" onclick="emettiFatturaCommessa(selectedCommessaId)" style="width:100%;justify-content:center;padding:14px 16px;font-size:14px">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:6px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
-        Fattura
-      </button>
-      <button class="btn" id="dc-btn-contanti" onclick="emettiFatturaCommessa(selectedCommessaId)" style="width:100%;justify-content:center;padding:14px 16px;font-size:14px;background:var(--warning,#f59e0b);border-color:var(--warning,#f59e0b);color:white">
-        💵 Contanti
-      </button>
-      <button class="btn btn-success" id="dc-btn-pos" onclick="emettiFatturaCommessa(selectedCommessaId)" style="width:100%;justify-content:center;padding:14px 16px;font-size:14px">
-        📱 POS
-      </button>
-    </div>
-  </div>
-
   <div class="detail-section">
     <div class="detail-section-title">Stato & info</div>
     <div class="detail-row"><span class="detail-key">Stato</span><span class="detail-val" id="dc-stato"></span></div>
@@ -2546,6 +2539,16 @@ function init() {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         Timbratura
       </span>
+      <button class="btn btn-ghost btn-sm" onclick="toggleQRCommessa()" style="font-size:11px">QR commessa</button>
+    </div>
+
+    <!-- QR code commessa (mostra/nascondi) -->
+    <div id="dc-qr-wrap" style="display:none;text-align:center;margin-bottom:12px">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Il meccanico scansiona questo QR con lo smartphone per timbrare</div>
+      <div id="dc-qr-code" style="display:inline-block;padding:10px;background:white;border-radius:var(--radius);border:1px solid var(--border)"></div>
+      <div style="margin-top:6px">
+        <a id="dc-qr-link" href="#" target="_blank" style="font-size:11px;color:var(--accent)">Apri pagina mobile</a>
+      </div>
     </div>
 
     <!-- Scansione tesserino / selezione manuale -->
@@ -2857,11 +2860,6 @@ const DB = {
 
 // ── AUTH ────────────────────────────────────────────
 let currentUser = null;
-let _sumupConfig = JSON.parse(localStorage.getItem('ormia_sumup_config')||'{}');
-let _sumupToken  = JSON.parse(localStorage.getItem('ormia_sumup_token')||'null');
-let _sumupPoll   = null;
-let _pfCurrentFatt = null;
-const SUMUP_TOKEN_URL = 'https://api.sumup.com/token';
 
 async function doLogin() {
   const email = document.getElementById('login-email').value.trim();
@@ -3581,7 +3579,7 @@ function renderCommesse() {
       (cl?.ragione||'').toLowerCase().includes(q) ||
       (v?.targa||'').toLowerCase().includes(q) ||
       (cm.numero||'').toLowerCase().includes(q);
-    const matchS = statoFiltro ? cm.stato === statoFiltro : (cm.stato !== 'fatturata' || !!q);
+    const matchS = !statoFiltro || cm.stato === statoFiltro;
     return matchQ && matchS;
   });
   filtered.sort((a,b)=>{
@@ -3681,14 +3679,13 @@ function renderCommesse() {
   if (vistaCommesse === 'kanban') {
     document.getElementById('dash-kanban').style.display='';
     document.getElementById('lista-commesse').style.display='none';
-    const colsBase = [
-      { stato:'aperta',    label:'Aperte',         headCls:'k-col-head-aperta',    colCls:'k-col-aperta' },
-      { stato:'wip',       label:'In lavorazione',  headCls:'k-col-head-wip',       colCls:'k-col-wip'    },
-      { stato:'standby',   label:'Standby',         headCls:'k-col-head-standby',   colCls:'k-col-standby'},
-      { stato:'chiusa',    label:'Chiuse',          headCls:'k-col-head-chiusa',    colCls:'k-col-chiusa' },
+    const cols = [
+      { stato:'aperta',    label:'Aperte',        headCls:'k-col-head-aperta',    colCls:'k-col-aperta' },
+      { stato:'wip',       label:'In lavorazione', headCls:'k-col-head-wip',       colCls:'k-col-wip'    },
+      { stato:'standby',   label:'Standby',        headCls:'k-col-head-standby',   colCls:'k-col-standby'},
+      { stato:'chiusa',    label:'Chiuse',         headCls:'k-col-head-chiusa',    colCls:'k-col-chiusa' },
+      { stato:'fatturata', label:'Fatturate',      headCls:'k-col-head-fatturata', colCls:'k-col-fatturata' },
     ];
-    const cols = statoFiltro === 'fatturata' ? [{ stato:'fatturata', label:'Fatturate', headCls:'k-col-head-fatturata', colCls:'k-col-fatturata' }] : colsBase;
-    document.getElementById('dash-kanban').style.gridTemplateColumns = cols.length===1 ? '1fr' : `repeat(${cols.length},1fr)`;
     document.getElementById('dash-kanban').innerHTML = cols.map(col=>{
       const items = filtered.filter(cm=>cm.stato===col.stato);
       const cards = items.map(cm=>{
@@ -3832,9 +3829,9 @@ function showDetailCommessa(id) {
     }
   }
 
-  // Mostra sezione pagamento solo se commessa chiusa o fatturata
-  const secPag = document.getElementById('dc-pagamento-section');
-  if (secPag) secPag.style.display = (cm.stato==='chiusa'||cm.stato==='fatturata') ? '' : 'none';
+  // Mostra tasto Fattura solo se commessa chiusa o fatturata
+  const btnFatt = document.getElementById('dc-btn-fattura');
+  if (btnFatt) btnFatt.style.display = (cm.stato==='chiusa'||cm.stato==='fatturata') ? '' : 'none';
   document.getElementById('dc-data').textContent = formatDate(cm.dataApertura)||'—';
 
   // Solo i meccanici con timbratura aperta adesso su questa commessa
@@ -3913,6 +3910,7 @@ function showDetailCommessa(id) {
   popolaSelTimbraturaCommessa();
   document.getElementById('dc-tim-scan').value = '';
   document.getElementById('dc-tim-trovato').style.display = 'none';
+  document.getElementById('dc-qr-wrap').style.display = 'none';
   renderTimbratureLiveCommessa(id);
 
   document.getElementById('detail-commessa').style.display='flex';
@@ -5325,6 +5323,19 @@ async function chiudiDaCommessa(timId) {
   } catch(e) { alert('Errore: '+e.message); }
 }
 
+function anteprimaCommessa(comId) {
+  const cm  = commesse.find(c=>c.id===comId);
+  if (!cm) return;
+  const cl  = clienti.find(c=>c.id===cm.clienteId);
+  const v   = veicoli.find(x=>x.id===cm.veicoloId);
+  const off = getDatiOfficina();
+  const inGar = isVeicoloInGaranzia(cm.veicoloId);
+  const garScad = v?.garanziaScadenza ? new Date(v.garanziaScadenza).toLocaleDateString('it-IT') : null;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(cm.numero||comId)}&margin=4`;
+  // Usa lo stesso generatore di stampaCommessa
+  const html = generaHtmlCommessa(cm, cl, v, off, inGar, garScad, qrUrl);
+  apriAnteprima(html, `Commessa ${cm.numero}`);
+}
 
 function apriLightboxGestionale(url) {
   const lb = document.createElement('div');
@@ -5346,10 +5357,11 @@ function stampaCommessa(comId) {
   const off = getDatiOfficina();
   const inGar = isVeicoloInGaranzia(cm.veicoloId);
   const garScad = v?.garanziaScadenza ? new Date(v.garanziaScadenza).toLocaleDateString('it-IT') : null;
-  apriAnteprima(generaHtmlCommessa(cm, cl, v, off, inGar, garScad), `Commessa ${cm.numero}`);
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(cm.numero||comId)}&margin=4`;
+  apriAnteprima(generaHtmlCommessa(cm, cl, v, off, inGar, garScad, qrUrl), `Commessa ${cm.numero}`);
 }
 
-function generaHtmlCommessa(cm, cl, v, off, inGar, garScad) {
+function generaHtmlCommessa(cm, cl, v, off, inGar, garScad, qrUrl) {
 
   // Voci manodopera
   const rowsMano = (cm.vociMano||[]).filter(r=>r.desc).map(r=>`
@@ -5522,7 +5534,10 @@ ${cm.note ? `
       <div class="firma-label">Firma meccanico responsabile</div>
     </div>
   </div>
-
+  <div class="qr-wrap">
+    <img src="${qrUrl}" width="90" height="90" alt="QR ${cm.numero}">
+    <div class="qr-label">${cm.numero}</div>
+  </div>
 </div>
 
 
@@ -5631,6 +5646,22 @@ ${cm.note ? `
   return html;
 }
 
+function toggleQRCommessa() {
+  const wrap = document.getElementById('dc-qr-wrap');
+  if (wrap.style.display==='none') { generaQRCommessa(selectedCommessaId); wrap.style.display='block'; }
+  else wrap.style.display='none';
+}
+
+function generaQRCommessa(comId) {
+  const cm = commesse.find(x=>x.id===comId);
+  if (!cm) return;
+  const url = 'timbra.html?c=' + encodeURIComponent(cm.numero);
+  document.getElementById('dc-qr-link').href = url;
+  document.getElementById('dc-qr-link').textContent = 'Apri pagina mobile';
+  const size = 140;
+  document.getElementById('dc-qr-code').innerHTML =
+    `<img src="https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(url)}" width="${size}" height="${size}" alt="QR ${cm.numero}" style="display:block">`;
+}
 
 // ===== MODAL SCANNER RICAMBI =====
 let scanModalProdottoId = null;
@@ -6038,9 +6069,9 @@ async function confermaScansioneRicambio() {
 }
 
 // prodotti, movimenti, presenze dichiarati in cima insieme agli altri
+let ordini = [];
 let editingProdottoId = null;
 let magTab = 'prodotti';
-let magMostraTutti = false;
 
 async function saveMagazzino() { /* dati già salvati su Supabase */ }
 
@@ -6059,13 +6090,14 @@ function initMagazzino() {
 
 function setMagTab(tab) {
   magTab = tab;
-  ['prodotti','movimenti','approvazioni'].forEach(t => {
+  ['prodotti','movimenti','ordini','approvazioni'].forEach(t => {
     document.getElementById('mtab-'+t)?.classList.toggle('active', t===tab);
     const sec = document.getElementById('msec-'+t);
     if (sec) sec.style.display = t===tab?'block':'none';
   });
-  if (tab==='prodotti')     { magMostraTutti = false; renderProdotti(); }
+  if (tab==='prodotti')     renderProdotti();
   if (tab==='movimenti')    { popolaSelMovimento(); renderMovimenti(); }
+  if (tab==='ordini')       { renderRiordino(); renderOrdini(); }
   if (tab==='approvazioni') renderApprovazioni();
 }
 
@@ -6075,8 +6107,10 @@ function updateStatsMagazzino() {
     document.getElementById('section-magazzino').style.display = 'none';
     return;
   }
+  ordini = safeStorage.parse('officina_ordini', []);
   document.getElementById('mag-stat-tot').textContent    = prodotti.length;
   document.getElementById('mag-stat-alert').textContent  = prodotti.filter(p=>p.giacenza<=p.scortaMin).length;
+  document.getElementById('mag-stat-ordini').textContent = ordini.filter(o=>o.stato==='attesa').length;
   const val = prodotti.reduce((s,p)=>s+(p.giacenza||0)*(p.prezzoAcq||0),0);
   document.getElementById('mag-stat-valore').textContent = '€ '+val.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
 }
@@ -6093,24 +6127,15 @@ function renderProdotti() {
   const q   = (document.getElementById('mag-search')?.value||'').toLowerCase();
   const cat = document.getElementById('mag-filter-cat')?.value||'';
   const st  = document.getElementById('mag-filter-stato')?.value||'';
-  const isCriticalMode = !magMostraTutti && !q && !cat && !st;
-  const banner = document.getElementById('mag-banner-critica');
-  if (banner) banner.style.display = isCriticalMode ? 'flex' : 'none';
   const filtered = prodotti.filter(p=>{
     const matchQ = !q || (p.descrizione||p.desc||'').toLowerCase().includes(q) || (p.codInt||'').toLowerCase().includes(q) || (p.codForn||'').toLowerCase().includes(q);
     const matchC = !cat || p.categoria===cat;
-    const matchS = isCriticalMode ? statoProdotto(p).key !== 'ok' : (!st || statoProdotto(p).key===st);
+    const matchS = !st  || statoProdotto(p).key===st;
     return matchQ && matchC && matchS;
   });
   const tbody = document.getElementById('tbody-prodotti');
   const empty = document.getElementById('empty-prodotti');
-  if (!filtered.length) {
-    tbody.innerHTML=''; empty.style.display='';
-    empty.innerHTML = isCriticalMode
-      ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><p style="color:var(--success);font-weight:600">Magazzino OK — nessun prodotto da riordinare.</p>`
-      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg><p>Nessun prodotto trovato.</p><button class="btn btn-primary" onclick="openModalProdotto()">+ Aggiungi prodotto</button>`;
-    return;
-  }
+  if (!filtered.length) { tbody.innerHTML=''; empty.style.display=''; return; }
   empty.style.display='none';
   tbody.innerHTML = filtered.map(p => {
     const st = statoProdotto(p);
@@ -6275,18 +6300,14 @@ async function registraMovimento() {
   } catch(e) { alert('Errore: '+e.message); }
 }
 
-let _movPage = 10;
-function renderMovimenti(showAll) {
-  if (showAll !== undefined) _movPage = showAll ? Infinity : 10;
+function renderMovimenti() {
   const filtered = [...movimenti].reverse();
   const tbody = document.getElementById('tbody-movimenti');
   const empty = document.getElementById('empty-movimenti');
   if (!filtered.length) { tbody.innerHTML=''; empty.style.display=''; return; }
   empty.style.display='none';
   const tipoStyle = { carico:{cls:'badge-green',label:'Carico'}, scarico:{cls:'badge-red',label:'Scarico'}, rettifica:{cls:'badge-blue',label:'Rettifica'} };
-  const visible = filtered.slice(0, _movPage);
-  const rest = filtered.length - visible.length;
-  tbody.innerHTML = visible.map(m=>{
+  tbody.innerHTML = filtered.map(m=>{
     const p  = prodotti.find(x=>x.id===m.prodId);
     const cm = commesse.find(x=>x.id===m.comId);
     const ts = tipoStyle[m.tipo]||{cls:'badge-gray',label:m.tipo};
@@ -6299,7 +6320,7 @@ function renderMovimenti(showAll) {
       <td style="font-size:12px;color:var(--text3)">${m.note||'—'}</td>
       <td><button class="btn btn-danger btn-sm" onclick="deleteMovimento('${m.id}')">Elimina</button></td>
     </tr>`;
-  }).join('') + (rest > 0 ? `<tr><td colspan="7" style="text-align:center;padding:12px 0"><button class="btn btn-ghost btn-sm" onclick="renderMovimenti(true)">Mostra altri ${rest} movimenti ▾</button></td></tr>` : '');
+  }).join('');
 }
 
 async function deleteMovimento(id) {
@@ -6308,9 +6329,95 @@ async function deleteMovimento(id) {
 }
 
 // ===== RIORDINO =====
-function verificaRiordino() { /* ordini rimossi */ }
+function verificaRiordino() {
+  prodotti.forEach(p=>{
+    if (p.giacenza <= p.scortaMin) {
+      const giàInOrdine = ordini.find(o=>o.prodId===p.id&&o.stato==='attesa');
+      if (!giàInOrdine) {
+        ordini.push({ id:initId(), prodId:p.id, fornitoreId:p.fornitoreId||null, qtaOrdinata:p.qtaRiordino||10, stato:'attesa', note:'Riordino automatico', createdAt:new Date().toISOString() });
+        showToast(`Ordine automatico creato per: ${p.descrizione||p.descrizione||p.desc}`);
+      }
+    }
+  });
+  localStorage.setItem('officina_ordini', JSON.stringify(ordini));
+  updateStatsMagazzino();
+}
 
+function renderRiordino() {
+  
+  const sottoscorta = prodotti.filter(p=>p.giacenza<=p.scortaMin);
+  const el = document.getElementById('mag-riordino');
+  if (!el) return;
+  if (!sottoscorta.length) { el.innerHTML='<div style="font-size:13px;color:var(--success)">✓ Nessun prodotto sotto scorta minima.</div>'; return; }
+  el.innerHTML = sottoscorta.map(p=>{
+    const forn = clienti.find(c=>c.id===p.fornitoreId);
+    const st = statoProdotto(p);
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <span class="badge ${st.cls}" style="margin-right:8px">${st.label}</span>
+        <strong style="font-size:13px">${p.descrizione||p.desc}</strong>
+        <span style="font-size:12px;color:var(--text3);margin-left:8px">${p.codInt||''} · ${forn?forn.ragione:'Fornitore non impostato'}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-family:'DM Mono',monospace;font-size:13px">Giacenza: <strong>${p.giacenza}</strong> / min ${p.scortaMin}</span>
+        <button class="btn btn-primary btn-sm" onclick="creaOrdineManuale('${p.id}')">Ordina ${p.qtaRiordino||10} ${p.um||'pz'}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
 
+function renderOrdini() {
+  ordini = JSON.parse(localStorage.getItem('officina_ordini') || '[]');
+  const filtered = [...ordini].reverse();
+  const tbody = document.getElementById('tbody-ordini');
+  const empty = document.getElementById('empty-ordini');
+  if (!filtered.length) { tbody.innerHTML=''; empty.style.display=''; return; }
+  empty.style.display='none';
+  const statoOrd = { attesa:{cls:'badge-yellow',label:'In attesa'}, ricevuto:{cls:'badge-green',label:'Ricevuto'}, annullato:{cls:'badge-gray',label:'Annullato'} };
+  tbody.innerHTML = filtered.map(o=>{
+    const p    = prodotti.find(x=>x.id===o.prodId);
+    const forn = clienti.find(c=>c.id===o.fornitoreId);
+    const st   = statoOrd[o.stato]||{cls:'badge-gray',label:o.stato};
+    return `<tr>
+      <td style="font-size:12px">${formatDateTime(o.createdAt)}</td>
+      <td><div class="td-main" style="font-size:13px">${p?p.descrizione||p.desc:'—'}</div></td>
+      <td style="font-size:12px">${forn?forn.ragione:'—'}</td>
+      <td style="font-family:'DM Mono',monospace;font-weight:600">${o.qtaOrdinata} ${p?p.um||'pz':''}</td>
+      <td><span class="badge ${st.cls}">${st.label}</span></td>
+      <td><div style="display:flex;gap:4px">
+        ${o.stato==='attesa'?`<button class="btn btn-primary btn-sm" onclick="riceviOrdine('${o.id}')">Ricevuto</button>`:''}
+        <button class="btn btn-danger btn-sm" onclick="annullaOrdine('${o.id}')">Annulla</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function creaOrdineManuale(prodId) {
+  const p = prodotti.find(x=>x.id===prodId);
+  if (!p) return;
+  ordini.push({ id:initId(), prodId, fornitoreId:p.fornitoreId||null, qtaOrdinata:p.qtaRiordino||10, stato:'attesa', note:'Ordine manuale', createdAt:new Date().toISOString() });
+  saveMagazzino(); renderRiordino(); renderOrdini(); updateStatsMagazzino();
+  showToast('Ordine creato ✓');
+}
+
+function riceviOrdine(id) {
+  const o = ordini.find(x=>x.id===id);
+  if (!o) return;
+  o.stato = 'ricevuto';
+  // Carica la giacenza
+  const idx = prodotti.findIndex(x=>x.id===o.prodId);
+  if (idx>=0) prodotti[idx].giacenza += o.qtaOrdinata;
+  movimenti.push({ id:initId(), prodId:o.prodId, tipo:'carico', qta:o.qtaOrdinata, comId:null, note:'Ricezione ordine '+id.substr(-4), data:new Date().toISOString(), createdAt:new Date().toISOString() });
+  saveMagazzino(); renderOrdini(); renderRiordino(); renderProdotti(); updateStatsMagazzino();
+  showToast('Ordine ricevuto — giacenza aggiornata ✓');
+}
+
+function annullaOrdine(id) {
+  if (!confirm('Annullare questo ordine?')) return;
+  const o = ordini.find(x=>x.id===id);
+  if (o) o.stato = 'annullato';
+  saveMagazzino(); renderOrdini(); updateStatsMagazzino();
+}
 
 // ===== BACKUP / RIPRISTINO DATI =====
 function esportaDati() {
@@ -6320,6 +6427,7 @@ function esportaDati() {
     officina_commesse: commesse, officina_meccanici: meccanici,
     officina_timbrature: timbrature, officina_presenze: presenze,
     officina_prodotti: prodotti, officina_movimenti: movimenti,
+    officina_ordini: ordini,
   };
   const json = JSON.stringify(backup, null, 2);
   const a = document.createElement('a');
@@ -6355,9 +6463,7 @@ function updateBadgeApprovazioni() {
   if (mtabBadge) { mtabBadge.style.display = pending>0?'':'none'; mtabBadge.textContent = pending; }
 }
 
-let _apprPage = 10;
-function renderApprovazioni(showAll) {
-  if (showAll !== undefined) _apprPage = showAll ? Infinity : 10;
+function renderApprovazioni() {
   const proposte = JSON.parse(localStorage.getItem('officina_proposte') || '[]');
   const pending  = proposte.filter(p=>p.stato==='attesa');
   const lista    = document.getElementById('lista-approvazioni');
@@ -6365,9 +6471,7 @@ function renderApprovazioni(showAll) {
   if (!lista) return;
   if (!pending.length) { lista.innerHTML=''; empty.style.display=''; return; }
   empty.style.display='none';
-  const visible = pending.slice(0, _apprPage);
-  const rest = pending.length - visible.length;
-  lista.innerHTML = visible.map(p=>{
+  lista.innerHTML = pending.map(p=>{
     const cm  = commesse.find(x=>x.id===p.comId);
     const mec = meccanici.find(x=>x.id===p.mecId);
     const pr  = prodotti.find(x=>x.id===p.prodId);
@@ -6401,7 +6505,7 @@ function renderApprovazioni(showAll) {
         <button class="btn btn-danger btn-sm" onclick="rifiutaRicambio('${p.id}')">Rifiuta</button>
       </div>
     </div>`;
-  }).join('') + (rest > 0 ? `<div style="text-align:center;padding:8px 0"><button class="btn btn-ghost btn-sm" onclick="renderApprovazioni(true)">Mostra altri ${rest} ▾</button></div>` : '');
+  }).join('');
 }
 
 async function approvaRicambio(id) {
@@ -6660,49 +6764,21 @@ updateBadgeApprovazioni();
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-fattura')">Annulla</button>
-      <button class="btn btn-primary" onclick="emettiFattura()">📄 Fattura</button>
-      <button class="btn" onclick="emettiFatturaContanti()" style="background:var(--warning,#f59e0b);border-color:var(--warning,#f59e0b);color:white">💵 Contanti</button>
-      <button class="btn btn-success" onclick="emettiFatturaConPOS()">📱 POS</button>
+      <button class="btn btn-secondary" onclick="salvaEInviaFattura()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        Salva e invia email
+      </button>
+      <button class="btn btn-secondary" onclick="salvaEStampaFattura()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Salva e stampa
+      </button>
+      <button class="btn btn-primary" onclick="salvaFattura()">Salva</button>
     </div>
   </div>
 </div><!-- /modal-fattura -->
 
 <!-- IFRAME nascosto per stampa -->
 <iframe id="print-frame" style="display:none"></iframe>
-
-
-<!-- MODAL POS ORMIA -->
-<div class="modal-overlay" id="modal-pos-ormia" style="display:none" onclick="closeModalOnBg(event,'modal-pos-ormia')">
-  <div class="modal" style="max-width:360px;text-align:center">
-    <div class="modal-header" style="justify-content:center;border-bottom:none;padding-bottom:0">
-      <div style="font-size:40px;margin-bottom:8px">📱</div>
-    </div>
-    <div style="padding:0 24px 24px">
-      <div id="pos-ormia-importo" style="font-size:28px;font-weight:700;font-family:'DM Mono',monospace;color:var(--accent);margin-bottom:4px"></div>
-      <div id="pos-ormia-titolo" style="font-size:13px;color:var(--text3);margin-bottom:16px"></div>
-      <div id="pos-ormia-spinner" style="margin-bottom:12px"><div style="width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto"></div></div>
-      <div id="pos-ormia-msg" style="font-size:14px;color:var(--text2);margin-bottom:20px"></div>
-      <button id="pos-ormia-annulla" class="btn btn-secondary" onclick="annullaPOSormia()" style="width:100%">Annulla</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL POST-FATTURA -->
-<div class="modal-overlay" id="modal-post-fattura" style="display:none" onclick="closeModalOnBg(event,'modal-post-fattura')">
-  <div class="modal" style="max-width:360px;text-align:center">
-    <div style="padding:28px 24px 8px">
-      <div style="font-size:36px;margin-bottom:8px">✅</div>
-      <div style="font-size:16px;font-weight:700;margin-bottom:4px">Fattura emessa</div>
-      <div style="font-size:13px;color:var(--text3)">N. <span id="pf-numero"></span> · <span id="pf-importo"></span></div>
-    </div>
-    <div style="padding:16px 24px 24px;display:flex;flex-direction:column;gap:8px">
-      <button class="btn btn-secondary" onclick="pfStampa()" style="width:100%">🖨 Stampa</button>
-      <button class="btn btn-secondary" onclick="pfEmail()" style="width:100%">📧 Invia email</button>
-      <button class="btn btn-secondary" onclick="pfEntrambi()" style="width:100%">Stampa + Email</button>
-      <button class="btn btn-ghost" onclick="pfNoAction()" style="width:100%;margin-top:4px">No, grazie</button>
-    </div>
-  </div>
-</div>
 
 </div><!-- /app -->
 
@@ -7088,35 +7164,182 @@ function aggiungiPrimoProdottoVb() {
   if (first) first.click();
 }
 
-async function emettiSoloVbDDT() {
+// ── DDT CHECKOUT FLOW ────────────────────────────────
+let _checkoutDdt = null;
+let _pendingFirmaDDT = null;
+
+async function emmettiDDT() {
   const righe = vbRighe.filter(r=>r.desc&&r.qta>0);
   if (!righe.length) { alert('Aggiungi almeno un ricambio.'); return; }
-  const ddt = await creaVbDDT(righe);
+  const cId = document.getElementById('vb-cliente')?.value || null;
+  const ddt = await creaVbDDT(righe, cId);
   if (!ddt) return;
+  resetVendita();
+  renderDDT();
+  setDocTab('ddt');
+  showToast(`DDT ${ddt.numero} emesso ✓`);
+  await checkoutDDT(ddt);
+}
+
+async function checkoutDDT(ddt) {
+  _checkoutDdt = ddt;
+  const cl = clienti.find(c=>c.id===ddt.clienteId);
+  const metodo = cl?.pagamento;
+  if (!metodo) {
+    const info = cl ? `Cliente: ${cl.ragione} · nessun metodo in anagrafica` : 'Cliente occasionale';
+    document.getElementById('pagddt-info').textContent = info;
+    document.getElementById('modal-pagamento-ddt').style.display='flex';
+    return;
+  }
+  await completaCheckoutDDT(metodo);
+}
+
+async function completaCheckoutDDT(metodo) {
+  document.getElementById('modal-pagamento-ddt').style.display='none';
+  const ddt = _checkoutDdt;
+  if (!ddt) return;
+  ddt._metodoCheckout = metodo;
   const cl = clienti.find(c=>c.id===ddt.clienteId);
   apriAnteprima(generaHtmlDDT(ddt, getDatiOfficina(), cl), `DDT ${ddt.numero}`);
-  resetVendita();
-  showToast(`DDT ${ddt.numero} emesso ✓`);
-  setDocTab('ddt');
+  setTimeout(() => apriFirmaDDT(ddt), 300);
 }
 
-async function emettiVbDDTFattura() {
-  const righe = vbRighe.filter(r=>r.desc&&r.qta>0);
-  if (!righe.length) { alert('Aggiungi almeno un ricambio.'); return; }
-  const ddt = await creaVbDDT(righe);
+function apriFirmaDDT(ddt) {
+  _pendingFirmaDDT = ddt;
+  const cl = clienti.find(c=>c.id===ddt.clienteId);
+  document.getElementById('firma-ddt-info').textContent =
+    `${ddt.numero} · ${cl?cl.ragione:'Occasionale'} · ${(ddt.righe||[]).length} articoli`;
+  const canvas = document.getElementById('firma-ddt-canvas');
+  canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
+  initFirmaDdtCanvas();
+  document.getElementById('modal-firma-ddt').style.display='flex';
+}
+
+async function confermaSalvaDDT() {
+  const canvas = document.getElementById('firma-ddt-canvas');
+  const firmaData = canvas.toDataURL('image/png');
+  const ddt = _pendingFirmaDDT;
+  if (ddt) {
+    try {
+      await supa.from('ddt').update({firma_data: firmaData}).eq('id', ddt.id);
+      const idx = ddts.findIndex(d=>d.id===ddt.id);
+      if (idx>=0) ddts[idx].firma_data = firmaData;
+      renderDDT();
+    } catch(e) { console.warn('firma DDT non salvata:', e.message); }
+  }
+  document.getElementById('modal-firma-ddt').style.display='none';
+  await postFirmaDDT(ddt);
+}
+
+function saltaFirmaDDT() {
+  document.getElementById('modal-firma-ddt').style.display='none';
+  postFirmaDDT(_pendingFirmaDDT);
+}
+
+async function postFirmaDDT(ddt) {
   if (!ddt) return;
-  // Precompila fattura dal DDT
-  apriFatturaModal({
-    origine: 'ddt', origineId: ddt.id,
-    clienteId: ddt.clienteId||null,
-    descrizione: `DDT ${ddt.numero}`,
-    veicolo: '',
-    righe: righe.map(r=>({desc:r.desc,qta:r.qta||1,prezzo:r.prezzo||0})),
-  });
-  resetVendita();
+  const metodo = ddt._metodoCheckout;
+  const righe  = (ddt.righe||[]).map(r=>({desc:r.desc,qta:r.qta||1,prezzo:r.prezzo||0}));
+  const immediato = ['contanti','pos','carta'].includes(metodo);
+  const differito = ['bonifico','riba','30gg','60gg','90gg'].includes(metodo);
+  if (immediato || differito) {
+    apriFatturaModal({
+      origine:'ddt', origineId:ddt.id,
+      clienteId:ddt.clienteId||null,
+      descrizione:`DDT ${ddt.numero}`, veicolo:'', righe,
+    });
+  }
 }
 
-async function creaVbDDT(righe) {
+function initFirmaDdtCanvas() {
+  const canvas = document.getElementById('firma-ddt-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.strokeStyle='#1a1a1a'; ctx.lineWidth=2.5; ctx.lineCap='round'; ctx.lineJoin='round';
+  let drawing = false;
+  const getPos = e => {
+    const r = canvas.getBoundingClientRect();
+    const scale = canvas.width / r.width;
+    const src = e.touches ? e.touches[0] : e;
+    return {x:(src.clientX-r.left)*scale, y:(src.clientY-r.top)*scale};
+  };
+  canvas.onpointerdown = e => { drawing=true; const p=getPos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); canvas.setPointerCapture(e.pointerId); };
+  canvas.onpointermove = e => { if(!drawing) return; const p=getPos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); };
+  canvas.onpointerup = canvas.onpointercancel = () => { drawing=false; };
+}
+
+function clearFirmaDdtCanvas() {
+  document.getElementById('firma-ddt-canvas').getContext('2d').clearRect(0,0,720,280);
+}
+
+// ── Nuovo cliente inline (form vendita banco) ─────────────────────────
+function toggleNuovoClienteVb() {
+  const f = document.getElementById('vb-nuovo-cliente-form');
+  f.style.display = f.style.display==='none' ? '' : 'none';
+}
+
+async function salvaNuovoClienteVb() {
+  const ragione = document.getElementById('vb-c-ragione').value.trim();
+  if (!ragione) { alert('Ragione sociale obbligatoria'); return; }
+  const obj = {
+    ragione, tipo:'privato',
+    piva:      document.getElementById('vb-c-piva').value.trim(),
+    tel:       document.getElementById('vb-c-tel').value.trim(),
+    email:     document.getElementById('vb-c-email').value.trim(),
+    indirizzo: document.getElementById('vb-c-indirizzo').value.trim(),
+    pagamento: document.getElementById('vb-c-pagamento').value,
+    sdi:       document.getElementById('vb-c-sdi').value.trim(),
+  };
+  try {
+    const r = await DB.insert('clienti', obj);
+    clienti.push(r);
+    const sel = document.getElementById('vb-cliente');
+    if (sel) { const o=document.createElement('option'); o.value=r.id; o.textContent=r.ragione; sel.appendChild(o); sel.value=r.id; }
+    toggleNuovoClienteVb();
+    showToast(`Cliente "${r.ragione}" salvato ✓`);
+  } catch(e) { alert('Errore: '+e.message); }
+}
+
+// ── Nuovo cliente inline (modal DDT) ─────────────────────────────────
+function toggleNuovoClienteDDT() {
+  const f = document.getElementById('ddt-nuovo-cliente-form');
+  f.style.display = f.style.display==='none' ? '' : 'none';
+}
+
+function onDdtClienteChange() {
+  const cId = document.getElementById('ddt-cliente').value;
+  const cl  = clienti.find(c=>c.id===cId);
+  const info = document.getElementById('ddt-metodo-info');
+  const LABEL = {contanti:'Contanti',carta:'Carta/POS',pos:'POS',bonifico:'Bonifico',
+    riba:'Ri.Ba.','30gg':'30 gg','60gg':'60 gg','90gg':'90 gg'};
+  info.textContent = cl?.pagamento ? `Metodo: ${LABEL[cl.pagamento]||cl.pagamento}` :
+                     cl ? 'Nessun metodo in anagrafica' : '';
+}
+
+async function salvaNuovoClienteDDT() {
+  const ragione = document.getElementById('ddt-c-ragione').value.trim();
+  if (!ragione) { alert('Ragione sociale obbligatoria'); return; }
+  const obj = {
+    ragione, tipo:'privato',
+    piva:      document.getElementById('ddt-c-piva').value.trim(),
+    tel:       document.getElementById('ddt-c-tel').value.trim(),
+    email:     document.getElementById('ddt-c-email').value.trim(),
+    indirizzo: document.getElementById('ddt-c-indirizzo').value.trim(),
+    pagamento: document.getElementById('ddt-c-pagamento').value,
+    sdi:       document.getElementById('ddt-c-sdi').value.trim(),
+  };
+  try {
+    const r = await DB.insert('clienti', obj);
+    clienti.push(r);
+    const sel = document.getElementById('ddt-cliente');
+    const o = document.createElement('option'); o.value=r.id; o.textContent=r.ragione;
+    sel.appendChild(o); sel.value=r.id;
+    toggleNuovoClienteDDT();
+    onDdtClienteChange();
+    showToast(`Cliente "${r.ragione}" salvato ✓`);
+  } catch(e) { alert('Errore: '+e.message); }
+}
+
+async function creaVbDDT(righe, clienteIdOverride) {
   const cId  = document.getElementById('vb-cliente').value;
   const data = document.getElementById('vb-data').value;
   const note = document.getElementById('vb-note').value;
@@ -7132,7 +7355,7 @@ async function creaVbDDT(righe) {
         prodotti[pi].giacenza = nuovaGiac;
       }
     }
-    const row = {numero:numDdt,data:data||null,cliente_id:cId||null,righe,causale:'Vendita a banco',note,stato:'aperto'};
+    const row = {numero:numDdt,data:data||null,cliente_id: clienteIdOverride ||cId||null,righe,causale:'Vendita a banco',note,stato:'aperto'};
     const {data:r,error} = await supa.from('ddt').insert(row).select().single();
     if (error) throw error;
     const ddt = {...r, clienteId:r.cliente_id};
@@ -7279,7 +7502,11 @@ function setStatoDDTFilter(el, stato) {
   renderDDT();
 }
 
-function renderDDT() {
+let _ddtPage = 10;
+let _ddtSel  = new Set();
+
+function renderDDT(showAll) {
+  if (showAll !== undefined) _ddtPage = showAll ? 1e9 : 10;
   const q = (document.getElementById('search-ddt')?.value||'').toLowerCase();
   const filtered = ddts.filter(d=>{
     const cl = clienti.find(c=>c.id===d.clienteId);
@@ -7289,18 +7516,23 @@ function renderDDT() {
   });
   const lista = document.getElementById('lista-ddt');
   const empty = document.getElementById('empty-ddt');
-  if (!filtered.length) { lista.innerHTML=''; empty.style.display=''; return; }
+  if (!filtered.length) { lista.innerHTML=''; empty.style.display=''; _ddtSel.clear(); aggiornaBtnCumulativa(); return; }
   empty.style.display='none';
-  lista.innerHTML = filtered.map(d=>{
+  const visible = filtered.slice(0, _ddtPage);
+  const rest    = filtered.length - visible.length;
+  lista.innerHTML = visible.map(d=>{
     const cl = clienti.find(c=>c.id===d.clienteId);
     const stato = d.stato||'aperto';
     const statoColor = stato==='fatturato'?'var(--success)':'var(--accent)';
     const statoLabel = stato==='fatturato'?'Fatturato':'Aperto';
+    const checked = _ddtSel.has(d.id) ? 'checked' : '';
     return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 18px;margin-bottom:8px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px">
+      ${stato!=='fatturato'?`<input type="checkbox" ${checked} onchange="toggleDdtSel('${d.id}',this.checked)" style="width:16px;height:16px;flex-shrink:0;cursor:pointer" title="Seleziona per fattura cumulativa">` : '<div style="width:16px;height:16px;flex-shrink:0"></div>'}
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
           <span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:700;color:var(--text3)">${d.numero}</span>
           <span style="font-size:11px;font-weight:700;color:${statoColor};background:${stato==='fatturato'?'var(--success-light)':'var(--accent-light)'};padding:2px 8px;border-radius:10px">${statoLabel}</span>
+          ${d.firma_data?'<span style="font-size:10px;color:var(--success);font-weight:700">✎ Firmato</span>':''}
         </div>
         <div style="font-size:14px;font-weight:600">${cl?cl.ragione:'Cliente occasionale'}</div>
         <div style="font-size:12px;color:var(--text3)">${formatDate(d.data)} · ${d.causale||''} · ${d.righe?.length||0} art.</div>
@@ -7308,10 +7540,50 @@ function renderDDT() {
       <div style="display:flex;gap:6px;flex-shrink:0">
         <button class="btn btn-ghost btn-sm" onclick="anteprimaDDT('${d.id}')">Anteprima</button>
         <button class="btn btn-ghost btn-sm" onclick="ristampaDDT('${d.id}')">Stampa</button>
-        ${stato!=='fatturato'?`<button class="btn btn-primary btn-sm" onclick="converteDDTinFattura('${d.id}')">Fattura</button><button class="btn btn-sm" onclick="converteDDTinFattura('${d.id}')" style="background:var(--warning,#f59e0b);border-color:var(--warning,#f59e0b);color:white">💵 Contanti</button><button class="btn btn-success btn-sm" onclick="converteDDTinFattura('${d.id}')">📱 POS</button>`:''}
+        ${stato!=='fatturato'?`<button class="btn btn-primary btn-sm" onclick="converteDDTinFattura('${d.id}')">→ Fattura</button>`:''}
       </div>
     </div>`;
-  }).join('');
+  }).join('')
+  + (rest > 0 ? `<div style="text-align:center;padding:10px 0"><button class="btn btn-ghost btn-sm" onclick="renderDDT(true)">Mostra altri ${rest} ▾</button></div>` : '');
+  aggiornaBtnCumulativa();
+}
+
+function toggleDdtSel(id, checked) {
+  if (checked) _ddtSel.add(id); else _ddtSel.delete(id);
+  aggiornaBtnCumulativa();
+}
+
+function aggiornaBtnCumulativa() {
+  const btn = document.getElementById('btn-fattura-cumulativa');
+  if (!btn) return;
+  const selDdts = ddts.filter(d=>_ddtSel.has(d.id) && (d.stato||'aperto')!=='fatturato');
+  const clientiSel = [...new Set(selDdts.map(d=>d.clienteId||''))];
+  const ok = selDdts.length >= 2 && clientiSel.length === 1;
+  btn.style.display = selDdts.length >= 1 ? '' : 'none';
+  btn.disabled = !ok;
+  btn.title = (!ok && selDdts.length >= 2) ? 'Seleziona DDT dello stesso cliente' : '';
+  const cnt = document.getElementById('ddt-sel-count');
+  if (cnt) cnt.textContent = selDdts.length;
+}
+
+function creaFatturaCumulativa() {
+  const selDdts = ddts.filter(d=>_ddtSel.has(d.id) && (d.stato||'aperto')!=='fatturato');
+  if (selDdts.length < 2) { alert('Seleziona almeno 2 DDT dello stesso cliente.'); return; }
+  const clientiSel = [...new Set(selDdts.map(d=>d.clienteId||''))];
+  if (clientiSel.length > 1) { alert('Seleziona solo DDT dello stesso cliente.'); return; }
+  const righe = selDdts.flatMap(d=>(d.righe||[]).map(r=>({
+    desc:`[${d.numero}] ${r.desc}`, qta:r.qta||1, prezzo:r.prezzo||0
+  })));
+  const numeri = selDdts.map(d=>d.numero).join(', ');
+  apriFatturaModal({
+    origine:'ddt-cumulativa', origineId:selDdts[0].id,
+    clienteId:clientiSel[0]||null,
+    descrizione:`Fattura cumulativa DDT: ${numeri}`,
+    veicolo:'', righe,
+  });
+  _ddtSel.clear();
+  aggiornaBtnCumulativa();
+  renderDDT();
 }
 
 function converteDDTinFattura(id) {
@@ -7331,6 +7603,10 @@ function apriNuovaDDT() {
   document.getElementById('ddt-cliente').innerHTML =
     '<option value="">— Cliente occasionale —</option>' +
     clienti.map(c=>`<option value="${c.id}">${c.ragione}</option>`).join('');
+  const mi = document.getElementById('ddt-metodo-info');
+  if (mi) mi.textContent = '';
+  const nf = document.getElementById('ddt-nuovo-cliente-form');
+  if (nf) nf.style.display = 'none';
   document.getElementById('ddt-data').value = new Date().toISOString().split('T')[0];
   document.getElementById('ddt-causale').value = 'Vendita ricambi';
   document.getElementById('ddt-note').value = '';
@@ -7359,22 +7635,22 @@ function renderRigheDDT() {
 async function salvaEStampaDDT() {
   const righe = ddtRighe.filter(r=>r.desc);
   if (!righe.length) { alert('Aggiungi almeno un articolo.'); return; }
-  const off = getDatiOfficina();
-  const cId = document.getElementById('ddt-cliente').value;
-  const cl  = clienti.find(c=>c.id===cId);
-  const data = document.getElementById('ddt-data').value;
+  const cId     = document.getElementById('ddt-cliente').value;
+  const data    = document.getElementById('ddt-data').value;
   const causale = document.getElementById('ddt-causale').value;
-  const note = document.getElementById('ddt-note').value;
-  const numDdt = `DDT-${new Date().getFullYear()}-${String(_impostazioni.num_ddt||1).padStart(4,'0')}`;
+  const note    = document.getElementById('ddt-note').value;
+  const numDdt  = `DDT-${new Date().getFullYear()}-${String(_impostazioni.num_ddt||1).padStart(4,'0')}`;
   try {
-    const row = {numero:numDdt, data:data||null, cliente_id:cId||null, righe, causale, note};
+    const row = {numero:numDdt, data:data||null, cliente_id:cId||null, righe, causale, note, stato:'aperto'};
     const { data:r, error } = await supa.from('ddt').insert(row).select().single();
     if (error) throw error;
-    ddts.unshift({...r, clienteId:r.cliente_id});
-    incrementaNumDDT();
+    const ddt = {...r, clienteId:r.cliente_id};
+    ddts.unshift(ddt);
+    await incrementaNumDDT();
     closeModal('modal-ddt');
-    apriStampa(generaHtmlDDT({...r, clienteId:r.cliente_id},off,cl));
-    renderDDT(); showToast('DDT emesso ✓');
+    renderDDT();
+    showToast('DDT emesso ✓');
+    await checkoutDDT(ddt);
   } catch(e) { alert('Errore: '+e.message); }
 }
 
@@ -7628,10 +7904,10 @@ async function autoInviaFIC(fatt) {
   if (!accessToken || ficToken.expires_at <= Date.now() + 60_000) {
     if (!ficToken.refresh_token) return;
     try {
-      const res = await fetch('/.netlify/functions/fic-token', {
+      const res = await fetch('https://api.fattureincloud.it/v2/oauth/token', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
           grant_type: 'refresh_token', client_id: ficCfg.client_id,
           client_secret: ficCfg.client_secret, refresh_token: ficToken.refresh_token,
         }),
@@ -7653,10 +7929,10 @@ async function autoInviaFIC(fatt) {
     : [{ name:fatt.descrizione||'Servizio officina', qty:1,
          net_price:fatt.imponibile||(fatt.totale||0)/(1+(fatt.iva||22)/100), vat:{value:fatt.iva||22} }];
 
-  const res = await fetch('/.netlify/functions/fic-api', {
+  const res = await fetch(`https://api.fattureincloud.it/v2/c/${ficCfg.company_id}/issued_documents`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token: accessToken, path: `/c/${ficCfg.company_id}/issued_documents`, method: 'POST', payload: {
+    headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data: {
       type:'invoice', date:(fatt.data||new Date().toISOString()).split('T')[0], number:fatt.numero,
       entity:{ name:fatt.clRagione||cl?.ragione||'Cliente', vat_number:fatt.clPiva||cl?.piva||'',
                tax_code:fatt.clCf||cl?.cf||'', ei_code:fatt.clSdi||cl?.sdi||'',
@@ -7695,113 +7971,6 @@ function _aggiornaAlertMoroso(alertEl, clienteId) {
 
 async function salvaEStampaFattura()  { const f=await salvaFattura(); if(f) setTimeout(()=>stampaFattura(f.id),100); }
 async function salvaEInviaFattura()   { const f=await salvaFattura(); if(f) setTimeout(()=>inviaEmailFattura(f.id),200); }
-
-// ── Metodi di pagamento dal modal-fattura ─────────────────────
-async function emettiFattura() {
-  const f = await salvaFattura();
-  if (f) mostraDialogPostFattura(f);
-}
-async function emettiFatturaContanti() {
-  const f = await salvaFattura();
-  if (!f) return;
-  await segnaFatturaPagata(f, 'contanti', 'Pagamento contanti in officina');
-  showToast('Pagamento contanti registrato ✓');
-  mostraDialogPostFattura(f);
-}
-async function emettiFatturaConPOS() {
-  const f = await salvaFattura();
-  if (!f) return;
-  if (!_sumupConfig?.client_id) { alert('SumUp non configurato. Configura le credenziali in ORMIA Finance.'); return; }
-  avviaPOSfattura(f);
-}
-async function segnaFatturaPagata(fatt, metodo, note) {
-  const oggi = new Date().toISOString().split('T')[0];
-  await supa.from('fatture').update({ stato:'pagata', data_pagamento:oggi }).eq('id', fatt.id);
-  await supa.from('incassi').insert({
-    fattura_id:fatt.id, importo:fatt.totale||0, data:oggi,
-    metodo:metodo, note:note||'', cliente_id:fatt.clienteId||null,
-  }).catch(()=>{});
-  const idx = fatture.findIndex(x=>x.id===fatt.id);
-  if (idx>=0) { fatture[idx].stato='pagata'; fatture[idx].dataPagamento=oggi; }
-  renderFatture(); updateBadgeFatture();
-}
-function mostraDialogPostFattura(fatt) {
-  _pfCurrentFatt = fatt;
-  const el = document.getElementById('modal-post-fattura');
-  if (!el) return;
-  document.getElementById('pf-numero').textContent  = fatt.numero||'';
-  document.getElementById('pf-importo').textContent = '€ '+(fatt.totale||0).toFixed(2).replace('.',',');
-  el.style.display='flex';
-}
-function pfStampa()   { closeModal('modal-post-fattura'); if(_pfCurrentFatt) stampaFattura(_pfCurrentFatt.id); }
-function pfEmail()    { closeModal('modal-post-fattura'); if(_pfCurrentFatt) inviaEmailFattura(_pfCurrentFatt.id); }
-function pfEntrambi() { closeModal('modal-post-fattura'); if(_pfCurrentFatt){ stampaFattura(_pfCurrentFatt.id); setTimeout(()=>inviaEmailFattura(_pfCurrentFatt.id),300); } }
-function pfNoAction() { closeModal('modal-post-fattura'); }
-// SumUp helpers
-function _saveSumUpToken(d) {
-  _sumupToken = { access_token:d.access_token, refresh_token:d.refresh_token||_sumupToken?.refresh_token,
-    expires_at:Date.now()+(d.expires_in||3600)*1000 };
-  localStorage.setItem('ormia_sumup_token', JSON.stringify(_sumupToken));
-}
-async function getSumUpAccessToken() {
-  if (_sumupToken?.access_token && _sumupToken.expires_at > Date.now()+60000) return _sumupToken.access_token;
-  if (!_sumupToken?.refresh_token) return null;
-  try {
-    const r = await fetch(SUMUP_TOKEN_URL, { method:'POST',
-      headers:{'Content-Type':'application/x-www-form-urlencoded'},
-      body: new URLSearchParams({ grant_type:'refresh_token', client_id:_sumupConfig.client_id,
-        client_secret:_sumupConfig.client_secret, refresh_token:_sumupToken.refresh_token }) });
-    if (!r.ok) return null;
-    const d = await r.json(); _saveSumUpToken(d); return d.access_token;
-  } catch(_) { return null; }
-}
-async function avviaPOSfattura(fatt) {
-  const token = await getSumUpAccessToken();
-  if (!token) { posOrmiaErrore('Token SumUp non disponibile. Autorizza SumUp da Finance.'); return; }
-  const modal = document.getElementById('modal-pos-ormia');
-  document.getElementById('pos-ormia-importo').textContent = '€ '+(fatt.totale||0).toFixed(2).replace('.',',');
-  document.getElementById('pos-ormia-titolo').textContent  = 'Fattura '+(fatt.numero||'');
-  document.getElementById('pos-ormia-msg').textContent     = 'Avvio checkout…';
-  document.getElementById('pos-ormia-spinner').style.display='';
-  document.getElementById('pos-ormia-annulla').style.display='';
-  modal.style.display='flex';
-  try {
-    const r = await fetch('https://api.sumup.com/v0.1/checkouts', { method:'POST',
-      headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
-      body:JSON.stringify({ checkout_reference:'ORMIA-'+fatt.id,
-        amount:fatt.totale||0, currency:'EUR', description:'Fattura '+(fatt.numero||'') }) });
-    if (!r.ok) { posOrmiaErrore('Errore checkout SumUp: '+r.status); return; }
-    const ch = await r.json();
-    document.getElementById('pos-ormia-msg').textContent = 'In attesa del pagamento…';
-    let attempts = 0;
-    _sumupPoll = setInterval(async () => {
-      if (++attempts > 60) { clearInterval(_sumupPoll); _sumupPoll=null; posOrmiaErrore('Timeout — pagamento non completato.'); return; }
-      try {
-        const pr = await fetch('https://api.sumup.com/v0.1/checkouts/'+ch.id,
-          { headers:{'Authorization':'Bearer '+token} });
-        if (!pr.ok) return;
-        const pd = await pr.json();
-        if (pd.status==='PAID') { clearInterval(_sumupPoll); _sumupPoll=null; modal.style.display='none'; await posOrmiaSuccesso(fatt, pd.id); }
-        else if (pd.status==='FAILED'||pd.status==='CANCELLED') { clearInterval(_sumupPoll); _sumupPoll=null; posOrmiaErrore('Pagamento '+(pd.status==='CANCELLED'?'annullato':'fallito')+'.'); }
-      } catch(_) {}
-    }, 3000);
-  } catch(e) { posOrmiaErrore('Errore: '+e.message); }
-}
-async function posOrmiaSuccesso(fatt, txId) {
-  await segnaFatturaPagata(fatt, 'pos', 'POS SumUp tx:'+txId);
-  showToast('Pagamento POS registrato ✓');
-  mostraDialogPostFattura(fatt);
-}
-function posOrmiaErrore(msg) {
-  if (_sumupPoll) { clearInterval(_sumupPoll); _sumupPoll=null; }
-  document.getElementById('pos-ormia-spinner').style.display='none';
-  document.getElementById('pos-ormia-msg').textContent = '⚠️ '+msg;
-  document.getElementById('pos-ormia-annulla').textContent = 'Chiudi';
-}
-function annullaPOSormia() {
-  if (_sumupPoll) { clearInterval(_sumupPoll); _sumupPoll=null; }
-  closeModal('modal-pos-ormia');
-}
 
 function renderFatture() {
   const q = (document.getElementById('search-fatture')?.value||'').toLowerCase();
@@ -8701,7 +8870,7 @@ initDocumenti();
 
 <!-- ═══════════════ MODAL DDT ═══════════════ -->
 <div class="modal-overlay" id="modal-ddt" style="display:none" onclick="closeModalOnBg(event,'modal-ddt')">
-  <div class="modal" style="max-width:580px">
+  <div class="modal" style="max-width:600px;max-height:90vh;overflow-y:auto">
     <div class="modal-header">
       <div class="modal-title">Nuova DDT</div>
       <button class="close-btn" onclick="closeModal('modal-ddt')">
@@ -8709,9 +8878,40 @@ initDocumenti();
       </button>
     </div>
     <div class="modal-body" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="form-group">
+      <div class="form-group" style="grid-column:span 2">
         <label>Cliente</label>
-        <select id="ddt-cliente"></select>
+        <div style="display:flex;gap:6px;align-items:center">
+          <select id="ddt-cliente" style="flex:1" onchange="onDdtClienteChange()"></select>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="toggleNuovoClienteDDT()" id="btn-nuovo-cl-ddt">+ Nuovo</button>
+        </div>
+        <div id="ddt-metodo-info" style="font-size:11px;color:var(--text3);margin-top:4px"></div>
+      </div>
+      <div id="ddt-nuovo-cliente-form" style="display:none;grid-column:span 2;background:var(--bg);border:1.5px dashed var(--border);border-radius:var(--radius);padding:14px">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--accent);margin-bottom:10px">Nuovo cliente</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="form-group" style="grid-column:span 2"><label>Ragione sociale / Nome *</label><input type="text" id="ddt-c-ragione" placeholder="Es. Rossi Mario"></div>
+          <div class="form-group"><label>P.IVA</label><input type="text" id="ddt-c-piva" placeholder="IT12345678901"></div>
+          <div class="form-group"><label>Telefono</label><input type="tel" id="ddt-c-tel" placeholder="+39 02 1234567"></div>
+          <div class="form-group"><label>Email</label><input type="email" id="ddt-c-email" placeholder="info@esempio.it"></div>
+          <div class="form-group"><label>Indirizzo</label><input type="text" id="ddt-c-indirizzo" placeholder="Via Roma 1, Milano"></div>
+          <div class="form-group"><label>Metodo pagamento</label>
+            <select id="ddt-c-pagamento">
+              <option value="">— Seleziona —</option>
+              <option value="contanti">Contanti</option>
+              <option value="carta">Carta di credito/debito</option>
+              <option value="bonifico">Bonifico bancario</option>
+              <option value="riba">Ri.Ba.</option>
+              <option value="30gg">30 giorni data fattura</option>
+              <option value="60gg">60 giorni data fattura</option>
+              <option value="90gg">90 giorni data fattura</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Cod. SDI</label><input type="text" id="ddt-c-sdi" placeholder="ABCDE12" style="text-transform:uppercase"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button type="button" class="btn btn-primary btn-sm" onclick="salvaNuovoClienteDDT()">Salva cliente</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="toggleNuovoClienteDDT()">Annulla</button>
+        </div>
       </div>
       <div class="form-group">
         <label>Data trasporto</label>
@@ -8721,7 +8921,7 @@ initDocumenti();
         <label>Causale</label>
         <input type="text" id="ddt-causale" placeholder="Es. Vendita ricambi">
       </div>
-      <div class="form-group">
+      <div class="form-group" style="grid-column:span 2">
         <label>Note</label>
         <input type="text" id="ddt-note" placeholder="Riferimenti, istruzioni…">
       </div>
@@ -8732,7 +8932,55 @@ initDocumenti();
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-ddt')">Annulla</button>
-      <button class="btn btn-primary" onclick="salvaEStampaDDT()">Emetti e stampa DDT</button>
+      <button class="btn btn-primary" onclick="salvaEStampaDDT()">Emetti DDT →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL PAGAMENTO DDT ═══════════════ -->
+<div id="modal-pagamento-ddt" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1300;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--bg);border-radius:var(--radius-lg);width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="background:var(--accent);padding:16px 20px;border-radius:var(--radius-lg) var(--radius-lg) 0 0">
+      <div style="font-size:16px;font-weight:800;color:white">Come viene pagato?</div>
+      <div id="pagddt-info" style="font-size:12px;color:rgba(255,255,255,.8);margin-top:3px"></div>
+    </div>
+    <div style="padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <button onclick="completaCheckoutDDT('contanti')" style="padding:16px 12px;border:1.5px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);cursor:pointer;font-size:14px;font-weight:700;font-family:'DM Sans',sans-serif;transition:all .12s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:24px;margin-bottom:6px">💵</div>Contanti
+      </button>
+      <button onclick="completaCheckoutDDT('pos')" style="padding:16px 12px;border:1.5px solid var(--accent);border-radius:var(--radius-lg);background:var(--accent);cursor:pointer;font-size:14px;font-weight:700;color:white;font-family:'DM Sans',sans-serif">
+        <div style="font-size:24px;margin-bottom:6px">💳</div>POS / Carta
+      </button>
+      <button onclick="completaCheckoutDDT('bonifico')" style="padding:12px;border:1.5px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);cursor:pointer;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif">
+        🏦 Bonifico
+      </button>
+      <button onclick="completaCheckoutDDT('solo-ddt')" style="padding:12px;border:1.5px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);cursor:pointer;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif">
+        📄 Solo DDT
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL FIRMA DDT ═══════════════ -->
+<div id="modal-firma-ddt" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1300;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--bg);border-radius:var(--radius-lg);width:100%;max-width:560px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden">
+    <div style="background:var(--accent);padding:16px 20px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:16px;font-weight:800;color:white">Firma ricezione merce</div>
+        <div id="firma-ddt-info" style="font-size:12px;color:rgba(255,255,255,.8);margin-top:2px"></div>
+      </div>
+      <button onclick="saltaFirmaDDT()" style="background:rgba(255,255,255,.2);border:none;color:white;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:16px;line-height:1">✕</button>
+    </div>
+    <div style="padding:16px 20px">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:8px">Il cliente firma qui sotto per accettazione merce:</div>
+      <canvas id="firma-ddt-canvas" width="500" height="180"
+        style="width:100%;height:180px;border:2px solid var(--border);border-radius:var(--radius);background:white;cursor:crosshair;touch-action:none"></canvas>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+        <button onclick="clearFirmaDdtCanvas()" style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:4px 12px;cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif">Cancella</button>
+        <div style="font-size:11px;color:var(--text3)">Firma con il dito o il signature pad</div>
+      </div>
+      <button onclick="confermaSalvaDDT()" style="width:100%;margin-top:14px;padding:14px;background:var(--success);color:white;border:none;border-radius:var(--radius-lg);font-size:15px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif">✓ Conferma firma</button>
+      <button onclick="saltaFirmaDDT()" style="width:100%;margin-top:8px;padding:10px;background:none;color:var(--text3);border:none;border-radius:var(--radius);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif">Salta firma</button>
     </div>
   </div>
 </div>
@@ -8870,48 +9118,77 @@ initDocumenti();
 
     <!-- VENDITA A BANCO -->
     <div id="doc-panel-vendita">
-      <div style="display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start">
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px">
-          <div style="font-size:14px;font-weight:700;margin-bottom:16px">Nuova vendita</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
-            <div class="form-group"><label>Cliente</label><select id="vb-cliente"><option value="">— Cliente occasionale —</option></select></div>
-            <div class="form-group"><label>Data</label><input type="date" id="vb-data"></div>
-            <div class="form-group" style="grid-column:span 2"><label>Note</label><input type="text" id="vb-note" placeholder="Riferimento, ordine…"></div>
-          </div>
-          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:8px">Aggiungi ricambi</div>
-          <div style="position:relative;margin-bottom:12px">
-            <div style="display:flex;gap:8px">
-              <input type="text" id="vb-search-input" placeholder="Cerca per nome, codice o barcode…"
-                oninput="cercaRicambioVb(this.value)"
-                onkeydown="if(event.key==='Enter'){event.preventDefault();aggiungiPrimoProdottoVb()}"
-                style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;outline:none;font-family:'DM Sans',sans-serif">
-              <button onclick="aggiungiPrimoProdottoVb()" class="btn btn-secondary">Aggiungi</button>
-            </div>
-            <div id="vb-search-drop" style="display:none;position:absolute;left:0;right:0;top:calc(100%+4px);background:white;border:1.5px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);z-index:300;max-height:200px;overflow-y:auto"></div>
-          </div>
-          <div id="vb-righe"></div>
-          <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-            <div><div style="font-size:12px;color:var(--text3)">Totale imponibile</div><div style="font-size:22px;font-weight:700;font-family:'DM Mono',monospace" id="vb-totale">€ 0,00</div></div>
-            <div style="display:flex;gap:8px">
-              <button class="btn btn-secondary" onclick="emettiSoloVbDDT()">Solo DDT</button>
-              <button class="btn btn-primary" onclick="emettiVbDDTFattura()">DDT + Fattura</button>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:16px">
+        <div style="font-size:14px;font-weight:700;margin-bottom:16px">Nuova vendita</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+          <div class="form-group">
+            <label>Cliente</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <select id="vb-cliente" style="flex:1"><option value="">— Cliente occasionale —</option></select>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="toggleNuovoClienteVb()" id="btn-nuovo-cl-vb">+ Nuovo</button>
             </div>
           </div>
+          <div class="form-group"><label>Data</label><input type="date" id="vb-data"></div>
+          <div class="form-group" style="grid-column:span 2"><label>Note</label><input type="text" id="vb-note" placeholder="Riferimento, ordine…"></div>
         </div>
-        <div>
-          <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--text3);margin-bottom:10px">Ultime vendite</div>
-          <div id="vb-storico"></div>
+        <div id="vb-nuovo-cliente-form" style="display:none;background:var(--bg);border:1.5px dashed var(--border);border-radius:var(--radius);padding:14px;margin-bottom:14px">
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--accent);margin-bottom:10px">Nuovo cliente</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div class="form-group" style="grid-column:span 2"><label>Ragione sociale / Nome *</label><input type="text" id="vb-c-ragione" placeholder="Es. Rossi Mario"></div>
+            <div class="form-group"><label>P.IVA</label><input type="text" id="vb-c-piva" placeholder="IT12345678901"></div>
+            <div class="form-group"><label>Telefono</label><input type="tel" id="vb-c-tel" placeholder="+39 02 1234567"></div>
+            <div class="form-group"><label>Email</label><input type="email" id="vb-c-email" placeholder="info@esempio.it"></div>
+            <div class="form-group"><label>Indirizzo</label><input type="text" id="vb-c-indirizzo" placeholder="Via Roma 1, Milano"></div>
+            <div class="form-group"><label>Metodo di pagamento</label>
+              <select id="vb-c-pagamento">
+                <option value="">— Seleziona —</option>
+                <option value="contanti">Contanti</option>
+                <option value="carta">Carta di credito/debito</option>
+                <option value="bonifico">Bonifico bancario</option>
+                <option value="riba">Ri.Ba.</option>
+                <option value="30gg">30 giorni data fattura</option>
+                <option value="60gg">60 giorni data fattura</option>
+                <option value="90gg">90 giorni data fattura</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Cod. SDI</label><input type="text" id="vb-c-sdi" placeholder="ABCDE12" style="text-transform:uppercase"></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button type="button" class="btn btn-primary btn-sm" onclick="salvaNuovoClienteVb()">Salva cliente</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="toggleNuovoClienteVb()">Annulla</button>
+          </div>
         </div>
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:8px">Aggiungi ricambi</div>
+        <div style="position:relative;margin-bottom:12px">
+          <div style="display:flex;gap:8px">
+            <input type="text" id="vb-search-input" placeholder="Cerca per nome, codice o barcode…"
+              oninput="cercaRicambioVb(this.value)"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();aggiungiPrimoProdottoVb()}"
+              style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;outline:none;font-family:'DM Sans',sans-serif">
+            <button onclick="aggiungiPrimoProdottoVb()" class="btn btn-secondary">Aggiungi</button>
+          </div>
+          <div id="vb-search-drop" style="display:none;position:absolute;left:0;right:0;top:calc(100%+4px);background:white;border:1.5px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);z-index:300;max-height:200px;overflow-y:auto"></div>
+        </div>
+        <div id="vb-righe"></div>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div><div style="font-size:12px;color:var(--text3)">Totale imponibile</div><div style="font-size:22px;font-weight:700;font-family:'DM Mono',monospace" id="vb-totale">€ 0,00</div></div>
+          <button class="btn btn-primary" onclick="emmettiDDT()">Emetti DDT →</button>
+        </div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--text3);margin-bottom:10px">Ultime vendite</div>
+        <div id="vb-storico"></div>
       </div>
     </div>
 
     <!-- DDT -->
     <div id="doc-panel-ddt" style="display:none">
-      <div style="display:flex;gap:12px;margin-bottom:14px;align-items:center">
-        <div style="background:white;border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 12px;display:flex;align-items:center;gap:8px;flex:1">
+      <div style="display:flex;gap:12px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
+        <div style="background:white;border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 12px;display:flex;align-items:center;gap:8px;flex:1;min-width:160px">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:var(--text3)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input type="text" id="search-ddt" placeholder="Cerca DDT…" oninput="renderDDT()" style="border:none;outline:none;font-size:14px;width:100%">
         </div>
+        <button id="btn-fattura-cumulativa" class="btn btn-secondary" style="display:none" onclick="creaFatturaCumulativa()">Fattura cumulativa (<span id="ddt-sel-count">0</span>)</button>
         <button class="btn btn-primary" onclick="apriNuovaDDT()">+ Nuova DDT</button>
       </div>
       <div id="lista-ddt"></div>
