@@ -691,22 +691,6 @@ function renderDashboard() {
   }
 }
 
-// ══════════════════════════════════════════════════
-// INCASSA
-// ══════════════════════════════════════════════════
-
-
-  el.innerHTML = ultimi.map(i => {
-    const cl = _clienti.find(c=>c.id===i.clienteId);
-    return `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--success);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:13px;font-weight:600">${cl?cl.ragione:'Occasionale'}</div>
-        <div style="font-family:'DM Mono',monospace;font-weight:700;color:var(--success)">€ ${(i.importo||0).toFixed(2)}</div>
-      </div>
-      <div style="font-size:11px;color:var(--text3);margin-top:2px">${formatDateFin(i.data||i.created_at)} · ${metodoBadge(i.metodo)}</div>
-    </div>`;
-  }).join('');
-}
 
 // ══════════════════════════════════════════════════
 // FATTURE

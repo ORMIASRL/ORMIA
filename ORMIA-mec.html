@@ -108,7 +108,7 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
 .com-num { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 600; color: var(--text3); margin-bottom: 3px; }
 .com-desc { font-size: 15px; font-weight: 700; margin-bottom: 5px; line-height: 1.3; }
 .com-cli { font-size: 13px; color: var(--text2); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.com-targa { background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 2px 7px; font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 700; }
+.com-targa { background: #fefce8; border: 2px solid #ca8a04; border-radius: 5px; padding: 2px 7px; font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 700; color: #1a1a1a; letter-spacing: 1px; }
 .com-card-footer { padding: 10px 16px; border-top: 1px solid var(--border); background: var(--surface2); display: flex; align-items: center; justify-content: space-between; }
 .tim-chip { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; color: var(--success); }
 .tim-chip-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); animation: pulse 1.5s infinite; }
@@ -280,6 +280,10 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
         <div class="user-name" id="home-name">Mario Rossi</div>
         <div class="user-role" id="home-role">Meccanico</div>
       </div>
+      <a href="ORMIA.html" style="padding:6px 10px;border-radius:8px;background:rgba(255,255,255,.15);color:white;font-size:12px;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:4px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px"><polyline points="15 18 9 12 15 6"/></svg>
+        Gestionale
+      </a>
       <button class="logout-btn" onclick="logout()">Esci</button>
     </div>
     <div class="mec-status" id="home-status">
@@ -371,51 +375,21 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
 
     <!-- FOTO GARANZIA -->
     <div class="det-section" id="det-foto-wrap" style="display:none">
-      <div class="det-section-title">📸 Foto garanzia</div>
-
-      <!-- SEZIONE FOTO INIZIO -->
-      <div id="det-foto-inizio-section">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:8px">
-          Foto accettazione (inizio) <span id="det-foto-inizio-count" style="font-weight:400;color:var(--text3)">0/3</span>
-        </div>
-        <!-- Alert "caricale tu" -->
-        <div id="det-foto-inizio-alert" style="display:none;font-size:12px;color:var(--danger);font-weight:600;margin-bottom:10px;padding:10px 12px;background:#FEF2F2;border-radius:8px;border:1px solid #FCA5A5">
-          📷 Caricale tu! Servono 3 foto di accettazione per avanzare i lavori.
-        </div>
-        <!-- Done banner -->
-        <div id="det-foto-inizio-done" style="display:none;font-size:12px;color:var(--success);font-weight:600;margin-bottom:10px;padding:8px 12px;background:var(--success-light);border-radius:8px;border:1px solid #86EFAC">
-          ✓ 3 foto di accettazione caricate
-        </div>
-        <div id="det-foto-inizio-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px"></div>
-        <label id="btn-foto-inizio-label" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:2px dashed var(--border);border-radius:var(--radius-lg);cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);background:var(--accent-light);-webkit-tap-highlight-color:transparent">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:18px;height:18px"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-          Foto accettazione
-          <input type="file" accept="image/*" capture="environment" multiple style="display:none" onchange="caricaFotoInizio(this)">
-        </label>
+      <div class="det-section-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>📸 Foto garanzia</span>
+        <span id="det-foto-count" style="font-size:12px;color:var(--text3);font-weight:400">0 foto</span>
       </div>
-
-      <div class="divider" id="det-foto-divider" style="display:none"></div>
-
-      <!-- SEZIONE FOTO FINE -->
-      <div id="det-foto-fine-section" style="display:none">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:8px">
-          Foto chiusura (fine) <span id="det-foto-fine-count" style="font-weight:400;color:var(--text3)">0/2</span>
-        </div>
-        <!-- Alert "caricale tu" -->
-        <div id="det-foto-fine-alert" style="display:none;font-size:12px;color:var(--danger);font-weight:600;margin-bottom:10px;padding:10px 12px;background:#FEF2F2;border-radius:8px;border:1px solid #FCA5A5">
-          📷 Caricale tu! Servono almeno 2 foto di chiusura per chiudere la commessa.
-        </div>
-        <!-- Done banner -->
-        <div id="det-foto-fine-done" style="display:none;font-size:12px;color:var(--success);font-weight:600;margin-bottom:10px;padding:8px 12px;background:var(--success-light);border-radius:8px;border:1px solid #86EFAC">
-          ✓ Foto di chiusura caricate
-        </div>
-        <div id="det-foto-fine-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px"></div>
-        <label id="btn-foto-fine-label" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:2px dashed var(--border);border-radius:var(--radius-lg);cursor:pointer;font-size:13px;font-weight:600;color:var(--success);background:var(--success-light);-webkit-tap-highlight-color:transparent">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:18px;height:18px"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-          Foto chiusura
-          <input type="file" accept="image/*" capture="environment" multiple style="display:none" onchange="caricaFotoFine(this)">
-        </label>
+      <div style="font-size:12px;color:var(--warning);font-weight:500;margin-bottom:10px;padding:8px 10px;background:var(--warning-light);border-radius:8px;border:1px solid #FDE68A" id="det-foto-avviso">
+        ⚠️ Commessa in garanzia — documenta il lavoro con foto prima di chiudere
       </div>
+      <!-- Griglia foto -->
+      <div id="det-foto-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px"></div>
+      <!-- Pulsante aggiungi foto -->
+      <label id="btn-aggiungi-foto" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:2px dashed var(--border2);border-radius:var(--radius-lg);cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);background:var(--accent-light);-webkit-tap-highlight-color:transparent">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:18px;height:18px"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        Scatta o carica foto
+        <input type="file" accept="image/*" capture="environment" multiple style="display:none" onchange="caricaFoto(this)">
+      </label>
     </div>
 
   </div>
@@ -529,13 +503,15 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
 
 <script>
 // ══════════════════════════════════════════════════
+// DATI — legge dallo stesso localStorage del gestionale
+// ══════════════════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════════════════
 const SUPA_URL = 'https://crcfwmkemnwippplteqm.supabase.co';
 const SUPA_KEY = 'sb_publishable_bzZrugm5WWBaUKkO_mlrLw_dNXKPCM9';
 const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
 
-// Cache locale
+// Cache locale (aggiornata al login e al bisogno)
 let _meccanici  = [];
 let _commesse   = [];
 let _clienti    = [];
@@ -566,10 +542,10 @@ async function loadAll() {
   _movimenti  = mo.data || [];
 }
 
-// Helpers snake_case → camelCase
+// Helpers snake_case → camelCase per campi chiave
 function fixMec(m)  { return m ? {...m, codInt:m.cod_int, codForn:m.cod_forn} : null; }
 function fixProd(p) { return p ? {...p, descrizione:p.descrizione||p.desc, codInt:p.cod_int, codForn:p.cod_forn, giacenza:p.giacenza, scortaMin:p.scorta_min, qtaRiordino:p.qta_riordino, prezzoAcq:p.prezzo_acq, prezzoVend:p.prezzo_vend, fornitoreId:p.fornitore_id} : null; }
-function fixCom(c)  { return c ? {...c, clienteId:c.cliente_id, veicoloId:c.veicolo_id, dataApertura:c.data_apertura, vociMano:c.voci_mano||[], vociRic:c.voci_ric||[], vociExtra:c.voci_extra||[], desc:c.descrizione, fotoInizio:c.foto_inizio||[], fotoFine:c.foto_fine||[], nota_mec:c.nota_mec||'' } : null; }
+function fixCom(c)  { return c ? {...c, clienteId:c.cliente_id, veicoloId:c.veicolo_id, dataApertura:c.data_apertura, vociMano:c.voci_mano||[], vociRic:c.voci_ric||[], vociExtra:c.voci_extra||[], desc:c.descrizione, foto:c.foto||[], nota_mec:c.nota_mec||'' } : null; }
 function fixTim(t)  { return t ? {...t, mecId:t.mec_id, comId:t.com_id} : null; }
 function fixPres(p) { return p ? {...p, dipId:p.dip_id} : null; }
 function fixVei(v)  { return v ? {...v, clienteId:v.cliente_id, garanziaScadenza:v.garanzia_scadenza} : null; }
@@ -646,6 +622,7 @@ function logout() {
 }
 
 async function restoreSession() {
+  // Prima carica i dati da Supabase
   document.getElementById('screen-login').innerHTML += '<div id="login-loading" style="text-align:center;margin-top:12px;font-size:12px;color:var(--text3)">Connessione…</div>';
   await loadAll();
   document.getElementById('login-loading')?.remove();
@@ -681,6 +658,7 @@ function renderHome() {
   const veicoli    = getVeicoli();
   const timbrature = getTimbrature();
 
+  // Aggiorna dati freschi del meccanico
   mecLogged = meccanici.find(m=>m.id===mecLogged.id) || mecLogged;
 
   const initials = mecLogged.nome.split(' ').map(w=>w[0]).join('').substr(0,2).toUpperCase();
@@ -688,6 +666,7 @@ function renderHome() {
   document.getElementById('home-name').textContent  = mecLogged.nome;
   document.getElementById('home-role').textContent  = mecLogged.ruolo||'Meccanico';
 
+  // Stato live
   const tAperta = timbrature.find(t=>t.mecId===mecLogged.id && !t.uscita);
   const comAttiva = tAperta ? commesse.find(c=>c.id===tAperta.comId && (c.stato==='aperta'||c.stato==='wip'||c.stato==='standby')) : null;
   const dot  = document.getElementById('home-dot');
@@ -705,6 +684,7 @@ function renderHome() {
     ssub.textContent = 'Seleziona una commessa';
   }
 
+  // Lista commesse
   const attive = commesse.filter(c=>c.stato==='aperta'||c.stato==='wip');
   attive.sort((a,b)=>{
     const ord={aperta:0,wip:1}; return (ord[a.stato]||2)-(ord[b.stato]||2) || new Date(b.createdAt)-new Date(a.createdAt);
@@ -726,7 +706,7 @@ function renderHome() {
         <div class="com-desc">${cm.desc}</div>
         <div class="com-cli" style="margin-top:8px;display:flex;flex-direction:column;gap:5px">
           ${v ? `<div style="display:flex;align-items:center;gap:8px">
-            <span class="com-targa" style="font-size:15px;padding:3px 10px;letter-spacing:1.5px">${v.targa}</span>
+            <span class="com-targa" style="font-size:18px;padding:5px 12px;letter-spacing:2px">${v.targa}</span>
             ${v.marca||v.modello ? `<span style="color:var(--text2);font-size:13px;font-weight:500">${[v.marca,v.modello].filter(Boolean).join(' ')}</span>` : ''}
             ${v.km ? `<span style="color:var(--text3);font-size:12px">${Number(v.km).toLocaleString('it')} km</span>` : ''}
           </div>` : ''}
@@ -798,11 +778,12 @@ function renderDetail() {
   notaMecEl.value = cm.nota_mec || '';
   document.getElementById('btn-salva-nota').style.display = 'none';
 
-  // Foto garanzia — usa cm.garanzia (campo sulla commessa, non sul veicolo)
+  // Foto garanzia
   const fotoWrap = document.getElementById('det-foto-wrap');
-  if (cm.garanzia) {
+  const inGaranzia = isVeicoloInGaranzia(v);
+  if (inGaranzia) {
     fotoWrap.style.display = '';
-    renderFotoMec();
+    renderFotoGaranzia(cm.foto||[]);
   } else {
     fotoWrap.style.display = 'none';
   }
@@ -888,56 +869,31 @@ async function timbra(verso) {
   const ora = new Date().toISOString();
   try {
     if (verso === 'entrata') {
-      // Se la commessa è aperta + garanzia + foto_inizio < 3 → mostra "caricale tu" ma registra la timbratura
-      const cmRaw = _commesse.find(c=>c.id===comSelected.id);
-      const needsFotoInizio = cmRaw && cmRaw.stato === 'aperta' && cmRaw.garanzia && (cmRaw.foto_inizio||[]).length < 3;
-
       const aperte = _timbrature.filter(t=>t.mec_id===mecLogged.id&&!t.uscita&&t.com_id!==comSelected.id);
       for (const t of aperte) await supa.from('timbrature').update({uscita:ora}).eq('id',t.id);
       await supa.from('timbrature').insert({id:genId(),mec_id:mecLogged.id,com_id:comSelected.id,entrata:ora,uscita:null,created_at:ora});
-
-      if (needsFotoInizio) {
-        // Non avanzare a wip — mostra la sezione foto inizio
-        showToast('Timbratura registrata ✓');
-        await loadAll();
-        comSelected = getCommesse().find(c=>c.id===comSelected.id) || comSelected;
-        renderDetail();
-        renderHome();
-        // Mostra "caricale tu"
-        const wrap = document.getElementById('det-foto-wrap');
-        wrap.style.display = '';
-        const alertEl = document.getElementById('det-foto-inizio-alert');
-        alertEl.style.display = '';
-        alertEl.scrollIntoView({behavior:'smooth', block:'center'});
-        showToast('📷 Carica le 3 foto di accettazione per avanzare');
-      } else {
-        // Avanza normalmente ad aperta→wip
-        if (cmRaw && (cmRaw.stato==='aperta'||cmRaw.stato==='standby')) {
-          await supa.from('commesse').update({stato:'wip'}).eq('id',comSelected.id);
-        }
-        showToast('Timbratura entrata registrata ✓');
-        await loadAll();
-        comSelected = getCommesse().find(c=>c.id===comSelected.id) || comSelected;
-        renderDetail(); renderHome();
-      }
+      const cm = _commesse.find(c=>c.id===comSelected.id);
+      if (cm && (cm.stato==='aperta'||cm.stato==='standby')) await supa.from('commesse').update({stato:'wip'}).eq('id',comSelected.id);
+      showToast('Timbratura entrata registrata ✓');
     } else {
       const t = _timbrature.find(x=>x.mec_id===mecLogged.id&&x.com_id===comSelected.id&&!x.uscita);
       if (!t) { showToast('Nessuna timbratura aperta su questa commessa'); return; }
       await supa.from('timbrature').update({uscita:ora}).eq('id',t.id);
+      // Se nessun altro meccanico è ancora attivo → standby
       const altreAperte = _timbrature.filter(x=>x.com_id===comSelected.id&&!x.uscita&&x.id!==t.id);
       if (!altreAperte.length) {
         await supa.from('commesse').update({stato:'standby'}).eq('id',comSelected.id);
       }
       showToast('Fine lavoro registrato ✓');
-      await loadAll();
-      comSelected = getCommesse().find(c=>c.id===comSelected.id) || comSelected;
-      renderDetail(); renderHome();
     }
+    await loadAll();
+    comSelected = getCommesse().find(c=>c.id===comSelected.id) || comSelected;
+    renderDetail(); renderHome();
   } catch(e) { showToast('Errore: '+e.message); }
 }
 
 // ══════════════════════════════════════════════════
-// NOTA MECCANICO
+// CAMBIA STATO
 // ══════════════════════════════════════════════════
 async function salvaNota() {
   if (!comSelected) return;
@@ -951,150 +907,66 @@ async function salvaNota() {
   } catch(e) { showToast('Errore: '+e.message); }
 }
 
-// ══════════════════════════════════════════════════
-// FOTO GARANZIA
-// ══════════════════════════════════════════════════
-function renderFotoMec() {
-  const cm = comSelected;
-  if (!cm) return;
-  const fotoInizio = cm.fotoInizio || [];
-  const fotoFine   = cm.fotoFine   || [];
-  const stato = cm.stato;
+function isVeicoloInGaranzia(v) {
+  if (!v || !v.garanzia) return false;
+  if (!v.garanziaScadenza && !v.garanzia_scadenza) return true;
+  const scad = v.garanziaScadenza || v.garanzia_scadenza;
+  return new Date(scad) >= new Date();
+}
 
-  // --- FOTO INIZIO ---
-  const inizioGrid  = document.getElementById('det-foto-inizio-grid');
-  const inizioCount = document.getElementById('det-foto-inizio-count');
-  const inizioDone  = document.getElementById('det-foto-inizio-done');
-  const btnInizio   = document.getElementById('btn-foto-inizio-label');
-
-  inizioCount.textContent = `${fotoInizio.length}/3`;
-  inizioGrid.innerHTML = fotoInizio.map((url, i) => `
+function renderFotoGaranzia(foto) {
+  const grid  = document.getElementById('det-foto-grid');
+  const count = document.getElementById('det-foto-count');
+  count.textContent = `${foto.length} foto`;
+  if (!foto.length) { grid.innerHTML = ''; return; }
+  grid.innerHTML = foto.map((url,i) => `
     <div style="position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:#eee">
       <img src="${url}" style="width:100%;height:100%;object-fit:cover;display:block" onclick="apriLightbox('${url}')">
-      ${stato === 'aperta' ? `<button onclick="eliminaFotoInizio(${i})" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);border:none;color:white;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;padding:0">✕</button>` : ''}
+      <button onclick="eliminaFoto(${i})" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);border:none;color:white;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;padding:0">✕</button>
     </div>`).join('');
-
-  if (fotoInizio.length >= 3) {
-    inizioDone.style.display = '';
-    btnInizio.style.display  = 'none';
-  } else {
-    inizioDone.style.display = 'none';
-    btnInizio.style.display  = (stato === 'aperta') ? 'flex' : 'none';
-  }
-
-  // --- FOTO FINE (solo wip o chiusa) ---
-  const fineSection = document.getElementById('det-foto-fine-section');
-  const divider     = document.getElementById('det-foto-divider');
-
-  if (stato === 'wip' || stato === 'chiusa') {
-    fineSection.style.display = '';
-    divider.style.display     = '';
-
-    const fineGrid  = document.getElementById('det-foto-fine-grid');
-    const fineCount = document.getElementById('det-foto-fine-count');
-    const fineDone  = document.getElementById('det-foto-fine-done');
-    const btnFine   = document.getElementById('btn-foto-fine-label');
-
-    fineCount.textContent = `${fotoFine.length}/2`;
-    fineGrid.innerHTML = fotoFine.map((url, i) => `
-      <div style="position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:#eee">
-        <img src="${url}" style="width:100%;height:100%;object-fit:cover;display:block" onclick="apriLightbox('${url}')">
-        ${stato === 'wip' ? `<button onclick="eliminaFotoFine(${i})" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);border:none;color:white;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;padding:0">✕</button>` : ''}
-      </div>`).join('');
-
-    if (fotoFine.length >= 2) {
-      fineDone.style.display = '';
-      btnFine.style.display  = 'none';
-    } else {
-      fineDone.style.display = 'none';
-      btnFine.style.display  = (stato === 'wip') ? 'flex' : 'none';
-    }
-  } else {
-    fineSection.style.display = 'none';
-    divider.style.display     = 'none';
-  }
 }
 
-async function caricaFotoInizio(input) {
+async function caricaFoto(input) {
   if (!input.files.length || !comSelected) return;
   const files = Array.from(input.files);
-  const label = document.getElementById('btn-foto-inizio-label');
-  label.style.opacity = '.5';
+  const btnLabel = document.getElementById('btn-aggiungi-foto');
+  btnLabel.style.opacity = '.5';
+
+  // Assicura sessione anonima per Storage
   const { data: { session } } = await supa.auth.getSession();
   if (!session) await supa.auth.signInAnonymously();
-  const curr = [...(comSelected.fotoInizio || [])];
+
+  const fotoCorrenti = comSelected.foto || [];
+  const nuoveFoto    = [...fotoCorrenti];
+
   for (const file of files) {
     try {
       const ext  = file.name.split('.').pop() || 'jpg';
-      const path = `${comSelected.id}/inizio/${Date.now()}_${Math.random().toString(36).substr(2,6)}.${ext}`;
-      const { error } = await supa.storage.from('commesse-foto').upload(path, file, { contentType: file.type, upsert: false });
-      if (error) { showToast('Errore upload: ' + error.message); continue; }
+      const path = `${comSelected.id}/${Date.now()}_${Math.random().toString(36).substr(2,6)}.${ext}`;
+      const { error: upErr } = await supa.storage.from('commesse-foto').upload(path, file, { contentType: file.type, upsert: false });
+      if (upErr) { showToast('Errore upload: ' + upErr.message); continue; }
       const { data: { publicUrl } } = supa.storage.from('commesse-foto').getPublicUrl(path);
-      curr.push(publicUrl);
+      nuoveFoto.push(publicUrl);
     } catch(e) { showToast('Errore: ' + e.message); }
   }
-  await supa.from('commesse').update({ foto_inizio: curr }).eq('id', comSelected.id);
+
+  await supa.from('commesse').update({ foto: nuoveFoto }).eq('id', comSelected.id);
   await loadAll();
   comSelected = getCommesse().find(c=>c.id===comSelected.id) || comSelected;
-  renderFotoMec();
-  label.style.opacity = '1';
+  renderFotoGaranzia(comSelected.foto || []);
+  btnLabel.style.opacity = '1';
   input.value = '';
   showToast(`✓ ${files.length} foto caricate`);
-  // Nascondi alert se ora ≥3
-  if ((comSelected.fotoInizio || []).length >= 3) {
-    document.getElementById('det-foto-inizio-alert').style.display = 'none';
-  }
 }
 
-async function caricaFotoFine(input) {
-  if (!input.files.length || !comSelected) return;
-  const files = Array.from(input.files);
-  const label = document.getElementById('btn-foto-fine-label');
-  label.style.opacity = '.5';
-  const { data: { session } } = await supa.auth.getSession();
-  if (!session) await supa.auth.signInAnonymously();
-  const curr = [...(comSelected.fotoFine || [])];
-  for (const file of files) {
-    try {
-      const ext  = file.name.split('.').pop() || 'jpg';
-      const path = `${comSelected.id}/fine/${Date.now()}_${Math.random().toString(36).substr(2,6)}.${ext}`;
-      const { error } = await supa.storage.from('commesse-foto').upload(path, file, { contentType: file.type, upsert: false });
-      if (error) { showToast('Errore upload: ' + error.message); continue; }
-      const { data: { publicUrl } } = supa.storage.from('commesse-foto').getPublicUrl(path);
-      curr.push(publicUrl);
-    } catch(e) { showToast('Errore: ' + e.message); }
-  }
-  await supa.from('commesse').update({ foto_fine: curr }).eq('id', comSelected.id);
-  await loadAll();
-  comSelected = getCommesse().find(c=>c.id===comSelected.id) || comSelected;
-  renderFotoMec();
-  label.style.opacity = '1';
-  input.value = '';
-  showToast(`✓ ${files.length} foto caricate`);
-  if ((comSelected.fotoFine || []).length >= 2) {
-    document.getElementById('det-foto-fine-alert').style.display = 'none';
-  }
-}
-
-async function eliminaFotoInizio(idx) {
+async function eliminaFoto(idx) {
   if (!confirm('Eliminare questa foto?')) return;
-  const foto = [...(comSelected.fotoInizio || [])];
+  const foto = [...(comSelected.foto || [])];
   foto.splice(idx, 1);
-  await supa.from('commesse').update({ foto_inizio: foto }).eq('id', comSelected.id);
+  await supa.from('commesse').update({ foto }).eq('id', comSelected.id);
   await loadAll();
   comSelected = getCommesse().find(c=>c.id===comSelected.id) || comSelected;
-  renderFotoMec();
-  showToast('Foto eliminata ✓');
-}
-
-async function eliminaFotoFine(idx) {
-  if (!confirm('Eliminare questa foto?')) return;
-  const foto = [...(comSelected.fotoFine || [])];
-  foto.splice(idx, 1);
-  await supa.from('commesse').update({ foto_fine: foto }).eq('id', comSelected.id);
-  await loadAll();
-  comSelected = getCommesse().find(c=>c.id===comSelected.id) || comSelected;
-  renderFotoMec();
+  renderFotoGaranzia(comSelected.foto || []);
   showToast('Foto eliminata ✓');
 }
 
@@ -1106,9 +978,6 @@ function apriLightbox(url) {
   document.body.appendChild(lb);
 }
 
-// ══════════════════════════════════════════════════
-// HOLD-TO-CONFIRM
-// ══════════════════════════════════════════════════
 let _holdTimer = null;
 let _holdStart = null;
 const HOLD_MS = 1000;
@@ -1133,9 +1002,6 @@ function cancelHold() {
   if (bar) { bar.style.transition = 'none'; bar.style.width = '0'; }
 }
 
-// ══════════════════════════════════════════════════
-// AVANZA STATO
-// ══════════════════════════════════════════════════
 async function avanzaStato() {
   if (!comSelected) return;
   const cm = getCommesse().find(c=>c.id===comSelected.id);
@@ -1145,28 +1011,16 @@ async function avanzaStato() {
   const nuovo  = map[cm.stato];
   if (!nuovo) return;
 
-  // "Caricale tu!" — aperta → wip, garanzia, foto_inizio < 3
-  if (nuovo === 'wip' && cm.garanzia && (cm.fotoInizio||[]).length < 3) {
-    const wrap = document.getElementById('det-foto-wrap');
-    wrap.style.display = '';
-    const alertEl = document.getElementById('det-foto-inizio-alert');
-    alertEl.style.display = '';
-    alertEl.scrollIntoView({behavior:'smooth', block:'center'});
-    showToast('📷 Carica le 3 foto di accettazione per iniziare');
-    return;
-  }
-
-  // "Caricale tu!" — wip → chiusa, garanzia, foto_fine < 2
-  if (nuovo === 'chiusa' && cm.garanzia && (cm.fotoFine||[]).length < 2) {
-    const wrap = document.getElementById('det-foto-wrap');
-    wrap.style.display = '';
-    document.getElementById('det-foto-fine-section').style.display = '';
-    document.getElementById('det-foto-divider').style.display = '';
-    const alertEl = document.getElementById('det-foto-fine-alert');
-    alertEl.style.display = '';
-    alertEl.scrollIntoView({behavior:'smooth', block:'center'});
-    showToast('📷 Carica almeno 2 foto di chiusura');
-    return;
+  // Blocco garanzia: se si tenta di chiudere e il veicolo è in garanzia, servono foto
+  if (nuovo === 'chiusa') {
+    const v = getVeicoli().find(x=>x.id===cm.veicoloId);
+    if (isVeicoloInGaranzia(v)) {
+      const foto = cm.foto || [];
+      if (!foto.length) {
+        alert('⚠️ Commessa in garanzia\n\nDevi caricare almeno una foto che documenti il lavoro svolto prima di poter chiudere la commessa.');
+        return;
+      }
+    }
   }
 
   if (!confirm(`Portare la commessa a "${labels[cm.stato]}"?`)) return;
@@ -1277,8 +1131,10 @@ async function confermaScan() {
     if (!confirm(`Giacenza insufficiente (${prod.giacenza} ${prod.um||'pz'}). Procedere comunque?`)) return;
   }
   try {
+    // Scarico magazzino
     await supa.from('movimenti').insert({id:genId(),prod_id:scanProdId,tipo:'scarico',qta,com_id:comSelected.id,note:'Da app meccanico — '+comSelected.numero,data:new Date().toISOString(),created_at:new Date().toISOString()});
     await supa.from('prodotti').update({giacenza: prod.giacenza - qta}).eq('id', scanProdId);
+    // Aggiorna voci commessa
     const cm = _commesse.find(c=>c.id===comSelected.id);
     const vociRic = [...(cm?.voci_ric||[])];
     const ve = vociRic.find(v=>v.prodId===scanProdId);
@@ -1309,6 +1165,7 @@ async function creaNuovoRicambio() {
     await supa.from('prodotti').insert({id:npId,created_at:ora,descrizione:desc,cod_int:cod,um:'pz',categoria:'Varie',giacenza:0,scorta_min:1,qta_riordino:10,prezzo_acq:0,prezzo_vend:0,barcodes:[]});
     await supa.from('movimenti').insert({id:genId(),prod_id:npId,tipo:'carico',qta,com_id:null,note:'Acquisto per '+cm.numero,data:ora,created_at:ora});
     await supa.from('movimenti').insert({id:genId(),prod_id:npId,tipo:'scarico',qta,com_id:comSelected.id,note:'Utilizzo in '+cm.numero,data:ora,created_at:ora});
+    // giacenza resta 0
     const vociRic = [...(cm.voci_ric||[])];
     vociRic.push({prodId:npId, desc, qta, prezzo:0});
     const totale = [...(cm.voci_mano||[]),...vociRic,...(cm.voci_extra||[])].reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0);
@@ -1369,6 +1226,8 @@ function chiudiCamera() {
 // ══════════════════════════════════════════════════
 // UTILS
 // ══════════════════════════════════════════════════
+function genId() { return crypto.randomUUID(); }
+
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
