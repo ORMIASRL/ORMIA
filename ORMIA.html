@@ -1120,7 +1120,6 @@
         <div class="stats-row" style="margin-bottom:16px">
           <div class="stat-card"><div class="stat-label">Prodotti totali</div><div class="stat-value" id="mag-stat-tot">0</div></div>
           <div class="stat-card"><div class="stat-label">Sotto scorta minima</div><div class="stat-value" id="mag-stat-alert" style="color:var(--danger)">0</div></div>
-          <div class="stat-card"><div class="stat-label">Ordini in attesa</div><div class="stat-value" id="mag-stat-ordini" style="color:var(--warning)">0</div></div>
           <div class="stat-card"><div class="stat-label">Valore totale</div><div class="stat-value" id="mag-stat-valore" style="font-size:16px">€ 0</div></div>
         </div>
 
@@ -1128,7 +1127,6 @@
         <div class="tabs" style="margin-bottom:16px">
           <div class="tab active" id="mtab-prodotti"    onclick="setMagTab('prodotti')">Prodotti</div>
           <div class="tab"        id="mtab-movimenti"   onclick="setMagTab('movimenti')">Movimenti</div>
-          <div class="tab"        id="mtab-ordini"      onclick="setMagTab('ordini')">Ordini fornitori</div>
           <div class="tab"        id="mtab-approvazioni" onclick="setMagTab('approvazioni')" style="position:relative">
             Da approvare
             <span id="mtab-badge-appr" style="position:absolute;top:-4px;right:-4px;background:var(--danger);color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;display:none">0</span>
@@ -1153,6 +1151,9 @@
               <option value="low">Sotto scorta</option>
               <option value="esaurito">Esaurito</option>
             </select>
+          </div>
+          <div id="mag-banner-critica" style="display:none;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;font-size:12px;color:var(--text3);align-items:center;justify-content:space-between;gap:10px">
+            <span>⚠️ Vista critica — solo prodotti <strong>esauriti</strong> e <strong>sotto scorta</strong>.</span>
           </div>
           <div class="table-wrap">
             <table>
@@ -1196,21 +1197,6 @@
             <div class="empty-state" id="empty-movimenti" style="display:none">
               <p>Nessun movimento registrato.</p>
             </div>
-          </div>
-        </div>
-
-        <!-- TAB ORDINI -->
-        <div id="msec-ordini" style="display:none">
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:16px;box-shadow:var(--shadow)">
-            <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Prodotti da riordinare</div>
-            <div id="mag-riordino"></div>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Data</th><th>Prodotto</th><th>Fornitore</th><th>Q.tà ordinata</th><th>Stato</th><th></th></tr></thead>
-              <tbody id="tbody-ordini"></tbody>
-            </table>
-            <div class="empty-state" id="empty-ordini" style="display:none"><p>Nessun ordine ancora.</p></div>
           </div>
         </div>
 
@@ -2220,10 +2206,15 @@ function showDetailVeicolo(id) {
   dvCount.textContent = comVeicolo.length + ' commess' + (comVeicolo.length===1?'a':'e');
   const statoColors = {aperta:'var(--accent)',wip:'var(--warning)',standby:'#6D28D9',chiusa:'var(--success)',fatturata:'#6366F1'};
   const statoLabels = {aperta:'Aperta',wip:'In lavorazione',standby:'Standby',chiusa:'Chiusa',fatturata:'Fatturata'};
-  if (!comVeicolo.length) {
-    dvList.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0">Nessuna commessa registrata.</div>';
-  } else {
-    dvList.innerHTML = comVeicolo.map(cm=>`
+  const _PAGE = 5;
+  function renderStorico(showAll) {
+    if (!comVeicolo.length) {
+      dvList.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0">Nessuna commessa registrata.</div>';
+      return;
+    }
+    const vis = showAll ? comVeicolo : comVeicolo.slice(0, _PAGE);
+    const rest = comVeicolo.length - _PAGE;
+    dvList.innerHTML = vis.map(cm=>`
       <div onclick="showDetailCommessa('${cm.id}')" style="padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:10px;background:var(--surface)" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='var(--surface)'">
         <div style="width:6px;height:6px;border-radius:50%;background:${statoColors[cm.stato]||'#999'};flex-shrink:0"></div>
         <div style="flex:1;min-width:0">
@@ -2234,8 +2225,12 @@ function showDetailVeicolo(id) {
           <div style="font-size:11px;color:var(--text3)">${cm.dataApertura?formatDate(cm.dataApertura):''}</div>
           <span style="font-size:10px;font-weight:700;color:${statoColors[cm.stato]||'#999'}">${statoLabels[cm.stato]||cm.stato}</span>
         </div>
-      </div>`).join('');
+      </div>`).join('') +
+      (!showAll && comVeicolo.length > _PAGE
+        ? `<button onclick="renderStorico(true)" style="width:100%;padding:8px;border:1px dashed var(--border);border-radius:var(--radius);background:none;cursor:pointer;font-size:12px;color:var(--text3);margin-top:2px">Mostra altre ${rest} commess${rest===1?'a':'e'} ▾</button>`
+        : '');
   }
+  renderStorico(false);
 
   const scadenze = [
     {label:'Revisione', val:v.revisione},
@@ -2506,22 +2501,12 @@ function init() {
       <div class="detail-sub" id="dc-cliente-veicolo"></div>
     </div>
     <div style="display:flex;gap:6px;align-items:flex-start">
-      <button class="btn btn-secondary btn-sm" onclick="anteprimaCommessa(selectedCommessaId)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-        Anteprima
-      </button>
+
       <button class="btn btn-secondary btn-sm" onclick="stampaCommessa(selectedCommessaId)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
         Stampa
       </button>
-      <button class="btn btn-secondary btn-sm" id="dc-btn-fattura" onclick="emettiFatturaCommessa(selectedCommessaId)" style="display:none">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
-        Fattura
-      </button>
-      <button class="btn btn-success btn-sm" id="dc-btn-pos" onclick="emettiFatturaCommessa(selectedCommessaId,'pos')" style="display:none">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-        POS
-      </button>
+
       <button class="btn btn-secondary btn-sm" onclick="editCommessa()">Modifica</button>
       <button class="close-btn" onclick="closeDetail('detail-commessa')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -2529,6 +2514,24 @@ function init() {
     </div>
   </div>
   <div id="dc-alert-moroso" style="display:none;padding:0 16px"></div>
+
+  <!-- SEZIONE PAGAMENTO -->
+  <div class="detail-section" id="dc-pagamento-section" style="display:none">
+    <div class="detail-section-title">💳 Incassa</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-secondary" id="dc-btn-fattura" onclick="emettiFatturaCommessa(selectedCommessaId)" style="width:100%;justify-content:center;padding:14px 16px;font-size:14px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:6px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+        Fattura
+      </button>
+      <button class="btn" id="dc-btn-contanti" onclick="emettiFatturaCommessa(selectedCommessaId)" style="width:100%;justify-content:center;padding:14px 16px;font-size:14px;background:var(--warning,#f59e0b);border-color:var(--warning,#f59e0b);color:white">
+        💵 Contanti
+      </button>
+      <button class="btn btn-success" id="dc-btn-pos" onclick="emettiFatturaCommessa(selectedCommessaId)" style="width:100%;justify-content:center;padding:14px 16px;font-size:14px">
+        📱 POS
+      </button>
+    </div>
+  </div>
+
   <div class="detail-section">
     <div class="detail-section-title">Stato & info</div>
     <div class="detail-row"><span class="detail-key">Stato</span><span class="detail-val" id="dc-stato"></span></div>
@@ -2543,16 +2546,6 @@ function init() {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         Timbratura
       </span>
-      <button class="btn btn-ghost btn-sm" onclick="toggleQRCommessa()" style="font-size:11px">QR commessa</button>
-    </div>
-
-    <!-- QR code commessa (mostra/nascondi) -->
-    <div id="dc-qr-wrap" style="display:none;text-align:center;margin-bottom:12px">
-      <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Il meccanico scansiona questo QR con lo smartphone per timbrare</div>
-      <div id="dc-qr-code" style="display:inline-block;padding:10px;background:white;border-radius:var(--radius);border:1px solid var(--border)"></div>
-      <div style="margin-top:6px">
-        <a id="dc-qr-link" href="#" target="_blank" style="font-size:11px;color:var(--accent)">Apri pagina mobile</a>
-      </div>
     </div>
 
     <!-- Scansione tesserino / selezione manuale -->
@@ -2864,6 +2857,11 @@ const DB = {
 
 // ── AUTH ────────────────────────────────────────────
 let currentUser = null;
+let _sumupConfig = JSON.parse(localStorage.getItem('ormia_sumup_config')||'{}');
+let _sumupToken  = JSON.parse(localStorage.getItem('ormia_sumup_token')||'null');
+let _sumupPoll   = null;
+let _pfCurrentFatt = null;
+const SUMUP_TOKEN_URL = 'https://api.sumup.com/token';
 
 async function doLogin() {
   const email = document.getElementById('login-email').value.trim();
@@ -3583,7 +3581,7 @@ function renderCommesse() {
       (cl?.ragione||'').toLowerCase().includes(q) ||
       (v?.targa||'').toLowerCase().includes(q) ||
       (cm.numero||'').toLowerCase().includes(q);
-    const matchS = !statoFiltro || cm.stato === statoFiltro;
+    const matchS = statoFiltro ? cm.stato === statoFiltro : (cm.stato !== 'fatturata' || !!q);
     return matchQ && matchS;
   });
   filtered.sort((a,b)=>{
@@ -3683,13 +3681,14 @@ function renderCommesse() {
   if (vistaCommesse === 'kanban') {
     document.getElementById('dash-kanban').style.display='';
     document.getElementById('lista-commesse').style.display='none';
-    const cols = [
-      { stato:'aperta',    label:'Aperte',        headCls:'k-col-head-aperta',    colCls:'k-col-aperta' },
-      { stato:'wip',       label:'In lavorazione', headCls:'k-col-head-wip',       colCls:'k-col-wip'    },
-      { stato:'standby',   label:'Standby',        headCls:'k-col-head-standby',   colCls:'k-col-standby'},
-      { stato:'chiusa',    label:'Chiuse',         headCls:'k-col-head-chiusa',    colCls:'k-col-chiusa' },
-      { stato:'fatturata', label:'Fatturate',      headCls:'k-col-head-fatturata', colCls:'k-col-fatturata' },
+    const colsBase = [
+      { stato:'aperta',    label:'Aperte',         headCls:'k-col-head-aperta',    colCls:'k-col-aperta' },
+      { stato:'wip',       label:'In lavorazione',  headCls:'k-col-head-wip',       colCls:'k-col-wip'    },
+      { stato:'standby',   label:'Standby',         headCls:'k-col-head-standby',   colCls:'k-col-standby'},
+      { stato:'chiusa',    label:'Chiuse',          headCls:'k-col-head-chiusa',    colCls:'k-col-chiusa' },
     ];
+    const cols = statoFiltro === 'fatturata' ? [{ stato:'fatturata', label:'Fatturate', headCls:'k-col-head-fatturata', colCls:'k-col-fatturata' }] : colsBase;
+    document.getElementById('dash-kanban').style.gridTemplateColumns = cols.length===1 ? '1fr' : `repeat(${cols.length},1fr)`;
     document.getElementById('dash-kanban').innerHTML = cols.map(col=>{
       const items = filtered.filter(cm=>cm.stato===col.stato);
       const cards = items.map(cm=>{
@@ -3833,11 +3832,9 @@ function showDetailCommessa(id) {
     }
   }
 
-  // Mostra tasto Fattura solo se commessa chiusa o fatturata
-  const btnFatt = document.getElementById('dc-btn-fattura');
-  if (btnFatt) btnFatt.style.display = (cm.stato==='chiusa'||cm.stato==='fatturata') ? '' : 'none';
-  const btnPos = document.getElementById('dc-btn-pos');
-  if (btnPos) btnPos.style.display = cm.stato==='chiusa' ? '' : 'none';
+  // Mostra sezione pagamento solo se commessa chiusa o fatturata
+  const secPag = document.getElementById('dc-pagamento-section');
+  if (secPag) secPag.style.display = (cm.stato==='chiusa'||cm.stato==='fatturata') ? '' : 'none';
   document.getElementById('dc-data').textContent = formatDate(cm.dataApertura)||'—';
 
   // Solo i meccanici con timbratura aperta adesso su questa commessa
@@ -3916,7 +3913,6 @@ function showDetailCommessa(id) {
   popolaSelTimbraturaCommessa();
   document.getElementById('dc-tim-scan').value = '';
   document.getElementById('dc-tim-trovato').style.display = 'none';
-  document.getElementById('dc-qr-wrap').style.display = 'none';
   renderTimbratureLiveCommessa(id);
 
   document.getElementById('detail-commessa').style.display='flex';
@@ -5329,19 +5325,6 @@ async function chiudiDaCommessa(timId) {
   } catch(e) { alert('Errore: '+e.message); }
 }
 
-function anteprimaCommessa(comId) {
-  const cm  = commesse.find(c=>c.id===comId);
-  if (!cm) return;
-  const cl  = clienti.find(c=>c.id===cm.clienteId);
-  const v   = veicoli.find(x=>x.id===cm.veicoloId);
-  const off = getDatiOfficina();
-  const inGar = isVeicoloInGaranzia(cm.veicoloId);
-  const garScad = v?.garanziaScadenza ? new Date(v.garanziaScadenza).toLocaleDateString('it-IT') : null;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(cm.numero||comId)}&margin=4`;
-  // Usa lo stesso generatore di stampaCommessa
-  const html = generaHtmlCommessa(cm, cl, v, off, inGar, garScad, qrUrl);
-  apriAnteprima(html, `Commessa ${cm.numero}`);
-}
 
 function apriLightboxGestionale(url) {
   const lb = document.createElement('div');
@@ -5363,11 +5346,10 @@ function stampaCommessa(comId) {
   const off = getDatiOfficina();
   const inGar = isVeicoloInGaranzia(cm.veicoloId);
   const garScad = v?.garanziaScadenza ? new Date(v.garanziaScadenza).toLocaleDateString('it-IT') : null;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(cm.numero||comId)}&margin=4`;
-  apriAnteprima(generaHtmlCommessa(cm, cl, v, off, inGar, garScad, qrUrl), `Commessa ${cm.numero}`);
+  apriAnteprima(generaHtmlCommessa(cm, cl, v, off, inGar, garScad), `Commessa ${cm.numero}`);
 }
 
-function generaHtmlCommessa(cm, cl, v, off, inGar, garScad, qrUrl) {
+function generaHtmlCommessa(cm, cl, v, off, inGar, garScad) {
 
   // Voci manodopera
   const rowsMano = (cm.vociMano||[]).filter(r=>r.desc).map(r=>`
@@ -5540,10 +5522,7 @@ ${cm.note ? `
       <div class="firma-label">Firma meccanico responsabile</div>
     </div>
   </div>
-  <div class="qr-wrap">
-    <img src="${qrUrl}" width="90" height="90" alt="QR ${cm.numero}">
-    <div class="qr-label">${cm.numero}</div>
-  </div>
+
 </div>
 
 
@@ -5646,59 +5625,12 @@ ${cm.note ? `
   </div>
 </div>
 
-<!-- ═══ MODAL POS GESTIONALE ═══ -->
-<div id="modal-pos-ormia" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:2000;align-items:center;justify-content:center">
-  <div style="background:var(--surface);border-radius:16px;padding:32px 28px;width:320px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35)">
-    <div id="pos-ormia-icona" style="font-size:52px;margin-bottom:16px">📱</div>
-    <div id="pos-ormia-importo" style="font-size:30px;font-weight:800;font-family:'DM Mono',monospace;margin-bottom:8px">€ 0,00</div>
-    <div id="pos-ormia-titolo" style="font-size:15px;font-weight:700;margin-bottom:6px">Pagamento in corso</div>
-    <div id="pos-ormia-msg" style="font-size:13px;color:var(--text3);margin-bottom:20px;line-height:1.5">Avvio checkout…</div>
-    <div id="pos-ormia-spinner" style="width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px"></div>
-    <button id="pos-ormia-annulla" class="btn btn-secondary" onclick="annullaPOSormia()" style="width:100%">Annulla</button>
-  </div>
-</div>
-
-<!-- ═══ DIALOG POST-FATTURA ═══ -->
-<div id="modal-post-fattura" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center">
-  <div style="background:var(--surface);border-radius:16px;padding:28px;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
-    <div style="font-size:16px;font-weight:700;margin-bottom:4px">Fattura emessa ✓</div>
-    <div style="font-size:13px;color:var(--text3);margin-bottom:20px">
-      <span id="pf-numero" style="font-family:'DM Mono',monospace;font-weight:600"></span>
-      &nbsp;·&nbsp;<span id="pf-cliente"></span>
-      &nbsp;·&nbsp;<strong id="pf-totale"></strong>
-    </div>
-    <div style="font-size:13px;font-weight:600;margin-bottom:12px">Inviare al cliente?</div>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      <button class="btn btn-primary" onclick="pfStampa()">🖨&nbsp; Stampa PDF</button>
-      <button class="btn btn-secondary" onclick="pfEmail()">✉️&nbsp; Invia email</button>
-      <button class="btn btn-secondary" onclick="pfEntrambi()">Stampa + email</button>
-      <button class="btn btn-ghost" onclick="document.getElementById('modal-post-fattura').style.display='none'">No, grazie</button>
-    </div>
-  </div>
-</div>
-
 </body>
 </html>`;
 
   return html;
 }
 
-function toggleQRCommessa() {
-  const wrap = document.getElementById('dc-qr-wrap');
-  if (wrap.style.display==='none') { generaQRCommessa(selectedCommessaId); wrap.style.display='block'; }
-  else wrap.style.display='none';
-}
-
-function generaQRCommessa(comId) {
-  const cm = commesse.find(x=>x.id===comId);
-  if (!cm) return;
-  const url = 'timbra.html?c=' + encodeURIComponent(cm.numero);
-  document.getElementById('dc-qr-link').href = url;
-  document.getElementById('dc-qr-link').textContent = 'Apri pagina mobile';
-  const size = 140;
-  document.getElementById('dc-qr-code').innerHTML =
-    `<img src="https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(url)}" width="${size}" height="${size}" alt="QR ${cm.numero}" style="display:block">`;
-}
 
 // ===== MODAL SCANNER RICAMBI =====
 let scanModalProdottoId = null;
@@ -6106,9 +6038,9 @@ async function confermaScansioneRicambio() {
 }
 
 // prodotti, movimenti, presenze dichiarati in cima insieme agli altri
-let ordini = [];
 let editingProdottoId = null;
 let magTab = 'prodotti';
+let magMostraTutti = false;
 
 async function saveMagazzino() { /* dati già salvati su Supabase */ }
 
@@ -6127,14 +6059,13 @@ function initMagazzino() {
 
 function setMagTab(tab) {
   magTab = tab;
-  ['prodotti','movimenti','ordini','approvazioni'].forEach(t => {
+  ['prodotti','movimenti','approvazioni'].forEach(t => {
     document.getElementById('mtab-'+t)?.classList.toggle('active', t===tab);
     const sec = document.getElementById('msec-'+t);
     if (sec) sec.style.display = t===tab?'block':'none';
   });
-  if (tab==='prodotti')     renderProdotti();
+  if (tab==='prodotti')     { magMostraTutti = false; renderProdotti(); }
   if (tab==='movimenti')    { popolaSelMovimento(); renderMovimenti(); }
-  if (tab==='ordini')       { renderRiordino(); renderOrdini(); }
   if (tab==='approvazioni') renderApprovazioni();
 }
 
@@ -6144,10 +6075,8 @@ function updateStatsMagazzino() {
     document.getElementById('section-magazzino').style.display = 'none';
     return;
   }
-  ordini = safeStorage.parse('officina_ordini', []);
   document.getElementById('mag-stat-tot').textContent    = prodotti.length;
   document.getElementById('mag-stat-alert').textContent  = prodotti.filter(p=>p.giacenza<=p.scortaMin).length;
-  document.getElementById('mag-stat-ordini').textContent = ordini.filter(o=>o.stato==='attesa').length;
   const val = prodotti.reduce((s,p)=>s+(p.giacenza||0)*(p.prezzoAcq||0),0);
   document.getElementById('mag-stat-valore').textContent = '€ '+val.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
 }
@@ -6164,15 +6093,24 @@ function renderProdotti() {
   const q   = (document.getElementById('mag-search')?.value||'').toLowerCase();
   const cat = document.getElementById('mag-filter-cat')?.value||'';
   const st  = document.getElementById('mag-filter-stato')?.value||'';
+  const isCriticalMode = !magMostraTutti && !q && !cat && !st;
+  const banner = document.getElementById('mag-banner-critica');
+  if (banner) banner.style.display = isCriticalMode ? 'flex' : 'none';
   const filtered = prodotti.filter(p=>{
     const matchQ = !q || (p.descrizione||p.desc||'').toLowerCase().includes(q) || (p.codInt||'').toLowerCase().includes(q) || (p.codForn||'').toLowerCase().includes(q);
     const matchC = !cat || p.categoria===cat;
-    const matchS = !st  || statoProdotto(p).key===st;
+    const matchS = isCriticalMode ? statoProdotto(p).key !== 'ok' : (!st || statoProdotto(p).key===st);
     return matchQ && matchC && matchS;
   });
   const tbody = document.getElementById('tbody-prodotti');
   const empty = document.getElementById('empty-prodotti');
-  if (!filtered.length) { tbody.innerHTML=''; empty.style.display=''; return; }
+  if (!filtered.length) {
+    tbody.innerHTML=''; empty.style.display='';
+    empty.innerHTML = isCriticalMode
+      ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><p style="color:var(--success);font-weight:600">Magazzino OK — nessun prodotto da riordinare.</p>`
+      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg><p>Nessun prodotto trovato.</p><button class="btn btn-primary" onclick="openModalProdotto()">+ Aggiungi prodotto</button>`;
+    return;
+  }
   empty.style.display='none';
   tbody.innerHTML = filtered.map(p => {
     const st = statoProdotto(p);
@@ -6337,14 +6275,18 @@ async function registraMovimento() {
   } catch(e) { alert('Errore: '+e.message); }
 }
 
-function renderMovimenti() {
+let _movPage = 10;
+function renderMovimenti(showAll) {
+  if (showAll !== undefined) _movPage = showAll ? Infinity : 10;
   const filtered = [...movimenti].reverse();
   const tbody = document.getElementById('tbody-movimenti');
   const empty = document.getElementById('empty-movimenti');
   if (!filtered.length) { tbody.innerHTML=''; empty.style.display=''; return; }
   empty.style.display='none';
   const tipoStyle = { carico:{cls:'badge-green',label:'Carico'}, scarico:{cls:'badge-red',label:'Scarico'}, rettifica:{cls:'badge-blue',label:'Rettifica'} };
-  tbody.innerHTML = filtered.map(m=>{
+  const visible = filtered.slice(0, _movPage);
+  const rest = filtered.length - visible.length;
+  tbody.innerHTML = visible.map(m=>{
     const p  = prodotti.find(x=>x.id===m.prodId);
     const cm = commesse.find(x=>x.id===m.comId);
     const ts = tipoStyle[m.tipo]||{cls:'badge-gray',label:m.tipo};
@@ -6357,7 +6299,7 @@ function renderMovimenti() {
       <td style="font-size:12px;color:var(--text3)">${m.note||'—'}</td>
       <td><button class="btn btn-danger btn-sm" onclick="deleteMovimento('${m.id}')">Elimina</button></td>
     </tr>`;
-  }).join('');
+  }).join('') + (rest > 0 ? `<tr><td colspan="7" style="text-align:center;padding:12px 0"><button class="btn btn-ghost btn-sm" onclick="renderMovimenti(true)">Mostra altri ${rest} movimenti ▾</button></td></tr>` : '');
 }
 
 async function deleteMovimento(id) {
@@ -6366,95 +6308,9 @@ async function deleteMovimento(id) {
 }
 
 // ===== RIORDINO =====
-function verificaRiordino() {
-  prodotti.forEach(p=>{
-    if (p.giacenza <= p.scortaMin) {
-      const giàInOrdine = ordini.find(o=>o.prodId===p.id&&o.stato==='attesa');
-      if (!giàInOrdine) {
-        ordini.push({ id:initId(), prodId:p.id, fornitoreId:p.fornitoreId||null, qtaOrdinata:p.qtaRiordino||10, stato:'attesa', note:'Riordino automatico', createdAt:new Date().toISOString() });
-        showToast(`Ordine automatico creato per: ${p.descrizione||p.descrizione||p.desc}`);
-      }
-    }
-  });
-  localStorage.setItem('officina_ordini', JSON.stringify(ordini));
-  updateStatsMagazzino();
-}
+function verificaRiordino() { /* ordini rimossi */ }
 
-function renderRiordino() {
-  
-  const sottoscorta = prodotti.filter(p=>p.giacenza<=p.scortaMin);
-  const el = document.getElementById('mag-riordino');
-  if (!el) return;
-  if (!sottoscorta.length) { el.innerHTML='<div style="font-size:13px;color:var(--success)">✓ Nessun prodotto sotto scorta minima.</div>'; return; }
-  el.innerHTML = sottoscorta.map(p=>{
-    const forn = clienti.find(c=>c.id===p.fornitoreId);
-    const st = statoProdotto(p);
-    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
-      <div>
-        <span class="badge ${st.cls}" style="margin-right:8px">${st.label}</span>
-        <strong style="font-size:13px">${p.descrizione||p.desc}</strong>
-        <span style="font-size:12px;color:var(--text3);margin-left:8px">${p.codInt||''} · ${forn?forn.ragione:'Fornitore non impostato'}</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:12px">
-        <span style="font-family:'DM Mono',monospace;font-size:13px">Giacenza: <strong>${p.giacenza}</strong> / min ${p.scortaMin}</span>
-        <button class="btn btn-primary btn-sm" onclick="creaOrdineManuale('${p.id}')">Ordina ${p.qtaRiordino||10} ${p.um||'pz'}</button>
-      </div>
-    </div>`;
-  }).join('');
-}
 
-function renderOrdini() {
-  ordini = JSON.parse(localStorage.getItem('officina_ordini') || '[]');
-  const filtered = [...ordini].reverse();
-  const tbody = document.getElementById('tbody-ordini');
-  const empty = document.getElementById('empty-ordini');
-  if (!filtered.length) { tbody.innerHTML=''; empty.style.display=''; return; }
-  empty.style.display='none';
-  const statoOrd = { attesa:{cls:'badge-yellow',label:'In attesa'}, ricevuto:{cls:'badge-green',label:'Ricevuto'}, annullato:{cls:'badge-gray',label:'Annullato'} };
-  tbody.innerHTML = filtered.map(o=>{
-    const p    = prodotti.find(x=>x.id===o.prodId);
-    const forn = clienti.find(c=>c.id===o.fornitoreId);
-    const st   = statoOrd[o.stato]||{cls:'badge-gray',label:o.stato};
-    return `<tr>
-      <td style="font-size:12px">${formatDateTime(o.createdAt)}</td>
-      <td><div class="td-main" style="font-size:13px">${p?p.descrizione||p.desc:'—'}</div></td>
-      <td style="font-size:12px">${forn?forn.ragione:'—'}</td>
-      <td style="font-family:'DM Mono',monospace;font-weight:600">${o.qtaOrdinata} ${p?p.um||'pz':''}</td>
-      <td><span class="badge ${st.cls}">${st.label}</span></td>
-      <td><div style="display:flex;gap:4px">
-        ${o.stato==='attesa'?`<button class="btn btn-primary btn-sm" onclick="riceviOrdine('${o.id}')">Ricevuto</button>`:''}
-        <button class="btn btn-danger btn-sm" onclick="annullaOrdine('${o.id}')">Annulla</button>
-      </div></td>
-    </tr>`;
-  }).join('');
-}
-
-function creaOrdineManuale(prodId) {
-  const p = prodotti.find(x=>x.id===prodId);
-  if (!p) return;
-  ordini.push({ id:initId(), prodId, fornitoreId:p.fornitoreId||null, qtaOrdinata:p.qtaRiordino||10, stato:'attesa', note:'Ordine manuale', createdAt:new Date().toISOString() });
-  saveMagazzino(); renderRiordino(); renderOrdini(); updateStatsMagazzino();
-  showToast('Ordine creato ✓');
-}
-
-function riceviOrdine(id) {
-  const o = ordini.find(x=>x.id===id);
-  if (!o) return;
-  o.stato = 'ricevuto';
-  // Carica la giacenza
-  const idx = prodotti.findIndex(x=>x.id===o.prodId);
-  if (idx>=0) prodotti[idx].giacenza += o.qtaOrdinata;
-  movimenti.push({ id:initId(), prodId:o.prodId, tipo:'carico', qta:o.qtaOrdinata, comId:null, note:'Ricezione ordine '+id.substr(-4), data:new Date().toISOString(), createdAt:new Date().toISOString() });
-  saveMagazzino(); renderOrdini(); renderRiordino(); renderProdotti(); updateStatsMagazzino();
-  showToast('Ordine ricevuto — giacenza aggiornata ✓');
-}
-
-function annullaOrdine(id) {
-  if (!confirm('Annullare questo ordine?')) return;
-  const o = ordini.find(x=>x.id===id);
-  if (o) o.stato = 'annullato';
-  saveMagazzino(); renderOrdini(); updateStatsMagazzino();
-}
 
 // ===== BACKUP / RIPRISTINO DATI =====
 function esportaDati() {
@@ -6464,7 +6320,6 @@ function esportaDati() {
     officina_commesse: commesse, officina_meccanici: meccanici,
     officina_timbrature: timbrature, officina_presenze: presenze,
     officina_prodotti: prodotti, officina_movimenti: movimenti,
-    officina_ordini: ordini,
   };
   const json = JSON.stringify(backup, null, 2);
   const a = document.createElement('a');
@@ -6500,7 +6355,9 @@ function updateBadgeApprovazioni() {
   if (mtabBadge) { mtabBadge.style.display = pending>0?'':'none'; mtabBadge.textContent = pending; }
 }
 
-function renderApprovazioni() {
+let _apprPage = 10;
+function renderApprovazioni(showAll) {
+  if (showAll !== undefined) _apprPage = showAll ? Infinity : 10;
   const proposte = JSON.parse(localStorage.getItem('officina_proposte') || '[]');
   const pending  = proposte.filter(p=>p.stato==='attesa');
   const lista    = document.getElementById('lista-approvazioni');
@@ -6508,7 +6365,9 @@ function renderApprovazioni() {
   if (!lista) return;
   if (!pending.length) { lista.innerHTML=''; empty.style.display=''; return; }
   empty.style.display='none';
-  lista.innerHTML = pending.map(p=>{
+  const visible = pending.slice(0, _apprPage);
+  const rest = pending.length - visible.length;
+  lista.innerHTML = visible.map(p=>{
     const cm  = commesse.find(x=>x.id===p.comId);
     const mec = meccanici.find(x=>x.id===p.mecId);
     const pr  = prodotti.find(x=>x.id===p.prodId);
@@ -6542,7 +6401,7 @@ function renderApprovazioni() {
         <button class="btn btn-danger btn-sm" onclick="rifiutaRicambio('${p.id}')">Rifiuta</button>
       </div>
     </div>`;
-  }).join('');
+  }).join('') + (rest > 0 ? `<div style="text-align:center;padding:8px 0"><button class="btn btn-ghost btn-sm" onclick="renderApprovazioni(true)">Mostra altri ${rest} ▾</button></div>` : '');
 }
 
 async function approvaRicambio(id) {
@@ -6801,20 +6660,49 @@ updateBadgeApprovazioni();
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-fattura')">Annulla</button>
-      <button class="btn btn-primary" onclick="emettiFattura()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        Fattura
-      </button>
-      <button class="btn btn-success" onclick="emettiFatturaConPOS()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-        POS
-      </button>
+      <button class="btn btn-primary" onclick="emettiFattura()">📄 Fattura</button>
+      <button class="btn" onclick="emettiFatturaContanti()" style="background:var(--warning,#f59e0b);border-color:var(--warning,#f59e0b);color:white">💵 Contanti</button>
+      <button class="btn btn-success" onclick="emettiFatturaConPOS()">📱 POS</button>
     </div>
   </div>
 </div><!-- /modal-fattura -->
 
 <!-- IFRAME nascosto per stampa -->
 <iframe id="print-frame" style="display:none"></iframe>
+
+
+<!-- MODAL POS ORMIA -->
+<div class="modal-overlay" id="modal-pos-ormia" style="display:none" onclick="closeModalOnBg(event,'modal-pos-ormia')">
+  <div class="modal" style="max-width:360px;text-align:center">
+    <div class="modal-header" style="justify-content:center;border-bottom:none;padding-bottom:0">
+      <div style="font-size:40px;margin-bottom:8px">📱</div>
+    </div>
+    <div style="padding:0 24px 24px">
+      <div id="pos-ormia-importo" style="font-size:28px;font-weight:700;font-family:'DM Mono',monospace;color:var(--accent);margin-bottom:4px"></div>
+      <div id="pos-ormia-titolo" style="font-size:13px;color:var(--text3);margin-bottom:16px"></div>
+      <div id="pos-ormia-spinner" style="margin-bottom:12px"><div style="width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto"></div></div>
+      <div id="pos-ormia-msg" style="font-size:14px;color:var(--text2);margin-bottom:20px"></div>
+      <button id="pos-ormia-annulla" class="btn btn-secondary" onclick="annullaPOSormia()" style="width:100%">Annulla</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL POST-FATTURA -->
+<div class="modal-overlay" id="modal-post-fattura" style="display:none" onclick="closeModalOnBg(event,'modal-post-fattura')">
+  <div class="modal" style="max-width:360px;text-align:center">
+    <div style="padding:28px 24px 8px">
+      <div style="font-size:36px;margin-bottom:8px">✅</div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:4px">Fattura emessa</div>
+      <div style="font-size:13px;color:var(--text3)">N. <span id="pf-numero"></span> · <span id="pf-importo"></span></div>
+    </div>
+    <div style="padding:16px 24px 24px;display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-secondary" onclick="pfStampa()" style="width:100%">🖨 Stampa</button>
+      <button class="btn btn-secondary" onclick="pfEmail()" style="width:100%">📧 Invia email</button>
+      <button class="btn btn-secondary" onclick="pfEntrambi()" style="width:100%">Stampa + Email</button>
+      <button class="btn btn-ghost" onclick="pfNoAction()" style="width:100%;margin-top:4px">No, grazie</button>
+    </div>
+  </div>
+</div>
 
 </div><!-- /app -->
 
@@ -7420,7 +7308,7 @@ function renderDDT() {
       <div style="display:flex;gap:6px;flex-shrink:0">
         <button class="btn btn-ghost btn-sm" onclick="anteprimaDDT('${d.id}')">Anteprima</button>
         <button class="btn btn-ghost btn-sm" onclick="ristampaDDT('${d.id}')">Stampa</button>
-        ${stato!=='fatturato'?`<button class="btn btn-primary btn-sm" onclick="converteDDTinFattura('${d.id}')">Fattura</button><button class="btn btn-success btn-sm" onclick="converteDDTinFatturaPOS('${d.id}')">POS</button>`:''}
+        ${stato!=='fatturato'?`<button class="btn btn-primary btn-sm" onclick="converteDDTinFattura('${d.id}')">Fattura</button><button class="btn btn-sm" onclick="converteDDTinFattura('${d.id}')" style="background:var(--warning,#f59e0b);border-color:var(--warning,#f59e0b);color:white">💵 Contanti</button><button class="btn btn-success btn-sm" onclick="converteDDTinFattura('${d.id}')">📱 POS</button>`:''}
       </div>
     </div>`;
   }).join('');
@@ -7607,7 +7495,7 @@ function genNumFattura() {
   return `FT-${new Date().getFullYear()}-${String(_impostazioni.num_fatt||1).padStart(4,'0')}`;
 }
 
-function emettiFatturaCommessa(comId, hint) {
+function emettiFatturaCommessa(comId) {
   const cm = commesse.find(c=>c.id===comId);
   if (!cm) return;
   const cl = clienti.find(c=>c.id===cm.clienteId);
@@ -7621,7 +7509,7 @@ function emettiFatturaCommessa(comId, hint) {
   if (!righe.length) { alert('La commessa non ha voci da fatturare.'); return; }
   apriFatturaModal({origine:'commessa',origineId:comId,clienteId:cm.clienteId,
     descrizione:`Commessa ${cm.numero} — ${cm.descrizione||cm.desc}`,
-    veicolo:v?`${v.targa} ${[v.marca,v.modello].filter(Boolean).join(' ')}`:'',righe, _hint:hint});
+    veicolo:v?`${v.targa} ${[v.marca,v.modello].filter(Boolean).join(' ')}`:'',righe});
   // Assicurati che il modal documenti sia aperto
   if (document.getElementById('modal-documenti').style.display !== 'block') apriDocumenti();
 }
@@ -7730,27 +7618,26 @@ async function autoInviaFIC(fatt) {
   // Legge config FiC salvata da ORMIA-finance.html (stesso localStorage)
   let ficCfg = {};
   try { ficCfg = JSON.parse(localStorage.getItem('ormia_fic_config') || '{}'); } catch(_) {}
-  if (!ficCfg.client_id) return; // FiC non configurato, skip silenzioso
-  const FIC_COMPANY_ID = '1603640';
+  if (!ficCfg.company_id || !ficCfg.client_id) return; // FiC non configurato, skip silenzioso
   let ficToken = {};
   try { ficToken = JSON.parse(localStorage.getItem('ormia_fic_token') || '{}'); } catch(_) {}
   if (!ficToken.access_token && !ficToken.refresh_token) return; // non autorizzato
 
   // Se il token è scaduto e c'è un refresh, proviamo a rinnovarlo
   let accessToken = ficToken.access_token;
-  if (!accessToken || (ficToken.expires_at && ficToken.expires_at <= Date.now() + 60000)) {
+  if (!accessToken || ficToken.expires_at <= Date.now() + 60_000) {
     if (!ficToken.refresh_token) return;
     try {
       const res = await fetch('/.netlify/functions/fic-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ grant_type:'refresh_token', client_id:ficCfg.client_id,
-          client_secret:ficCfg.client_secret, redirect_uri:'https://ormiaofficina.netlify.app/fic-callback',
-          refresh_token:ficToken.refresh_token }),
+        body: JSON.stringify({
+          grant_type: 'refresh_token', client_id: ficCfg.client_id,
+          client_secret: ficCfg.client_secret, refresh_token: ficToken.refresh_token,
+        }),
       });
       if (!res.ok) return;
       const d = await res.json();
-      if (d.error) return;
       accessToken = d.access_token;
       localStorage.setItem('ormia_fic_token', JSON.stringify({
         access_token: d.access_token, refresh_token: d.refresh_token || ficToken.refresh_token,
@@ -7769,24 +7656,17 @@ async function autoInviaFIC(fatt) {
   const res = await fetch('/.netlify/functions/fic-api', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token: accessToken,
-      path: '/c/' + FIC_COMPANY_ID + '/issued_documents', method: 'POST',
-      payload: { data: {
-        type:'invoice', date:(fatt.data||new Date().toISOString()).split('T')[0], number:fatt.numero,
-        entity:{ name:fatt.clRagione||cl?.ragione||'Cliente', vat_number:fatt.clPiva||cl?.piva||'',
-                 tax_code:fatt.clCf||cl?.cf||'', ei_code:fatt.clSdi||cl?.sdi||'',
-                 certified_email:fatt.clPec||cl?.pec||'' },
-        items_list: items,
-      }},
-    }),
+    body: JSON.stringify({ token: accessToken, path: `/c/${ficCfg.company_id}/issued_documents`, method: 'POST', payload: {
+      type:'invoice', date:(fatt.data||new Date().toISOString()).split('T')[0], number:fatt.numero,
+      entity:{ name:fatt.clRagione||cl?.ragione||'Cliente', vat_number:fatt.clPiva||cl?.piva||'',
+               tax_code:fatt.clCf||cl?.cf||'', ei_code:fatt.clSdi||cl?.sdi||'',
+               certified_email:fatt.clPec||cl?.pec||'' },
+      items_list: items,
+    }}),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(()=>({}));
-    throw new Error(err?.error?.message || err?.message || 'HTTP ' + res.status);
-  }
+  if (!res.ok) { console.warn('[FiC auto] Errore invio:', res.status, await res.text()); return; }
   const d = await res.json();
-  const ficId = String(d?.data?.id || d?.data?.document?.id || '');
-  if (!ficId) throw new Error('FiC non ha restituito un ID');
+  const ficId = String(d.data.id);
   await supa.from('fatture').update({ fic_id: ficId, fic_stato: 'confermata' }).eq('id', fatt.id);
   const idx = fatture.findIndex(x => x.id === fatt.id);
   if (idx >= 0) { fatture[idx].ficId = ficId; fatture[idx].ficStato = 'confermata'; }
@@ -7813,153 +7693,114 @@ function _aggiornaAlertMoroso(alertEl, clienteId) {
   }
 }
 
-// ── Emetti da modal ──────────────────────────────────────────────────────────
+async function salvaEStampaFattura()  { const f=await salvaFattura(); if(f) setTimeout(()=>stampaFattura(f.id),100); }
+async function salvaEInviaFattura()   { const f=await salvaFattura(); if(f) setTimeout(()=>inviaEmailFattura(f.id),200); }
+
+// ── Metodi di pagamento dal modal-fattura ─────────────────────
 async function emettiFattura() {
   const f = await salvaFattura();
+  if (f) mostraDialogPostFattura(f);
+}
+async function emettiFatturaContanti() {
+  const f = await salvaFattura();
   if (!f) return;
-  closeModal('modal-fattura');
+  await segnaFatturaPagata(f, 'contanti', 'Pagamento contanti in officina');
+  showToast('Pagamento contanti registrato ✓');
   mostraDialogPostFattura(f);
 }
-
 async function emettiFatturaConPOS() {
   const f = await salvaFattura();
   if (!f) return;
-  closeModal('modal-fattura');
-  await avviaPOSfattura(f);
+  if (!_sumupConfig?.client_id) { alert('SumUp non configurato. Configura le credenziali in ORMIA Finance.'); return; }
+  avviaPOSfattura(f);
 }
-
-// ── Dialog post-emissione ─────────────────────────────────────────────────────
-function mostraDialogPostFattura(f) {
-  const d = document.getElementById('modal-post-fattura');
-  if (!d) return;
-  document.getElementById('pf-numero').textContent  = f.numero;
-  document.getElementById('pf-cliente').textContent = f.clRagione || '—';
-  document.getElementById('pf-totale').textContent  = '€ ' + (f.totale||0).toFixed(2);
-  d.style.display = 'flex';
-  d._fatt = f;
+async function segnaFatturaPagata(fatt, metodo, note) {
+  const oggi = new Date().toISOString().split('T')[0];
+  await supa.from('fatture').update({ stato:'pagata', data_pagamento:oggi }).eq('id', fatt.id);
+  await supa.from('incassi').insert({
+    fattura_id:fatt.id, importo:fatt.totale||0, data:oggi,
+    metodo:metodo, note:note||'', cliente_id:fatt.clienteId||null,
+  }).catch(()=>{});
+  const idx = fatture.findIndex(x=>x.id===fatt.id);
+  if (idx>=0) { fatture[idx].stato='pagata'; fatture[idx].dataPagamento=oggi; }
+  renderFatture(); updateBadgeFatture();
 }
-
-function pfStampa()    { const f=document.getElementById('modal-post-fattura')._fatt; document.getElementById('modal-post-fattura').style.display='none'; if(f) stampaFattura(f.id); }
-function pfEmail()     { const f=document.getElementById('modal-post-fattura')._fatt; document.getElementById('modal-post-fattura').style.display='none'; if(f) inviaEmailFattura(f.id); }
-function pfEntrambi()  { const f=document.getElementById('modal-post-fattura')._fatt; document.getElementById('modal-post-fattura').style.display='none'; if(f){ stampaFattura(f.id); setTimeout(()=>inviaEmailFattura(f.id),500); } }
-
-// ── SumUp POS ─────────────────────────────────────────────────────────────────
-let _sumupToken  = JSON.parse(localStorage.getItem('ormia_sumup_token')  || 'null');
-let _sumupConfig = JSON.parse(localStorage.getItem('ormia_sumup_config') || '{}');
-let _sumupPoll   = null;
-
+function mostraDialogPostFattura(fatt) {
+  _pfCurrentFatt = fatt;
+  const el = document.getElementById('modal-post-fattura');
+  if (!el) return;
+  document.getElementById('pf-numero').textContent  = fatt.numero||'';
+  document.getElementById('pf-importo').textContent = '€ '+(fatt.totale||0).toFixed(2).replace('.',',');
+  el.style.display='flex';
+}
+function pfStampa()   { closeModal('modal-post-fattura'); if(_pfCurrentFatt) stampaFattura(_pfCurrentFatt.id); }
+function pfEmail()    { closeModal('modal-post-fattura'); if(_pfCurrentFatt) inviaEmailFattura(_pfCurrentFatt.id); }
+function pfEntrambi() { closeModal('modal-post-fattura'); if(_pfCurrentFatt){ stampaFattura(_pfCurrentFatt.id); setTimeout(()=>inviaEmailFattura(_pfCurrentFatt.id),300); } }
+function pfNoAction() { closeModal('modal-post-fattura'); }
+// SumUp helpers
 function _saveSumUpToken(d) {
   _sumupToken = { access_token:d.access_token, refresh_token:d.refresh_token||_sumupToken?.refresh_token,
     expires_at:Date.now()+(d.expires_in||3600)*1000 };
   localStorage.setItem('ormia_sumup_token', JSON.stringify(_sumupToken));
 }
-
 async function getSumUpAccessToken() {
-  if (_sumupToken?.access_token && _sumupToken.expires_at > Date.now()+60000)
-    return _sumupToken.access_token;
-  if (_sumupToken?.refresh_token) {
-    try {
-      const res = await fetch('https://api.sumup.com/token', { method:'POST',
-        headers:{'Content-Type':'application/x-www-form-urlencoded'},
-        body:new URLSearchParams({ grant_type:'refresh_token', client_id:_sumupConfig.client_id,
-          client_secret:_sumupConfig.client_secret, refresh_token:_sumupToken.refresh_token }) });
-      if (res.ok) { _saveSumUpToken(await res.json()); return _sumupToken.access_token; }
-    } catch(_) {}
-  }
-  throw new Error('SumUp non autorizzato — apri Finance → Integrazioni → SumUp e autorizza.');
-}
-
-async function avviaPOSfattura(fatt) {
-  const modal = document.getElementById('modal-pos-ormia');
-  if (!modal) return;
-  document.getElementById('pos-ormia-importo').textContent = '€ '+(fatt.totale||0).toFixed(2).replace('.',',');
-  document.getElementById('pos-ormia-icona').textContent   = '📱';
-  document.getElementById('pos-ormia-titolo').textContent  = 'Pagamento in corso';
-  document.getElementById('pos-ormia-msg').textContent     = 'Creazione checkout…';
-  document.getElementById('pos-ormia-spinner').style.display = '';
-  document.getElementById('pos-ormia-annulla').style.display = '';
-  document.getElementById('pos-ormia-annulla').textContent = 'Annulla';
-  modal.style.display = 'flex';
+  if (_sumupToken?.access_token && _sumupToken.expires_at > Date.now()+60000) return _sumupToken.access_token;
+  if (!_sumupToken?.refresh_token) return null;
   try {
-    const token = await getSumUpAccessToken();
-    const ref = 'ORMIA-'+fatt.numero+'-'+Date.now();
-    const res = await fetch('https://api.sumup.com/v0.1/checkouts', { method:'POST',
+    const r = await fetch(SUMUP_TOKEN_URL, { method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({ grant_type:'refresh_token', client_id:_sumupConfig.client_id,
+        client_secret:_sumupConfig.client_secret, refresh_token:_sumupToken.refresh_token }) });
+    if (!r.ok) return null;
+    const d = await r.json(); _saveSumUpToken(d); return d.access_token;
+  } catch(_) { return null; }
+}
+async function avviaPOSfattura(fatt) {
+  const token = await getSumUpAccessToken();
+  if (!token) { posOrmiaErrore('Token SumUp non disponibile. Autorizza SumUp da Finance.'); return; }
+  const modal = document.getElementById('modal-pos-ormia');
+  document.getElementById('pos-ormia-importo').textContent = '€ '+(fatt.totale||0).toFixed(2).replace('.',',');
+  document.getElementById('pos-ormia-titolo').textContent  = 'Fattura '+(fatt.numero||'');
+  document.getElementById('pos-ormia-msg').textContent     = 'Avvio checkout…';
+  document.getElementById('pos-ormia-spinner').style.display='';
+  document.getElementById('pos-ormia-annulla').style.display='';
+  modal.style.display='flex';
+  try {
+    const r = await fetch('https://api.sumup.com/v0.1/checkouts', { method:'POST',
       headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
-      body:JSON.stringify({ amount:fatt.totale, currency:'EUR',
-        checkout_reference:ref, merchant_code:_sumupConfig.merchant }) });
-    if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(e.message||'Errore SumUp '+res.status); }
-    const checkout = await res.json();
-    document.getElementById('pos-ormia-msg').textContent = 'In attesa conferma dal terminale…';
-    const checkoutId = checkout.id;
+      body:JSON.stringify({ checkout_reference:'ORMIA-'+fatt.id,
+        amount:fatt.totale||0, currency:'EUR', description:'Fattura '+(fatt.numero||'') }) });
+    if (!r.ok) { posOrmiaErrore('Errore checkout SumUp: '+r.status); return; }
+    const ch = await r.json();
+    document.getElementById('pos-ormia-msg').textContent = 'In attesa del pagamento…';
     let attempts = 0;
     _sumupPoll = setInterval(async () => {
-      if (++attempts > 60) {
-        clearInterval(_sumupPoll); _sumupPoll=null;
-        document.getElementById('pos-ormia-icona').textContent   = '⏱';
-        document.getElementById('pos-ormia-titolo').textContent  = 'Timeout';
-        document.getElementById('pos-ormia-msg').textContent     = 'Nessuna risposta. Fattura emessa — riconcilia in Finance.';
-        document.getElementById('pos-ormia-spinner').style.display = 'none';
-        document.getElementById('pos-ormia-annulla').textContent = 'Chiudi';
-        return;
-      }
+      if (++attempts > 60) { clearInterval(_sumupPoll); _sumupPoll=null; posOrmiaErrore('Timeout — pagamento non completato.'); return; }
       try {
-        const sr = await fetch(`https://api.sumup.com/v0.1/checkouts/${checkoutId}`,
+        const pr = await fetch('https://api.sumup.com/v0.1/checkouts/'+ch.id,
           { headers:{'Authorization':'Bearer '+token} });
-        const st = await sr.json();
-        if (st.status==='PAID') {
-          clearInterval(_sumupPoll); _sumupPoll=null;
-          await posOrmiaSuccesso(fatt, st.transactions?.[0]?.id||checkoutId);
-        } else if (st.status==='FAILED'||st.status==='CANCELLED') {
-          clearInterval(_sumupPoll); _sumupPoll=null;
-          document.getElementById('pos-ormia-icona').textContent  = '❌';
-          document.getElementById('pos-ormia-titolo').textContent = 'Pagamento '+st.status.toLowerCase();
-          document.getElementById('pos-ormia-msg').textContent    = 'Riprova o incassa manualmente.';
-          document.getElementById('pos-ormia-spinner').style.display = 'none';
-        }
-      } catch(e) { console.warn('[SumUp poll]', e.message); }
+        if (!pr.ok) return;
+        const pd = await pr.json();
+        if (pd.status==='PAID') { clearInterval(_sumupPoll); _sumupPoll=null; modal.style.display='none'; await posOrmiaSuccesso(fatt, pd.id); }
+        else if (pd.status==='FAILED'||pd.status==='CANCELLED') { clearInterval(_sumupPoll); _sumupPoll=null; posOrmiaErrore('Pagamento '+(pd.status==='CANCELLED'?'annullato':'fallito')+'.'); }
+      } catch(_) {}
     }, 3000);
-  } catch(e) {
-    document.getElementById('pos-ormia-icona').textContent  = '❌';
-    document.getElementById('pos-ormia-titolo').textContent = 'Errore';
-    document.getElementById('pos-ormia-msg').textContent    = e.message;
-    document.getElementById('pos-ormia-spinner').style.display = 'none';
-  }
+  } catch(e) { posOrmiaErrore('Errore: '+e.message); }
 }
-
 async function posOrmiaSuccesso(fatt, txId) {
-  document.getElementById('pos-ormia-icona').textContent   = '✅';
-  document.getElementById('pos-ormia-titolo').textContent  = 'Pagamento approvato!';
-  document.getElementById('pos-ormia-msg').textContent     = 'Transazione: '+txId;
-  document.getElementById('pos-ormia-spinner').style.display = 'none';
-  document.getElementById('pos-ormia-annulla').style.display = 'none';
-  try {
-    const oggi = new Date().toISOString().split('T')[0];
-    await supa.from('fatture').update({ stato:'pagata', data_pagamento:new Date().toISOString() }).eq('id', fatt.id);
-    await supa.from('incassi').insert({ id:crypto.randomUUID(), fattura_id:fatt.id,
-      cliente_id:fatt.clienteId, importo:fatt.totale, data:oggi,
-      metodo:'pos', riferimento:'SumUp: '+txId, riconciliato:true,
-      created_at:new Date().toISOString() });
-    showToast('✅ Pagato — fattura riconciliata');
-  } catch(e) { console.warn('[POS riconcilia]', e.message); }
-  setTimeout(() => {
-    document.getElementById('modal-pos-ormia').style.display = 'none';
-    mostraDialogPostFattura(fatt);
-  }, 1800);
+  await segnaFatturaPagata(fatt, 'pos', 'POS SumUp tx:'+txId);
+  showToast('Pagamento POS registrato ✓');
+  mostraDialogPostFattura(fatt);
 }
-
+function posOrmiaErrore(msg) {
+  if (_sumupPoll) { clearInterval(_sumupPoll); _sumupPoll=null; }
+  document.getElementById('pos-ormia-spinner').style.display='none';
+  document.getElementById('pos-ormia-msg').textContent = '⚠️ '+msg;
+  document.getElementById('pos-ormia-annulla').textContent = 'Chiudi';
+}
 function annullaPOSormia() {
   if (_sumupPoll) { clearInterval(_sumupPoll); _sumupPoll=null; }
-  document.getElementById('modal-pos-ormia').style.display = 'none';
-}
-
-// ── DDT → Fattura con POS ─────────────────────────────────────────────────────
-function converteDDTinFatturaPOS(id) {
-  const d = ddts.find(x=>x.id===id);
-  if (!d) return;
-  apriFatturaModal({ origine:'ddt', origineId:id, clienteId:d.clienteId||null,
-    descrizione:`DDT ${d.numero}`, veicolo:'',
-    righe:(d.righe||[]).map(r=>({desc:r.desc,qta:r.qta||1,prezzo:r.prezzo||0})),
-    _hint:'pos' });
+  closeModal('modal-pos-ormia');
 }
 
 function renderFatture() {
