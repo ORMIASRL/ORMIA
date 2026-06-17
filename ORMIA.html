@@ -55,6 +55,7 @@
     position: fixed;
     top: 0; left: 0; bottom: 0;
     z-index: 100;
+    overflow: hidden;
   }
 
   .sidebar-logo {
@@ -74,7 +75,11 @@
   .sidebar-logo .app-name { font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: -0.2px; }
   .sidebar-logo .app-sub { font-size: 11px; color: var(--text3); margin-top: 1px; }
 
-  .sidebar-nav { padding: 12px 10px; flex: 1; }
+  .sidebar-nav { padding: 12px 10px; flex: 1; 
+    min-height: 0;
+  
+    overflow-y: auto;
+  }
 
   .nav-section { margin-bottom: 20px; }
   .nav-label { font-size: 10px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; padding: 0 10px; margin-bottom: 4px; }
@@ -195,7 +200,7 @@
   .toolbar { display: flex; gap: 10px; margin-bottom: 16px; align-items: center; }
 
   .search-wrap { position: relative; flex: 1; max-width: 320px; }
-  .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text3); }
+  .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text3); pointer-events: none; }
 
   .search-input {
     width: 100%;
@@ -721,16 +726,16 @@
           <polyline points="18 15 12 9 6 15"/>
         </svg>
       </div>
-      <div id="bn-body" style="display:none;padding:6px 0 10px">
+      <div id="bn-body" style="display:none;padding:6px 0 10px;flex-direction:column;max-height:280px">
         <!-- Messaggi vecchi collassati -->
         <div id="bn-old-wrap" style="display:none">
           <div id="bn-old-toggle" onclick="bnToggleOld()" style="font-size:11px;color:var(--accent);cursor:pointer;padding:2px 0 6px;text-align:center">▲ Mostra precedenti</div>
-          <div id="bn-old-list" style="display:none;max-height:120px;overflow-y:auto;margin-bottom:6px"></div>
+          <div id="bn-old-list" style="display:none;max-height:80px;overflow-y:auto;margin-bottom:6px"></div>
         </div>
         <!-- Ultimi messaggi -->
-        <div id="bn-list" style="max-height:160px;overflow-y:auto;margin-bottom:8px"></div>
+        <div id="bn-list" style="flex:1;overflow-y:auto;margin-bottom:8px;max-height:150px"></div>
         <!-- Input nuovo messaggio -->
-        <div style="display:flex;gap:6px;align-items:flex-end">
+        <div style="display:flex;gap:6px;align-items:flex-end;flex-shrink:0">
           <textarea id="bn-area" rows="2" placeholder="Scrivi un messaggio…"
             style="flex:1;border:1px solid var(--border);border-radius:var(--radius);padding:7px 9px;font-size:12px;font-family:inherit;color:var(--text);background:var(--surface2);line-height:1.5;outline:none;resize:none;box-sizing:border-box"
             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();bnSend()}"
@@ -811,20 +816,23 @@
       </div>
 
       <!-- TOOLBAR -->
-      <div class="toolbar">
-        <div class="search-wrap">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" class="search-input" id="search-input" placeholder="Cerca..." oninput="filterTable()">
+      <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center">
+        <div style="position:relative;flex:1;min-width:180px;max-width:360px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--text3);pointer-events:none">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" id="search-input" placeholder="Cerca..." autocomplete="off" oninput="filterTable()"
+                 style="width:100%;padding:8px 12px 8px 32px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;box-sizing:border-box;outline:none">
         </div>
-        <select class="filter-select" id="filter-select" onchange="filterTable()">
+        <select id="filter-select" onchange="filterTable()"
+                style="padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;cursor:pointer">
           <option value="">Tutti</option>
         </select>
-        <div class="toolbar-right">
-          <button class="btn btn-secondary btn-sm" onclick="exportCSV()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Esporta
-          </button>
-        </div>
+        <button class="btn btn-secondary btn-sm" onclick="exportCSV()" style="margin-left:auto">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Esporta
+        </button>
       </div>
 
       <!-- TABLE -->
@@ -1516,7 +1524,7 @@
         </div>
         <div class="form-group">
           <label>Partita IVA <span style="font-size:10px;color:var(--text3);font-weight:400">* (o C.F.)</span></label>
-          <input type="text" id="c-piva" placeholder="IT12345678901">
+          <input type="text" id="c-piva" placeholder="12345678901" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')">
         </div>
         <div class="form-group">
           <label>Codice fiscale <span style="font-size:10px;color:var(--text3);font-weight:400">* (o P.IVA)</span></label>
@@ -1824,14 +1832,14 @@ function renderTable() {
       <th>Cliente</th><th>Tipo</th><th>P. IVA</th><th>SDI</th><th>Telefono</th><th>Veicoli</th><th></th>
     </tr>`;
     const filtered = clienti.filter(c =>
-      (!q || c.ragione.toLowerCase().includes(q) || (c.piva||'').includes(q) || (c.tel||'').includes(q))
+      (!q || (c.ragione||'').toLowerCase().includes(q) || (c.piva||'').includes(q) || (c.tel||'').includes(q))
     );
     const tbody = document.getElementById('table-body');
     if (!filtered.length) { showEmpty('Nessun cliente trovato.'); return; }
     hideEmpty();
     tbody.innerHTML = filtered.map(c => {
       const vCount = veicoli.filter(v => v.clienteId === c.id).length;
-      const initials = c.ragione.split(' ').map(w=>w[0]).join('').substr(0,2).toUpperCase();
+      const initials = (c.ragione||'?').split(' ').map(w=>w[0]).join('').substr(0,2).toUpperCase();
       return `<tr onclick="showDetailCliente('${c.id}')">
         <td><div class="cell-with-avatar">
           <div class="cell-avatar">${initials}</div>
@@ -1854,7 +1862,7 @@ function renderTable() {
       <th>Targa</th><th>Veicolo</th><th>Cliente</th><th>Km</th><th>Revisione</th><th>Stato</th><th></th>
     </tr>`;
     let filtered = veicoli.filter(v => {
-      const q2 = !q || v.targa.toLowerCase().includes(q) || (v.marca||'').toLowerCase().includes(q) || (v.modello||'').toLowerCase().includes(q);
+      const q2 = !q || (v.targa||'').toLowerCase().includes(q) || (v.marca||'').toLowerCase().includes(q) || (v.modello||'').toLowerCase().includes(q);
       const f2 = !f || v.clienteId === f;
       return q2 && f2;
     });
@@ -2040,6 +2048,7 @@ async function saveCliente() {
   if (!tel)       errs.push('• Contatto telefonico');
   if (!email)     errs.push('• Email');
   if (!sdi && !pec) errs.push('• Codice SDI oppure PEC (almeno uno)');
+  if (piva && !/^\d{11}$/.test(piva)) errs.push('• P.IVA deve essere esattamente 11 cifre numeriche');
   if (sdi && sdi.length !== 7) errs.push('• Codice SDI deve essere esattamente 7 caratteri (es. ABC1234)');
   if (!pagamento) errs.push('• Metodo di pagamento');
 
@@ -2425,7 +2434,7 @@ function init() {
               <div class="form-group" style="margin:0;grid-column:span 2"><label>Ragione sociale / Nome *</label><input id="nc-ragione" placeholder="Es. Mario Rossi o Rossi Srl"></div>
               <div class="form-group" style="margin:0"><label>Telefono *</label><input id="nc-tel" type="tel" placeholder="+39 333 1234567"></div>
               <div class="form-group" style="margin:0"><label>Email</label><input id="nc-email" type="email" placeholder="mario@esempio.it"></div>
-              <div class="form-group" style="margin:0"><label>P.IVA</label><input id="nc-piva" placeholder="12345678901" style="font-family:'DM Mono',monospace"></div>
+              <div class="form-group" style="margin:0"><label>P.IVA</label><input id="nc-piva" placeholder="12345678901" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" style="font-family:'DM Mono',monospace"></div>
               <div class="form-group" style="margin:0"><label>Codice Fiscale</label><input id="nc-cf" placeholder="RSSMRA..." style="font-family:'DM Mono',monospace;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
             </div>
           </div>
@@ -6608,7 +6617,7 @@ const BN_SHOW  = 5; // messaggi recenti visibili, il resto collassato
 
 function bnToggle() {
   _bnOpen = !_bnOpen;
-  document.getElementById('bn-body').style.display      = _bnOpen ? '' : 'none';
+  document.getElementById('bn-body').style.display      = _bnOpen ? 'flex' : 'none';
   document.getElementById('bn-chevron').style.transform = _bnOpen ? 'rotate(180deg)' : '';
   if (_bnOpen) { bnClearBadge(); document.getElementById('bn-area').focus(); }
 }
