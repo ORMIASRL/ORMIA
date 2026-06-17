@@ -1372,7 +1372,7 @@ async function _refreshFicToken() {
   return d.access_token;
 }
 
-const FIC_REDIRECT_URI = 'https://ormiaofficina.netlify.app/fic-callback.html';
+const FIC_REDIRECT_URI = 'https://ormiaofficina.netlify.app/fic-callback';
 
 function autorizzaFIC() {
   if (!_ficConfig.client_id) { alert('Salva prima la configurazione FiC.'); return; }
