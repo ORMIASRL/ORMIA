@@ -25,7 +25,7 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text)
 /* ── LAYOUT ── */
 .app { min-height:100vh; display:none; }
 .sidebar { width:220px; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; position:fixed; top:0; left:0; bottom:0; z-index:100; }
-.main { margin-left:220px; margin-right:32px; display:flex; flex-direction:column; min-width:0; transition:margin-right .25s ease; }
+.main { margin-left:220px; margin-right:64px; display:flex; flex-direction:column; min-width:0; transition:margin-right .25s ease; }
 .topbar { background:var(--surface); border-bottom:1px solid var(--border); padding:14px 24px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:50; }
 .content { padding:24px 28px; }
 
@@ -466,8 +466,8 @@ tr:hover td { background:var(--surface2); }
                 <input type="text" id="fic-company-id" placeholder="Es. 12345" style="font-family:'DM Mono',monospace">
               </div>
               <div class="form-group">
-                <label>Redirect URI <span style="font-weight:400;color:var(--text3)">(registrata su FiC)</span></label>
-                <input type="text" id="fic-redirect-uri" placeholder="https://localhost/fic-callback" style="font-family:'DM Mono',monospace;font-size:12px">
+                <label>Redirect URI <span style="font-weight:400;color:var(--text3)">(già registrata su FiC)</span></label>
+                <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);background:var(--surface2);padding:8px 10px;border-radius:6px;border:1px solid var(--border)">https://ormiaofficina.netlify.app/fic-callback.html</div>
               </div>
               <div class="form-group">
                 <label>Client ID</label>
@@ -493,21 +493,9 @@ tr:hover td { background:var(--surface2); }
                   Autorizza FiC
                 </button>
               </div>
-              <div id="fic-auth-step2" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px">
-                <div style="font-size:12px;font-weight:700;margin-bottom:6px">📋 Completa l'autorizzazione</div>
-                <div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.7">
-                  1. Si è aperta la pagina di login FiC — accedi e autorizza ORMIA<br>
-                  2. Dopo aver autorizzato, copia l'URL completo della pagina di redirect<br>
-                  3. Incollalo qui sotto (o solo il valore del parametro <code>?code=</code>)
-                </div>
-                <div class="form-group" style="margin-bottom:8px">
-                  <input type="text" id="fic-auth-code" placeholder="Incolla URL di redirect o codice…" style="font-size:12px;font-family:'DM Mono',monospace">
-                </div>
-                <div style="display:flex;gap:8px">
-                  <button class="btn btn-success btn-sm" onclick="completaAutorizzazioneFIC()">✓ Completa</button>
-                  <button class="btn btn-ghost btn-sm" onclick="document.getElementById('fic-auth-step2').style.display='none'">Annulla</button>
-                </div>
-                <div id="fic-auth-result" style="margin-top:10px;font-size:12px;display:none"></div>
+              <div id="fic-auth-info" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;font-size:12px;color:var(--text2);line-height:1.7">
+                ⏳ Redirect in corso verso Fatture in Cloud… accedi e autorizza ORMIA.<br>
+                Verrai reindirizzato automaticamente al termine.
               </div>
             </div>
           </div><!-- /config card -->
@@ -606,23 +594,23 @@ tr:hover td { background:var(--surface2); }
       <!-- ══════════ SEZIONE PRESENZE ══════════ -->
       <div id="section-presenze" style="display:none">
 
-        <!-- Header -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
-          <div>
-            <div style="font-size:20px;font-weight:800">Presenze</div>
-            <div style="font-size:13px;color:var(--text3)" id="pres-sub">Riepilogo mensile dipendenti</div>
+        <!-- Header + nav mese inline -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:16px">
+            <div>
+              <div style="font-size:17px;font-weight:800">Presenze</div>
+              <div style="font-size:12px;color:var(--text3)" id="pres-sub">Riepilogo mensile dipendenti</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button onclick="cambiaMessePresenze(-1)" class="btn btn-secondary btn-sm">‹</button>
+              <div style="font-size:14px;font-weight:700;min-width:160px;text-align:center" id="pres-titolo-mese"></div>
+              <button onclick="cambiaMessePresenze(1)" class="btn btn-secondary btn-sm">›</button>
+            </div>
           </div>
-          <button onclick="exportPresenzeXLSX()" class="btn btn-primary">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;margin-right:6px;vertical-align:-2px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <button onclick="exportPresenzeXLSX()" class="btn btn-primary btn-sm">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:5px;vertical-align:-2px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Esporta Excel
           </button>
-        </div>
-
-        <!-- Navigazione mese -->
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
-          <button onclick="cambiaMessePresenze(-1)" class="btn btn-secondary btn-sm">‹</button>
-          <div style="font-size:16px;font-weight:700;min-width:180px;text-align:center" id="pres-titolo-mese"></div>
-          <button onclick="cambiaMessePresenze(1)" class="btn btn-secondary btn-sm">›</button>
         </div>
 
         <!-- Tabella -->
@@ -630,17 +618,17 @@ tr:hover td { background:var(--surface2); }
           <table style="width:100%;border-collapse:collapse;font-size:13px">
             <thead>
               <tr style="border-bottom:2px solid var(--border)">
-                <th style="padding:10px 16px;text-align:left;font-weight:700">Dipendente</th>
-                <th style="padding:10px 16px;text-align:left;font-weight:700">Ruolo</th>
-                <th style="padding:10px 16px;text-align:center;font-weight:700">Giorni</th>
-                <th style="padding:10px 16px;text-align:right;font-weight:700">Ore totali</th>
-                <th style="padding:10px 16px;text-align:center;font-weight:700">Media/giorno</th>
-                <th style="padding:10px 4px;width:36px"></th>
+                <th style="padding:8px 14px;text-align:left;font-weight:700">Dipendente</th>
+                <th style="padding:8px 14px;text-align:left;font-weight:700">Ruolo</th>
+                <th style="padding:8px 14px;text-align:center;font-weight:700">Giorni</th>
+                <th style="padding:8px 14px;text-align:right;font-weight:700">Ore totali</th>
+                <th style="padding:8px 14px;text-align:center;font-weight:700">Media/giorno</th>
+                <th style="padding:8px 4px;width:36px"></th>
               </tr>
             </thead>
             <tbody id="pres-tbody"></tbody>
           </table>
-          <div id="pres-empty" style="display:none;padding:40px;text-align:center;color:var(--text3);font-size:14px">Nessuna presenza registrata per questo mese.</div>
+          <div id="pres-empty" style="display:none;padding:28px;text-align:center;color:var(--text3);font-size:14px">Nessuna presenza registrata per questo mese.</div>
         </div>
 
       </div>
@@ -707,7 +695,16 @@ async function showApp() {
   document.getElementById('app-main').style.display = 'block';
   document.getElementById('fin-user-name').textContent = currentUser?.email||'—';
   await loadAll();
-  setSection('dashboard');
+  // Torna alla sezione FiC dopo redirect OAuth2
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('fic') === 'ok') {
+    history.replaceState(null, '', window.location.pathname);
+    _ficToken = JSON.parse(localStorage.getItem('ormia_fic_token') || 'null');
+    setSection('fic');
+    setTimeout(() => showToastFin('✓ FiC collegato correttamente!'), 300);
+  } else {
+    setSection('dashboard');
+  }
   bnLoad(); bnSubscribe();
   checkIntegrazioni();
   avviaPollingFIC();
@@ -1359,10 +1356,10 @@ async function getFicAccessToken() {
 }
 
 async function _refreshFicToken() {
-  const res = await fetch(FIC_TOKEN_URL, {
+  const res = await fetch('/.netlify/functions/fic-token', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
       grant_type:    'refresh_token',
       client_id:     _ficConfig.client_id,
       client_secret: _ficConfig.client_secret,
@@ -1375,53 +1372,20 @@ async function _refreshFicToken() {
   return d.access_token;
 }
 
-async function scambiaCodiceFIC(code) {
-  const redirectUri = document.getElementById('fic-redirect-uri')?.value?.trim() || 'https://localhost/fic-callback';
-  const res = await fetch(FIC_TOKEN_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type:    'authorization_code',
-      client_id:     _ficConfig.client_id,
-      client_secret: _ficConfig.client_secret,
-      redirect_uri:  redirectUri,
-      code,
-    }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error_description || err.error || `Errore ${res.status}`);
-  }
-  _saveFicToken(await res.json());
-}
+const FIC_REDIRECT_URI = 'https://ormiaofficina.netlify.app/fic-callback.html';
 
 function autorizzaFIC() {
   if (!_ficConfig.client_id) { alert('Salva prima la configurazione FiC.'); return; }
-  const redirectUri = document.getElementById('fic-redirect-uri')?.value?.trim() || 'https://localhost/fic-callback';
   const cid = _ficConfig.company_id || '';
   const scopes = [`c:${cid}:issued_documents:r`,`c:${cid}:issued_documents:a`,`c:${cid}:issued_documents:e`].join(';');
   const authUrl = `${FIC_AUTH_URL}?response_type=code`
     + `&client_id=${encodeURIComponent(_ficConfig.client_id)}`
-    + `&redirect_uri=${encodeURIComponent(redirectUri)}`
-    + `&scope=${encodeURIComponent(scopes)}`;
-  window.open(authUrl, '_blank');
-  document.getElementById('fic-auth-step2').style.display = '';
-}
-
-async function completaAutorizzazioneFIC() {
-  const input = document.getElementById('fic-auth-code').value.trim();
-  if (!input) { alert("Incolla l'URL di redirect o il codice."); return; }
-  let code = input;
-  try { const u = new URL(input); code = u.searchParams.get('code') || input; } catch(_) {}
-  const el = document.getElementById('fic-auth-result');
-  el.style.display = ''; el.innerHTML = '<span style="color:var(--text3)">Scambio codice…</span>';
-  try {
-    await scambiaCodiceFIC(code);
-    el.innerHTML = '<span style="color:var(--success)">✓ Autorizzazione completata — FiC collegato!</span>';
-    document.getElementById('fic-auth-step2').style.display = 'none';
-  } catch(e) {
-    el.innerHTML = `<span style="color:var(--danger)">✗ ${e.message}</span>`;
-  }
+    + `&redirect_uri=${encodeURIComponent(FIC_REDIRECT_URI)}`
+    + `&scope=${encodeURIComponent(scopes)}`
+    + `&state=ormia-finance`;
+  const info = document.getElementById('fic-auth-info');
+  if (info) info.style.display = '';
+  window.location.href = authUrl;
 }
 
 function updateFicTokenStatus() {
@@ -1449,9 +1413,8 @@ function caricaFormSumUp() {
 
 function caricaFormFIC() {
   const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
-  set('fic-company-id',   _ficConfig.company_id  || '');
-  set('fic-client-id',    _ficConfig.client_id   || '');
-  set('fic-redirect-uri', _ficConfig.redirect_uri|| '');
+  set('fic-company-id', _ficConfig.company_id || '');
+  set('fic-client-id',  _ficConfig.client_id  || '');
   const panel = document.getElementById('fic-auth-panel');
   if (panel) panel.style.display = _ficConfig.client_id ? '' : 'none';
   updateFicTokenStatus();
@@ -1743,7 +1706,7 @@ function salvaFIC() {
     company_id:    document.getElementById('fic-company-id').value.trim(),
     client_id:     document.getElementById('fic-client-id').value.trim(),
     client_secret: document.getElementById('fic-client-secret').value.trim(),
-    redirect_uri:  document.getElementById('fic-redirect-uri')?.value?.trim() || 'https://localhost/fic-callback',
+    redirect_uri:  FIC_REDIRECT_URI,
   };
   localStorage.setItem('ormia_fic_config', JSON.stringify(_ficConfig));
   _ficToken = null; localStorage.removeItem('ormia_fic_token');
@@ -2090,12 +2053,12 @@ function renderPresenze() {
         <td colspan="2"></td>
       </tr>`).join('');
     return `<tr id="pres-row-${i}" style="border-bottom:1px solid var(--border);cursor:pointer" onclick="toggleDettaglio(${i})">
-        <td style="padding:12px 16px;font-weight:700">${d.mec.nome}</td>
-        <td style="padding:12px 16px;color:var(--text2)">${d.mec.ruolo||'—'}</td>
-        <td style="padding:12px 16px;text-align:center;font-weight:600">${d.totGiorni}</td>
-        <td style="padding:12px 16px;text-align:right;font-family:'DM Mono',monospace;font-weight:700">${oreStr(d.totOre)}</td>
-        <td style="padding:12px 16px;text-align:center;color:var(--text2);font-family:'DM Mono',monospace">${oreStr(media)}</td>
-        <td style="padding:12px 4px;text-align:center;color:var(--text3);font-size:16px" id="pres-chevron-${i}">▶</td>
+        <td style="padding:8px 14px;font-weight:700">${d.mec.nome}</td>
+        <td style="padding:8px 14px;color:var(--text2)">${d.mec.ruolo||'—'}</td>
+        <td style="padding:8px 14px;text-align:center;font-weight:600">${d.totGiorni}</td>
+        <td style="padding:8px 14px;text-align:right;font-family:'DM Mono',monospace;font-weight:700">${oreStr(d.totOre)}</td>
+        <td style="padding:8px 14px;text-align:center;color:var(--text2);font-family:'DM Mono',monospace">${oreStr(media)}</td>
+        <td style="padding:8px 4px;text-align:center;color:var(--text3);font-size:16px" id="pres-chevron-${i}">▶</td>
       </tr>
       <tr id="pres-detail-${i}" style="display:none">
         <td colspan="6" style="padding:0">
@@ -2176,7 +2139,7 @@ function bnToggle() {
     }, 50);
   } else {
     panel.style.transform = 'translateX(248px)';
-    if (main) main.style.marginRight = '32px';
+    if (main) main.style.marginRight = '64px';
   }
 }
 
