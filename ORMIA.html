@@ -721,17 +721,25 @@
           <polyline points="18 15 12 9 6 15"/>
         </svg>
       </div>
-      <div id="bn-body" style="display:none;padding:8px 0 10px">
-        <textarea id="bn-area"
-          placeholder="Scrivi una nota per tutti…"
-          style="width:100%;height:110px;resize:vertical;border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px;font-size:12px;font-family:inherit;color:var(--text);background:var(--surface2);line-height:1.5;outline:none;box-sizing:border-box"
-          oninput="bnOnInput()" onfocus="bnClearBadge()"></textarea>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
-          <div id="bn-meta" style="font-size:10px;color:var(--text3)">&#8212;</div>
-          <div id="bn-saving" style="font-size:10px;color:var(--text3)"></div>
+      <div id="bn-body" style="display:none;padding:6px 0 10px">
+        <!-- Messaggi vecchi collassati -->
+        <div id="bn-old-wrap" style="display:none">
+          <div id="bn-old-toggle" onclick="bnToggleOld()" style="font-size:11px;color:var(--accent);cursor:pointer;padding:2px 0 6px;text-align:center">▲ Mostra precedenti</div>
+          <div id="bn-old-list" style="display:none;max-height:120px;overflow-y:auto;margin-bottom:6px"></div>
+        </div>
+        <!-- Ultimi messaggi -->
+        <div id="bn-list" style="max-height:160px;overflow-y:auto;margin-bottom:8px"></div>
+        <!-- Input nuovo messaggio -->
+        <div style="display:flex;gap:6px;align-items:flex-end">
+          <textarea id="bn-area" rows="2" placeholder="Scrivi un messaggio…"
+            style="flex:1;border:1px solid var(--border);border-radius:var(--radius);padding:7px 9px;font-size:12px;font-family:inherit;color:var(--text);background:var(--surface2);line-height:1.5;outline:none;resize:none;box-sizing:border-box"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();bnSend()}"
+            onfocus="bnClearBadge()"></textarea>
+          <button onclick="bnSend()" style="background:var(--accent);color:white;border:none;border-radius:var(--radius);padding:7px 10px;cursor:pointer;font-size:16px;line-height:1;flex-shrink:0">↑</button>
         </div>
       </div>
     </div>
+
     <div class="sidebar-footer">
       <div class="nav-item" id="nav-impostazioni" onclick="setSection('impostazioni')" style="margin-bottom:8px">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
@@ -2022,6 +2030,7 @@ async function saveCliente() {
   const sdi       = document.getElementById('c-sdi').value.trim().toUpperCase();
   const pec       = document.getElementById('c-pec').value.trim();
 
+  const email     = document.getElementById('c-email').value.trim();
   const pagamento = document.getElementById('c-pagamento').value;
 
   const errs = [];
@@ -2389,6 +2398,42 @@ function init() {
         </div>
         <!-- Alert moroso -->
         <div id="com-alert-moroso" style="display:none;grid-column:span 2"></div>
+
+        <!-- FORM INLINE NUOVO VEICOLO -->
+        <div id="com-form-nuovo-veicolo" style="display:none;grid-column:span 2;background:var(--accent-light);border:1.5px solid #C7D7F8;border-radius:var(--radius-lg);padding:16px 18px">
+          <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:12px">🚗 Nuovo veicolo</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
+            <div class="form-group" style="margin:0"><label>Targa *</label><input id="nv-targa" style="font-family:'DM Mono',monospace;font-weight:700;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
+            <div class="form-group" style="margin:0"><label>Marca</label><input id="nv-marca" placeholder="Es. Fiat"></div>
+            <div class="form-group" style="margin:0"><label>Modello</label><input id="nv-modello" placeholder="Es. Punto"></div>
+            <div class="form-group" style="margin:0"><label>Anno</label><input id="nv-anno" type="number" placeholder="Es. 2018" style="font-family:'DM Mono',monospace"></div>
+            <div class="form-group" style="margin:0"><label>Km attuali</label><input id="nv-km" type="text" placeholder="Es. 120000" style="font-family:'DM Mono',monospace" oninput="this.value=this.value.replace(/\D/g,'')"></div>
+            <div class="form-group" style="margin:0"><label>VIN / Telaio</label><input id="nv-vin" placeholder="Opzionale" style="font-family:'DM Mono',monospace;font-size:11px"></div>
+          </div>
+          <!-- Selezione cliente -->
+          <div class="form-group" style="margin-bottom:8px">
+            <label>Cliente *</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <select id="nv-cliente" style="flex:1" onchange="onNvClienteChange()"></select>
+              <button type="button" onclick="apriFormNuovoCliente()" class="btn btn-secondary btn-sm" style="white-space:nowrap">+ Nuovo cliente</button>
+            </div>
+          </div>
+          <!-- FORM INLINE NUOVO CLIENTE -->
+          <div id="com-form-nuovo-cliente" style="display:none;background:white;border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px">
+            <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px">👤 Nuovo cliente</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div class="form-group" style="margin:0;grid-column:span 2"><label>Ragione sociale / Nome *</label><input id="nc-ragione" placeholder="Es. Mario Rossi o Rossi Srl"></div>
+              <div class="form-group" style="margin:0"><label>Telefono *</label><input id="nc-tel" type="tel" placeholder="+39 333 1234567"></div>
+              <div class="form-group" style="margin:0"><label>Email</label><input id="nc-email" type="email" placeholder="mario@esempio.it"></div>
+              <div class="form-group" style="margin:0"><label>P.IVA</label><input id="nc-piva" placeholder="12345678901" style="font-family:'DM Mono',monospace"></div>
+              <div class="form-group" style="margin:0"><label>Codice Fiscale</label><input id="nc-cf" placeholder="RSSMRA..." style="font-family:'DM Mono',monospace;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button type="button" onclick="chiudiFormNuovoVeicolo()" class="btn btn-secondary btn-sm">Annulla</button>
+            <button type="button" onclick="salvaNuovoVeicoloInline()" class="btn btn-primary btn-sm">Salva e continua →</button>
+          </div>
+        </div>
 
         <!-- Campo hidden per compatibilità -->
         <select id="com-veicolo" style="display:none" onchange="onVeicoloChange()"></select>
@@ -3171,7 +3216,21 @@ function cercaVeicoloPerTarga(val) {
   const q = (val||'').trim().toUpperCase();
   if (q.length < 2) { drop.style.display='none'; return; }
   const risultati = veicoli.filter(v => (v.targa||'').toUpperCase().includes(q)).slice(0,8);
-  if (!risultati.length) { drop.style.display='none'; return; }
+  if (!risultati.length) {
+    if (q.length >= 3) {
+      drop.style.display = '';
+      drop.innerHTML = `<div onclick="apriFormNuovoVeicolo('${q}')"
+        style="padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;color:var(--accent)"
+        onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background=''">
+        <span style="font-size:16px">＋</span>
+        <div>
+          <div style="font-size:13px;font-weight:700">Crea veicolo con targa "${q}"</div>
+          <div style="font-size:11px;color:var(--text3)">Veicolo non trovato — aggiungilo ora</div>
+        </div>
+      </div>`;
+    } else { drop.style.display='none'; }
+    return;
+  }
   drop.style.display = '';
   drop.innerHTML = risultati.map(v => {
     const cl = clienti.find(c=>c.id===v.clienteId);
@@ -6541,10 +6600,11 @@ function getTariffa(tipo) {
 // ══════════════════════════════════════════════════
 // BLOCCO NOTE CONDIVISO
 // ══════════════════════════════════════════════════
-let _bnTimer   = null;
 let _bnOpen    = false;
 let _bnSeenAt  = localStorage.getItem('bn_seen_at') || '';
 let _bnChannel = null;
+let _bnMsgs    = [];
+const BN_SHOW  = 5; // messaggi recenti visibili, il resto collassato
 
 function bnToggle() {
   _bnOpen = !_bnOpen;
@@ -6559,55 +6619,175 @@ function bnClearBadge() {
   localStorage.setItem('bn_seen_at', _bnSeenAt);
 }
 
-function bnOnInput() {
-  document.getElementById('bn-saving').textContent = 'Modifica in corso…';
-  clearTimeout(_bnTimer);
-  _bnTimer = setTimeout(bnSave, 1200);
+function bnGetAutore() {
+  if (typeof currentUser !== 'undefined' && currentUser) {
+    const dip = meccanici ? meccanici.find(m=>(m.email||'').toLowerCase()===(currentUser.email||'').toLowerCase()) : null;
+    if (dip) return dip.nome;
+    return currentUser.email?.split('@')[0] || 'Utente';
+  }
+  if (typeof mecLogged !== 'undefined' && mecLogged) return mecLogged.nome;
+  return 'Utente';
 }
 
-async function bnSave() {
-  _bnTimer = null;
-  const testo  = document.getElementById('bn-area').value;
+async function bnSend() {
+  const area = document.getElementById('bn-area');
+  const testo = area.value.trim();
+  if (!testo) return;
+  area.value = '';
+  const autore = bnGetAutore();
   const ora    = new Date().toISOString();
-  const autore = (typeof _currentUser !== 'undefined' && _currentUser?.nome)
-               ? _currentUser.nome : 'Utente';
-  await supa.from('blocco_note').upsert({ id: 'shared', testo, aggiornato_at: ora, aggiornato_da: autore });
-  const el = document.getElementById('bn-saving');
-  if (el) { el.textContent = 'Salvato ✓'; setTimeout(() => { if(el) el.textContent=''; }, 2000); }
+  await supa.from('blocco_note').insert({ id: crypto.randomUUID(), messaggio: testo, aggiornato_da: autore, aggiornato_at: ora });
+}
+
+function bnRender() {
+  const list    = document.getElementById('bn-list');
+  const oldList = document.getElementById('bn-old-list');
+  const oldWrap = document.getElementById('bn-old-wrap');
+  if (!list) return;
+
+  const recenti  = _bnMsgs.slice(-BN_SHOW);
+  const vecchi   = _bnMsgs.slice(0, -BN_SHOW);
+
+  list.innerHTML = recenti.map(bnMsgHtml).join('');
+  list.scrollTop = list.scrollHeight;
+
+  if (vecchi.length) {
+    oldWrap.style.display = '';
+    oldList.innerHTML = vecchi.map(bnMsgHtml).join('');
+    const toggle = document.getElementById('bn-old-toggle');
+    const aperto = oldList.style.display !== 'none';
+    toggle.textContent = aperto ? '▲ Nascondi precedenti' : `▼ ${vecchi.length} messaggi precedenti`;
+  } else {
+    oldWrap.style.display = 'none';
+  }
+}
+
+function bnMsgHtml(m) {
+  const d   = new Date(m.aggiornato_at);
+  const ora = d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  const gg  = d.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'});
+  const oggi = new Date().toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'});
+  const quando = gg === oggi ? ora : gg+' '+ora;
+  return `<div style="margin-bottom:8px">
+    <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:2px">
+      <span style="font-size:11px;font-weight:700;color:var(--accent)">${m.aggiornato_da||'?'}</span>
+      <span style="font-size:10px;color:var(--text3)">${quando}</span>
+    </div>
+    <div style="font-size:12px;color:var(--text);line-height:1.4;background:var(--surface2);border-radius:var(--radius);padding:6px 9px;word-break:break-word">${(m.messaggio||'').replace(/\n/g,'<br>')}</div>
+  </div>`;
+}
+
+function bnToggleOld() {
+  const oldList = document.getElementById('bn-old-list');
+  const toggle  = document.getElementById('bn-old-toggle');
+  const aperto  = oldList.style.display !== 'none';
+  oldList.style.display = aperto ? 'none' : '';
+  const vecchi  = _bnMsgs.slice(0, -BN_SHOW);
+  toggle.textContent = aperto ? `▼ ${vecchi.length} messaggi precedenti` : '▲ Nascondi precedenti';
+  if (!aperto) oldList.scrollTop = oldList.scrollHeight;
 }
 
 async function bnLoad() {
-  const { data } = await supa.from('blocco_note').select('*').eq('id','shared').maybeSingle();
-  if (!data) return;
-  const area = document.getElementById('bn-area');
-  if (area && !_bnTimer) area.value = data.testo || '';
-  bnSetMeta(data);
-  if (data.aggiornato_at && data.aggiornato_at > _bnSeenAt && !_bnOpen) {
+  const { data } = await supa.from('blocco_note').select('*').order('aggiornato_at');
+  _bnMsgs = data || [];
+  bnRender();
+  // Badge se ci sono messaggi nuovi
+  const ultimo = _bnMsgs[_bnMsgs.length-1];
+  if (ultimo && ultimo.aggiornato_at > _bnSeenAt && !_bnOpen) {
     document.getElementById('bn-badge').style.display = '';
   }
 }
 
-function bnSetMeta(data) {
-  if (!data?.aggiornato_at) return;
-  const d   = new Date(data.aggiornato_at);
-  const fmt = d.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'})
-            + ' ' + d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
-  const el  = document.getElementById('bn-meta');
-  if (el) el.textContent = 'Ultima modifica: ' + (data.aggiornato_da||'?') + ', ' + fmt;
-}
-
 function bnSubscribe() {
-  _bnChannel = supa.channel('blocco_note_shared')
+  _bnChannel = supa.channel('blocco_note_chat')
     .on('postgres_changes',
-      { event: '*', schema: 'public', table: 'blocco_note', filter: 'id=eq.shared' },
+      { event: 'INSERT', schema: 'public', table: 'blocco_note' },
       payload => {
-        const data = payload.new;
-        const area = document.getElementById('bn-area');
-        if (area && !_bnTimer) area.value = data.testo || '';
-        bnSetMeta(data);
+        _bnMsgs.push(payload.new);
+        bnRender();
         if (!_bnOpen) document.getElementById('bn-badge').style.display = '';
       })
     .subscribe();
+}
+
+
+// ══════════════════════════════════════════════════
+// NUOVO VEICOLO / CLIENTE INLINE DA COMMESSA
+// ══════════════════════════════════════════════════
+function apriFormNuovoVeicolo(targa) {
+  document.getElementById('com-targa-drop').style.display = 'none';
+  document.getElementById('com-form-nuovo-veicolo').style.display = '';
+  document.getElementById('nv-targa').value = targa || '';
+  document.getElementById('com-veicolo-card').style.display = 'none';
+  const sel = document.getElementById('nv-cliente');
+  sel.innerHTML = '<option value="">— Seleziona cliente —</option>' +
+    [...clienti].sort((a,b)=>a.ragione.localeCompare(b.ragione))
+      .map(c=>`<option value="${c.id}">${c.ragione}</option>`).join('');
+  setTimeout(() => document.getElementById('nv-marca').focus(), 50);
+}
+
+function chiudiFormNuovoVeicolo() {
+  document.getElementById('com-form-nuovo-veicolo').style.display = 'none';
+  document.getElementById('com-form-nuovo-cliente').style.display = 'none';
+  document.getElementById('com-targa-search').value = '';
+}
+
+function apriFormNuovoCliente() {
+  document.getElementById('com-form-nuovo-cliente').style.display = '';
+  setTimeout(() => document.getElementById('nc-ragione').focus(), 50);
+}
+
+function onNvClienteChange() {
+  const val = document.getElementById('nv-cliente').value;
+  if (val) document.getElementById('com-form-nuovo-cliente').style.display = 'none';
+}
+
+async function salvaNuovoVeicoloInline() {
+  const targa   = (document.getElementById('nv-targa').value||'').trim().toUpperCase();
+  const marca   = document.getElementById('nv-marca').value.trim();
+  const modello = document.getElementById('nv-modello').value.trim();
+  const anno    = parseInt(document.getElementById('nv-anno').value)||null;
+  const km      = parseInt(document.getElementById('nv-km').value)||null;
+  const vin     = document.getElementById('nv-vin').value.trim();
+  let clienteId = document.getElementById('nv-cliente').value;
+
+  if (!targa) { alert('Inserisci la targa del veicolo.'); return; }
+
+  // Crea cliente se form aperto
+  const formCl = document.getElementById('com-form-nuovo-cliente');
+  if (formCl.style.display !== 'none') {
+    const ragione = document.getElementById('nc-ragione').value.trim();
+    const tel     = document.getElementById('nc-tel').value.trim();
+    const email   = document.getElementById('nc-email').value.trim();
+    const piva    = document.getElementById('nc-piva').value.trim();
+    const cf      = document.getElementById('nc-cf').value.trim().toUpperCase();
+    if (!ragione || !tel) { alert('Inserisci almeno ragione sociale e telefono.'); return; }
+    try {
+      const nuovoCl = await dbSaveCliente({
+        id: initId(), createdAt: new Date().toISOString(),
+        ragione, tel, email, piva, cf,
+        tipo: 'privato', indirizzo: '', sdi: '', pec: '', note: '', pagamento: ''
+      });
+      clienti.push(nuovoCl);
+      clienteId = nuovoCl.id;
+      showToast('Cliente creato ✓');
+    } catch(e) { alert('Errore creazione cliente: '+e.message); return; }
+  }
+
+  if (!clienteId) { alert('Seleziona o crea un cliente.'); return; }
+
+  try {
+    const nuovoV = await dbSaveVeicolo({
+      id: initId(), createdAt: new Date().toISOString(),
+      targa, marca, modello, anno, km, vin,
+      clienteId, garanzia: false, garanziaScadenza: null
+    });
+    veicoli.push(nuovoV);
+    showToast('Veicolo creato ✓');
+    chiudiFormNuovoVeicolo();
+    document.getElementById('com-targa-search').value = targa;
+    selezionaVeicoloCommessa(nuovoV.id);
+  } catch(e) { alert('Errore creazione veicolo: '+e.message); }
 }
 
 // ===== INIT GLOBALE =====

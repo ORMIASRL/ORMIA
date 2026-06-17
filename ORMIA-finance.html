@@ -220,17 +220,22 @@ tr:hover td { background:var(--surface2); }
           <polyline points="18 15 12 9 6 15"/>
         </svg>
       </div>
-      <div id="bn-body" style="display:none;padding:8px 0 10px">
-        <textarea id="bn-area"
-          placeholder="Scrivi una nota per tutti…"
-          style="width:100%;height:110px;resize:vertical;border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px;font-size:12px;font-family:inherit;color:var(--text);background:var(--surface2);line-height:1.5;outline:none;box-sizing:border-box"
-          oninput="bnOnInput()" onfocus="bnClearBadge()"></textarea>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
-          <div id="bn-meta" style="font-size:10px;color:var(--text3)">&#8212;</div>
-          <div id="bn-saving" style="font-size:10px;color:var(--text3)"></div>
+      <div id="bn-body" style="display:none;padding:6px 0 10px">
+        <div id="bn-old-wrap" style="display:none">
+          <div id="bn-old-toggle" onclick="bnToggleOld()" style="font-size:11px;color:var(--accent);cursor:pointer;padding:2px 0 6px;text-align:center">▼ messaggi precedenti</div>
+          <div id="bn-old-list" style="display:none;max-height:120px;overflow-y:auto;margin-bottom:6px"></div>
+        </div>
+        <div id="bn-list" style="max-height:160px;overflow-y:auto;margin-bottom:8px"></div>
+        <div style="display:flex;gap:6px;align-items:flex-end">
+          <textarea id="bn-area" rows="2" placeholder="Scrivi un messaggio…"
+            style="flex:1;border:1px solid var(--border);border-radius:var(--radius);padding:7px 9px;font-size:12px;font-family:inherit;color:var(--text);background:var(--surface2);line-height:1.5;outline:none;resize:none;box-sizing:border-box"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();bnSend()}"
+            onfocus="bnClearBadge()"></textarea>
+          <button onclick="bnSend()" style="background:var(--accent);color:white;border:none;border-radius:var(--radius);padding:7px 10px;cursor:pointer;font-size:16px;line-height:1;flex-shrink:0">↑</button>
         </div>
       </div>
     </div>
+
     <div class="sidebar-footer">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div style="font-size:12px;color:var(--text3)" id="fin-user-name">—</div>
@@ -2180,10 +2185,11 @@ function exportPresenzeXLSX() {
 // ══════════════════════════════════════════════════
 // BLOCCO NOTE CONDIVISO
 // ══════════════════════════════════════════════════
-let _bnTimer   = null;
 let _bnOpen    = false;
 let _bnSeenAt  = localStorage.getItem('bn_seen_at') || '';
 let _bnChannel = null;
+let _bnMsgs    = [];
+const BN_SHOW  = 5;
 
 function bnToggle() {
   _bnOpen = !_bnOpen;
@@ -2198,53 +2204,85 @@ function bnClearBadge() {
   localStorage.setItem('bn_seen_at', _bnSeenAt);
 }
 
-function bnOnInput() {
-  document.getElementById('bn-saving').textContent = 'Modifica in corso…';
-  clearTimeout(_bnTimer);
-  _bnTimer = setTimeout(bnSave, 1200);
+function bnGetAutore() {
+  if (typeof currentUser !== 'undefined' && currentUser) {
+    return currentUser.email?.split('@')[0] || 'Utente';
+  }
+  return 'Utente';
 }
 
-async function bnSave() {
-  _bnTimer = null;
-  const testo  = document.getElementById('bn-area').value;
+async function bnSend() {
+  const area  = document.getElementById('bn-area');
+  const testo = area.value.trim();
+  if (!testo) return;
+  area.value = '';
+  const autore = bnGetAutore();
   const ora    = new Date().toISOString();
-  const autore = (typeof _currentUser !== 'undefined' && _currentUser?.nome)
-               ? _currentUser.nome
-               : (document.getElementById('fin-user-name')?.textContent?.trim() || 'Utente');
-  await supa.from('blocco_note').upsert({ id: 'shared', testo, aggiornato_at: ora, aggiornato_da: autore });
-  const el = document.getElementById('bn-saving');
-  if (el) { el.textContent = 'Salvato ✓'; setTimeout(() => { if(el) el.textContent=''; }, 2000); }
+  await supa.from('blocco_note').insert({ id: crypto.randomUUID(), messaggio: testo, aggiornato_da: autore, aggiornato_at: ora });
+}
+
+function bnRender() {
+  const list    = document.getElementById('bn-list');
+  const oldList = document.getElementById('bn-old-list');
+  const oldWrap = document.getElementById('bn-old-wrap');
+  if (!list) return;
+  const recenti = _bnMsgs.slice(-BN_SHOW);
+  const vecchi  = _bnMsgs.slice(0, -BN_SHOW);
+  list.innerHTML = recenti.map(bnMsgHtml).join('');
+  list.scrollTop = list.scrollHeight;
+  if (vecchi.length) {
+    oldWrap.style.display = '';
+    oldList.innerHTML = vecchi.map(bnMsgHtml).join('');
+    const toggle = document.getElementById('bn-old-toggle');
+    const aperto = oldList.style.display !== 'none';
+    toggle.textContent = aperto ? '▲ Nascondi precedenti' : `▼ ${vecchi.length} messaggi precedenti`;
+  } else {
+    oldWrap.style.display = 'none';
+  }
+}
+
+function bnMsgHtml(m) {
+  const d   = new Date(m.aggiornato_at);
+  const ora = d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  const gg  = d.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'});
+  const oggi = new Date().toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'});
+  const quando = gg === oggi ? ora : gg+' '+ora;
+  return `<div style="margin-bottom:8px">
+    <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:2px">
+      <span style="font-size:11px;font-weight:700;color:var(--accent)">${m.aggiornato_da||'?'}</span>
+      <span style="font-size:10px;color:var(--text3)">${quando}</span>
+    </div>
+    <div style="font-size:12px;color:var(--text);line-height:1.4;background:var(--surface2);border-radius:var(--radius);padding:6px 9px;word-break:break-word">${(m.messaggio||'').replace(/\n/g,'<br>')}</div>
+  </div>`;
+}
+
+function bnToggleOld() {
+  const oldList = document.getElementById('bn-old-list');
+  const toggle  = document.getElementById('bn-old-toggle');
+  const aperto  = oldList.style.display !== 'none';
+  oldList.style.display = aperto ? 'none' : '';
+  const vecchi  = _bnMsgs.slice(0, -BN_SHOW);
+  toggle.textContent = aperto ? `▼ ${vecchi.length} messaggi precedenti` : '▲ Nascondi precedenti';
+  if (!aperto) oldList.scrollTop = oldList.scrollHeight;
 }
 
 async function bnLoad() {
-  const { data } = await supa.from('blocco_note').select('*').eq('id','shared').maybeSingle();
-  if (!data) return;
-  const area = document.getElementById('bn-area');
-  if (area && !_bnTimer) area.value = data.testo || '';
-  bnSetMeta(data);
-  if (data.aggiornato_at && data.aggiornato_at > _bnSeenAt && !_bnOpen) {
+  const { data } = await supa.from('blocco_note').select('*').order('aggiornato_at');
+  _bnMsgs = data || [];
+  bnRender();
+  const ultimo = _bnMsgs[_bnMsgs.length-1];
+  if (ultimo && ultimo.aggiornato_at > _bnSeenAt && !_bnOpen) {
     document.getElementById('bn-badge').style.display = '';
   }
 }
 
-function bnSetMeta(data) {
-  if (!data?.aggiornato_at) return;
-  const d   = new Date(data.aggiornato_at);
-  const fmt = d.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'})
-            + ' ' + d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
-  const el  = document.getElementById('bn-meta');
-  if (el) el.textContent = 'Ultima modifica: ' + (data.aggiornato_da||'?') + ', ' + fmt;
-}
-
 function bnSubscribe() {
-  _bnChannel = supa.channel('blocco_note_shared')
+  _bnChannel = supa.channel('blocco_note_chat')
     .on('postgres_changes',
-      { event: '*', schema: 'public', table: 'blocco_note', filter: 'id=eq.shared' },
+      { event: 'INSERT', schema: 'public', table: 'blocco_note' },
       payload => {
-        const data = payload.new;
-        const area = document.getElementById('bn-area');
-        if (area && !_bnTimer) area.value = data.testo || '';
-        bnSetMeta(data);
+        _bnMsgs.push(payload.new);
+        bnRender();
         if (!_bnOpen) document.getElementById('bn-badge').style.display = '';
       })
     .subscribe();
