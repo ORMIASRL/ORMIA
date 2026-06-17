@@ -1376,7 +1376,15 @@ const FIC_REDIRECT_URI = 'https://ormiaofficina.netlify.app/fic-callback';
 
 function autorizzaFIC() {
   if (!_ficConfig.client_id) { alert('Salva prima la configurazione FiC.'); return; }
-  const scopes = ['issued_documents.invoices:r','issued_documents.invoices:a','issued_documents.invoices:e'].join(' ');
+  const scopes = [
+    'situation:r',
+    'entity.clients:r','entity.clients:a',
+    'issued_documents.invoices:r','issued_documents.invoices:a',
+    'issued_documents.credit_notes:r',
+    'issued_documents.quotes:r',
+    'received_documents:r',
+    'settings:r',
+  ].join(' ');
   const authUrl = `${FIC_AUTH_URL}?response_type=code`
     + `&client_id=${encodeURIComponent(_ficConfig.client_id)}`
     + `&redirect_uri=${encodeURIComponent(FIC_REDIRECT_URI)}`
