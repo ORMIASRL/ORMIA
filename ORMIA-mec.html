@@ -728,7 +728,7 @@ function renderHome() {
             <div class="com-num">${cm.numero||''}</div>
             <div class="com-desc">${cm.desc}</div>
           </div>
-          ${isVeicoloInGaranzia(cm.veicoloId||cm.veicolo_id)?'<span style="flex-shrink:0;background:#FEF3C7;border:1px solid #FDE68A;color:#92400E;font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;white-space:nowrap">🔒 GARANZIA</span>':''}
+          ${isVeicoloInGaranzia(v)?'<span style="flex-shrink:0;background:#FEF3C7;border:1px solid #FDE68A;color:#92400E;font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;white-space:nowrap">🔒 GARANZIA</span>':''}
         </div>
         <div class="com-cli" style="margin-top:8px;display:flex;flex-direction:column;gap:5px">
           ${v ? `<div style="display:flex;align-items:center;gap:8px">

@@ -2066,8 +2066,19 @@ async function saveCliente() {
     pagamento,
   };
   try {
-    if (editingClienteId) await dbSaveCliente({id:editingClienteId, ...data});
-    else await dbSaveCliente({id:initId(), createdAt:new Date().toISOString(), ...data});
+    if (editingClienteId) {
+      await dbSaveCliente({id:editingClienteId, ...data});
+    } else {
+      const nuovoCl = await dbSaveCliente({id:initId(), createdAt:new Date().toISOString(), ...data});
+      if (_postSaveClienteCallback) {
+        _postSaveClienteCallback = false;
+        closeModal('modal-cliente');
+        renderTable();
+        selezionaClienteCommessa(nuovoCl.id);
+        showToast('Cliente creato ✓');
+        return;
+      }
+    }
     closeModal('modal-cliente'); renderTable();
   } catch(e) { alert('Errore: '+e.message); }
 }
@@ -2108,8 +2119,19 @@ async function saveVeicolo() {
     note: document.getElementById('v-note').value.trim(),
   };
   try {
-    if (editingVeicoloId) await dbSaveVeicolo({id:editingVeicoloId, ...data});
-    else await dbSaveVeicolo({id:initId(), createdAt:new Date().toISOString(), ...data});
+    if (editingVeicoloId) {
+      await dbSaveVeicolo({id:editingVeicoloId, ...data});
+    } else {
+      const nuovoV = await dbSaveVeicolo({id:initId(), createdAt:new Date().toISOString(), ...data});
+      if (_postSaveVeicoloCallback) {
+        _postSaveVeicoloCallback = false;
+        closeModal('modal-veicolo');
+        renderTable();
+        selezionaVeicoloCommessa(nuovoV.id);
+        showToast('Veicolo creato ✓');
+        return;
+      }
+    }
     closeModal('modal-veicolo'); renderTable();
   } catch(e) { alert('Errore: '+e.message); }
 }
@@ -2428,10 +2450,7 @@ function init() {
           <label>Descrizione lavoro *</label>
           <textarea id="com-desc" placeholder="Es. Tagliando + sostituzione freni anteriori" style="min-height:80px"></textarea>
         </div>
-        <div class="form-group">
-          <label>Data apertura</label>
-          <input type="date" id="com-data-apertura">
-        </div>
+        <input type="hidden" id="com-data-apertura">
         <div class="form-group">
           <label>Consegna prevista</label>
           <input type="datetime-local" id="com-consegna" style="font-family:'DM Mono',monospace">
@@ -2497,36 +2516,7 @@ function init() {
           style="width:100%;padding:10px 12px 10px 34px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;box-sizing:border-box;outline:none" autocomplete="off">
       </div>
       <div id="sel-cliente-list" style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px"></div>
-      <button type="button" onclick="toggleFormNuovoClienteSM()" id="btn-toggle-nc" class="btn btn-secondary btn-sm" style="width:100%;margin-bottom:8px">&#xFF0B; Crea nuovo cliente</button>
-      <div id="form-nuovo-cliente-sm" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px">
-        <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:12px">&#x1F464; Nuovo cliente</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div class="form-group" style="margin:0;grid-column:span 2"><label>Ragione sociale / Nome *</label><input id="nc-ragione" placeholder="Es. Mario Rossi o Rossi Srl"></div>
-          <div class="form-group" style="margin:0"><label>Tipo</label>
-            <select id="nc-tipo"><option value="privato">Privato</option><option value="azienda">Azienda</option></select>
-          </div>
-          <div class="form-group" style="margin:0"><label>Telefono *</label><input id="nc-tel" type="tel" placeholder="+39 333 1234567"></div>
-          <div class="form-group" style="margin:0"><label>Email *</label><input id="nc-email" type="email" placeholder="mario@esempio.it"></div>
-          <div class="form-group" style="margin:0;grid-column:span 2"><label>Indirizzo *</label><input id="nc-indirizzo" placeholder="Via Roma 1, 00100 Roma"></div>
-          <div class="form-group" style="margin:0"><label>P.IVA <span style="font-size:10px;color:var(--text3);font-weight:400">* (o CF)</span></label><input id="nc-piva" placeholder="12345678901" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" style="font-family:'DM Mono',monospace"></div>
-          <div class="form-group" style="margin:0"><label>Cod. Fiscale <span style="font-size:10px;color:var(--text3);font-weight:400">* (o P.IVA)</span></label><input id="nc-cf" placeholder="RSSMRA..." style="font-family:'DM Mono',monospace;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
-          <div class="form-group" style="margin:0"><label>Cod. SDI <span style="font-size:10px;color:var(--text3);font-weight:400">* (o PEC)</span></label><input id="nc-sdi" placeholder="XXXXXXX" maxlength="7" style="font-family:'DM Mono',monospace;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
-          <div class="form-group" style="margin:0"><label>PEC <span style="font-size:10px;color:var(--text3);font-weight:400">* (o SDI)</span></label><input id="nc-pec" type="email" placeholder="cliente@pec.it"></div>
-          <div class="form-group" style="margin:0;grid-column:span 2"><label>Metodo pagamento *</label>
-            <select id="nc-pagamento">
-              <option value="">-- Seleziona --</option>
-              <option value="Bonifico 30gg">Bonifico 30gg</option>
-              <option value="Bonifico 60gg">Bonifico 60gg</option>
-              <option value="Contanti">Contanti</option>
-              <option value="POS / carta">POS / carta</option>
-              <option value="Immediato">Immediato</option>
-            </select>
-          </div>
-        </div>
-        <div style="display:flex;justify-content:flex-end;margin-top:12px">
-          <button type="button" onclick="salvaNuovoClienteSM()" class="btn btn-primary btn-sm">Salva cliente &#x2192;</button>
-        </div>
-      </div>
+      <button type="button" onclick="apriModalNuovoClienteDaCommessa()" class="btn btn-secondary btn-sm" style="width:100%">&#xFF0B; Crea nuovo cliente</button>
     </div>
   </div>
 </div>
@@ -2550,29 +2540,7 @@ function init() {
           style="width:100%;padding:10px 12px 10px 34px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);color:var(--text);font-family:'DM Mono',monospace;box-sizing:border-box;outline:none;text-transform:uppercase;letter-spacing:1px" autocomplete="off">
       </div>
       <div id="sel-veicolo-list" style="max-height:240px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px"></div>
-      <button type="button" onclick="toggleFormNuovoVeicoloSM()" id="btn-toggle-nv" class="btn btn-secondary btn-sm" style="width:100%;margin-bottom:8px">&#xFF0B; Crea nuovo veicolo</button>
-      <div id="form-nuovo-veicolo-sm" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px">
-        <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:12px">&#x1F697; Nuovo veicolo</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-          <div class="form-group" style="margin:0"><label>Targa *</label><input id="nv-targa" style="font-family:'DM Mono',monospace;font-weight:700;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
-          <div class="form-group" style="margin:0"><label>Marca *</label><input id="nv-marca" placeholder="Es. Fiat"></div>
-          <div class="form-group" style="margin:0"><label>Modello *</label><input id="nv-modello" placeholder="Es. Punto"></div>
-          <div class="form-group" style="margin:0"><label>Anno</label><input id="nv-anno" type="number" placeholder="Es. 2018" style="font-family:'DM Mono',monospace"></div>
-          <div class="form-group" style="margin:0"><label>Km attuali</label><input id="nv-km" type="text" placeholder="Es. 120000" style="font-family:'DM Mono',monospace" oninput="this.value=this.value.replace(/\D/g,'')"></div>
-          <div class="form-group" style="margin:0"><label>VIN / Telaio *</label><input id="nv-vin" placeholder="Es. ZFA17000..." style="font-family:'DM Mono',monospace;font-size:11px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
-          <div class="form-group" style="margin:0;display:flex;align-items:center;gap:8px;padding-top:20px">
-            <input type="checkbox" id="nv-garanzia" style="width:16px;height:16px;cursor:pointer" onchange="onNvGaranziaChange()">
-            <label for="nv-garanzia" style="margin:0;cursor:pointer;font-weight:500">In garanzia</label>
-          </div>
-          <div class="form-group" style="margin:0;display:none" id="nv-garanzia-scad-wrap">
-            <label>Scadenza garanzia</label>
-            <input type="date" id="nv-garanzia-scadenza">
-          </div>
-        </div>
-        <div style="display:flex;justify-content:flex-end;margin-top:12px">
-          <button type="button" onclick="salvaNuovoVeicoloSM()" class="btn btn-primary btn-sm">Salva veicolo &#x2192;</button>
-        </div>
-      </div>
+      <button type="button" onclick="apriModalNuovoVeicoloDaCommessa()" class="btn btn-secondary btn-sm" style="width:100%">&#xFF0B; Crea nuovo veicolo</button>
     </div>
   </div>
 </div>
@@ -3475,7 +3443,9 @@ async function saveCommessa(firmaDataUrl=null) {
     clienteId,
     veicoloId: document.getElementById('com-veicolo').value,
     descrizione: desc,
-    dataApertura: document.getElementById('com-data-apertura').value || null,
+    dataApertura: editingCommessaId
+      ? (document.getElementById('com-data-apertura').value || null)
+      : new Date().toISOString().split('T')[0],
     consegnaPrevista: document.getElementById('com-consegna').value ? new Date(document.getElementById('com-consegna').value).toISOString() : null,
     firma: firmaDataUrl || null,
     firmaData: firmaDataUrl ? new Date().toISOString() : null,
@@ -4488,6 +4458,8 @@ async function chiudiAltreTimbratureAperte(mecId, comId, ora) {
     await dbSaveTimbratura(t);
     const cm = commesse.find(c=>c.id===t.comId);
     showToast(`Uscita automatica da ${cm ? cm.numero : 'commessa precedente'} ✓`);
+    // Aggiorna stato commessa abbandonata (→ standby se era wip)
+    await syncStatoCommessaDaTimbrature(t.comId);
   }
 }
 
@@ -4638,14 +4610,14 @@ function renderLive() {
 
 async function syncStatoCommessaDaTimbrature(comId) {
   const cm = commesse.find(c => c.id === comId);
-  if (!cm || cm.stato === 'chiusa' || cm.stato === 'fatturata' || cm.stato === 'aperta') return;
+  if (!cm || cm.stato === 'chiusa' || cm.stato === 'fatturata') return;
   const aperte = timbrature.filter(t => t.comId === comId && !t.uscita);
-  if (aperte.length === 0 && cm.stato === 'wip') {
+  if (aperte.length === 0 && (cm.stato === 'wip' || cm.stato === 'aperta')) {
     // nessuno sta lavorando → standby
     const { error } = await supa.from('commesse').update({ stato: 'standby' }).eq('id', comId);
     if (!error) { cm.stato = 'standby'; renderCommesse(); renderKanban(); showToast('⏸ Commessa in standby (nessun meccanico attivo)'); }
-  } else if (aperte.length > 0 && cm.stato === 'standby') {
-    // qualcuno ha timbrato → torna in wip
+  } else if (aperte.length > 0 && (cm.stato === 'standby' || cm.stato === 'aperta')) {
+    // qualcuno ha timbrato → wip
     const { error } = await supa.from('commesse').update({ stato: 'wip' }).eq('id', comId);
     if (!error) { cm.stato = 'wip'; renderCommesse(); renderKanban(); showToast('▶ Commessa in lavorazione'); }
   }
@@ -6685,10 +6657,6 @@ function openModalSelCliente() {
   const q = document.getElementById('sel-cliente-q');
   if (q) q.value = '';
   filterClientiSel('');
-  const form = document.getElementById('form-nuovo-cliente-sm');
-  if (form) form.style.display = 'none';
-  const btn = document.getElementById('btn-toggle-nc');
-  if (btn) btn.textContent = '＋ Crea nuovo cliente';
   document.getElementById('modal-sel-cliente').style.display = 'flex';
   setTimeout(() => q && q.focus(), 80);
 }
@@ -6754,14 +6722,6 @@ function openModalSelVeicolo() {
     if (sub) sub.textContent = 'Cerca tra tutti i veicoli o creane uno nuovo';
   }
   filterVeicoliSel('');
-  const form = document.getElementById('form-nuovo-veicolo-sm');
-  if (form) form.style.display = 'none';
-  const wrap = document.getElementById('nv-garanzia-scad-wrap');
-  if (wrap) wrap.style.display = 'none';
-  const cb = document.getElementById('nv-garanzia');
-  if (cb) cb.checked = false;
-  const btn = document.getElementById('btn-toggle-nv');
-  if (btn) btn.textContent = '＋ Crea nuovo veicolo';
   document.getElementById('modal-sel-veicolo').style.display = 'flex';
   setTimeout(() => q && q.focus(), 80);
 }
@@ -6820,90 +6780,21 @@ function resetVeicoloCommessa() {
   if (hint) hint.textContent = '';
 }
 
-function toggleFormNuovoClienteSM() {
-  const form = document.getElementById('form-nuovo-cliente-sm');
-  const btn = document.getElementById('btn-toggle-nc');
-  const open = form.style.display === 'none';
-  form.style.display = open ? '' : 'none';
-  btn.textContent = open ? '✕ Annulla' : '＋ Crea nuovo cliente';
-  if (open) setTimeout(() => document.getElementById('nc-ragione').focus(), 50);
+// Flag callback: apertura modal anagrafica da commessa
+let _postSaveClienteCallback = false;
+let _postSaveVeicoloCallback = false;
+
+function apriModalNuovoClienteDaCommessa() {
+  _postSaveClienteCallback = true;
+  closeModal('modal-sel-cliente');
+  openModal('cliente');
 }
 
-function toggleFormNuovoVeicoloSM() {
-  const form = document.getElementById('form-nuovo-veicolo-sm');
-  const btn = document.getElementById('btn-toggle-nv');
-  const open = form.style.display === 'none';
-  form.style.display = open ? '' : 'none';
-  btn.textContent = open ? '✕ Annulla' : '＋ Crea nuovo veicolo';
-  if (open) setTimeout(() => document.getElementById('nv-targa').focus(), 50);
-}
-
-function onNvGaranziaChange() {
-  const cb = document.getElementById('nv-garanzia');
-  const wrap = document.getElementById('nv-garanzia-scad-wrap');
-  if (wrap) wrap.style.display = cb?.checked ? '' : 'none';
-}
-
-async function salvaNuovoClienteSM() {
-  const ragione   = (document.getElementById('nc-ragione').value||'').trim();
-  const tel       = (document.getElementById('nc-tel').value||'').trim();
-  const email     = (document.getElementById('nc-email').value||'').trim();
-  const indirizzo = (document.getElementById('nc-indirizzo').value||'').trim();
-  const piva      = (document.getElementById('nc-piva').value||'').trim();
-  const cf        = (document.getElementById('nc-cf').value||'').trim().toUpperCase();
-  const sdi       = (document.getElementById('nc-sdi').value||'').trim().toUpperCase();
-  const pec       = (document.getElementById('nc-pec').value||'').trim();
-  const pagamento = document.getElementById('nc-pagamento').value;
-  const tipo      = document.getElementById('nc-tipo').value;
-  const errs = [];
-  if (!ragione)           errs.push('• Ragione sociale / Nome');
-  if (!piva && !cf)       errs.push('• P.IVA oppure Codice fiscale (almeno uno)');
-  if (piva && !/^\d{11}$/.test(piva)) errs.push('• P.IVA deve essere esattamente 11 cifre');
-  if (!indirizzo)         errs.push('• Indirizzo');
-  if (!tel)               errs.push('• Telefono');
-  if (!email)             errs.push('• Email');
-  if (!sdi && !pec)       errs.push('• Codice SDI oppure PEC (almeno uno)');
-  if (sdi && sdi.length !== 7) errs.push('• Codice SDI deve essere 7 caratteri');
-  if (!pagamento)         errs.push('• Metodo di pagamento');
-  if (errs.length) { alert('Campi obbligatori mancanti:\n\n' + errs.join('\n')); return; }
-  try {
-    const nuovoCl = await dbSaveCliente({
-      id: initId(), createdAt: new Date().toISOString(),
-      ragione, tel, email, piva, cf, sdi, pec, indirizzo, pagamento, tipo, note: ''
-    });
-    clienti.push(nuovoCl);
-    showToast('Cliente creato ✓');
-    selezionaClienteCommessa(nuovoCl.id);
-  } catch(e) { alert('Errore creazione cliente: '+e.message); }
-}
-
-async function salvaNuovoVeicoloSM() {
-  const targa   = (document.getElementById('nv-targa').value||'').trim().toUpperCase();
-  const marca   = (document.getElementById('nv-marca').value||'').trim();
-  const modello = (document.getElementById('nv-modello').value||'').trim();
-  const anno    = parseInt(document.getElementById('nv-anno').value)||null;
-  const km      = parseInt(document.getElementById('nv-km').value)||null;
-  const vin_val = (document.getElementById('nv-vin').value||'').trim().toUpperCase();
-  const garanzia = document.getElementById('nv-garanzia')?.checked || false;
-  const garanziaScadenza = document.getElementById('nv-garanzia-scadenza')?.value || null;
-  const vErrs = [];
-  if (!targa)   vErrs.push('• Targa');
-  if (!marca)   vErrs.push('• Marca');
-  if (!modello) vErrs.push('• Modello');
-  if (!vin_val) vErrs.push('• VIN / Telaio');
-  if (vErrs.length) { alert('Campi veicolo obbligatori mancanti:\n\n' + vErrs.join('\n')); return; }
+function apriModalNuovoVeicoloDaCommessa() {
+  _postSaveVeicoloCallback = true;
   const cid = document.getElementById('com-cliente').value;
-  if (!cid) { alert('Seleziona prima un cliente.'); return; }
-  try {
-    const nuovoV = await dbSaveVeicolo({
-      id: initId(), createdAt: new Date().toISOString(),
-      targa, marca, modello, anno, km, vin: vin_val,
-      clienteId: cid, garanzia, garanziaScadenza: garanzia ? garanziaScadenza : null
-    });
-    veicoli.push(nuovoV);
-    showToast('Veicolo creato ✓');
-    selezionaVeicoloCommessa(nuovoV.id);
-  } catch(e) { alert('Errore creazione veicolo: '+e.message); }
+  closeModal('modal-sel-veicolo');
+  openModal('veicolo', cid || null);
 }
 
 function _checkMorosoAlert(cl) {
@@ -7649,7 +7540,7 @@ function apriFirmaDDT(ddt) {
   const cl = clienti.find(c=>c.id===ddt.clienteId);
   document.getElementById('firma-ddt-info').textContent =
     `${ddt.numero} · ${cl?cl.ragione:'Occasionale'} · ${(ddt.righe||[]).length} articoli`;
-  document.getElementById('modal-firma-ddt').style.display='flex';
+  document.getElementById('modal-firma-ddt').style.display='block';
   requestAnimationFrame(() => initFirmaDdtCanvas());
 }
 
@@ -9329,7 +9220,7 @@ function avantiFirmaCommessa() {
 
   // Mostra modal
   const m = document.getElementById('modal-firma');
-  m.style.display = 'flex';
+  m.style.display = 'block';
   setFirmaTab('pad');
   requestAnimationFrame(() => initFirmaCanvas());
 }
@@ -9342,13 +9233,13 @@ function chiudiFirma() {
 }
 
 function setFirmaTab(tab) {
-  document.getElementById('fpanel-pad').style.display  = tab==='pad' ? 'flex' : 'none';
-  document.getElementById('fpanel-qr').style.display   = tab==='qr'  ? 'flex' : 'none';
-  document.getElementById('ftab-pad').style.borderBottomColor = tab==='pad'?'var(--accent)':'transparent';
-  document.getElementById('ftab-pad').style.color = tab==='pad'?'var(--accent)':'var(--text2)';
-  document.getElementById('ftab-qr').style.borderBottomColor  = tab==='qr'?'var(--accent)':'transparent';
-  document.getElementById('ftab-qr').style.color  = tab==='qr'?'var(--accent)':'var(--text2)';
-  if (tab==='qr') avviaFirmaQR();
+  const qr = document.getElementById('fpanel-qr');
+  if (tab === 'qr') {
+    qr.style.display = 'flex';
+    avviaFirmaQR();
+  } else {
+    qr.style.display = 'none';
+  }
 }
 
 function initFirmaCanvas() {
@@ -9455,8 +9346,8 @@ async function avviaFirmaQR() {
 }
 
 async function confermaSalvaCommessa() {
-  // Prendi firma dal canvas se tab pad, altrimenti usa quella ricevuta
-  if (document.getElementById('fpanel-pad').style.display !== 'none') {
+  // Se QR panel visibile usa firma ricevuta, altrimenti leggi canvas
+  if (document.getElementById('fpanel-qr').style.display === 'none') {
     _firmaDataUrl = getFirmaDataUrl();
     if (!_firmaDataUrl) {
       alert('Il cliente deve firmare prima di procedere.');
@@ -9602,24 +9493,22 @@ initDocumenti();
 </div>
 
 <!-- ── MODAL FIRMA DDT ── -->
-<div id="modal-firma-ddt" style="display:none;position:fixed;inset:0;background:#1a1a1a;z-index:9999;flex-direction:column;touch-action:none;user-select:none;-webkit-user-select:none">
-  <!-- Header -->
-  <div style="background:var(--accent);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
-    <div>
-      <div style="font-size:16px;font-weight:800;color:white">✍️ Firma ricezione DDT</div>
-      <div style="font-size:12px;color:rgba(255,255,255,.8)" id="firma-ddt-info"></div>
-    </div>
-    <button onclick="saltaFirmaDDT()" style="background:rgba(255,255,255,.15);border:none;color:white;border-radius:var(--radius);padding:8px 14px;cursor:pointer;font-size:13px;font-weight:600">Salta</button>
+<div id="modal-firma-ddt" style="display:none;position:fixed;inset:0;z-index:9999;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none">
+  <!-- Canvas: copre tutto tranne la barra inferiore -->
+  <canvas id="firma-ddt-canvas" width="1200" height="500"
+    style="position:absolute;top:0;left:0;right:0;bottom:80px;width:100%;height:calc(100% - 80px);background:white;touch-action:none;cursor:crosshair;display:block"></canvas>
+  <!-- Info header: pointer-events:none, la penna passa attraverso al canvas -->
+  <div style="position:absolute;top:0;left:0;right:0;background:rgba(27,79,216,0.90);padding:10px 18px;pointer-events:none;z-index:5">
+    <div style="font-size:14px;font-weight:800;color:white">✍️ Firma ricezione DDT</div>
+    <div style="font-size:11px;color:rgba(255,255,255,.8)" id="firma-ddt-info"></div>
   </div>
-  <!-- Canvas area -->
-  <div style="flex:1;display:flex;flex-direction:column;padding:16px 20px;min-height:0;overflow:hidden">
-    <div style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:10px;text-align:center;letter-spacing:.5px">FIRMA DEL CLIENTE — conferma ricezione merce</div>
-    <canvas id="firma-ddt-canvas" width="1200" height="500"
-      style="flex:1;width:100%;height:0;min-height:0;border-radius:var(--radius-lg);background:white;touch-action:none;cursor:crosshair;display:block"></canvas>
-    <div style="display:flex;gap:12px;margin-top:14px;flex-shrink:0">
-      <button onclick="clearFirmaDdtCanvas()" style="flex:1;padding:14px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:var(--radius-lg);cursor:pointer;font-size:14px;font-weight:600;color:white">🗑 Cancella</button>
-      <button onclick="confermaSalvaDDT()" style="flex:3;padding:14px;background:var(--accent);color:white;border:none;border-radius:var(--radius-lg);font-size:15px;font-weight:700;cursor:pointer">✓ Conferma firma</button>
-    </div>
+  <!-- Watermark: pointer-events:none -->
+  <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:11px;color:rgba(0,0,0,0.1);letter-spacing:3px;font-weight:700;pointer-events:none;z-index:5;white-space:nowrap">FIRMA DEL CLIENTE</div>
+  <!-- Barra bottoni: z-index:10, sopra il canvas -->
+  <div style="position:absolute;bottom:0;left:0;right:0;height:80px;background:#1a1a1a;display:flex;align-items:center;gap:10px;padding:12px 18px;z-index:10">
+    <button onclick="saltaFirmaDDT()" style="padding:10px 16px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:var(--radius-lg);cursor:pointer;font-size:13px;font-weight:600;color:white;touch-action:manipulation;flex-shrink:0">Salta</button>
+    <button onclick="clearFirmaDdtCanvas()" style="padding:10px 16px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:var(--radius-lg);cursor:pointer;font-size:13px;font-weight:600;color:white;touch-action:manipulation;flex-shrink:0">🗑 Cancella</button>
+    <button onclick="confermaSalvaDDT()" style="flex:1;padding:10px;background:var(--accent);color:white;border:none;border-radius:var(--radius-lg);font-size:15px;font-weight:700;cursor:pointer;touch-action:manipulation">✓ Conferma firma</button>
   </div>
 </div>
 
@@ -9920,40 +9809,44 @@ initDocumenti();
 
 
 <!-- ═══════════════ MODAL FIRMA COMMESSA ═══════════════ -->
-<div id="modal-firma" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1200;display:none;align-items:center;justify-content:center;padding:20px">
-  <div style="background:var(--bg);border-radius:var(--radius-lg);width:100%;max-width:560px;box-shadow:var(--shadow-lg);overflow:hidden">
-    <div style="background:var(--accent);padding:16px 20px;display:flex;align-items:center;justify-content:space-between">
-      <div>
-        <div style="font-size:16px;font-weight:800;color:white">Firma accettazione lavori</div>
-        <div style="font-size:12px;color:rgba(255,255,255,.8)" id="firma-commessa-info"></div>
-      </div>
-      <button onclick="chiudiFirma()" style="background:rgba(255,255,255,.2);border:none;color:white;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:18px">✕</button>
+<div id="modal-firma" style="display:none;position:fixed;inset:0;z-index:9999;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none">
+  <!-- Canvas: copre tutto tranne la barra inferiore (80px) -->
+  <canvas id="firma-canvas" width="1200" height="500"
+    style="position:absolute;top:0;left:0;right:0;bottom:80px;width:100%;height:calc(100% - 80px);background:white;touch-action:none;cursor:crosshair;display:block"></canvas>
+
+  <!-- Info header: pointer-events:none, la penna passa attraverso al canvas -->
+  <div style="position:absolute;top:0;left:0;right:0;background:rgba(27,79,216,0.90);padding:10px 18px;pointer-events:none;z-index:5">
+    <div style="font-size:14px;font-weight:800;color:white">✍️ Firma accettazione lavori</div>
+    <div style="font-size:11px;color:rgba(255,255,255,.8)" id="firma-commessa-info"></div>
+  </div>
+
+  <!-- Riepilogo: pointer-events:none -->
+  <div id="firma-riepilogo" style="position:absolute;top:50px;left:0;right:0;padding:5px 18px;font-size:11px;color:rgba(0,0,0,.4);background:rgba(245,244,241,0.75);border-bottom:1px solid rgba(0,0,0,.06);pointer-events:none;z-index:5"></div>
+
+  <!-- Watermark centrale: pointer-events:none -->
+  <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:11px;color:rgba(0,0,0,0.1);letter-spacing:3px;font-weight:700;pointer-events:none;z-index:5;white-space:nowrap">FIRMA DEL CLIENTE</div>
+
+  <!-- Barra bottoni: z-index:10, sopra il canvas — unici elementi interattivi -->
+  <div id="fpanel-pad" style="position:absolute;bottom:0;left:0;right:0;height:80px;background:#1a1a1a;display:flex;align-items:center;gap:10px;padding:12px 18px;z-index:10">
+    <button onclick="chiudiFirma()" style="padding:10px 16px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:var(--radius-lg);cursor:pointer;font-size:13px;font-weight:600;color:white;touch-action:manipulation;flex-shrink:0">✕ Esci</button>
+    <button onclick="clearFirmaCanvas()" style="padding:10px 16px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:var(--radius-lg);cursor:pointer;font-size:13px;font-weight:600;color:white;touch-action:manipulation;flex-shrink:0">🗑 Cancella</button>
+    <button onclick="confermaSalvaCommessa()" style="flex:1;padding:10px;background:var(--success);color:white;border:none;border-radius:var(--radius-lg);font-size:15px;font-weight:700;cursor:pointer;touch-action:manipulation">✓ Conferma e salva</button>
+    <button onclick="setFirmaTab('qr')" style="padding:10px 14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:var(--radius-lg);cursor:pointer;font-size:12px;color:rgba(255,255,255,.6);touch-action:manipulation;flex-shrink:0">📱 QR</button>
+  </div>
+
+  <!-- Panel QR: overlay sopra il canvas quando attivo -->
+  <div id="fpanel-qr" style="display:none;position:absolute;top:0;left:0;right:0;bottom:80px;background:#111;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center;z-index:8">
+    <button onclick="setFirmaTab('pad')" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,.1);border:none;color:white;border-radius:var(--radius);padding:8px 14px;cursor:pointer;font-size:12px;font-weight:600;touch-action:manipulation">✕ Torna alla firma</button>
+    <div style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:16px">Fai scansionare al cliente per firmare dal suo telefono</div>
+    <div id="firma-qr-code" style="display:inline-block;padding:16px;background:white;border-radius:var(--radius-lg);margin-bottom:16px"></div>
+    <div id="firma-qr-stato" style="font-size:13px;color:rgba(255,255,255,.5)">In attesa della firma…</div>
+    <div id="firma-qr-ok" style="display:none">
+      <div style="font-size:40px">✅</div>
+      <div style="font-size:15px;font-weight:700;color:var(--success);margin-top:8px">Firma ricevuta!</div>
+      <button onclick="confermaSalvaCommessa()" style="margin-top:16px;padding:14px 32px;background:var(--success);color:white;border:none;border-radius:var(--radius-lg);font-size:15px;font-weight:700;cursor:pointer;touch-action:manipulation">Crea commessa</button>
     </div>
+  </div>
+</div>
 
-    <!-- Riepilogo -->
-    <div id="firma-riepilogo" style="padding:16px 20px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text2)"></div>
-
-    <!-- Tabs: firma qui o QR -->
-    <div style="display:flex;border-bottom:1px solid var(--border)">
-      <button id="ftab-pad" onclick="setFirmaTab('pad')" style="flex:1;padding:12px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent)">✍️ Firma qui (pad/touch)</button>
-      <button id="ftab-qr" onclick="setFirmaTab('qr')" style="flex:1;padding:12px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2)">📱 QR — usa telefono</button>
-    </div>
-
-    <!-- Panel firma pad -->
-    <div id="fpanel-pad" style="padding:16px 20px">
-      <div style="font-size:12px;color:var(--text3);margin-bottom:8px">Il cliente firma qui sotto:</div>
-      <canvas id="firma-canvas" width="500" height="180"
-        style="width:100%;height:180px;border:2px solid var(--border);border-radius:var(--radius);background:white;cursor:crosshair;touch-action:none"></canvas>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
-        <button onclick="clearFirmaCanvas()" style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:6px 12px;cursor:pointer;font-size:12px;color:var(--text2)">🗑 Cancella</button>
-        <div style="font-size:11px;color:var(--text3)">Firma con il dito, il mouse o il signature pad</div>
-      </div>
-      <button onclick="confermaSalvaCommessa()" style="width:100%;margin-top:14px;padding:14px;background:var(--success);color:white;border:none;border-radius:var(--radius-lg);font-size:15px;font-weight:700;cursor:pointer">
-        ✓ Conferma e crea commessa
-      </button>
-    </div>
-
-    <!-- Panel QR -->
-    <div id="fpanel-qr" style="display:none;padding:20px;text-align:center">
-      <div style="font-size:13px;color:var(--text2);margin-bottom:16px">Fai scansionare al cliente per firmare dal suo telefono</div>
-      <div id="firma-qr-code" style="display:inline-bl
+</body>
+</html>
