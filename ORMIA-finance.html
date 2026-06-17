@@ -238,8 +238,18 @@ tr:hover td { background:var(--surface2); }
 
     <div class="sidebar-footer">
       <div style="display:flex;align-items:center;justify-content:space-between">
-        <div style="font-size:12px;color:var(--text3)" id="fin-user-name">—</div>
+        <div style="font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px">
+          <span id="fin-user-name">—</span>
+          <button onclick="apriEditNomeChat()" title="Modifica nome chat" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:0;line-height:1">✏️</button>
+        </div>
         <button onclick="doLogout()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px">Esci</button>
+      </div>
+      <div id="fin-nome-chat-form" style="display:none;margin-top:8px;display:none">
+        <input type="text" id="fin-chat-nome" placeholder="Il tuo nome in chat" style="width:100%;font-size:12px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text1);box-sizing:border-box">
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <button onclick="salvaNomeChatFin()" class="btn btn-primary" style="flex:1;font-size:11px;padding:5px">Salva</button>
+          <button onclick="chiudiEditNomeChat()" class="btn btn-ghost" style="font-size:11px;padding:5px">✕</button>
+        </div>
       </div>
     </div>
   </aside>
@@ -715,6 +725,28 @@ async function doLogin() {
     return;
   }
   showApp();
+}
+
+function apriEditNomeChat() {
+  const form = document.getElementById('fin-nome-chat-form');
+  form.style.display = form.style.display === 'none' ? '' : 'none';
+  if (form.style.display !== 'none') {
+    const el = document.getElementById('fin-chat-nome');
+    el.value = currentUser?.user_metadata?.nome || '';
+    el.focus();
+  }
+}
+function chiudiEditNomeChat() {
+  document.getElementById('fin-nome-chat-form').style.display = 'none';
+}
+async function salvaNomeChatFin() {
+  const nome = document.getElementById('fin-chat-nome').value.trim();
+  if (!nome) return;
+  const { error } = await supa.auth.updateUser({ data: { nome } });
+  if (error) { showToast('Errore: ' + error.message); return; }
+  if (currentUser) currentUser.user_metadata = {...(currentUser.user_metadata||{}), nome};
+  chiudiEditNomeChat();
+  showToast('Nome chat aggiornato ✓');
 }
 
 async function doLogout() {
@@ -2206,7 +2238,10 @@ function bnClearBadge() {
 
 function bnGetAutore() {
   if (typeof currentUser !== 'undefined' && currentUser) {
-    return currentUser.email?.split('@')[0] || 'Utente';
+    const metaNome = currentUser.user_metadata?.nome || currentUser.user_metadata?.full_name;
+    if (metaNome) return metaNome;
+    const prefix = (currentUser.email||'').split('@')[0];
+    return prefix.split(/[._-]/).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ') || 'Utente';
   }
   return 'Utente';
 }
