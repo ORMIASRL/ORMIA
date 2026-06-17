@@ -2428,14 +2428,30 @@ function init() {
             </div>
           </div>
           <!-- FORM INLINE NUOVO CLIENTE -->
-          <div id="com-form-nuovo-cliente" style="display:none;background:white;border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px">
+          <div id="com-form-nuovo-cliente" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px">
             <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px">👤 Nuovo cliente</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
               <div class="form-group" style="margin:0;grid-column:span 2"><label>Ragione sociale / Nome *</label><input id="nc-ragione" placeholder="Es. Mario Rossi o Rossi Srl"></div>
+              <div class="form-group" style="margin:0"><label>Tipo</label>
+                <select id="nc-tipo"><option value="privato">Privato</option><option value="azienda">Azienda</option></select>
+              </div>
               <div class="form-group" style="margin:0"><label>Telefono *</label><input id="nc-tel" type="tel" placeholder="+39 333 1234567"></div>
-              <div class="form-group" style="margin:0"><label>Email</label><input id="nc-email" type="email" placeholder="mario@esempio.it"></div>
+              <div class="form-group" style="margin:0"><label>Email *</label><input id="nc-email" type="email" placeholder="mario@esempio.it"></div>
+              <div class="form-group" style="margin:0;grid-column:span 2"><label>Indirizzo *</label><input id="nc-indirizzo" placeholder="Via Roma 1, 00100 Roma"></div>
               <div class="form-group" style="margin:0"><label>P.IVA</label><input id="nc-piva" placeholder="12345678901" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" style="font-family:'DM Mono',monospace"></div>
               <div class="form-group" style="margin:0"><label>Codice Fiscale</label><input id="nc-cf" placeholder="RSSMRA..." style="font-family:'DM Mono',monospace;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
+              <div class="form-group" style="margin:0"><label>Codice SDI</label><input id="nc-sdi" placeholder="XXXXXXX" maxlength="7" style="font-family:'DM Mono',monospace;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
+              <div class="form-group" style="margin:0"><label>PEC</label><input id="nc-pec" type="email" placeholder="cliente@pec.it"></div>
+              <div class="form-group" style="margin:0;grid-column:span 2"><label>Metodo pagamento *</label>
+                <select id="nc-pagamento">
+                  <option value="">— Seleziona —</option>
+                  <option value="Bonifico 30gg">Bonifico 30gg</option>
+                  <option value="Bonifico 60gg">Bonifico 60gg</option>
+                  <option value="Contanti">Contanti</option>
+                  <option value="POS / carta">POS / carta</option>
+                  <option value="Immediato">Immediato</option>
+                </select>
+              </div>
             </div>
           </div>
           <div style="display:flex;gap:8px;justify-content:flex-end">
@@ -2445,7 +2461,7 @@ function init() {
         </div>
 
         <!-- Campo hidden per compatibilità -->
-        <select id="com-veicolo" style="display:none" onchange="onVeicoloChange()"></select>
+        <input type="hidden" id="com-veicolo">
         <div class="form-group span-2">
           <label>Descrizione lavoro *</label>
           <textarea id="com-desc" placeholder="Es. Tagliando + sostituzione freni anteriori" style="min-height:80px"></textarea>
@@ -6768,17 +6784,32 @@ async function salvaNuovoVeicoloInline() {
   // Crea cliente se form aperto
   const formCl = document.getElementById('com-form-nuovo-cliente');
   if (formCl.style.display !== 'none') {
-    const ragione = document.getElementById('nc-ragione').value.trim();
-    const tel     = document.getElementById('nc-tel').value.trim();
-    const email   = document.getElementById('nc-email').value.trim();
-    const piva    = document.getElementById('nc-piva').value.trim();
-    const cf      = document.getElementById('nc-cf').value.trim().toUpperCase();
-    if (!ragione || !tel) { alert('Inserisci almeno ragione sociale e telefono.'); return; }
+    const ragione   = document.getElementById('nc-ragione').value.trim();
+    const tel       = document.getElementById('nc-tel').value.trim();
+    const email     = document.getElementById('nc-email').value.trim();
+    const indirizzo = document.getElementById('nc-indirizzo').value.trim();
+    const piva      = document.getElementById('nc-piva').value.trim();
+    const cf        = document.getElementById('nc-cf').value.trim().toUpperCase();
+    const sdi       = document.getElementById('nc-sdi').value.trim().toUpperCase();
+    const pec       = document.getElementById('nc-pec').value.trim();
+    const pagamento = document.getElementById('nc-pagamento').value;
+    const tipo      = document.getElementById('nc-tipo').value;
+    const errs = [];
+    if (!ragione)           errs.push('• Ragione sociale / Nome');
+    if (!piva && !cf)       errs.push('• P.IVA oppure Codice fiscale (almeno uno)');
+    if (piva && !/^\d{11}$/.test(piva)) errs.push('• P.IVA deve essere esattamente 11 cifre');
+    if (!indirizzo)         errs.push('• Indirizzo');
+    if (!tel)               errs.push('• Telefono');
+    if (!email)             errs.push('• Email');
+    if (!sdi && !pec)       errs.push('• Codice SDI oppure PEC (almeno uno)');
+    if (sdi && sdi.length !== 7) errs.push('• Codice SDI deve essere 7 caratteri');
+    if (!pagamento)         errs.push('• Metodo di pagamento');
+    if (errs.length) { alert('Campi obbligatori mancanti:\n\n' + errs.join('\n')); return; }
     try {
       const nuovoCl = await dbSaveCliente({
         id: initId(), createdAt: new Date().toISOString(),
-        ragione, tel, email, piva, cf,
-        tipo: 'privato', indirizzo: '', sdi: '', pec: '', note: '', pagamento: ''
+        ragione, tel, email, piva, cf, sdi, pec, indirizzo, pagamento,
+        tipo, note: ''
       });
       clienti.push(nuovoCl);
       clienteId = nuovoCl.id;
