@@ -4475,6 +4475,7 @@ async function timbraEntrata() {
     await chiudiAltreTimbratureAperte(mecId, comId, ora);
     await dbSaveTimbratura({ id:initId(), mecId, comId, entrata:ora, uscita:null, tipo:'lista', createdAt:new Date().toISOString() });
     await registraPresenzaAutomatica(mecId, ora);
+    await syncStatoCommessaDaTimbrature(comId);
     showToast('Entrata registrata ✓');
     renderLive(); updateBadgeTimbrature();
   } catch(e) { alert('Errore: '+e.message); }
@@ -4492,6 +4493,7 @@ async function timbraUscita() {
     aperta.uscita = ora;
     await dbSaveTimbratura(aperta);
     await chiudiPresenzaAutomatica(mecId, ora);
+    await syncStatoCommessaDaTimbrature(comId);
     showToast('Uscita registrata ✓');
     renderLive(); updateBadgeTimbrature();
   } catch(e) { alert('Errore: '+e.message); }
