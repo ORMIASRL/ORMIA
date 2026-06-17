@@ -5642,10 +5642,10 @@ ${cm.note ? `
   </div>
 
   <!-- Panel firma pad -->
-  <div id="fpanel-pad" style="flex:1;display:flex;flex-direction:column;padding:16px 20px;min-height:0">
+  <div id="fpanel-pad" style="flex:1;display:flex;flex-direction:column;padding:16px 20px;min-height:0;overflow:hidden">
     <div style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:10px;text-align:center;letter-spacing:.5px">FIRMA DEL CLIENTE</div>
     <canvas id="firma-canvas" width="1200" height="500"
-      style="flex:1;width:100%;border-radius:var(--radius-lg);background:white;cursor:crosshair;touch-action:none;display:block;min-height:0"></canvas>
+      style="flex:1;width:100%;height:0;min-height:0;border-radius:var(--radius-lg);background:white;cursor:crosshair;touch-action:none;display:block"></canvas>
     <div style="display:flex;gap:12px;margin-top:14px;flex-shrink:0">
       <button onclick="clearFirmaCanvas()" style="flex:1;padding:14px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:var(--radius-lg);cursor:pointer;font-size:14px;font-weight:600;color:white">🗑 Cancella</button>
       <button onclick="confermaSalvaCommessa()" style="flex:3;padding:14px;background:var(--success);color:white;border:none;border-radius:var(--radius-lg);font-size:15px;font-weight:700;cursor:pointer">✓ Conferma e salva</button>
@@ -9342,8 +9342,8 @@ function chiudiFirma() {
 }
 
 function setFirmaTab(tab) {
-  document.getElementById('fpanel-pad').style.display  = tab==='pad' ? '' : 'none';
-  document.getElementById('fpanel-qr').style.display   = tab==='qr'  ? '' : 'none';
+  document.getElementById('fpanel-pad').style.display  = tab==='pad' ? 'flex' : 'none';
+  document.getElementById('fpanel-qr').style.display   = tab==='qr'  ? 'flex' : 'none';
   document.getElementById('ftab-pad').style.borderBottomColor = tab==='pad'?'var(--accent)':'transparent';
   document.getElementById('ftab-pad').style.color = tab==='pad'?'var(--accent)':'var(--text2)';
   document.getElementById('ftab-qr').style.borderBottomColor  = tab==='qr'?'var(--accent)':'transparent';
@@ -9612,10 +9612,10 @@ initDocumenti();
     <button onclick="saltaFirmaDDT()" style="background:rgba(255,255,255,.15);border:none;color:white;border-radius:var(--radius);padding:8px 14px;cursor:pointer;font-size:13px;font-weight:600">Salta</button>
   </div>
   <!-- Canvas area -->
-  <div style="flex:1;display:flex;flex-direction:column;padding:16px 20px;min-height:0">
+  <div style="flex:1;display:flex;flex-direction:column;padding:16px 20px;min-height:0;overflow:hidden">
     <div style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:10px;text-align:center;letter-spacing:.5px">FIRMA DEL CLIENTE — conferma ricezione merce</div>
     <canvas id="firma-ddt-canvas" width="1200" height="500"
-      style="flex:1;width:100%;border-radius:var(--radius-lg);background:white;touch-action:none;cursor:crosshair;display:block;min-height:0"></canvas>
+      style="flex:1;width:100%;height:0;min-height:0;border-radius:var(--radius-lg);background:white;touch-action:none;cursor:crosshair;display:block"></canvas>
     <div style="display:flex;gap:12px;margin-top:14px;flex-shrink:0">
       <button onclick="clearFirmaDdtCanvas()" style="flex:1;padding:14px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:var(--radius-lg);cursor:pointer;font-size:14px;font-weight:600;color:white">🗑 Cancella</button>
       <button onclick="confermaSalvaDDT()" style="flex:3;padding:14px;background:var(--accent);color:white;border:none;border-radius:var(--radius-lg);font-size:15px;font-weight:700;cursor:pointer">✓ Conferma firma</button>
