@@ -76,11 +76,7 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
 .pin-btn.del { font-size: 16px; color: var(--text3); }
 .pin-btn.zero { grid-column: 2; }
 
-.login-or { text-align: center; font-size: 12px; color: var(--text3); margin: 16px 0; display: flex; align-items: center; gap: 8px; }
 .login-or::before, .login-or::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-.badge-input-wrap { display: flex; gap: 8px; }
-.badge-input-wrap input { flex: 1; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); font-family: 'DM Mono', monospace; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; background: var(--surface2); }
-.badge-input-wrap button { padding: 12px 14px; border: none; border-radius: var(--radius); background: var(--accent); color: white; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 
 /* ── USER HEADER (dopo login) ── */
 .user-header { background: var(--accent); color: white; padding: 18px; padding-top: calc(18px + env(safe-area-inset-top, 0px)); flex-shrink: 0; }
@@ -108,7 +104,7 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
 .com-num { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 600; color: var(--text3); margin-bottom: 3px; }
 .com-desc { font-size: 15px; font-weight: 700; margin-bottom: 5px; line-height: 1.3; }
 .com-cli { font-size: 13px; color: var(--text2); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.com-targa { background: #fefce8; border: 2px solid #ca8a04; border-radius: 5px; padding: 2px 7px; font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 700; color: #1a1a1a; letter-spacing: 1px; }
+.com-targa { background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 2px 7px; font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 700; }
 .com-card-footer { padding: 10px 16px; border-top: 1px solid var(--border); background: var(--surface2); display: flex; align-items: center; justify-content: space-between; }
 .tim-chip { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; color: var(--success); }
 .tim-chip-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); animation: pulse 1.5s infinite; }
@@ -259,12 +255,6 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
         <button class="pin-btn zero" onclick="pinTap('0')">0</button>
       </div>
 
-      <div class="login-or">oppure scansiona badge</div>
-      <div class="badge-input-wrap">
-        <input type="text" id="badge-input" placeholder="Codice badge…" style="text-transform:uppercase"
-          onkeydown="if(event.key==='Enter')loginBadge()">
-        <button onclick="loginBadge()">Accedi</button>
-      </div>
     </div>
   </div>
 </div>
@@ -375,21 +365,58 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
 
     <!-- FOTO GARANZIA -->
     <div class="det-section" id="det-foto-wrap" style="display:none">
-      <div class="det-section-title" style="display:flex;justify-content:space-between;align-items:center">
-        <span>📸 Foto garanzia</span>
-        <span id="det-foto-count" style="font-size:12px;color:var(--text3);font-weight:400">0 foto</span>
+
+      <!-- FOTO INIZIALI: targa / telaio / km -->
+      <div style="margin-bottom:16px">
+        <div class="det-section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span>📸 Foto iniziali</span>
+          <span id="det-foto-inizio-badge" style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:#FEF3C7;color:#92400E;border:1px solid #FDE68A">0/3</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+          <!-- targa -->
+          <div>
+            <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Targa</div>
+            <label style="display:block;aspect-ratio:4/3;border-radius:8px;overflow:hidden;cursor:pointer;border:2px dashed var(--border);background:var(--surface2);max-height:80px" id="slot-targa-wrap">
+              <div id="slot-targa-empty" style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:9px;color:var(--text3)">📷<span>Scatta</span></div>
+              <img id="slot-targa-img" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover" onclick="apriLightbox(this.src);event.preventDefault()">
+              <input type="file" accept="image/*" capture="environment" style="display:none" onchange="caricaFotoInizio(this,'targa')">
+            </label>
+          </div>
+          <!-- telaio -->
+          <div>
+            <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Telaio</div>
+            <label style="display:block;aspect-ratio:4/3;border-radius:8px;overflow:hidden;cursor:pointer;border:2px dashed var(--border);background:var(--surface2);max-height:80px" id="slot-telaio-wrap">
+              <div id="slot-telaio-empty" style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:9px;color:var(--text3)">📷<span>Scatta</span></div>
+              <img id="slot-telaio-img" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover" onclick="apriLightbox(this.src);event.preventDefault()">
+              <input type="file" accept="image/*" capture="environment" style="display:none" onchange="caricaFotoInizio(this,'telaio')">
+            </label>
+          </div>
+          <!-- km -->
+          <div>
+            <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Km</div>
+            <label style="display:block;aspect-ratio:4/3;border-radius:8px;overflow:hidden;cursor:pointer;border:2px dashed var(--border);background:var(--surface2);max-height:80px" id="slot-km-wrap">
+              <div id="slot-km-empty" style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:9px;color:var(--text3)">📷<span>Scatta</span></div>
+              <img id="slot-km-img" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover" onclick="apriLightbox(this.src);event.preventDefault()">
+              <input type="file" accept="image/*" capture="environment" style="display:none" onchange="caricaFotoInizio(this,'km')">
+            </label>
+          </div>
+        </div>
       </div>
-      <div style="font-size:12px;color:var(--warning);font-weight:500;margin-bottom:10px;padding:8px 10px;background:var(--warning-light);border-radius:8px;border:1px solid #FDE68A" id="det-foto-avviso">
-        ⚠️ Commessa in garanzia — documenta il lavoro con foto prima di chiudere
+
+      <!-- FOTO/VIDEO LAVORAZIONE: min 2 -->
+      <div>
+        <div class="det-section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span>🎬 Lavorazione</span>
+          <span id="det-foto-fine-count" style="font-size:12px;color:var(--text3);font-weight:400">0 media</span>
+        </div>
+        <div id="det-foto-fine-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:8px"></div>
+        <label id="btn-aggiungi-media" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:2px dashed var(--border2);border-radius:var(--radius-lg);cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);background:var(--accent-light);-webkit-tap-highlight-color:transparent">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:18px;height:18px"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          Foto o video lavorazione
+          <input type="file" accept="image/*,video/*" multiple style="display:none" onchange="caricaFotoFine(this)">
+        </label>
       </div>
-      <!-- Griglia foto -->
-      <div id="det-foto-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px"></div>
-      <!-- Pulsante aggiungi foto -->
-      <label id="btn-aggiungi-foto" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:2px dashed var(--border2);border-radius:var(--radius-lg);cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);background:var(--accent-light);-webkit-tap-highlight-color:transparent">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:18px;height:18px"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-        Scatta o carica foto
-        <input type="file" accept="image/*" capture="environment" multiple style="display:none" onchange="caricaFoto(this)">
-      </label>
+
     </div>
 
   </div>
@@ -545,7 +572,7 @@ async function loadAll() {
 // Helpers snake_case → camelCase per campi chiave
 function fixMec(m)  { return m ? {...m, codInt:m.cod_int, codForn:m.cod_forn} : null; }
 function fixProd(p) { return p ? {...p, descrizione:p.descrizione||p.desc, codInt:p.cod_int, codForn:p.cod_forn, giacenza:p.giacenza, scortaMin:p.scorta_min, qtaRiordino:p.qta_riordino, prezzoAcq:p.prezzo_acq, prezzoVend:p.prezzo_vend, fornitoreId:p.fornitore_id} : null; }
-function fixCom(c)  { return c ? {...c, clienteId:c.cliente_id, veicoloId:c.veicolo_id, dataApertura:c.data_apertura, vociMano:c.voci_mano||[], vociRic:c.voci_ric||[], vociExtra:c.voci_extra||[], desc:c.descrizione, foto:c.foto||[], nota_mec:c.nota_mec||'' } : null; }
+function fixCom(c)  { return c ? {...c, clienteId:c.cliente_id, veicoloId:c.veicolo_id, dataApertura:c.data_apertura, vociMano:c.voci_mano||[], vociRic:c.voci_ric||[], vociExtra:c.voci_extra||[], desc:c.descrizione, foto:c.foto||[], fotoInizio:c.foto_inizio||{}, fotoFine:c.foto_fine||[], nota_mec:c.nota_mec||'' } : null; }
 function fixTim(t)  { return t ? {...t, mecId:t.mec_id, comId:t.com_id} : null; }
 function fixPres(p) { return p ? {...p, dipId:p.dip_id} : null; }
 function fixVei(v)  { return v ? {...v, clienteId:v.cliente_id, garanziaScadenza:v.garanzia_scadenza} : null; }
@@ -597,14 +624,7 @@ async function checkPin() {
   renderPinDots(true);
   setTimeout(()=>{ pinBuffer=''; renderPinDots(); }, 700);
 }
-async function loginBadge() {
-  const val = document.getElementById('badge-input').value.trim().toUpperCase();
-  if (!val) return;
-  const found = getMeccanici().find(m => (m.badge||'').toUpperCase() === val);
-  if (found) { loginOk(found); return; }
-  showToast('Badge non riconosciuto');
-  document.getElementById('badge-input').value = '';
-}
+
 function loginOk(mec) {
   mecLogged = mec;
   localStorage.setItem('ormia_mec_session', JSON.stringify({id: mec.id, ts: Date.now()}));
@@ -617,7 +637,7 @@ function logout() {
   comSelected = null;
   localStorage.removeItem('ormia_mec_session');
   renderPinDots();
-  document.getElementById('badge-input').value = '';
+
   showScreen('screen-login');
 }
 
@@ -665,6 +685,7 @@ function renderHome() {
   document.getElementById('home-av').textContent    = initials;
   document.getElementById('home-name').textContent  = mecLogged.nome;
   document.getElementById('home-role').textContent  = mecLogged.ruolo||'Meccanico';
+  applicaPermessiMec();
 
   // Stato live
   const tAperta = timbrature.find(t=>t.mecId===mecLogged.id && !t.uscita);
@@ -702,11 +723,16 @@ function renderHome() {
     return `<div class="com-card" onclick="selezionaCommessa('${cm.id}')">
       <div class="com-card-bar ${cm.stato}"></div>
       <div class="com-card-body">
-        <div class="com-num">${cm.numero||''}</div>
-        <div class="com-desc">${cm.desc}</div>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px">
+          <div>
+            <div class="com-num">${cm.numero||''}</div>
+            <div class="com-desc">${cm.desc}</div>
+          </div>
+          ${isVeicoloInGaranzia(cm.veicoloId||cm.veicolo_id)?'<span style="flex-shrink:0;background:#FEF3C7;border:1px solid #FDE68A;color:#92400E;font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;white-space:nowrap">🔒 GARANZIA</span>':''}
+        </div>
         <div class="com-cli" style="margin-top:8px;display:flex;flex-direction:column;gap:5px">
           ${v ? `<div style="display:flex;align-items:center;gap:8px">
-            <span class="com-targa" style="font-size:18px;padding:5px 12px;letter-spacing:2px">${v.targa}</span>
+            <span class="com-targa" style="font-size:15px;padding:3px 10px;letter-spacing:1.5px">${v.targa}</span>
             ${v.marca||v.modello ? `<span style="color:var(--text2);font-size:13px;font-weight:500">${[v.marca,v.modello].filter(Boolean).join(' ')}</span>` : ''}
             ${v.km ? `<span style="color:var(--text3);font-size:12px">${Number(v.km).toLocaleString('it')} km</span>` : ''}
           </div>` : ''}
@@ -714,13 +740,46 @@ function renderHome() {
         </div>
       </div>
       <div class="com-card-footer">
-        ${mecTim
-          ? `<span class="tim-chip"><span class="tim-chip-dot"></span>Stai lavorando qui</span>`
-          : `<span class="tim-inactive">Non sei in timbratura</span>`}
+        ${isMagazziniere()
+          ? `<span class="tim-inactive" style="color:var(--accent)">📷 Solo foto iniziali</span>`
+          : mecTim
+            ? `<span class="tim-chip"><span class="tim-chip-dot"></span>Stai lavorando qui</span>`
+            : `<span class="tim-inactive">Non sei in timbratura</span>`}
         ${altriTim.length?`<span style="font-size:11px;color:var(--text3)">${altriTim.join(', ')} ${altriTim.length===1?'sta':'stanno'} lavorando</span>`:''}
+        <span class="stato-badge stato-${cm.stato==='wip'?'wip':cm.stato==='fatturata'?'fatturata':cm.stato==='chiusa'?'chiusa':'aperta'}" style="font-size:11px;padding:2px 8px;margin-left:auto">
+          ${{aperta:'📋 Aperta',wip:'🔧 In lavorazione',standby:'⏸ Standby',chiusa:'✅ Chiusa',fatturata:'💜 Fatturata'}[cm.stato]||cm.stato}
+        </span>
       </div>
     </div>`;
   }).join('');
+}
+
+
+function isMagazziniere() {
+  return mecLogged && (mecLogged.ruolo||'').toLowerCase() === 'magazziniere';
+}
+
+function applicaPermessiMec() {
+  if (!isMagazziniere()) return;
+  // Magazziniere: nella lista commesse mostra tutto (read-only)
+  // Nel dettaglio commessa nasconde: azioni timbra/avanza, foto lavorazione, scan ricambi
+  // Mostra solo: info commessa + foto iniziali
+}
+
+// Wrapper che applica restrizioni magazziniere nel dettaglio
+function applicaPermessiDettaglio() {
+  if (!isMagazziniere()) return;
+  // Nascondi azioni (timbratura/avanzamento stato)
+  const actions = document.getElementById('det-actions');
+  if (actions) actions.style.display = 'none';
+  // Nascondi foto lavorazione
+  const btnMedia = document.getElementById('btn-aggiungi-media');
+  if (btnMedia) btnMedia.style.display = 'none';
+  const gridFine = document.getElementById('det-foto-fine-grid');
+  if (gridFine) gridFine.closest('.det-section') && (gridFine.closest('.det-section').style.display = 'none');
+  // Nascondi scan ricambi
+  document.querySelectorAll('.scan-panel').forEach(el => el.style.display = 'none');
+  // Nascondi note meccanico (opzionale — lasciamo visibile per ora)
 }
 
 function selezionaCommessa(id) {
@@ -755,6 +814,7 @@ function renderDetail() {
   const statoLabels = {aperta:'Aperta',wip:'In lavorazione',chiusa:'Chiusa',fatturata:'Fatturata'};
   document.getElementById('det-stato-badge').innerHTML =
     `<span class="stato-badge stato-${statoMap[cm.stato]||'aperta'}">${statoLabels[cm.stato]||'—'}</span>`;
+  applicaPermessiDettaglio();
 
   document.getElementById('det-desc').textContent = cm.desc||'—';
   document.getElementById('det-data').textContent = cm.dataApertura ? new Date(cm.dataApertura).toLocaleDateString('it-IT') : '—';
@@ -783,7 +843,8 @@ function renderDetail() {
   const inGaranzia = isVeicoloInGaranzia(v);
   if (inGaranzia) {
     fotoWrap.style.display = '';
-    renderFotoGaranzia(cm.foto||[]);
+    renderFotoInizio(cm.fotoInizio);
+    renderFotoFine(cm.fotoFine);
   } else {
     fotoWrap.style.display = 'none';
   }
@@ -914,67 +975,128 @@ function isVeicoloInGaranzia(v) {
   return new Date(scad) >= new Date();
 }
 
-function renderFotoGaranzia(foto) {
-  const grid  = document.getElementById('det-foto-grid');
-  const count = document.getElementById('det-foto-count');
-  count.textContent = `${foto.length} foto`;
-  if (!foto.length) { grid.innerHTML = ''; return; }
-  grid.innerHTML = foto.map((url,i) => `
-    <div style="position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:#eee">
-      <img src="${url}" style="width:100%;height:100%;object-fit:cover;display:block" onclick="apriLightbox('${url}')">
-      <button onclick="eliminaFoto(${i})" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);border:none;color:white;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;padding:0">✕</button>
-    </div>`).join('');
+
+
+function fotoInizioCompleto(fi) {
+  return !!(fi && fi.targa && fi.telaio && fi.km);
 }
 
-async function caricaFoto(input) {
-  if (!input.files.length || !comSelected) return;
-  const files = Array.from(input.files);
-  const btnLabel = document.getElementById('btn-aggiungi-foto');
-  btnLabel.style.opacity = '.5';
+function renderFotoInizio(fotoInizio) {
+  const fi = fotoInizio || {};
+  const slots = ['targa', 'telaio', 'km'];
+  let completi = 0;
+  slots.forEach(s => {
+    const empty = document.getElementById('slot-'+s+'-empty');
+    const img   = document.getElementById('slot-'+s+'-img');
+    const wrap  = document.getElementById('slot-'+s+'-wrap');
+    if (fi[s]) {
+      completi++;
+      if (empty) empty.style.display = 'none';
+      if (img)  { img.src = fi[s]; img.style.display = 'block'; }
+      if (wrap)  wrap.style.borderColor = 'var(--success)';
+    } else {
+      if (empty) empty.style.display = 'flex';
+      if (img)  { img.style.display = 'none'; img.src = ''; }
+      if (wrap)  wrap.style.borderColor = 'var(--border)';
+    }
+  });
+  const badge = document.getElementById('det-foto-inizio-badge');
+  if (badge) {
+    badge.textContent = completi + '/3';
+    badge.style.background  = completi === 3 ? 'var(--success-light)' : '#FEF3C7';
+    badge.style.color       = completi === 3 ? 'var(--success)'       : '#92400E';
+    badge.style.borderColor = completi === 3 ? '#86EFAC'              : '#FDE68A';
+  }
+}
 
-  // Assicura sessione anonima per Storage
+function renderFotoFine(fotoFine) {
+  const ff    = fotoFine || [];
+  const count = document.getElementById('det-foto-fine-count');
+  if (count) count.textContent = ff.length + ' media (min 2)';
+  const grid  = document.getElementById('det-foto-fine-grid');
+  if (!grid) return;
+  if (!ff.length) { grid.innerHTML = ''; return; }
+  grid.innerHTML = ff.map((url, i) => {
+    const isVideo = /\.(mp4|mov|avi|webm|mkv|m4v)(\?|$)/i.test(url);
+    const media = isVideo
+      ? `<video src="${url}" style="width:100%;height:72px;object-fit:cover;display:block" onclick="apriLightbox('${url}',true)"></video>`
+      : `<img src="${url}" style="width:100%;height:72px;object-fit:cover;display:block" onclick="apriLightbox('${url}')">`;
+    return `<div style="position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:#eee">
+      ${media}
+      ${isVideo ? '<div style="position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,.6);color:white;font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px">VIDEO</div>' : ''}
+      <button onclick="eliminaFotoFine(${i})" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);border:none;color:white;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;padding:0">&#x2715;</button>
+    </div>`;
+  }).join('');
+}
+
+async function caricaFotoInizio(input, slot) {
+  if (!input.files.length || !comSelected) return;
+  const file = input.files[0];
+  const wrap = document.getElementById('slot-'+slot+'-wrap');
+  if (wrap) wrap.style.opacity = '.5';
   const { data: { session } } = await supa.auth.getSession();
   if (!session) await supa.auth.signInAnonymously();
+  try {
+    const ext  = file.name.split('.').pop() || 'jpg';
+    const path = comSelected.id + '/inizio_' + slot + '_' + Date.now() + '.' + ext;
+    const { error: upErr } = await supa.storage.from('commesse-foto').upload(path, file, { contentType: file.type, upsert: true });
+    if (upErr) { showToast('Errore upload: ' + upErr.message); return; }
+    const { data: { publicUrl } } = supa.storage.from('commesse-foto').getPublicUrl(path);
+    const nuovaFotoInizio = { ...(comSelected.fotoInizio||{}), [slot]: publicUrl };
+    await supa.from('commesse').update({ foto_inizio: nuovaFotoInizio }).eq('id', comSelected.id);
+    await loadAll();
+    comSelected = getCommesse().find(c => c.id === comSelected.id) || comSelected;
+    renderFotoInizio(comSelected.fotoInizio);
+    showToast('Foto ' + slot + ' caricata ✓');
+  } catch(e) { showToast('Errore: ' + e.message); }
+  finally { if (wrap) wrap.style.opacity = '1'; input.value = ''; }
+}
 
-  const fotoCorrenti = comSelected.foto || [];
-  const nuoveFoto    = [...fotoCorrenti];
-
+async function caricaFotoFine(input) {
+  if (!input.files.length || !comSelected) return;
+  const files = Array.from(input.files);
+  const btn = document.getElementById('btn-aggiungi-media');
+  if (btn) btn.style.opacity = '.5';
+  const { data: { session } } = await supa.auth.getSession();
+  if (!session) await supa.auth.signInAnonymously();
+  const nuovaFotoFine = [...(comSelected.fotoFine || [])];
   for (const file of files) {
     try {
       const ext  = file.name.split('.').pop() || 'jpg';
-      const path = `${comSelected.id}/${Date.now()}_${Math.random().toString(36).substr(2,6)}.${ext}`;
+      const path = comSelected.id + '/fine_' + Date.now() + '_' + Math.random().toString(36).substr(2,6) + '.' + ext;
       const { error: upErr } = await supa.storage.from('commesse-foto').upload(path, file, { contentType: file.type, upsert: false });
       if (upErr) { showToast('Errore upload: ' + upErr.message); continue; }
       const { data: { publicUrl } } = supa.storage.from('commesse-foto').getPublicUrl(path);
-      nuoveFoto.push(publicUrl);
+      nuovaFotoFine.push(publicUrl);
     } catch(e) { showToast('Errore: ' + e.message); }
   }
-
-  await supa.from('commesse').update({ foto: nuoveFoto }).eq('id', comSelected.id);
+  await supa.from('commesse').update({ foto_fine: nuovaFotoFine }).eq('id', comSelected.id);
   await loadAll();
-  comSelected = getCommesse().find(c=>c.id===comSelected.id) || comSelected;
-  renderFotoGaranzia(comSelected.foto || []);
-  btnLabel.style.opacity = '1';
+  comSelected = getCommesse().find(c => c.id === comSelected.id) || comSelected;
+  renderFotoFine(comSelected.fotoFine);
+  if (btn) btn.style.opacity = '1';
   input.value = '';
-  showToast(`✓ ${files.length} foto caricate`);
+  showToast(files.length + ' media caricati ✓');
 }
 
-async function eliminaFoto(idx) {
-  if (!confirm('Eliminare questa foto?')) return;
-  const foto = [...(comSelected.foto || [])];
-  foto.splice(idx, 1);
-  await supa.from('commesse').update({ foto }).eq('id', comSelected.id);
+async function eliminaFotoFine(idx) {
+  if (!confirm('Eliminare questo media?')) return;
+  const ff = [...(comSelected.fotoFine || [])];
+  ff.splice(idx, 1);
+  await supa.from('commesse').update({ foto_fine: ff }).eq('id', comSelected.id);
   await loadAll();
-  comSelected = getCommesse().find(c=>c.id===comSelected.id) || comSelected;
-  renderFotoGaranzia(comSelected.foto || []);
-  showToast('Foto eliminata ✓');
+  comSelected = getCommesse().find(c => c.id === comSelected.id) || comSelected;
+  renderFotoFine(comSelected.fotoFine);
+  showToast('Media eliminato ✓');
 }
 
-function apriLightbox(url) {
+function apriLightbox(url, isVideo=false) {
   const lb = document.createElement('div');
   lb.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
-  lb.innerHTML = `<img src="${url}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:8px">`;
-  lb.onclick = () => lb.remove();
+  lb.innerHTML = isVideo
+    ? `<video src="${url}" controls autoplay style="max-width:100%;max-height:90vh;border-radius:8px"></video>`
+    : `<img src="${url}" style="max-width:100%;max-height:90vh;object-fit:contain;border-radius:8px">`;
+  lb.onclick = e => { if (e.target === lb) lb.remove(); };
   document.body.appendChild(lb);
 }
 
@@ -1011,13 +1133,19 @@ async function avanzaStato() {
   const nuovo  = map[cm.stato];
   if (!nuovo) return;
 
-  // Blocco garanzia: se si tenta di chiudere e il veicolo è in garanzia, servono foto
-  if (nuovo === 'chiusa') {
-    const v = getVeicoli().find(x=>x.id===cm.veicoloId);
-    if (isVeicoloInGaranzia(v)) {
-      const foto = cm.foto || [];
-      if (!foto.length) {
-        alert('⚠️ Commessa in garanzia\n\nDevi caricare almeno una foto che documenti il lavoro svolto prima di poter chiudere la commessa.');
+  // Blocco garanzia: foto iniziali per iniziare, foto fine per chiudere
+  const _vGar = getVeicoli().find(x=>x.id===cm.veicoloId);
+  if (isVeicoloInGaranzia(_vGar)) {
+    if (nuovo === 'wip') {
+      if (!fotoInizioCompleto(cm.fotoInizio)) {
+        alert('⚠️ Foto iniziali mancanti\n\nScatta targa, telaio e km prima di iniziare la lavorazione.\nLe trovi nella sezione "Foto iniziali" qui sotto.');
+        return;
+      }
+    }
+    if (nuovo === 'chiusa') {
+      const ff = cm.fotoFine || [];
+      if (ff.length < 2) {
+        alert('⚠️ Commessa in garanzia\n\nDevi caricare almeno 2 foto/video di lavorazione prima di chiudere.');
         return;
       }
     }

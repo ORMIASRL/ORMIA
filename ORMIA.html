@@ -503,22 +503,7 @@
   }
   .close-btn:hover { background: var(--surface2); color: var(--text); }
   .close-btn svg { width: 14px; height: 14px; }
-
-  /* TIMBRATURE */
-  .t-live-chip {
-    display:inline-flex;align-items:center;gap:6px;
-    background:var(--success-light);border:1px solid #9AE6B4;
-    color:var(--success);border-radius:20px;padding:4px 12px;
-    font-size:12px;font-weight:500;
-  }
-  .t-live-chip .dot { width:7px;height:7px;border-radius:50%;background:var(--success);animation:pulse 1.5s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-  .t-aperta { background:var(--warning-light);color:var(--warning); }
-
-  /* MOBILE TIMBRATURE */
-  @media (max-width: 768px) {
-    #section-timbrature > div:first-child { grid-template-columns:1fr; }
-  }
+  
 
   /* REMINDER CHIP */
   .reminder-chip {
@@ -686,11 +671,6 @@
           Commesse
           
         </div>
-        <div class="nav-item" id="nav-timbrature" onclick="setSection('timbrature')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          Timbrature
-          
-        </div>
         <div class="nav-item" id="nav-presenze" onclick="setSection('presenze')" style="display:none">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
           Presenze
@@ -723,6 +703,35 @@
         </div>
       </div><!-- nav section -->
     </nav>
+
+    <!-- ══ BLOCCO NOTE CONDIVISO ══ -->
+    <div id="bn-wrapper" style="border-top:1px solid var(--border);padding:10px 10px 0">
+      <div id="bn-header" onclick="bnToggle()"
+           style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:7px 4px;border-radius:var(--radius);transition:background .12s"
+           onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             style="width:16px;height:16px;flex-shrink:0;color:var(--text2)">
+          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+        <span style="font-size:13px;font-weight:600;color:var(--text2);flex:1">Note</span>
+        <span id="bn-badge" style="display:none;background:#E53E3E;color:white;font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px">NEW</span>
+        <svg id="bn-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             style="width:13px;height:13px;color:var(--text3);transition:transform .2s">
+          <polyline points="18 15 12 9 6 15"/>
+        </svg>
+      </div>
+      <div id="bn-body" style="display:none;padding:8px 0 10px">
+        <textarea id="bn-area"
+          placeholder="Scrivi una nota per tutti…"
+          style="width:100%;height:110px;resize:vertical;border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px;font-size:12px;font-family:inherit;color:var(--text);background:var(--surface2);line-height:1.5;outline:none;box-sizing:border-box"
+          oninput="bnOnInput()" onfocus="bnClearBadge()"></textarea>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+          <div id="bn-meta" style="font-size:10px;color:var(--text3)">&#8212;</div>
+          <div id="bn-saving" style="font-size:10px;color:var(--text3)"></div>
+        </div>
+      </div>
+    </div>
     <div class="sidebar-footer">
       <div class="nav-item" id="nav-impostazioni" onclick="setSection('impostazioni')" style="margin-bottom:8px">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
@@ -848,7 +857,6 @@
             <div class="stato-pill" data-stato="wip" onclick="setStatoFilter(this,'wip')">In lavorazione</div>
             <div class="stato-pill" data-stato="standby" onclick="setStatoFilter(this,'standby')">Standby</div>
             <div class="stato-pill" data-stato="chiusa" onclick="setStatoFilter(this,'chiusa')">Chiuse</div>
-            <div class="stato-pill" data-stato="fatturata" onclick="setStatoFilter(this,'fatturata')">Fatturate</div>
           </div>
           <!-- toggle vista -->
           <div style="display:flex;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
@@ -955,50 +963,7 @@
           </div>
         </div>
       </div><!-- /section-calendario -->
-      <div id="section-timbrature" style="display:none">
 
-        <!-- LIVE: chi sta lavorando adesso -->
-        <div style="margin-bottom:24px">
-          <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:12px;display:flex;align-items:center;gap:8px">
-            <span style="width:8px;height:8px;border-radius:50%;background:var(--success);display:inline-block;animation:pulse 1.5s infinite"></span>
-            In lavorazione adesso
-          </div>
-          <div id="t-live-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px"></div>
-        </div>
-
-        <!-- STORICO OGGI -->
-        <div style="margin-bottom:24px">
-          <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:12px">
-            Attività di oggi
-          </div>
-          <div id="t-oggi" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px"></div>
-        </div>
-
-        <!-- ASSENTI OGGI -->
-        <div>
-          <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:12px">
-            Assenti oggi
-          </div>
-          <div id="t-assenti" style="display:flex;flex-wrap:wrap;gap:10px"></div>
-        </div>
-
-        <!-- elementi nascosti mantenuti per compatibilità JS -->
-        <div style="display:none">
-          <select id="t-meccanico"></select>
-          <select id="t-commessa"></select>
-          <input type="datetime-local" id="t-ora">
-          <input type="text" id="t-qr-input">
-          <div id="t-qr-result"><span id="t-qr-desc"></span><span id="t-qr-meta"></span></div>
-          <select id="t-qr-meccanico"></select>
-          <select id="t-filter-mec"></select>
-          <input type="date" id="t-filter-data">
-          <tbody id="tbody-timbrature"></tbody>
-          <div id="empty-timbrature"></div>
-          <div id="t-live"></div>
-          <div id="t-riepilogo"></div>
-        </div>
-
-      </div><!-- /section-timbrature -->
 
       <!-- SEZIONE PRESENZE -->
       <div id="section-presenze" style="display:none">
@@ -1120,7 +1085,6 @@
         <div class="stats-row" style="margin-bottom:16px">
           <div class="stat-card"><div class="stat-label">Prodotti totali</div><div class="stat-value" id="mag-stat-tot">0</div></div>
           <div class="stat-card"><div class="stat-label">Sotto scorta minima</div><div class="stat-value" id="mag-stat-alert" style="color:var(--danger)">0</div></div>
-          <div class="stat-card"><div class="stat-label">Ordini in attesa</div><div class="stat-value" id="mag-stat-ordini" style="color:var(--warning)">0</div></div>
           <div class="stat-card"><div class="stat-label">Valore totale</div><div class="stat-value" id="mag-stat-valore" style="font-size:16px">€ 0</div></div>
         </div>
 
@@ -1128,7 +1092,6 @@
         <div class="tabs" style="margin-bottom:16px">
           <div class="tab active" id="mtab-prodotti"    onclick="setMagTab('prodotti')">Prodotti</div>
           <div class="tab"        id="mtab-movimenti"   onclick="setMagTab('movimenti')">Movimenti</div>
-          <div class="tab"        id="mtab-ordini"      onclick="setMagTab('ordini')">Ordini fornitori</div>
           <div class="tab"        id="mtab-approvazioni" onclick="setMagTab('approvazioni')" style="position:relative">
             Da approvare
             <span id="mtab-badge-appr" style="position:absolute;top:-4px;right:-4px;background:var(--danger);color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;display:none">0</span>
@@ -1199,22 +1162,7 @@
           </div>
         </div>
 
-        <!-- TAB ORDINI -->
-        <div id="msec-ordini" style="display:none">
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:16px;box-shadow:var(--shadow)">
-            <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Prodotti da riordinare</div>
-            <div id="mag-riordino"></div>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Data</th><th>Prodotto</th><th>Fornitore</th><th>Q.tà ordinata</th><th>Stato</th><th></th></tr></thead>
-              <tbody id="tbody-ordini"></tbody>
-            </table>
-            <div class="empty-state" id="empty-ordini" style="display:none"><p>Nessun ordine ancora.</p></div>
-          </div>
-        </div>
-
-        <!-- TAB APPROVAZIONI -->
+                <!-- TAB APPROVAZIONI -->
         <div id="msec-approvazioni" style="display:none">
           <div style="font-size:13px;color:var(--text3);margin-bottom:12px">
             Ricambi proposti dai meccanici dallo smartphone — approvando, il prodotto viene scaricato dal magazzino e aggiunto alla commessa.
@@ -1798,6 +1746,8 @@ let timbrature= [];
 let fornitori = [];
 let prodotti  = [];
 let movimenti = [];
+let _movPag = 0; const MOV_PER_PAG = 25;
+let _apprPag = 0; const APPR_PER_PAG = 10;
 let presenze  = [];
 let currentTab = 'clienti';
 let currentSection = 'anagrafiche';
@@ -1822,7 +1772,6 @@ function setTab(tab) {
   document.getElementById('section-anagrafiche').style.display = 'block';
   document.getElementById('section-commesse').style.display    = 'none';
   document.getElementById('section-meccanici').style.display   = 'none';
-  document.getElementById('section-timbrature').style.display  = 'none';
   document.getElementById('section-magazzino').style.display   = 'none';
   document.getElementById('section-preventivi').style.display  = 'none';
   document.getElementById('section-calendario').style.display  = 'none';
@@ -2504,12 +2453,9 @@ function init() {
       <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:4px" id="dc-num"></div>
       <div class="detail-name" id="dc-desc"></div>
       <div class="detail-sub" id="dc-cliente-veicolo"></div>
+      <div id="dc-pagamento-badge" style="display:none;margin-top:5px"></div>
     </div>
     <div style="display:flex;gap:6px;align-items:flex-start">
-      <button class="btn btn-secondary btn-sm" onclick="anteprimaCommessa(selectedCommessaId)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-        Anteprima
-      </button>
       <button class="btn btn-secondary btn-sm" onclick="stampaCommessa(selectedCommessaId)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
         Stampa
@@ -2527,28 +2473,18 @@ function init() {
   <div id="dc-alert-moroso" style="display:none;padding:0 16px"></div>
   <div class="detail-section">
     <div class="detail-section-title">Stato & info</div>
-    <div class="detail-row"><span class="detail-key">Stato</span><span class="detail-val" id="dc-stato"></span></div>
+    <div class="detail-row"><span class="detail-key">Stato</span><span class="detail-val" id="dc-stato" style="display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:4px;max-width:70%"></span></div>
     <div class="detail-row"><span class="detail-key">Data apertura</span><span class="detail-val" id="dc-data"></span></div>
     <div class="detail-row"><span class="detail-key">Meccanici</span><span class="detail-val" id="dc-meccanici" style="text-align:right"></span></div>
   </div>
 
   <!-- TIMBRATURA COMMESSA -->
-  <div class="detail-section" style="background:var(--surface2)">
+  <div class="detail-section" id="dc-tim-section" style="background:var(--surface2)">
     <div class="detail-section-title" style="display:flex;align-items:center;justify-content:space-between">
       <span style="display:flex;align-items:center;gap:6px">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         Timbratura
       </span>
-      <button class="btn btn-ghost btn-sm" onclick="toggleQRCommessa()" style="font-size:11px">QR commessa</button>
-    </div>
-
-    <!-- QR code commessa (mostra/nascondi) -->
-    <div id="dc-qr-wrap" style="display:none;text-align:center;margin-bottom:12px">
-      <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Il meccanico scansiona questo QR con lo smartphone per timbrare</div>
-      <div id="dc-qr-code" style="display:inline-block;padding:10px;background:white;border-radius:var(--radius);border:1px solid var(--border)"></div>
-      <div style="margin-top:6px">
-        <a id="dc-qr-link" href="#" target="_blank" style="font-size:11px;color:var(--accent)">Apri pagina mobile</a>
-      </div>
     </div>
 
     <!-- Scansione tesserino / selezione manuale -->
@@ -2589,7 +2525,16 @@ function init() {
     <!-- Timbrature attive su questa commessa -->
     <div id="dc-tim-live" style="margin-top:10px"></div>
   </div>
-  <div class="detail-section"><div class="detail-section-title">Manodopera</div><div id="dc-manodopera"></div></div>
+  <div class="detail-section" id="dc-sec-mano">
+    <div class="detail-section-title" onclick="toggleDcSection('mano')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none">
+      <span>Manodopera</span>
+      <span style="display:flex;align-items:center;gap:8px">
+        <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text3)" id="dc-tot-mano-hdr">€ 0,00</span>
+        <svg id="dc-chev-mano" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;transition:transform .2s;transform:rotate(-90deg)"><polyline points="6 9 12 15 18 9"/></svg>
+      </span>
+    </div>
+    <div id="dc-manodopera" style="display:none"></div>
+  </div>
 
   <!-- SCANSIONE RICAMBI -->
   <div class="detail-section" style="background:var(--surface2)">
@@ -2700,8 +2645,26 @@ function init() {
     </div>
   </div>
 
-  <div class="detail-section"><div class="detail-section-title">Ricambi</div><div id="dc-ricambi"></div></div>
-  <div class="detail-section"><div class="detail-section-title">Voci aggiuntive</div><div id="dc-extra"></div></div>
+  <div class="detail-section" id="dc-sec-ric">
+    <div class="detail-section-title" onclick="toggleDcSection('ric')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none">
+      <span>Ricambi</span>
+      <span style="display:flex;align-items:center;gap:8px">
+        <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text3)" id="dc-tot-ric-hdr">€ 0,00</span>
+        <svg id="dc-chev-ric" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;transition:transform .2s;transform:rotate(-90deg)"><polyline points="6 9 12 15 18 9"/></svg>
+      </span>
+    </div>
+    <div id="dc-ricambi" style="display:none"></div>
+  </div>
+  <div class="detail-section" id="dc-sec-extra">
+    <div class="detail-section-title" onclick="toggleDcSection('extra')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none">
+      <span>Voci aggiuntive</span>
+      <span style="display:flex;align-items:center;gap:8px">
+        <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text3)" id="dc-tot-extra-hdr">€ 0,00</span>
+        <svg id="dc-chev-extra" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;transition:transform .2s;transform:rotate(-90deg)"><polyline points="6 9 12 15 18 9"/></svg>
+      </span>
+    </div>
+    <div id="dc-extra" style="display:none"></div>
+  </div>
 
   <!-- TOTALE LIVE -->
   <div class="detail-section" style="background:var(--surface2)">
@@ -2732,6 +2695,24 @@ function init() {
       <div id="dc-tot-live-note" style="display:none;font-size:11px;color:var(--text3);text-align:right"></div>
     </div>
   </div>
+  <!-- CHECKOUT COMMESSA -->
+  <div class="detail-section" id="dc-checkout-section" style="display:none">
+    <div class="detail-section-title">Incassa</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+      <button class="btn btn-secondary" style="flex-direction:column;padding:14px 10px;height:auto;gap:4px" onclick="incassaRapido('contanti')">
+        <span style="font-size:20px">💵</span>
+        <span style="font-size:13px;font-weight:600">Contanti</span>
+      </button>
+      <button class="btn btn-secondary" style="flex-direction:column;padding:14px 10px;height:auto;gap:4px" onclick="incassaRapido('carta')">
+        <span style="font-size:20px">💳</span>
+        <span style="font-size:13px;font-weight:600">Carta / POS</span>
+      </button>
+      <button class="btn btn-secondary" style="flex-direction:column;padding:14px 10px;height:auto;gap:4px" id="dc-btn-fattura-checkout" onclick="emettiFatturaCommessa(selectedCommessaId)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+        <span style="font-size:13px;font-weight:600">Emetti Fattura</span>
+      </button>
+    </div>
+  </div>
   <div class="detail-section"><div class="detail-section-title">Note</div><div id="dc-note" style="font-size:13px;color:var(--text2);line-height:1.6">—</div></div>
   <div class="detail-section" id="dc-nota-mec-section" style="display:none">
     <div class="detail-section-title">✏️ Note meccanico</div>
@@ -2748,8 +2729,10 @@ function init() {
     <div id="dc-foto-empty" style="font-size:12px;color:var(--text3);padding:8px 0;display:none">Nessuna foto caricata ancora dal meccanico.</div>
   </div>
 
+
   <div style="padding:16px 24px;display:flex;gap:8px;flex-wrap:wrap">
-    <button class="btn btn-secondary btn-sm" onclick="cambiaStato()">Cambia stato</button>
+    <button class="btn btn-secondary btn-sm" id="dc-btn-cambia-stato" onclick="cambiaStato()">Cambia stato</button>
+    <button class="btn btn-primary btn-sm" id="dc-btn-riapri" style="display:none" onclick="riaprirCommessa()">🔄 Riapri</button>
     <button class="btn btn-danger btn-sm" onclick="deleteCommessa()">Elimina</button>
   </div>
 </div>
@@ -2873,6 +2856,11 @@ async function doLogin() {
   showApp();
 }
 
+
+function applicaPermessiRuolo() {
+  // Nessuna restrizione su v5 — tutti gli utenti autenticati vedono tutto
+}
+
 async function doLogout() {
   await supa.auth.signOut();
   currentUser = null;
@@ -2894,6 +2882,7 @@ async function showApp() {
   document.getElementById('app-loading').style.display='none';
   document.querySelector('.app').style.display='block';
   init();
+  applicaPermessiRuolo();
   // Timbratura automatica entrata per amministrazione
   setTimeout(() => registraEntrataAmministrazione(), 500);
 }
@@ -3528,7 +3517,7 @@ async function saveCommessa(firmaDataUrl=null) {
     renderCommesse();
     updateBadgeCommesse();
     updateBadgeMagazzino();
-    verificaRiordino();
+   
 
     // Aggiorna km veicolo se compilato e diverso dal precedente
     const nuoviKm = document.getElementById('com-km').value.trim();
@@ -3582,6 +3571,8 @@ function renderCommesse() {
     const matchS = !statoFiltro || cm.stato === statoFiltro;
     return matchQ && matchS;
   });
+  // Escludi sempre le fatturate dalla lista commesse
+  filtered = filtered.filter(cm => cm.stato !== 'fatturata');
   filtered.sort((a,b)=>{
     const ord={aperta:0,wip:1,chiusa:2,fatturata:3};
     return (ord[a.stato]||0)-(ord[b.stato]||0) || new Date(b.createdAt)-new Date(a.createdAt);
@@ -3620,11 +3611,7 @@ function renderCommesse() {
       <div class="dash-kpi-val" style="color:var(--success)">${nCh}</div>
       <div class="dash-kpi-sub">${nGarCh>0?`<span style="color:var(--warning)">🔧 ${nGarCh} in garanzia</span>`:'da fatturare'}</div>
     </div>
-    <div class="dash-kpi-card dash-kpi-fat" onclick="setStatoFilter(document.querySelector('[data-stato=fatturata]'),'fatturata')" style="cursor:pointer">
-      <div class="dash-kpi-label">Fatturate</div>
-      <div class="dash-kpi-val" style="color:#6366F1">${nFat}</div>
-      <div class="dash-kpi-sub">${nGarFat>0?`<span style="color:var(--warning)">🔧 ${nGarFat} in garanzia</span>`:'completate'}</div>
-    </div>`;
+`;
 
   // compat vecchi id
   ['sc-aperte','sc-wip','sc-chiuse','sc-dafatt'].forEach((id,i)=>{
@@ -3684,7 +3671,6 @@ function renderCommesse() {
       { stato:'wip',       label:'In lavorazione', headCls:'k-col-head-wip',       colCls:'k-col-wip'    },
       { stato:'standby',   label:'Standby',        headCls:'k-col-head-standby',   colCls:'k-col-standby'},
       { stato:'chiusa',    label:'Chiuse',         headCls:'k-col-head-chiusa',    colCls:'k-col-chiusa' },
-      { stato:'fatturata', label:'Fatturate',      headCls:'k-col-head-fatturata', colCls:'k-col-fatturata' },
     ];
     document.getElementById('dash-kanban').innerHTML = cols.map(col=>{
       const items = filtered.filter(cm=>cm.stato===col.stato);
@@ -3792,6 +3778,16 @@ function updateBadgeCommesse() {
 }
 
 // ===== DETAIL COMMESSA =====
+function toggleDcSection(key) {
+  const idMap = {mano:'manodopera', ric:'ricambi', extra:'extra'};
+  const body  = document.getElementById('dc-'+(idMap[key]||key));
+  const chev  = document.getElementById('dc-chev-'+key);
+  if (!body) return;
+  const open  = body.style.display !== 'none';
+  body.style.display = open ? 'none' : '';
+  if (chev) chev.style.transform = open ? 'rotate(-90deg)' : 'rotate(0deg)';
+}
+
 function showDetailCommessa(id) {
   selectedCommessaId = id;
 
@@ -3802,8 +3798,19 @@ function showDetailCommessa(id) {
   document.getElementById('dc-num').textContent = cm.numero||'';
   document.getElementById('dc-desc').textContent = cm.descrizione||cm.desc||'';
   document.getElementById('dc-cliente-veicolo').textContent = [cl?.ragione, v?.targa, v?.km ? Number(v.km).toLocaleString('it')+' km' : ''].filter(Boolean).join(' · ');
+  const _pagBadge = document.getElementById('dc-pagamento-badge');
+  if (_pagBadge) {
+    const PAG_LABEL = {contanti:'💵 Contanti',bonifico:'🏦 Bonifico',carta:'💳 Carta/POS',assegno:'📄 Assegno',finanziamento:'📋 Finanziamento'};
+    const pag = cl?.pagamento;
+    if (pag) {
+      _pagBadge.style.display = '';
+      _pagBadge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:2px 10px">${PAG_LABEL[pag]||pag}</span>`;
+    } else {
+      _pagBadge.style.display = 'none';
+    }
+  }
   document.getElementById('dc-stato').innerHTML = statoLabel(cm.stato) +
-    (isVeicoloInGaranzia(cm.veicoloId) ? ' <span style="background:var(--warning-light);color:var(--warning);font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;border:1px solid #FDE68A;vertical-align:middle">🔧 In garanzia</span>' : '');
+    (isVeicoloInGaranzia(cm.veicoloId) ? ' <span style="background:var(--warning-light);color:var(--warning);font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;border:1px solid #FDE68A;white-space:nowrap;display:inline-block">🔧 In garanzia</span>' : '');
 
   // Alert cliente moroso
   const alertMoroso = document.getElementById('dc-alert-moroso');
@@ -3831,7 +3838,15 @@ function showDetailCommessa(id) {
 
   // Mostra tasto Fattura solo se commessa chiusa o fatturata
   const btnFatt = document.getElementById('dc-btn-fattura');
-  if (btnFatt) btnFatt.style.display = (cm.stato==='chiusa'||cm.stato==='fatturata') ? '' : 'none';
+  if (btnFatt) btnFatt.style.display = 'none'; // sostituito dal checkout inline
+
+  // Sezione timbratura: nascosta se chiusa
+  const timSec = document.getElementById('dc-tim-section');
+  if (timSec) timSec.style.display = cm.stato === 'chiusa' ? 'none' : '';
+
+  // Sezione checkout: visibile solo se chiusa o fatturata
+  const checkoutSec = document.getElementById('dc-checkout-section');
+  if (checkoutSec) checkoutSec.style.display = (cm.stato==='chiusa'||cm.stato==='fatturata') ? '' : 'none';
   document.getElementById('dc-data').textContent = formatDate(cm.dataApertura)||'—';
 
   // Solo i meccanici con timbratura aperta adesso su questa commessa
@@ -3857,6 +3872,9 @@ function showDetailCommessa(id) {
   document.getElementById('dc-tot-mano').textContent  = '€ '+totMano.toFixed(2).replace('.',',');
   document.getElementById('dc-tot-ric').textContent   = '€ '+totRic.toFixed(2).replace('.',',');
   document.getElementById('dc-tot-extra').textContent = '€ '+totExtra.toFixed(2).replace('.',',');
+  document.getElementById('dc-tot-mano-hdr').textContent  = '€ '+totMano.toFixed(2).replace('.',',');
+  document.getElementById('dc-tot-ric-hdr').textContent   = '€ '+totRic.toFixed(2).replace('.',',');
+  document.getElementById('dc-tot-extra-hdr').textContent = '€ '+totExtra.toFixed(2).replace('.',',');
 
   document.getElementById('dc-note').textContent = cm.note||'—';
 
@@ -3910,13 +3928,32 @@ function showDetailCommessa(id) {
   popolaSelTimbraturaCommessa();
   document.getElementById('dc-tim-scan').value = '';
   document.getElementById('dc-tim-trovato').style.display = 'none';
-  document.getElementById('dc-qr-wrap').style.display = 'none';
   renderTimbratureLiveCommessa(id);
+
+  // Bottom buttons: Riapri per chiuse, Cambia stato per le altre
+  const btnCambia = document.getElementById('dc-btn-cambia-stato');
+  const btnRiapri = document.getElementById('dc-btn-riapri');
+  if (btnCambia && btnRiapri) {
+    btnCambia.style.display = cm.stato === 'chiusa' ? 'none' : '';
+    btnRiapri.style.display = cm.stato === 'chiusa' ? '' : 'none';
+  }
 
   document.getElementById('detail-commessa').style.display='flex';
 }
 
 function editCommessa() { openModalCommessa(selectedCommessaId); closeDetail('detail-commessa'); }
+
+async function riaprirCommessa() {
+  const cm = commesse.find(c=>c.id===selectedCommessaId);
+  if (!cm) return;
+  if (!confirm('Riaprire questa commessa (tornerà in stato "Aperta")?')) return;
+  const { error } = await supa.from('commesse').update({stato:'aperta'}).eq('id', cm.id);
+  if (error) { showToast('Errore: '+error.message); return; }
+  cm.stato = 'aperta';
+  renderCommesse(); renderKanban();
+  showDetailCommessa(cm.id);
+  showToast('Commessa riaperta ✓');
+}
 
 async function cambiaStato() {
   const cm = commesse.find(x=>x.id===selectedCommessaId);
@@ -3926,6 +3963,16 @@ async function cambiaStato() {
   const idx = stati.indexOf(cm.stato);
   const nuovoIdx = (idx+1) % stati.length;
   const nuovo = stati[nuovoIdx];
+
+  // Blocco: commessa in garanzia → non può essere chiusa senza foto
+  if ((nuovo === 'chiusa' || nuovo === 'fatturata') && isVeicoloInGaranzia(cm.veicoloId)) {
+    const foto = cm.foto || [];
+    if (!foto.length) {
+      alert('⚠️ Commessa in garanzia: devi allegare almeno una foto prima di chiuderla.');
+      return;
+    }
+  }
+
   if (!confirm(`Cambiare stato da "${labels[idx]}" a "${labels[nuovoIdx]}"?`)) return;
   const statoVecchio = cm.stato;
   try {
@@ -3953,7 +4000,6 @@ function showSection(sec) {
   document.getElementById('section-anagrafiche').style.display = sec === 'anagrafiche'  ? 'block' : 'none';
   document.getElementById('section-commesse').style.display    = sec === 'commesse'     ? 'block' : 'none';
   document.getElementById('section-meccanici').style.display   = sec === 'meccanici'    ? 'block' : 'none';
-  document.getElementById('section-timbrature').style.display  = sec === 'timbrature'   ? 'block' : 'none';
   document.getElementById('section-presenze').style.display    = sec === 'presenze'     ? 'block' : 'none';
   document.getElementById('section-magazzino').style.display   = sec === 'magazzino'    ? 'block' : 'none';
   document.getElementById('section-preventivi').style.display   = sec === 'preventivi'   ? 'block' : 'none';
@@ -3990,14 +4036,7 @@ function setSection(sec) {
     closeDetail('detail-cliente'); closeDetail('detail-veicolo'); closeDetail('detail-commessa');
     renderMeccanici();
 
-  } else if (sec === 'timbrature') {
-    document.getElementById('nav-timbrature').classList.add('active');
-    document.getElementById('topbar-title').textContent = 'In lavorazione';
-    document.getElementById('topbar-sub').textContent   = 'Presenze meccanici sulle commesse';
-    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Inserimento manuale';
-    btn.onclick = () => openModalTimbraturaManuale();
-    closeDetail('detail-cliente'); closeDetail('detail-veicolo'); closeDetail('detail-commessa');
-    initTimbrature();
+
   } else if (sec === 'impostazioni') {
     // Apri modal sopra la sezione corrente senza cambiarla
     setTimeout(() => {
@@ -4029,7 +4068,7 @@ function setSection(sec) {
   } else if (sec === 'magazzino') {
     document.getElementById('nav-magazzino').classList.add('active');
     document.getElementById('topbar-title').textContent = 'Magazzino';
-    document.getElementById('topbar-sub').textContent   = 'Inventario, movimenti e ordini';
+    document.getElementById('topbar-sub').textContent   = 'Inventario e movimenti';
     btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuovo prodotto';
     btn.onclick = () => openModalProdotto();
     closeDetail('detail-cliente'); closeDetail('detail-veicolo'); closeDetail('detail-commessa');
@@ -4070,7 +4109,7 @@ function openModalMeccanico(editId) {
     const m = meccanici.find(x=>x.id===editId);
     if (m) {
       document.getElementById('mec-nome').value  = m.nome||'';
-      document.getElementById('mec-ruolo').value = m.ruolo||'Meccanico';
+      document.getElementById('mec-ruolo').value = m.ruolo||'';
       document.getElementById('mec-tel').value   = m.tel||'';
       document.getElementById('mec-email').value = m.email||'';
       document.getElementById('mec-note').value  = m.note||'';
@@ -4080,7 +4119,7 @@ function openModalMeccanico(editId) {
     }
   } else {
     ['mec-nome','mec-tel','mec-email','mec-note','mec-pin','mec-badge'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('mec-ruolo').value = 'Meccanico';
+    document.getElementById('mec-ruolo').value = '';
   }
   togglePinBadge();
   document.getElementById('modal-meccanico').style.display='flex';
@@ -4570,7 +4609,22 @@ function renderLive() {
   }).join('');
 }
 
-function chiudiTimbratura(id) {
+async function syncStatoCommessaDaTimbrature(comId) {
+  const cm = commesse.find(c => c.id === comId);
+  if (!cm || cm.stato === 'chiusa' || cm.stato === 'fatturata' || cm.stato === 'aperta') return;
+  const aperte = timbrature.filter(t => t.comId === comId && !t.uscita);
+  if (aperte.length === 0 && cm.stato === 'wip') {
+    // nessuno sta lavorando → standby
+    const { error } = await supa.from('commesse').update({ stato: 'standby' }).eq('id', comId);
+    if (!error) { cm.stato = 'standby'; renderCommesse(); renderKanban(); showToast('⏸ Commessa in standby (nessun meccanico attivo)'); }
+  } else if (aperte.length > 0 && cm.stato === 'standby') {
+    // qualcuno ha timbrato → torna in wip
+    const { error } = await supa.from('commesse').update({ stato: 'wip' }).eq('id', comId);
+    if (!error) { cm.stato = 'wip'; renderCommesse(); renderKanban(); showToast('▶ Commessa in lavorazione'); }
+  }
+}
+
+async function chiudiTimbratura(id) {
   const t = timbrature.find(x=>x.id===id);
   if (!t) return;
   const ora = new Date().toISOString();
@@ -4578,6 +4632,7 @@ function chiudiTimbratura(id) {
   saveTimbrature();
   chiudiPresenzaAutomatica(t.mecId, ora);
   showToast('Uscita registrata ✓');
+  await syncStatoCommessaDaTimbrature(t.comId);
   renderLive(); renderTimbrature();
 }
 
@@ -4773,8 +4828,9 @@ const TIPO_BADGE = {
 };
 
 function renderDipendenti() {
+  // Usa meccanici da Supabase come unica fonte di verità
   const q = (document.getElementById('search-presenze')?.value||'').toLowerCase();
-  const filtered = dipendenti.filter(d => !q || d.nome.toLowerCase().includes(q) || (d.ruolo||'').toLowerCase().includes(q));
+  const filtered = meccanici.filter(d => !q || (d.nome||'').toLowerCase().includes(q) || (d.ruolo||'').toLowerCase().includes(q));
   const tbody = document.getElementById('tbody-dipendenti');
   const empty = document.getElementById('empty-dipendenti');
   if (!tbody) return;
@@ -4782,9 +4838,9 @@ function renderDipendenti() {
   empty.style.display='none';
   const oggi = new Date().toISOString().split('T')[0];
   tbody.innerHTML = filtered.map(d => {
-    const initials = d.nome.split(' ').map(w=>w[0]).join('').substr(0,2).toUpperCase();
+    const initials = (d.nome||'?').split(' ').map(w=>w[0]).join('').substr(0,2).toUpperCase();
     const pAperta  = presenze.find(p=>p.dipId===d.id&&!p.uscita);
-    const pOggi    = presenze.find(p=>p.dipId===d.id&&p.entrata.startsWith(oggi));
+    const pOggi    = presenze.find(p=>p.dipId===d.id&&p.entrata&&p.entrata.startsWith(oggi));
     let statoOggi;
     if (pAperta) {
       const mins = Math.floor((new Date()-new Date(pAperta.entrata))/60000);
@@ -4804,15 +4860,22 @@ function renderDipendenti() {
         </div>
       </div></td>
       <td><span class="badge badge-gray">${d.ruolo||'—'}</span></td>
-      <td style="font-family:'DM Mono',monospace;font-size:12px">${d.oreContratto||8}h</td>
-      <td style="font-size:12px">${d.assunzione?formatDate(d.assunzione):'—'}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px">${d.ora_uscita_automatica||'17:00'}</td>
+      <td style="font-size:12px">${d.pin?'<span class="badge badge-blue">PIN ✓</span>':'—'}</td>
       <td>${statoOggi}</td>
       <td><div class="row-actions" style="opacity:1">
-        <button class="btn btn-ghost btn-sm" onclick="openModalDipendente('${d.id}')">Modifica</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteDipendente('${d.id}')">Elimina</button>
+        <button class="btn btn-ghost btn-sm" onclick="openModalMeccanico('${d.id}')">Modifica</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteMeccanicoConPresenze('${d.id}')">Elimina</button>
       </div></td>
     </tr>`;
   }).join('');
+}
+
+async function deleteMeccanicoConPresenze(id) {
+  if (!confirm('Eliminare questo dipendente? Anche le presenze associate verranno rimosse.')) return;
+  presenze = presenze.filter(p => p.dipId !== id);
+  await dbDeleteMeccanico(id);
+  renderMeccanici(); renderDipendenti(); showToast('Dipendente eliminato');
 }
 
 function deleteDipendente(id) {
@@ -4984,47 +5047,9 @@ function updateBadgePresenze() {
   if (el) el.textContent = presenze.filter(p=>!p.uscita).length;
 }
 
-function openModalDipendente(editId) {
-  editingDipendenteId = editId||null;
-  document.getElementById('modal-dipendente-title').textContent = editId?'Modifica dipendente':'Nuovo dipendente';
-  if (editId) {
-    const d = dipendenti.find(x=>x.id===editId);
-    if (d) {
-      document.getElementById('dip-nome').value          = d.nome||'';
-      document.getElementById('dip-ruolo').value         = d.ruolo||'Meccanico';
-      document.getElementById('dip-tel').value           = d.tel||'';
-      document.getElementById('dip-email').value         = d.email||'';
-      document.getElementById('dip-ore-contratto').value = d.oreContratto||8;
-      document.getElementById('dip-assunzione').value    = d.assunzione||'';
-      document.getElementById('dip-note').value          = d.note||'';
-    }
-  } else {
-    ['dip-nome','dip-tel','dip-email','dip-note','dip-assunzione'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('dip-ruolo').value='Meccanico';
-    document.getElementById('dip-ore-contratto').value=8;
-  }
-  document.getElementById('modal-dipendente').style.display='flex';
-}
-
-function saveDipendente() {
-  const nome = document.getElementById('dip-nome').value.trim();
-  if (!nome) { alert('Inserisci il nome.'); return; }
-  const data = {
-    nome, ruolo:document.getElementById('dip-ruolo').value,
-    tel:document.getElementById('dip-tel').value.trim(),
-    email:document.getElementById('dip-email').value.trim(),
-    oreContratto:parseFloat(document.getElementById('dip-ore-contratto').value)||8,
-    assunzione:document.getElementById('dip-assunzione').value,
-    note:document.getElementById('dip-note').value.trim(),
-  };
-  if (editingDipendenteId) {
-    const i = dipendenti.findIndex(x=>x.id===editingDipendenteId);
-    dipendenti[i]={...dipendenti[i],...data};
-  } else {
-    dipendenti.push({id:initId(),createdAt:new Date().toISOString(),...data});
-  }
-  savePresenze(); closeModal('modal-dipendente'); initPresenze(); showToast('Dipendente salvato ✓');
-}
+// openModalDipendente → usa modal-meccanico (unica fonte di verità)
+function openModalDipendente(editId) { openModalMeccanico(editId||null); }
+function saveDipendente() { saveMeccanico(); }
 
 // ===== TOTALE LIVE COMMESSA =====
 function aggiornaLiveTotal(comId) {
@@ -5211,6 +5236,7 @@ async function confermaTimbraturaCommessa(verso) {
       await chiudiAltreTimbratureAperte(mecId, comId, ora);
       await dbSaveTimbratura({ id:initId(), mecId, comId, entrata:ora, uscita:null, tipo:'commessa', createdAt:ora });
       await registraPresenzaAutomatica(mecId, ora);
+      await syncStatoCommessaDaTimbrature(comId);
       showToast('Entrata registrata ✓');
     } else {
       const aperta = timbrature.find(t=>t.mecId===mecId&&t.comId===comId&&!t.uscita);
@@ -5218,6 +5244,7 @@ async function confermaTimbraturaCommessa(verso) {
       aperta.uscita = ora;
       await dbSaveTimbratura(aperta);
       await chiudiPresenzaAutomatica(mecId, ora);
+      await syncStatoCommessaDaTimbrature(comId);
       showToast('Uscita registrata ✓');
     }
     document.getElementById('dc-tim-scan').value='';
@@ -5230,7 +5257,7 @@ async function confermaTimbraturaCommessa(verso) {
 
 async function chiudiPresenzeAutomatiche() {
   const oggi = new Date().toISOString().split('T')[0];
-  const ore17 = new Date(); ore17.setHours(17,0,0,0);
+  const ore17 = new Date(); ore17.setHours(17,30,0,0);
   // Cerca timbrature aperte di oggi
   const aperte = timbrature.filter(t => {
     if (t.uscita) return false;
@@ -5566,30 +5593,6 @@ ${cm.note ? `
 </div>
 
 
-<!-- MODAL TIMBRATURA MANUALE -->
-<div class="modal-overlay" id="modal-timbratura-manuale" style="display:none" onclick="closeModalOnBg(event,'modal-timbratura-manuale')">
-  <div class="modal">
-    <div class="modal-header">
-      <div><div class="modal-title">Inserimento manuale timbratura</div></div>
-      <button class="close-btn" onclick="closeModal('modal-timbratura-manuale')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <div class="modal-body">
-      <div class="form-grid">
-        <div class="form-group span-2"><label>Meccanico *</label><select id="tm-meccanico"></select></div>
-        <div class="form-group span-2"><label>Commessa *</label><select id="tm-commessa"></select></div>
-        <div class="form-group"><label>Entrata *</label><input type="datetime-local" id="tm-entrata" style="font-family:'DM Mono',monospace"></div>
-        <div class="form-group"><label>Uscita <span style="font-weight:400;color:var(--text3)">(opzionale)</span></label><input type="datetime-local" id="tm-uscita" style="font-family:'DM Mono',monospace"></div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('modal-timbratura-manuale')">Annulla</button>
-      <button class="btn btn-primary" onclick="salvaTimbraturaManualeForm()">Salva timbratura</button>
-    </div>
-  </div>
-</div>
-
 
 <!-- ═══════════════ MODAL FIRMA COMMESSA ═══════════════ -->
 <div id="modal-firma" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1200;display:none;align-items:center;justify-content:center;padding:20px">
@@ -5648,6 +5651,7 @@ ${cm.note ? `
 
 function toggleQRCommessa() {
   const wrap = document.getElementById('dc-qr-wrap');
+  if (!wrap) return;
   if (wrap.style.display==='none') { generaQRCommessa(selectedCommessaId); wrap.style.display='block'; }
   else wrap.style.display='none';
 }
@@ -5837,7 +5841,7 @@ async function confermaScan() {
   document.getElementById('scan-barcode').focus();
 
   showToast(`${p.descrizione||p.desc} × ${qta} → commessa ${commesse[ci]?.numero||''} ✓`);
-  verificaRiordino();
+ 
   if (selectedCommessaId===comId) showDetailCommessa(comId);
   } catch(e) { alert('Errore: '+e.message); }
 }
@@ -6009,7 +6013,7 @@ async function creaESalvaNuovoRicambio() {
     const manIn=document.getElementById('dc-man-input'); if(manIn) manIn.value='';
     const manDrop=document.getElementById('dc-man-dropdown'); if(manDrop) manDrop.style.display='none';
     showDetailCommessa(selectedCommessaId);
-    updateBadgeMagazzino(); verificaRiordino();
+    updateBadgeMagazzino();
   } catch(e) { alert('Errore: '+e.message); }
 }
 
@@ -6064,12 +6068,11 @@ async function confermaScansioneRicambio() {
     document.getElementById('dc-scan-notfound').style.display='none';
     scanProdottoId=null;
     showDetailCommessa(selectedCommessaId);
-    verificaRiordino();
+   
   } catch(e) { alert('Errore: '+e.message); }
 }
 
 // prodotti, movimenti, presenze dichiarati in cima insieme agli altri
-let ordini = [];
 let editingProdottoId = null;
 let magTab = 'prodotti';
 
@@ -6090,15 +6093,14 @@ function initMagazzino() {
 
 function setMagTab(tab) {
   magTab = tab;
-  ['prodotti','movimenti','ordini','approvazioni'].forEach(t => {
+  ['prodotti','movimenti','approvazioni'].forEach(t => {
     document.getElementById('mtab-'+t)?.classList.toggle('active', t===tab);
     const sec = document.getElementById('msec-'+t);
     if (sec) sec.style.display = t===tab?'block':'none';
   });
   if (tab==='prodotti')     renderProdotti();
-  if (tab==='movimenti')    { popolaSelMovimento(); renderMovimenti(); }
-  if (tab==='ordini')       { renderRiordino(); renderOrdini(); }
-  if (tab==='approvazioni') renderApprovazioni();
+  if (tab==='movimenti')    { _movPag=0; popolaSelMovimento(); renderMovimenti(); }
+  if (tab==='approvazioni') { _apprPag=0; renderApprovazioni(); }
 }
 
 function updateStatsMagazzino() {
@@ -6107,10 +6109,8 @@ function updateStatsMagazzino() {
     document.getElementById('section-magazzino').style.display = 'none';
     return;
   }
-  ordini = safeStorage.parse('officina_ordini', []);
   document.getElementById('mag-stat-tot').textContent    = prodotti.length;
   document.getElementById('mag-stat-alert').textContent  = prodotti.filter(p=>p.giacenza<=p.scortaMin).length;
-  document.getElementById('mag-stat-ordini').textContent = ordini.filter(o=>o.stato==='attesa').length;
   const val = prodotti.reduce((s,p)=>s+(p.giacenza||0)*(p.prezzoAcq||0),0);
   document.getElementById('mag-stat-valore').textContent = '€ '+val.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
 }
@@ -6130,7 +6130,7 @@ function renderProdotti() {
   const filtered = prodotti.filter(p=>{
     const matchQ = !q || (p.descrizione||p.desc||'').toLowerCase().includes(q) || (p.codInt||'').toLowerCase().includes(q) || (p.codForn||'').toLowerCase().includes(q);
     const matchC = !cat || p.categoria===cat;
-    const matchS = !st  || statoProdotto(p).key===st;
+    const matchS = !st || !q || statoProdotto(p).key===st; // se c'è testo libero, ignora filtro stato
     return matchQ && matchC && matchS;
   });
   const tbody = document.getElementById('tbody-prodotti');
@@ -6222,7 +6222,7 @@ async function saveProdotto() {
   try {
     if (editingProdottoId) await dbSaveProdotto({...prodotti.find(x=>x.id===editingProdottoId), ...data});
     else await dbSaveProdotto({id:initId(), createdAt:new Date().toISOString(), ...data});
-    closeModal('modal-prodotto'); renderProdotti(); verificaRiordino(); showToast('Prodotto salvato ✓');
+    closeModal('modal-prodotto'); renderProdotti(); showToast('Prodotto salvato ✓');
   } catch(e) { alert('Errore: '+e.message); }
 }
 
@@ -6296,7 +6296,7 @@ async function registraMovimento() {
     if (idx>=0) await dbSaveProdotto(prodotti[idx]);
     showToast('Movimento registrato ✓');
     document.getElementById('mov-qta').value=1; document.getElementById('mov-note').value='';
-    popolaSelMovimento(); renderMovimenti(); updateStatsMagazzino(); verificaRiordino();
+    popolaSelMovimento(); renderMovimenti(); updateStatsMagazzino();
   } catch(e) { alert('Errore: '+e.message); }
 }
 
@@ -6304,23 +6304,45 @@ function renderMovimenti() {
   const filtered = [...movimenti].reverse();
   const tbody = document.getElementById('tbody-movimenti');
   const empty = document.getElementById('empty-movimenti');
-  if (!filtered.length) { tbody.innerHTML=''; empty.style.display=''; return; }
+  if (!filtered.length) { tbody.innerHTML=''; empty.style.display=''; renderPagMovimenti(0,0); return; }
   empty.style.display='none';
+  const tot   = filtered.length;
+  const pages = Math.ceil(tot / MOV_PER_PAG);
+  _movPag     = Math.max(0, Math.min(_movPag, pages-1));
+  const slice = filtered.slice(_movPag*MOV_PER_PAG, (_movPag+1)*MOV_PER_PAG);
   const tipoStyle = { carico:{cls:'badge-green',label:'Carico'}, scarico:{cls:'badge-red',label:'Scarico'}, rettifica:{cls:'badge-blue',label:'Rettifica'} };
-  tbody.innerHTML = filtered.map(m=>{
+  tbody.innerHTML = slice.map(m=>{
     const p  = prodotti.find(x=>x.id===m.prodId);
     const cm = commesse.find(x=>x.id===m.comId);
     const ts = tipoStyle[m.tipo]||{cls:'badge-gray',label:m.tipo};
     return `<tr>
       <td style="font-size:12px">${formatDateTime(m.data)}</td>
-      <td><div class="td-main" style="font-size:13px">${p?p.descrizione||p.descrizione||p.desc:'—'}</div><div class="td-sub">${p?p.codInt||'':''}</div></td>
+      <td><div class="td-main" style="font-size:13px">${p?p.descrizione||p.desc:'—'}</div><div class="td-sub">${p?p.codInt||'':''}</div></td>
       <td><span class="badge ${ts.cls}">${ts.label}</span></td>
       <td style="font-family:'DM Mono',monospace;font-weight:600">${m.tipo==='rettifica'?'= ':m.tipo==='carico'?'+':'−'}${m.qta} ${p?p.um||'pz':''}</td>
-      <td style="font-size:12px">${cm?cm.numero+' — '+(cm.descrizione||cm.descrizione||cm.desc):'—'}</td>
+      <td style="font-size:12px">${cm?cm.numero+' — '+(cm.descrizione||cm.desc):'—'}</td>
       <td style="font-size:12px;color:var(--text3)">${m.note||'—'}</td>
       <td><button class="btn btn-danger btn-sm" onclick="deleteMovimento('${m.id}')">Elimina</button></td>
     </tr>`;
   }).join('');
+  renderPagMovimenti(pages, tot);
+}
+
+function renderPagMovimenti(pages, tot) {
+  let wrap = document.getElementById('pag-movimenti');
+  if (!wrap) {
+    wrap = document.createElement('div');
+    wrap.id = 'pag-movimenti';
+    const tw = document.querySelector('#msec-movimenti .table-wrap');
+    if (tw) tw.after(wrap);
+  }
+  if (!pages || pages <= 1) { wrap.innerHTML=''; return; }
+  const from = _movPag*MOV_PER_PAG+1, to = Math.min((_movPag+1)*MOV_PER_PAG, tot);
+  wrap.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 4px;font-size:13px;color:var(--text2)">
+    <button class="btn btn-secondary btn-sm" onclick="_movPag--;renderMovimenti()" ${_movPag===0?'disabled':''}>‹ Indietro</button>
+    <span>${from}–${to} di ${tot}</span>
+    <button class="btn btn-secondary btn-sm" onclick="_movPag++;renderMovimenti()" ${_movPag>=pages-1?'disabled':''}>Avanti ›</button>
+  </div>`;
 }
 
 async function deleteMovimento(id) {
@@ -6328,96 +6350,7 @@ async function deleteMovimento(id) {
   try { await DB.delete('movimenti', id); movimenti=movimenti.filter(m=>m.id!==id); renderMovimenti(); } catch(e) { alert('Errore: '+e.message); }
 }
 
-// ===== RIORDINO =====
-function verificaRiordino() {
-  prodotti.forEach(p=>{
-    if (p.giacenza <= p.scortaMin) {
-      const giàInOrdine = ordini.find(o=>o.prodId===p.id&&o.stato==='attesa');
-      if (!giàInOrdine) {
-        ordini.push({ id:initId(), prodId:p.id, fornitoreId:p.fornitoreId||null, qtaOrdinata:p.qtaRiordino||10, stato:'attesa', note:'Riordino automatico', createdAt:new Date().toISOString() });
-        showToast(`Ordine automatico creato per: ${p.descrizione||p.descrizione||p.desc}`);
-      }
-    }
-  });
-  localStorage.setItem('officina_ordini', JSON.stringify(ordini));
-  updateStatsMagazzino();
-}
 
-function renderRiordino() {
-  
-  const sottoscorta = prodotti.filter(p=>p.giacenza<=p.scortaMin);
-  const el = document.getElementById('mag-riordino');
-  if (!el) return;
-  if (!sottoscorta.length) { el.innerHTML='<div style="font-size:13px;color:var(--success)">✓ Nessun prodotto sotto scorta minima.</div>'; return; }
-  el.innerHTML = sottoscorta.map(p=>{
-    const forn = clienti.find(c=>c.id===p.fornitoreId);
-    const st = statoProdotto(p);
-    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
-      <div>
-        <span class="badge ${st.cls}" style="margin-right:8px">${st.label}</span>
-        <strong style="font-size:13px">${p.descrizione||p.desc}</strong>
-        <span style="font-size:12px;color:var(--text3);margin-left:8px">${p.codInt||''} · ${forn?forn.ragione:'Fornitore non impostato'}</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:12px">
-        <span style="font-family:'DM Mono',monospace;font-size:13px">Giacenza: <strong>${p.giacenza}</strong> / min ${p.scortaMin}</span>
-        <button class="btn btn-primary btn-sm" onclick="creaOrdineManuale('${p.id}')">Ordina ${p.qtaRiordino||10} ${p.um||'pz'}</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function renderOrdini() {
-  ordini = JSON.parse(localStorage.getItem('officina_ordini') || '[]');
-  const filtered = [...ordini].reverse();
-  const tbody = document.getElementById('tbody-ordini');
-  const empty = document.getElementById('empty-ordini');
-  if (!filtered.length) { tbody.innerHTML=''; empty.style.display=''; return; }
-  empty.style.display='none';
-  const statoOrd = { attesa:{cls:'badge-yellow',label:'In attesa'}, ricevuto:{cls:'badge-green',label:'Ricevuto'}, annullato:{cls:'badge-gray',label:'Annullato'} };
-  tbody.innerHTML = filtered.map(o=>{
-    const p    = prodotti.find(x=>x.id===o.prodId);
-    const forn = clienti.find(c=>c.id===o.fornitoreId);
-    const st   = statoOrd[o.stato]||{cls:'badge-gray',label:o.stato};
-    return `<tr>
-      <td style="font-size:12px">${formatDateTime(o.createdAt)}</td>
-      <td><div class="td-main" style="font-size:13px">${p?p.descrizione||p.desc:'—'}</div></td>
-      <td style="font-size:12px">${forn?forn.ragione:'—'}</td>
-      <td style="font-family:'DM Mono',monospace;font-weight:600">${o.qtaOrdinata} ${p?p.um||'pz':''}</td>
-      <td><span class="badge ${st.cls}">${st.label}</span></td>
-      <td><div style="display:flex;gap:4px">
-        ${o.stato==='attesa'?`<button class="btn btn-primary btn-sm" onclick="riceviOrdine('${o.id}')">Ricevuto</button>`:''}
-        <button class="btn btn-danger btn-sm" onclick="annullaOrdine('${o.id}')">Annulla</button>
-      </div></td>
-    </tr>`;
-  }).join('');
-}
-
-function creaOrdineManuale(prodId) {
-  const p = prodotti.find(x=>x.id===prodId);
-  if (!p) return;
-  ordini.push({ id:initId(), prodId, fornitoreId:p.fornitoreId||null, qtaOrdinata:p.qtaRiordino||10, stato:'attesa', note:'Ordine manuale', createdAt:new Date().toISOString() });
-  saveMagazzino(); renderRiordino(); renderOrdini(); updateStatsMagazzino();
-  showToast('Ordine creato ✓');
-}
-
-function riceviOrdine(id) {
-  const o = ordini.find(x=>x.id===id);
-  if (!o) return;
-  o.stato = 'ricevuto';
-  // Carica la giacenza
-  const idx = prodotti.findIndex(x=>x.id===o.prodId);
-  if (idx>=0) prodotti[idx].giacenza += o.qtaOrdinata;
-  movimenti.push({ id:initId(), prodId:o.prodId, tipo:'carico', qta:o.qtaOrdinata, comId:null, note:'Ricezione ordine '+id.substr(-4), data:new Date().toISOString(), createdAt:new Date().toISOString() });
-  saveMagazzino(); renderOrdini(); renderRiordino(); renderProdotti(); updateStatsMagazzino();
-  showToast('Ordine ricevuto — giacenza aggiornata ✓');
-}
-
-function annullaOrdine(id) {
-  if (!confirm('Annullare questo ordine?')) return;
-  const o = ordini.find(x=>x.id===id);
-  if (o) o.stato = 'annullato';
-  saveMagazzino(); renderOrdini(); updateStatsMagazzino();
-}
 
 // ===== BACKUP / RIPRISTINO DATI =====
 function esportaDati() {
@@ -6427,7 +6360,6 @@ function esportaDati() {
     officina_commesse: commesse, officina_meccanici: meccanici,
     officina_timbrature: timbrature, officina_presenze: presenze,
     officina_prodotti: prodotti, officina_movimenti: movimenti,
-    officina_ordini: ordini,
   };
   const json = JSON.stringify(backup, null, 2);
   const a = document.createElement('a');
@@ -6465,12 +6397,16 @@ function updateBadgeApprovazioni() {
 
 function renderApprovazioni() {
   const proposte = JSON.parse(localStorage.getItem('officina_proposte') || '[]');
-  const pending  = proposte.filter(p=>p.stato==='attesa');
+  const pendingAll = proposte.filter(p=>p.stato==='attesa');
   const lista    = document.getElementById('lista-approvazioni');
   const empty    = document.getElementById('empty-approvazioni');
   if (!lista) return;
-  if (!pending.length) { lista.innerHTML=''; empty.style.display=''; return; }
+  if (!pendingAll.length) { lista.innerHTML=''; empty.style.display=''; renderPagApprovazioni(0,0); return; }
   empty.style.display='none';
+  const apprTot   = pendingAll.length;
+  const apprPages = Math.ceil(apprTot / APPR_PER_PAG);
+  _apprPag = Math.max(0, Math.min(_apprPag, apprPages-1));
+  const pending = pendingAll.slice(_apprPag*APPR_PER_PAG, (_apprPag+1)*APPR_PER_PAG);
   lista.innerHTML = pending.map(p=>{
     const cm  = commesse.find(x=>x.id===p.comId);
     const mec = meccanici.find(x=>x.id===p.mecId);
@@ -6506,6 +6442,24 @@ function renderApprovazioni() {
       </div>
     </div>`;
   }).join('');
+  renderPagApprovazioni(apprPages, apprTot);
+}
+
+function renderPagApprovazioni(pages, tot) {
+  let wrap = document.getElementById('pag-approvazioni');
+  if (!wrap) {
+    wrap = document.createElement('div');
+    wrap.id = 'pag-approvazioni';
+    const empty = document.getElementById('empty-approvazioni');
+    if (empty) empty.after(wrap);
+  }
+  if (!pages || pages <= 1) { wrap.innerHTML=''; return; }
+  const from = _apprPag*APPR_PER_PAG+1, to = Math.min((_apprPag+1)*APPR_PER_PAG, tot);
+  wrap.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 4px;font-size:13px;color:var(--text2)">
+    <button class="btn btn-secondary btn-sm" onclick="_apprPag--;renderApprovazioni()" ${_apprPag===0?'disabled':''}>‹ Indietro</button>
+    <span>${from}–${to} di ${tot}</span>
+    <button class="btn btn-secondary btn-sm" onclick="_apprPag++;renderApprovazioni()" ${_apprPag>=pages-1?'disabled':''}>Avanti ›</button>
+  </div>`;
 }
 
 async function approvaRicambio(id) {
@@ -6533,7 +6487,7 @@ async function approvaRicambio(id) {
     p.stato = 'approvata';
     localStorage.setItem('officina_proposte', JSON.stringify(proposte));
     showToast('Ricambio approvato ✓');
-    renderApprovazioni(); updateBadgeApprovazioni(); verificaRiordino();
+    renderApprovazioni(); updateBadgeApprovazioni();
   } catch(err) { alert('Errore: '+err.message); }
 }
 
@@ -6583,12 +6537,86 @@ function getTariffa(tipo) {
   return saved[tipo]||{int:0,cli:0};
 }
 
+
+// ══════════════════════════════════════════════════
+// BLOCCO NOTE CONDIVISO
+// ══════════════════════════════════════════════════
+let _bnTimer   = null;
+let _bnOpen    = false;
+let _bnSeenAt  = localStorage.getItem('bn_seen_at') || '';
+let _bnChannel = null;
+
+function bnToggle() {
+  _bnOpen = !_bnOpen;
+  document.getElementById('bn-body').style.display      = _bnOpen ? '' : 'none';
+  document.getElementById('bn-chevron').style.transform = _bnOpen ? 'rotate(180deg)' : '';
+  if (_bnOpen) { bnClearBadge(); document.getElementById('bn-area').focus(); }
+}
+
+function bnClearBadge() {
+  document.getElementById('bn-badge').style.display = 'none';
+  _bnSeenAt = new Date().toISOString();
+  localStorage.setItem('bn_seen_at', _bnSeenAt);
+}
+
+function bnOnInput() {
+  document.getElementById('bn-saving').textContent = 'Modifica in corso…';
+  clearTimeout(_bnTimer);
+  _bnTimer = setTimeout(bnSave, 1200);
+}
+
+async function bnSave() {
+  _bnTimer = null;
+  const testo  = document.getElementById('bn-area').value;
+  const ora    = new Date().toISOString();
+  const autore = (typeof _currentUser !== 'undefined' && _currentUser?.nome)
+               ? _currentUser.nome : 'Utente';
+  await supa.from('blocco_note').upsert({ id: 'shared', testo, aggiornato_at: ora, aggiornato_da: autore });
+  const el = document.getElementById('bn-saving');
+  if (el) { el.textContent = 'Salvato ✓'; setTimeout(() => { if(el) el.textContent=''; }, 2000); }
+}
+
+async function bnLoad() {
+  const { data } = await supa.from('blocco_note').select('*').eq('id','shared').maybeSingle();
+  if (!data) return;
+  const area = document.getElementById('bn-area');
+  if (area && !_bnTimer) area.value = data.testo || '';
+  bnSetMeta(data);
+  if (data.aggiornato_at && data.aggiornato_at > _bnSeenAt && !_bnOpen) {
+    document.getElementById('bn-badge').style.display = '';
+  }
+}
+
+function bnSetMeta(data) {
+  if (!data?.aggiornato_at) return;
+  const d   = new Date(data.aggiornato_at);
+  const fmt = d.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'})
+            + ' ' + d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  const el  = document.getElementById('bn-meta');
+  if (el) el.textContent = 'Ultima modifica: ' + (data.aggiornato_da||'?') + ', ' + fmt;
+}
+
+function bnSubscribe() {
+  _bnChannel = supa.channel('blocco_note_shared')
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'blocco_note', filter: 'id=eq.shared' },
+      payload => {
+        const data = payload.new;
+        const area = document.getElementById('bn-area');
+        if (area && !_bnTimer) area.value = data.testo || '';
+        bnSetMeta(data);
+        if (!_bnOpen) document.getElementById('bn-badge').style.display = '';
+      })
+    .subscribe();
+}
+
 // ===== INIT GLOBALE =====
 updateBadgeCommesse();
 updateBadgeMeccanici();
 updateBadgeTimbrature();
 updateBadgePresenze();
 updateBadgeMagazzino();
+bnLoad(); bnSubscribe();
 updateBadgeApprovazioni();
 
 </script>
@@ -7052,8 +7080,8 @@ function renderPreventivi() {
   const empty=document.getElementById('empty-preventivi');
   if (!filtered.length) { lista.innerHTML=''; empty.style.display=''; return; }
   empty.style.display='none';
-  const smap={bozza:'badge-gray',inviato:'badge-blue',accettato:'badge-green',rifiutato:'badge-red'};
-  const lmap={bozza:'Bozza',inviato:'Inviato',accettato:'Accettato',rifiutato:'Rifiutato'};
+  const smap={bozza:'badge-gray',inviato:'badge-blue',accettato:'badge-green',rifiutato:'badge-red',convertito:'badge-gray'};
+  const lmap={bozza:'Bozza',inviato:'Inviato',accettato:'Accettato',rifiutato:'Rifiutato',convertito:'Convertito'};
   lista.innerHTML=filtered.map(p=>{
     const cl=clienti.find(c=>c.id===p.clienteId);
     const v=veicoli.find(x=>x.id===p.veicoloId);
@@ -7074,7 +7102,11 @@ function renderPreventivi() {
         <div style="font-family:'DM Mono',monospace;font-size:18px;font-weight:700">€ ${(p.totale||0).toFixed(2)}</div>
         <div style="display:flex;gap:6px">
           <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();stampaPreventivo('${p.id}')">PDF</button>
-          ${p.stato==='accettato'?`<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();convertiInCommessa('${p.id}')">→ Commessa</button>`:''}
+          ${p.stato==='accettato'?`
+            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();convertiInCommessa('${p.id}')">→ Commessa</button>
+            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();convertiInDDT('${p.id}')">→ DDT</button>
+          `:''}
+          ${p.stato==='convertito'?'<span class="badge badge-gray" style="align-self:center">✓ Convertito</span>':''}
           <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();eliminaPreventivo('${p.id}')">Elimina</button>
         </div>
       </div>
@@ -7091,18 +7123,92 @@ async function eliminaPreventivo(id) {
 }
 
 async function convertiInCommessa(prevId) {
-  const p=preventivi.find(x=>x.id===prevId);
-  if(!p) return;
-  if(!confirm(`Convertire ${p.numero} in commessa?`)) return;
-  openModalCommessa();
-  setTimeout(()=>{
-    if(p.clienteId){ document.getElementById('com-cliente').value=p.clienteId; const ev=new Event('change'); document.getElementById('com-cliente').dispatchEvent(ev); setTimeout(()=>{ if(p.veicoloId) document.getElementById('com-veicolo').value=p.veicoloId; },100); }
-    document.getElementById('com-desc').value=p.oggetto||'';
-    comVociMano=[...(p.vociMano||[])]; comVociRic=[...(p.vociRic||[])]; comVociExtra=[...(p.vociExtra||[])];
-    renderVoci('manodopera'); renderVoci('ricambi'); renderVoci('extra'); calcTotale();
-    p.commessaCreata=true;
-    supa.from('preventivi').update({commessa_creata:true}).eq('id',prevId).then(()=>{});
-  },200);
+  const p = preventivi.find(x => x.id === prevId);
+  if (!p) return;
+  if (!confirm(`Convertire ${p.numero} in commessa?\nI ricambi presenti verranno scaricati dal magazzino.`)) return;
+  try {
+    const numero = genNumCommessa();
+    const comId  = initId();
+    const vociRic = (p.vociRic || []).map(v => ({...v}));
+
+    // Crea commessa
+    await dbSaveCommessa({
+      id: comId, numero,
+      clienteId: p.clienteId || null,
+      veicoloId: p.veicoloId || null,
+      descrizione: p.oggetto || '',
+      stato: 'aperta',
+      dataApertura: new Date().toISOString().split('T')[0],
+      vociMano:  p.vociMano  || [],
+      vociRic:   vociRic,
+      vociExtra: p.vociExtra || [],
+      note: `Da preventivo ${p.numero}`,
+      createdAt: new Date().toISOString(),
+    });
+
+    // Scarica magazzino per i ricambi con prodId
+    const avvisi = [];
+    for (const v of vociRic.filter(v => v.prodId)) {
+      const pi = prodotti.findIndex(pr => pr.id === v.prodId);
+      if (pi < 0) continue;
+      const qta = v.qta || 1;
+      if (prodotti[pi].giacenza < qta) avvisi.push(`"${prodotti[pi].descrizione || prodotti[pi].desc}" (richiesti ${qta}, disponibili ${prodotti[pi].giacenza})`);
+      prodotti[pi].giacenza -= qta;
+      await dbSaveMovimento({ id: initId(), prodId: v.prodId, tipo: 'scarico', qta, comId, note: 'Da preventivo ' + p.numero, data: new Date().toISOString(), createdAt: new Date().toISOString() });
+      await dbSaveProdotto(prodotti[pi]);
+    }
+    if (avvisi.length) alert('⚠️ Giacenza insufficiente per:\n' + avvisi.join('\n') + '\n\nProceduto comunque.');
+
+    // Segna preventivo come convertito
+    await supa.from('preventivi').update({ commessa_creata: true, stato: 'convertito' }).eq('id', p.id);
+    p.commessaCreata = true; p.stato = 'convertito';
+    renderPreventivi();
+
+    // Apri la commessa creata
+    setSection('commesse');
+    setTimeout(() => showDetailCommessa(comId), 300);
+    showToast(`Commessa ${numero} creata ✓`);
+  } catch(e) { alert('Errore: ' + e.message); }
+}
+
+async function convertiInDDT(prevId) {
+  const p = preventivi.find(x => x.id === prevId);
+  if (!p) return;
+  if (!confirm(`Convertire ${p.numero} in DDT?`)) return;
+  try {
+    const cl = clienti.find(c => c.id === p.clienteId);
+    // Trasforma tutte le voci in righe DDT
+    const righe = [
+      ...(p.vociMano  || []).map(v => ({ desc: v.desc || v.descrizione || '', qta: v.qta || 1, prezzo: v.prezzo || 0, um: 'h' })),
+      ...(p.vociRic   || []).map(v => ({ desc: v.desc || v.descrizione || '', qta: v.qta || 1, prezzo: v.prezzo || 0, um: 'pz', prodId: v.prodId || null })),
+      ...(p.vociExtra || []).map(v => ({ desc: v.desc || v.descrizione || '', qta: v.qta || 1, prezzo: v.prezzo || 0, um: 'pz' })),
+    ].filter(r => r.desc);
+    if (!righe.length) { alert('Nessuna voce da convertire.'); return; }
+
+    const numDdt = `DDT-${new Date().getFullYear()}-${String(_impostazioni.num_ddt || 1).padStart(4, '0')}`;
+    const row = {
+      numero: numDdt,
+      data: new Date().toISOString().split('T')[0],
+      cliente_id: p.clienteId || null,
+      righe,
+      note: `Da preventivo ${p.numero}`,
+      causale: 'Vendita ricambi',
+    };
+    const { data: r, error } = await supa.from('ddt').insert(row).select().single();
+    if (error) throw error;
+    ddts.unshift({ ...r, clienteId: r.cliente_id });
+    await incrementaNumDDT();
+
+    // Segna preventivo come convertito
+    await supa.from('preventivi').update({ commessa_creata: true, stato: 'convertito' }).eq('id', p.id);
+    p.commessaCreata = true; p.stato = 'convertito';
+    renderPreventivi();
+
+    // Stampa DDT e vai alla sezione documenti
+    apriStampa(generaHtmlDDT({ ...r, clienteId: r.cliente_id }, getDatiOfficina(), cl));
+    setSection('documenti');
+    showToast(`DDT ${numDdt} creato ✓`);
+  } catch(e) { alert('Errore: ' + e.message); }
 }
 
 // ═══════════════════════════════════════════════════
@@ -7164,7 +7270,7 @@ function aggiungiPrimoProdottoVb() {
   if (first) first.click();
 }
 
-// ── DDT CHECKOUT FLOW ────────────────────────────────
+// ── DDT CHECKOUT FLOW ─────────────────────────────────────────────────
 let _checkoutDdt = null;
 let _pendingFirmaDDT = null;
 
@@ -7186,8 +7292,8 @@ async function checkoutDDT(ddt) {
   const cl = clienti.find(c=>c.id===ddt.clienteId);
   const metodo = cl?.pagamento;
   if (!metodo) {
-    const info = cl ? `Cliente: ${cl.ragione} · nessun metodo in anagrafica` : 'Cliente occasionale';
-    document.getElementById('pagddt-info').textContent = info;
+    document.getElementById('pagddt-info').textContent =
+      cl ? `${cl.ragione} · nessun metodo in anagrafica` : 'Cliente occasionale';
     document.getElementById('modal-pagamento-ddt').style.display='flex';
     return;
   }
@@ -7209,10 +7315,10 @@ function apriFirmaDDT(ddt) {
   const cl = clienti.find(c=>c.id===ddt.clienteId);
   document.getElementById('firma-ddt-info').textContent =
     `${ddt.numero} · ${cl?cl.ragione:'Occasionale'} · ${(ddt.righe||[]).length} articoli`;
+  document.getElementById('modal-firma-ddt').style.display='flex';
   const canvas = document.getElementById('firma-ddt-canvas');
   canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
   initFirmaDdtCanvas();
-  document.getElementById('modal-firma-ddt').style.display='flex';
 }
 
 async function confermaSalvaDDT() {
@@ -7240,9 +7346,7 @@ async function postFirmaDDT(ddt) {
   if (!ddt) return;
   const metodo = ddt._metodoCheckout;
   const righe  = (ddt.righe||[]).map(r=>({desc:r.desc,qta:r.qta||1,prezzo:r.prezzo||0}));
-  const immediato = ['contanti','pos','carta'].includes(metodo);
-  const differito = ['bonifico','riba','30gg','60gg','90gg'].includes(metodo);
-  if (immediato || differito) {
+  if (metodo && metodo !== 'solo-ddt') {
     apriFatturaModal({
       origine:'ddt', origineId:ddt.id,
       clienteId:ddt.clienteId||null,
@@ -7268,34 +7372,30 @@ function initFirmaDdtCanvas() {
 }
 
 function clearFirmaDdtCanvas() {
-  document.getElementById('firma-ddt-canvas').getContext('2d').clearRect(0,0,720,280);
+  const c = document.getElementById('firma-ddt-canvas');
+  c.getContext('2d').clearRect(0,0,c.width,c.height);
 }
 
-// ── Nuovo cliente inline (form vendita banco) ─────────────────────────
+// ── Nuovo cliente inline (vendita banco) ──────────────────────────────
 function toggleNuovoClienteVb() {
   const f = document.getElementById('vb-nuovo-cliente-form');
   f.style.display = f.style.display==='none' ? '' : 'none';
 }
-
 async function salvaNuovoClienteVb() {
   const ragione = document.getElementById('vb-c-ragione').value.trim();
   if (!ragione) { alert('Ragione sociale obbligatoria'); return; }
-  const obj = {
-    ragione, tipo:'privato',
-    piva:      document.getElementById('vb-c-piva').value.trim(),
-    tel:       document.getElementById('vb-c-tel').value.trim(),
-    email:     document.getElementById('vb-c-email').value.trim(),
-    indirizzo: document.getElementById('vb-c-indirizzo').value.trim(),
-    pagamento: document.getElementById('vb-c-pagamento').value,
-    sdi:       document.getElementById('vb-c-sdi').value.trim(),
-  };
+  const obj = { ragione, tipo:'privato',
+    piva:document.getElementById('vb-c-piva').value.trim(),
+    tel:document.getElementById('vb-c-tel').value.trim(),
+    email:document.getElementById('vb-c-email').value.trim(),
+    indirizzo:document.getElementById('vb-c-indirizzo').value.trim(),
+    pagamento:document.getElementById('vb-c-pagamento').value,
+    sdi:document.getElementById('vb-c-sdi').value.trim() };
   try {
-    const r = await DB.insert('clienti', obj);
-    clienti.push(r);
+    const r = await DB.insert('clienti', obj); clienti.push(r);
     const sel = document.getElementById('vb-cliente');
     if (sel) { const o=document.createElement('option'); o.value=r.id; o.textContent=r.ragione; sel.appendChild(o); sel.value=r.id; }
-    toggleNuovoClienteVb();
-    showToast(`Cliente "${r.ragione}" salvato ✓`);
+    toggleNuovoClienteVb(); showToast(`Cliente "${r.ragione}" salvato ✓`);
   } catch(e) { alert('Errore: '+e.message); }
 }
 
@@ -7304,39 +7404,118 @@ function toggleNuovoClienteDDT() {
   const f = document.getElementById('ddt-nuovo-cliente-form');
   f.style.display = f.style.display==='none' ? '' : 'none';
 }
-
 function onDdtClienteChange() {
-  const cId = document.getElementById('ddt-cliente').value;
-  const cl  = clienti.find(c=>c.id===cId);
+  const cl = clienti.find(c=>c.id===document.getElementById('ddt-cliente').value);
+  const LABEL = {contanti:'Contanti',carta:'Carta/POS',bonifico:'Bonifico',riba:'Ri.Ba.','30gg':'30 gg','60gg':'60 gg','90gg':'90 gg'};
   const info = document.getElementById('ddt-metodo-info');
-  const LABEL = {contanti:'Contanti',carta:'Carta/POS',pos:'POS',bonifico:'Bonifico',
-    riba:'Ri.Ba.','30gg':'30 gg','60gg':'60 gg','90gg':'90 gg'};
-  info.textContent = cl?.pagamento ? `Metodo: ${LABEL[cl.pagamento]||cl.pagamento}` :
-                     cl ? 'Nessun metodo in anagrafica' : '';
+  info.textContent = cl?.pagamento ? `Metodo: ${LABEL[cl.pagamento]||cl.pagamento}` : (cl ? 'Nessun metodo in anagrafica' : '');
 }
-
 async function salvaNuovoClienteDDT() {
   const ragione = document.getElementById('ddt-c-ragione').value.trim();
   if (!ragione) { alert('Ragione sociale obbligatoria'); return; }
-  const obj = {
-    ragione, tipo:'privato',
-    piva:      document.getElementById('ddt-c-piva').value.trim(),
-    tel:       document.getElementById('ddt-c-tel').value.trim(),
-    email:     document.getElementById('ddt-c-email').value.trim(),
-    indirizzo: document.getElementById('ddt-c-indirizzo').value.trim(),
-    pagamento: document.getElementById('ddt-c-pagamento').value,
-    sdi:       document.getElementById('ddt-c-sdi').value.trim(),
-  };
+  const obj = { ragione, tipo:'privato',
+    piva:document.getElementById('ddt-c-piva').value.trim(),
+    tel:document.getElementById('ddt-c-tel').value.trim(),
+    email:document.getElementById('ddt-c-email').value.trim(),
+    indirizzo:document.getElementById('ddt-c-indirizzo').value.trim(),
+    pagamento:document.getElementById('ddt-c-pagamento').value,
+    sdi:document.getElementById('ddt-c-sdi').value.trim() };
   try {
     const r = await DB.insert('clienti', obj);
     clienti.push(r);
-    const sel = document.getElementById('ddt-cliente');
-    const o = document.createElement('option'); o.value=r.id; o.textContent=r.ragione;
-    sel.appendChild(o); sel.value=r.id;
-    toggleNuovoClienteDDT();
-    onDdtClienteChange();
+    document.getElementById('ddt-nuovo-cliente-form').style.display = 'none';
+    selezionaClienteDDT(r.id);
     showToast(`Cliente "${r.ragione}" salvato ✓`);
   } catch(e) { alert('Errore: '+e.message); }
+}
+
+// ── Pagamenti commessa ────────────────────────────────────────────────
+function apriFrmPagamento() {
+  document.getElementById('pag-importo').value='';
+  document.getElementById('pag-data').value=new Date().toISOString().split('T')[0];
+  document.getElementById('pag-note').value='';
+  document.getElementById('dc-frm-pagamento').style.display='';
+}
+function chiudiFrmPagamento() {
+  document.getElementById('dc-frm-pagamento').style.display='none';
+}
+async function incassaRapido(metodo) {
+  const cm = commesse.find(c=>c.id===selectedCommessaId);
+  if (!cm) return;
+  const totale = (cm.vociMano||[]).concat(cm.vociRic||[],cm.vociExtra||[])
+    .reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0);
+  const pagato = (cm.pagamenti||[]).reduce((s,p)=>s+(parseFloat(p.importo)||0),0);
+  const residuo = Math.max(0, totale - pagato);
+  if (residuo <= 0) { showToast('Commessa già saldata ✓'); return; }
+  const LABEL = {contanti:'Contanti',carta:'Carta/POS',bonifico:'Bonifico'};
+  if (!confirm(`Registrare pagamento di € ${residuo.toFixed(2)} con ${LABEL[metodo]}?`)) return;
+  const entry = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2,5),
+    data: new Date().toISOString().split('T')[0],
+    importo: residuo,
+    metodo,
+    note: `Incasso rapido — ${LABEL[metodo]}`
+  };
+  const pagamenti = [...(cm.pagamenti||[]), entry];
+  try {
+    await supa.from('commesse').update({pagamenti}).eq('id', cm.id);
+    cm.pagamenti = pagamenti;
+    renderPagamentiCommessa(cm);
+    showToast(`Incassato € ${residuo.toFixed(2)} (${LABEL[metodo]}) ✓`);
+  } catch(e) { alert('Errore: '+e.message); }
+}
+
+async function salvaPagamento() {
+  const imp = parseFloat(document.getElementById('pag-importo').value);
+  if (!imp||imp<=0) { alert('Importo obbligatorio'); return; }
+  const cm = commesse.find(c=>c.id===selectedCommessaId);
+  if (!cm) return;
+  const entry = {
+    id: Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+    data: document.getElementById('pag-data').value,
+    importo: imp,
+    metodo: document.getElementById('pag-metodo').value,
+    note: document.getElementById('pag-note').value.trim()
+  };
+  const pagamenti = [...(cm.pagamenti||[]), entry];
+  try {
+    await supa.from('commesse').update({pagamenti}).eq('id', cm.id);
+    cm.pagamenti = pagamenti;
+    chiudiFrmPagamento();
+    renderPagamentiCommessa(cm);
+    showToast('Pagamento registrato ✓');
+  } catch(e) { alert('Errore: '+e.message); }
+}
+function renderPagamentiCommessa(cm) {
+  if (!cm) return;
+  const pags = cm.pagamenti||[];
+  const tot = (cm.totale||0);
+  const pagato = pags.reduce((s,p)=>s+(p.importo||0), 0);
+  const residuo = tot - pagato;
+  const fmt = n=>'€ '+Math.abs(n).toFixed(2).replace('.',',');
+  document.getElementById('dc-pag-dovuto').textContent = fmt(tot);
+  document.getElementById('dc-pag-pagato').textContent = fmt(pagato);
+  const residEl = document.getElementById('dc-pag-residuo');
+  residEl.textContent = fmt(residuo);
+  residEl.style.color = residuo<=0 ? 'var(--success)' : 'var(--danger)';
+  const METODO = {contanti:'Contanti',carta:'Carta/POS',bonifico:'Bonifico',riba:'Ri.Ba.',assegno:'Assegno'};
+  document.getElementById('dc-pagamenti-list').innerHTML = pags.length ? pags.map(p=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace">${fmt(p.importo)}</div>
+        <div style="font-size:11px;color:var(--text3)">${formatDate(p.data)} · ${METODO[p.metodo]||p.metodo}${p.note?' · '+p.note:''}</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="eliminaPagamento('${p.id}')" style="color:var(--danger)">✕</button>
+    </div>`).join('') : '<div style="font-size:12px;color:var(--text3);padding:8px 0">Nessun pagamento registrato.</div>';
+}
+async function eliminaPagamento(pid) {
+  if (!confirm('Eliminare questo pagamento?')) return;
+  const cm = commesse.find(c=>c.id===selectedCommessaId);
+  if (!cm) return;
+  cm.pagamenti = (cm.pagamenti||[]).filter(p=>p.id!==pid);
+  await supa.from('commesse').update({pagamenti:cm.pagamenti}).eq('id',cm.id);
+  renderPagamentiCommessa(cm);
+  showToast('Pagamento eliminato');
 }
 
 async function creaVbDDT(righe, clienteIdOverride) {
@@ -7355,7 +7534,7 @@ async function creaVbDDT(righe, clienteIdOverride) {
         prodotti[pi].giacenza = nuovaGiac;
       }
     }
-    const row = {numero:numDdt,data:data||null,cliente_id: clienteIdOverride ||cId||null,righe,causale:'Vendita a banco',note,stato:'aperto'};
+    const row = {numero:numDdt,data:data||null,cliente_id:clienteIdOverride||cId||null,righe,causale:'Vendita a banco',note,stato:'aperto'};
     const {data:r,error} = await supa.from('ddt').insert(row).select().single();
     if (error) throw error;
     const ddt = {...r, clienteId:r.cliente_id};
@@ -7502,11 +7681,11 @@ function setStatoDDTFilter(el, stato) {
   renderDDT();
 }
 
-let _ddtPage = 10;
+let _ddtPage = 5;
 let _ddtSel  = new Set();
 
 function renderDDT(showAll) {
-  if (showAll !== undefined) _ddtPage = showAll ? 1e9 : 10;
+  if (showAll !== undefined) _ddtPage = showAll ? 1e9 : 5;
   const q = (document.getElementById('search-ddt')?.value||'').toLowerCase();
   const filtered = ddts.filter(d=>{
     const cl = clienti.find(c=>c.id===d.clienteId);
@@ -7544,7 +7723,7 @@ function renderDDT(showAll) {
       </div>
     </div>`;
   }).join('')
-  + (rest > 0 ? `<div style="text-align:center;padding:10px 0"><button class="btn btn-ghost btn-sm" onclick="renderDDT(true)">Mostra altri ${rest} ▾</button></div>` : '');
+  + (rest > 0 ? `<div style="text-align:center;padding:10px 0"><button class="btn btn-ghost btn-sm" onclick="renderDDT(true)">Cerca tra tutti i DDT ▾</button></div>` : '');
   aggiornaBtnCumulativa();
 }
 
@@ -7552,38 +7731,26 @@ function toggleDdtSel(id, checked) {
   if (checked) _ddtSel.add(id); else _ddtSel.delete(id);
   aggiornaBtnCumulativa();
 }
-
 function aggiornaBtnCumulativa() {
   const btn = document.getElementById('btn-fattura-cumulativa');
   if (!btn) return;
-  const selDdts = ddts.filter(d=>_ddtSel.has(d.id) && (d.stato||'aperto')!=='fatturato');
-  const clientiSel = [...new Set(selDdts.map(d=>d.clienteId||''))];
-  const ok = selDdts.length >= 2 && clientiSel.length === 1;
-  btn.style.display = selDdts.length >= 1 ? '' : 'none';
+  const sel = ddts.filter(d=>_ddtSel.has(d.id) && (d.stato||'aperto')!=='fatturato');
+  const cliSel = [...new Set(sel.map(d=>d.clienteId||''))];
+  const ok = sel.length>=2 && cliSel.length===1;
+  btn.style.display = sel.length>=1 ? '' : 'none';
   btn.disabled = !ok;
-  btn.title = (!ok && selDdts.length >= 2) ? 'Seleziona DDT dello stesso cliente' : '';
-  const cnt = document.getElementById('ddt-sel-count');
-  if (cnt) cnt.textContent = selDdts.length;
+  btn.title = (!ok&&sel.length>=2)?'Seleziona DDT dello stesso cliente':'';
+  const cnt=document.getElementById('ddt-sel-count'); if(cnt) cnt.textContent=sel.length;
 }
-
 function creaFatturaCumulativa() {
-  const selDdts = ddts.filter(d=>_ddtSel.has(d.id) && (d.stato||'aperto')!=='fatturato');
-  if (selDdts.length < 2) { alert('Seleziona almeno 2 DDT dello stesso cliente.'); return; }
-  const clientiSel = [...new Set(selDdts.map(d=>d.clienteId||''))];
-  if (clientiSel.length > 1) { alert('Seleziona solo DDT dello stesso cliente.'); return; }
-  const righe = selDdts.flatMap(d=>(d.righe||[]).map(r=>({
-    desc:`[${d.numero}] ${r.desc}`, qta:r.qta||1, prezzo:r.prezzo||0
-  })));
-  const numeri = selDdts.map(d=>d.numero).join(', ');
-  apriFatturaModal({
-    origine:'ddt-cumulativa', origineId:selDdts[0].id,
-    clienteId:clientiSel[0]||null,
-    descrizione:`Fattura cumulativa DDT: ${numeri}`,
-    veicolo:'', righe,
-  });
-  _ddtSel.clear();
-  aggiornaBtnCumulativa();
-  renderDDT();
+  const sel = ddts.filter(d=>_ddtSel.has(d.id) && (d.stato||'aperto')!=='fatturato');
+  if (sel.length<2) { alert('Seleziona almeno 2 DDT dello stesso cliente.'); return; }
+  const cliSel = [...new Set(sel.map(d=>d.clienteId||''))];
+  if (cliSel.length>1) { alert('Seleziona solo DDT dello stesso cliente.'); return; }
+  const righe = sel.flatMap(d=>(d.righe||[]).map(r=>({desc:`[${d.numero}] ${r.desc}`,qta:r.qta||1,prezzo:r.prezzo||0})));
+  apriFatturaModal({origine:'ddt-cumulativa',origineId:sel[0].id,clienteId:cliSel[0]||null,
+    descrizione:`Fattura cumulativa DDT: ${sel.map(d=>d.numero).join(', ')}`,veicolo:'',righe});
+  _ddtSel.clear(); aggiornaBtnCumulativa(); renderDDT();
 }
 
 function converteDDTinFattura(id) {
@@ -7599,33 +7766,150 @@ function converteDDTinFattura(id) {
 }
 
 // ── DDT MANUALE ──────────────────────────────────────
+let _ddtClienteId = null;
+
 function apriNuovaDDT() {
-  document.getElementById('ddt-cliente').innerHTML =
-    '<option value="">— Cliente occasionale —</option>' +
-    clienti.map(c=>`<option value="${c.id}">${c.ragione}</option>`).join('');
-  const mi = document.getElementById('ddt-metodo-info');
-  if (mi) mi.textContent = '';
-  const nf = document.getElementById('ddt-nuovo-cliente-form');
-  if (nf) nf.style.display = 'none';
+  _ddtClienteId = null;
+  document.getElementById('ddt-cliente-chip').style.display = 'none';
+  document.getElementById('ddt-cliente-search-wrap').style.display = '';
+  document.getElementById('ddt-cliente-search').value = '';
+  document.getElementById('ddt-cliente-dropdown').style.display = 'none';
+  const mi = document.getElementById('ddt-metodo-info'); if (mi) mi.textContent = '';
+  const nf = document.getElementById('ddt-nuovo-cliente-form'); if (nf) nf.style.display = 'none';
   document.getElementById('ddt-data').value = new Date().toISOString().split('T')[0];
   document.getElementById('ddt-causale').value = 'Vendita ricambi';
   document.getElementById('ddt-note').value = '';
-  ddtRighe = [{desc:'',qta:1}];
+  document.getElementById('ddt-prod-search').value = '';
+  document.getElementById('ddt-prod-dropdown').style.display = 'none';
+  ddtRighe = [];
   renderRigheDDT();
-  document.getElementById('modal-ddt').style.display='flex';
+  document.getElementById('modal-ddt').style.display = 'flex';
+  setTimeout(()=>document.getElementById('ddt-cliente-search').focus(), 100);
+}
+
+function cercaClienteDDT(q) {
+  const dd = document.getElementById('ddt-cliente-dropdown');
+  const nf = document.getElementById('ddt-nuovo-cliente-form');
+  if (!q.trim()) { dd.style.display = 'none'; return; }
+  const ql = q.toLowerCase();
+  const matches = clienti.filter(c =>
+    (c.ragione||'').toLowerCase().includes(ql) ||
+    (c.piva||'').toLowerCase().includes(ql) ||
+    (c.tel||'').includes(q)
+  ).slice(0, 8);
+  let html = matches.map(c => `
+    <div onclick="selezionaClienteDDT('${c.id}')"
+      style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px"
+      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <div style="font-weight:600">${c.ragione}</div>
+      <div style="font-size:11px;color:var(--text3)">${[c.piva,c.tel].filter(Boolean).join(' · ')}</div>
+    </div>`).join('');
+  html += `<div onclick="mostraFormNuovoClienteDDT('${q.replace(/'/g,"\'")}')"
+    style="padding:10px 14px;cursor:pointer;font-size:13px;color:var(--accent);font-weight:600;display:flex;align-items:center;gap:6px"
+    onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+    <span style="font-size:18px">✚</span> Crea nuovo: <em>${q}</em>
+  </div>`;
+  dd.innerHTML = html;
+  dd.style.display = '';
+}
+
+function selezionaClienteDDT(id) {
+  const cl = clienti.find(c => c.id === id);
+  if (!cl) return;
+  _ddtClienteId = id;
+  document.getElementById('ddt-chip-nome').textContent = cl.ragione;
+  document.getElementById('ddt-chip-sub').textContent = [cl.piva, cl.tel, cl.indirizzo].filter(Boolean).join(' · ');
+  document.getElementById('ddt-cliente-chip').style.display = 'flex';
+  document.getElementById('ddt-cliente-search-wrap').style.display = 'none';
+  document.getElementById('ddt-cliente-dropdown').style.display = 'none';
+  // Mostra metodo pagamento default
+  const mi = document.getElementById('ddt-metodo-info');
+  if (mi && cl.pagamento) mi.textContent = 'Metodo: ' + cl.pagamento;
+  else if (mi) mi.textContent = '';
+  setTimeout(()=>document.getElementById('ddt-prod-search').focus(), 50);
+}
+
+function resetDdtCliente() {
+  _ddtClienteId = null;
+  document.getElementById('ddt-cliente-chip').style.display = 'none';
+  document.getElementById('ddt-cliente-search-wrap').style.display = '';
+  document.getElementById('ddt-cliente-search').value = '';
+  document.getElementById('ddt-metodo-info').textContent = '';
+  setTimeout(()=>document.getElementById('ddt-cliente-search').focus(), 50);
+}
+
+function mostraFormNuovoClienteDDT(ragione) {
+  document.getElementById('ddt-cliente-dropdown').style.display = 'none';
+  document.getElementById('ddt-c-ragione').value = ragione || '';
+  ['piva','tel','email','sdi','indirizzo'].forEach(f => { const el=document.getElementById('ddt-c-'+f); if(el) el.value=''; });
+  document.getElementById('ddt-c-pagamento').value = '';
+  document.getElementById('ddt-nuovo-cliente-form').style.display = '';
+  setTimeout(()=>document.getElementById('ddt-c-ragione').focus(), 50);
+}
+
+// ── Ricerca prodotti per DDT
+function cercaProdottoDDT(q) {
+  const dd = document.getElementById('ddt-prod-dropdown');
+  if (!q.trim()) { dd.style.display = 'none'; return; }
+  const ql = q.toLowerCase();
+  const matches = prodotti.filter(p =>
+    (p.descrizione||p.desc||'').toLowerCase().includes(ql) ||
+    (p.codice||p.cod||'').toLowerCase().includes(ql)
+  ).slice(0, 10);
+  if (!matches.length) { dd.innerHTML = '<div style="padding:10px 14px;font-size:13px;color:var(--text3)">Nessun prodotto trovato</div>'; dd.style.display=''; return; }
+  dd.innerHTML = matches.map(p => {
+    const nome = p.descrizione || p.desc || '—';
+    const cod  = p.codice || p.cod || '';
+    const giac = p.giacenza ?? '?';
+    return `<div onclick="aggiungiProdottoDDT('${p.id}')"
+      style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px;display:flex;justify-content:space-between;align-items:center"
+      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <div>
+        <div style="font-weight:600">${nome}</div>
+        <div style="font-size:11px;color:var(--text3)">${cod ? cod+' · ' : ''}Giac: ${giac}</div>
+      </div>
+      <div style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:var(--accent)">€ ${(p.prezzoVend||0).toFixed(2)}</div>
+    </div>`;
+  }).join('');
+  dd.style.display = '';
+}
+
+function aggiungiProdottoDDT(prodId) {
+  const p = prodotti.find(x => x.id === prodId); if (!p) return;
+  const esist = ddtRighe.findIndex(r => r.prodId === prodId);
+  if (esist >= 0) { ddtRighe[esist].qta = (ddtRighe[esist].qta||1) + 1; }
+  else { ddtRighe.push({ prodId, desc: p.descrizione||p.desc||'', codice: p.codice||p.cod||'', qta: 1, prezzo: p.prezzoVend||0, um: p.um||'pz' }); }
+  document.getElementById('ddt-prod-search').value = '';
+  document.getElementById('ddt-prod-dropdown').style.display = 'none';
+  renderRigheDDT();
+}
+
+function aggiungiPrimoProdottoDDT() {
+  const q = document.getElementById('ddt-prod-search').value.trim(); if (!q) return;
+  const ql = q.toLowerCase();
+  const p = prodotti.find(x => (x.descrizione||x.desc||'').toLowerCase().includes(ql)||(x.codice||x.cod||'').toLowerCase().includes(ql));
+  if (p) aggiungiProdottoDDT(p.id);
 }
 
 let ddtRighe = [];
 
 function renderRigheDDT() {
-  document.getElementById('ddt-righe').innerHTML = ddtRighe.map((r,i)=>`
-    <div style="display:grid;grid-template-columns:1fr 80px 28px;gap:6px;margin-bottom:6px;align-items:center">
-      <input type="text" placeholder="Descrizione articolo" value="${r.desc||''}"
-        oninput="ddtRighe[${i}].desc=this.value"
-        style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif">
-      <input type="number" placeholder="1" min="1" value="${r.qta||1}"
+  document.getElementById('ddt-righe').innerHTML = ddtRighe.length === 0
+    ? '<div style="text-align:center;padding:16px;font-size:13px;color:var(--text3)">Nessun articolo aggiunto.</div>'
+    : ddtRighe.map((r,i)=>`
+    <div style="display:grid;grid-template-columns:1fr 70px 80px 28px;gap:6px;margin-bottom:6px;align-items:center">
+      <div>
+        <input type="text" placeholder="Descrizione" value="${(r.desc||'').replace(/"/g,'&quot;')}"
+          oninput="ddtRighe[${i}].desc=this.value"
+          style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;box-sizing:border-box">
+        ${r.codice ? `<div style="font-size:10px;color:var(--text3);margin-top:2px;padding-left:2px">${r.codice}</div>` : ''}
+      </div>
+      <input type="number" placeholder="Qtà" min="1" value="${r.qta||1}"
         oninput="ddtRighe[${i}].qta=parseFloat(this.value)||1"
-        style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace;text-align:center">
+        style="padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace;text-align:center;width:100%;box-sizing:border-box">
+      <input type="number" placeholder="€" min="0" step="0.01" value="${r.prezzo||0}"
+        oninput="ddtRighe[${i}].prezzo=parseFloat(this.value)||0"
+        style="padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace;text-align:right;width:100%;box-sizing:border-box">
       <button type="button" class="del-btn" onclick="ddtRighe.splice(${i},1);renderRigheDDT()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
       </button>
@@ -7635,13 +7919,12 @@ function renderRigheDDT() {
 async function salvaEStampaDDT() {
   const righe = ddtRighe.filter(r=>r.desc);
   if (!righe.length) { alert('Aggiungi almeno un articolo.'); return; }
-  const cId     = document.getElementById('ddt-cliente').value;
   const data    = document.getElementById('ddt-data').value;
   const causale = document.getElementById('ddt-causale').value;
   const note    = document.getElementById('ddt-note').value;
   const numDdt  = `DDT-${new Date().getFullYear()}-${String(_impostazioni.num_ddt||1).padStart(4,'0')}`;
   try {
-    const row = {numero:numDdt, data:data||null, cliente_id:cId||null, righe, causale, note, stato:'aperto'};
+    const row = {numero:numDdt, data:data||null, cliente_id:_ddtClienteId||null, righe, causale, note, stato:'aperto'};
     const { data:r, error } = await supa.from('ddt').insert(row).select().single();
     if (error) throw error;
     const ddt = {...r, clienteId:r.cliente_id};
@@ -8400,7 +8683,7 @@ function setImpTab(tab) {
   document.getElementById('imp-tab-officina').style.color  = tab==='officina'  ? 'var(--accent)' : 'var(--text2)';
   document.getElementById('imp-tab-meccanici').style.borderBottomColor = tab==='meccanici' ? 'var(--accent)' : 'transparent';
   document.getElementById('imp-tab-meccanici').style.color = tab==='meccanici' ? 'var(--accent)' : 'var(--text2)';
-  if (tab==='meccanici') renderMeccanici();
+  if (tab==='meccanici') { renderMeccanici(); renderDipendenti(); }
 }
 
 // ═══════════════════════════════════════════════════
@@ -8870,117 +9153,139 @@ initDocumenti();
 
 <!-- ═══════════════ MODAL DDT ═══════════════ -->
 <div class="modal-overlay" id="modal-ddt" style="display:none" onclick="closeModalOnBg(event,'modal-ddt')">
-  <div class="modal" style="max-width:600px;max-height:90vh;overflow-y:auto">
+  <div class="modal" style="max-width:640px">
     <div class="modal-header">
       <div class="modal-title">Nuova DDT</div>
       <button class="close-btn" onclick="closeModal('modal-ddt')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <div class="modal-body" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="form-group" style="grid-column:span 2">
-        <label>Cliente</label>
-        <div style="display:flex;gap:6px;align-items:center">
-          <select id="ddt-cliente" style="flex:1" onchange="onDdtClienteChange()"></select>
-          <button type="button" class="btn btn-ghost btn-sm" onclick="toggleNuovoClienteDDT()" id="btn-nuovo-cl-ddt">+ Nuovo</button>
+    <div class="modal-body" style="padding-top:12px">
+
+      <!-- ── CLIENTE ── -->
+      <!-- Chip cliente selezionato -->
+      <div id="ddt-cliente-chip" style="display:none;background:var(--accent-light);border:1px solid var(--accent);border-radius:var(--radius);padding:8px 12px;margin-bottom:10px;display:none;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--accent)" id="ddt-chip-nome">—</div>
+          <div style="font-size:11px;color:var(--text3)" id="ddt-chip-sub"></div>
         </div>
-        <div id="ddt-metodo-info" style="font-size:11px;color:var(--text3);margin-top:4px"></div>
+        <button onclick="resetDdtCliente()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;line-height:1;padding:0 4px">×</button>
       </div>
-      <div id="ddt-nuovo-cliente-form" style="display:none;grid-column:span 2;background:var(--bg);border:1.5px dashed var(--border);border-radius:var(--radius);padding:14px">
-        <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--accent);margin-bottom:10px">Nuovo cliente</div>
+      <!-- Ricerca cliente -->
+      <div id="ddt-cliente-search-wrap" style="position:relative;margin-bottom:4px">
+        <input type="text" id="ddt-cliente-search" placeholder="🔍 Cerca cliente per nome, P.IVA…"
+          oninput="cercaClienteDDT(this.value)"
+          style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:'DM Sans',sans-serif;box-sizing:border-box">
+        <div id="ddt-cliente-dropdown" style="display:none;position:absolute;left:0;right:0;top:calc(100%+2px);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);z-index:500;max-height:200px;overflow-y:auto"></div>
+      </div>
+      <div id="ddt-metodo-info" style="font-size:11px;color:var(--accent);font-weight:600;margin-bottom:8px;min-height:14px"></div>
+
+      <!-- Form nuovo cliente (espandibile) -->
+      <div id="ddt-nuovo-cliente-form" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px">✚ Nuovo cliente</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div class="form-group" style="grid-column:span 2"><label>Ragione sociale / Nome *</label><input type="text" id="ddt-c-ragione" placeholder="Es. Rossi Mario"></div>
-          <div class="form-group"><label>P.IVA</label><input type="text" id="ddt-c-piva" placeholder="IT12345678901"></div>
-          <div class="form-group"><label>Telefono</label><input type="tel" id="ddt-c-tel" placeholder="+39 02 1234567"></div>
-          <div class="form-group"><label>Email</label><input type="email" id="ddt-c-email" placeholder="info@esempio.it"></div>
-          <div class="form-group"><label>Indirizzo</label><input type="text" id="ddt-c-indirizzo" placeholder="Via Roma 1, Milano"></div>
-          <div class="form-group"><label>Metodo pagamento</label>
-            <select id="ddt-c-pagamento">
-              <option value="">— Seleziona —</option>
-              <option value="contanti">Contanti</option>
-              <option value="carta">Carta di credito/debito</option>
-              <option value="bonifico">Bonifico bancario</option>
-              <option value="riba">Ri.Ba.</option>
-              <option value="30gg">30 giorni data fattura</option>
-              <option value="60gg">60 giorni data fattura</option>
-              <option value="90gg">90 giorni data fattura</option>
-            </select>
+          <div class="form-group" style="grid-column:span 2;margin:0"><label>Ragione sociale *</label><input type="text" id="ddt-c-ragione" placeholder="Es. Mario Rossi Trasporti"></div>
+          <div class="form-group" style="margin:0"><label>P.IVA / CF</label><input type="text" id="ddt-c-piva" placeholder="IT12345678901"></div>
+          <div class="form-group" style="margin:0"><label>Telefono</label><input type="tel" id="ddt-c-tel" placeholder="+39…"></div>
+          <div class="form-group" style="margin:0"><label>Email</label><input type="email" id="ddt-c-email" placeholder="info@…"></div>
+          <div class="form-group" style="margin:0"><label>SDI</label><input type="text" id="ddt-c-sdi" placeholder="0000000"></div>
+          <div class="form-group" style="grid-column:span 2;margin:0"><label>Indirizzo</label><input type="text" id="ddt-c-indirizzo" placeholder="Via, CAP, Città"></div>
+          <div class="form-group" style="margin:0"><label>Metodo pagamento</label>
+            <select id="ddt-c-pagamento"><option value="">— non specificato —</option><option value="contanti">Contanti</option><option value="carta">Carta/POS</option><option value="bonifico">Bonifico</option><option value="riba">Ri.Ba.</option><option value="30gg">30 gg</option><option value="60gg">60 gg</option><option value="90gg">90 gg</option></select>
           </div>
-          <div class="form-group"><label>Cod. SDI</label><input type="text" id="ddt-c-sdi" placeholder="ABCDE12" style="text-transform:uppercase"></div>
         </div>
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <button type="button" class="btn btn-primary btn-sm" onclick="salvaNuovoClienteDDT()">Salva cliente</button>
-          <button type="button" class="btn btn-ghost btn-sm" onclick="toggleNuovoClienteDDT()">Annulla</button>
+        <div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('ddt-nuovo-cliente-form').style.display='none'">Annulla</button>
+          <button class="btn btn-primary btn-sm" onclick="salvaNuovoClienteDDT()">Salva e seleziona</button>
         </div>
       </div>
-      <div class="form-group">
-        <label>Data trasporto</label>
-        <input type="date" id="ddt-data">
+
+      <div style="border-top:1px solid var(--border);margin:10px 0 12px"></div>
+
+      <!-- ── INFO TRASPORTO (compatte) ── -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+        <div class="form-group" style="margin:0"><label>Data</label><input type="date" id="ddt-data"></div>
+        <div class="form-group" style="margin:0"><label>Causale</label><input type="text" id="ddt-causale" placeholder="Vendita ricambi"></div>
+        <div class="form-group" style="margin:0"><label>Note</label><input type="text" id="ddt-note" placeholder="…"></div>
       </div>
-      <div class="form-group">
-        <label>Causale</label>
-        <input type="text" id="ddt-causale" placeholder="Es. Vendita ricambi">
+
+      <!-- ── ARTICOLI ── -->
+      <div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Articoli</div>
+
+      <!-- Barra scan/ricerca prodotto -->
+      <div style="position:relative;margin-bottom:10px">
+        <input type="text" id="ddt-prod-search" placeholder="📦 Scan barcode o cerca per nome / codice…"
+          oninput="cercaProdottoDDT(this.value)"
+          onkeydown="if(event.key==='Enter'){aggiungiPrimoProdottoDDT();event.preventDefault()}"
+          style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:'DM Sans',sans-serif;box-sizing:border-box">
+        <div id="ddt-prod-dropdown" style="display:none;position:absolute;left:0;right:0;top:calc(100%+2px);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);z-index:500;max-height:220px;overflow-y:auto"></div>
       </div>
-      <div class="form-group" style="grid-column:span 2">
-        <label>Note</label>
-        <input type="text" id="ddt-note" placeholder="Riferimenti, istruzioni…">
-      </div>
-      <div class="form-section-title">Articoli</div>
-      <div id="ddt-righe" style="grid-column:span 2"></div>
-      <button type="button" class="btn btn-secondary btn-sm" style="grid-column:span 2;width:fit-content"
-        onclick="ddtRighe.push({desc:'',qta:1});renderRigheDDT()">+ Aggiungi riga</button>
+
+      <!-- Lista articoli aggiunti -->
+      <div id="ddt-righe"></div>
+
+      <!-- Aggiungi riga libera -->
+      <button type="button" class="btn btn-ghost btn-sm" onclick="ddtRighe.push({desc:'',qta:1,prezzo:0});renderRigheDDT()" style="width:100%;justify-content:center;margin-top:4px">
+        + Aggiungi riga manuale
+      </button>
+
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-ddt')">Annulla</button>
-      <button class="btn btn-primary" onclick="salvaEStampaDDT()">Emetti DDT →</button>
+      <button class="btn btn-primary" onclick="salvaEStampaDDT()">Emetti DDT</button>
     </div>
   </div>
 </div>
 
-<!-- ═══════════════ MODAL PAGAMENTO DDT ═══════════════ -->
-<div id="modal-pagamento-ddt" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1300;align-items:center;justify-content:center;padding:20px">
-  <div style="background:var(--bg);border-radius:var(--radius-lg);width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
-    <div style="background:var(--accent);padding:16px 20px;border-radius:var(--radius-lg) var(--radius-lg) 0 0">
-      <div style="font-size:16px;font-weight:800;color:white">Come viene pagato?</div>
-      <div id="pagddt-info" style="font-size:12px;color:rgba(255,255,255,.8);margin-top:3px"></div>
+<!-- ── MODAL PAGAMENTO DDT ── -->
+<div class="modal-overlay" id="modal-pagamento-ddt" style="display:none" onclick="closeModalOnBg(event,'modal-pagamento-ddt')">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <div><div class="modal-title">Metodo di pagamento</div><div class="modal-sub" id="pagddt-info"></div></div>
+      <button class="close-btn" onclick="document.getElementById('modal-pagamento-ddt').style.display='none'">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
-    <div style="padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <button onclick="completaCheckoutDDT('contanti')" style="padding:16px 12px;border:1.5px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);cursor:pointer;font-size:14px;font-weight:700;font-family:'DM Sans',sans-serif;transition:all .12s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-        <div style="font-size:24px;margin-bottom:6px">💵</div>Contanti
-      </button>
-      <button onclick="completaCheckoutDDT('pos')" style="padding:16px 12px;border:1.5px solid var(--accent);border-radius:var(--radius-lg);background:var(--accent);cursor:pointer;font-size:14px;font-weight:700;color:white;font-family:'DM Sans',sans-serif">
-        <div style="font-size:24px;margin-bottom:6px">💳</div>POS / Carta
-      </button>
-      <button onclick="completaCheckoutDDT('bonifico')" style="padding:12px;border:1.5px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);cursor:pointer;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif">
-        🏦 Bonifico
-      </button>
-      <button onclick="completaCheckoutDDT('solo-ddt')" style="padding:12px;border:1.5px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);cursor:pointer;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif">
-        📄 Solo DDT
-      </button>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <button class="btn btn-secondary" style="flex-direction:column;padding:16px;height:auto" onclick="completaCheckoutDDT('contanti')">
+          <span style="font-size:22px">💵</span><span style="font-size:13px;font-weight:600;margin-top:6px">Contanti</span>
+        </button>
+        <button class="btn btn-secondary" style="flex-direction:column;padding:16px;height:auto" onclick="completaCheckoutDDT('carta')">
+          <span style="font-size:22px">💳</span><span style="font-size:13px;font-weight:600;margin-top:6px">Carta / POS</span>
+        </button>
+        <button class="btn btn-secondary" style="flex-direction:column;padding:16px;height:auto" onclick="completaCheckoutDDT('bonifico')">
+          <span style="font-size:22px">🏦</span><span style="font-size:13px;font-weight:600;margin-top:6px">Bonifico</span>
+        </button>
+        <button class="btn btn-ghost" style="flex-direction:column;padding:16px;height:auto" onclick="completaCheckoutDDT('solo-ddt')">
+          <span style="font-size:22px">📄</span><span style="font-size:13px;font-weight:600;margin-top:6px">Solo DDT</span>
+        </button>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- ═══════════════ MODAL FIRMA DDT ═══════════════ -->
-<div id="modal-firma-ddt" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1300;align-items:center;justify-content:center;padding:20px">
-  <div style="background:var(--bg);border-radius:var(--radius-lg);width:100%;max-width:560px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden">
+<!-- ── MODAL FIRMA DDT ── -->
+<div id="modal-firma-ddt" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1200;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--bg);border-radius:var(--radius-lg);width:100%;max-width:560px;box-shadow:var(--shadow-lg);padding:0;overflow:hidden">
     <div style="background:var(--accent);padding:16px 20px;display:flex;align-items:center;justify-content:space-between">
       <div>
-        <div style="font-size:16px;font-weight:800;color:white">Firma ricezione merce</div>
-        <div id="firma-ddt-info" style="font-size:12px;color:rgba(255,255,255,.8);margin-top:2px"></div>
+        <div style="font-size:16px;font-weight:800;color:white">Firma ricezione DDT</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.8)" id="firma-ddt-info"></div>
       </div>
-      <button onclick="saltaFirmaDDT()" style="background:rgba(255,255,255,.2);border:none;color:white;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:16px;line-height:1">✕</button>
+      <button onclick="saltaFirmaDDT()" style="background:rgba(255,255,255,.2);border:none;color:white;border-radius:var(--radius);padding:6px 10px;cursor:pointer;font-size:12px">Salta</button>
     </div>
-    <div style="padding:16px 20px">
-      <div style="font-size:12px;color:var(--text3);margin-bottom:8px">Il cliente firma qui sotto per accettazione merce:</div>
-      <canvas id="firma-ddt-canvas" width="500" height="180"
-        style="width:100%;height:180px;border:2px solid var(--border);border-radius:var(--radius);background:white;cursor:crosshair;touch-action:none"></canvas>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
-        <button onclick="clearFirmaDdtCanvas()" style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:4px 12px;cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif">Cancella</button>
-        <div style="font-size:11px;color:var(--text3)">Firma con il dito o il signature pad</div>
+    <div style="padding:20px">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:8px">Il cliente firma qui sotto per confermare la ricezione della merce:</div>
+      <canvas id="firma-ddt-canvas" width="720" height="280"
+        style="width:100%;height:200px;border:2px solid var(--border);border-radius:var(--radius);background:white;touch-action:none;cursor:crosshair"></canvas>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+        <button onclick="clearFirmaDdtCanvas()" style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:6px 12px;cursor:pointer;font-size:12px">✕ Cancella</button>
+        <div style="font-size:11px;color:var(--text3)">Firma con il dito, il mouse o il signature pad</div>
       </div>
-      <button onclick="confermaSalvaDDT()" style="width:100%;margin-top:14px;padding:14px;background:var(--success);color:white;border:none;border-radius:var(--radius-lg);font-size:15px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif">✓ Conferma firma</button>
-      <button onclick="saltaFirmaDDT()" style="width:100%;margin-top:8px;padding:10px;background:none;color:var(--text3);border:none;border-radius:var(--radius);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif">Salta firma</button>
+      <button onclick="confermaSalvaDDT()" style="width:100%;margin-top:14px;padding:14px;background:var(--accent);color:white;border:none;border-radius:var(--radius);font-size:15px;font-weight:700;cursor:pointer">
+        ✓ Conferma firma
+      </button>
     </div>
   </div>
 </div>
@@ -9097,6 +9402,20 @@ initDocumenti();
           <button class="btn btn-primary" onclick="openModalMeccanico()">+ Aggiungi dipendente</button>
         </div>
       </div>
+      <!-- Dipendenti (presenze) -->
+      <div style="margin-top:20px">
+        <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
+          <span>Dipendenti registrati</span>
+          <button class="btn btn-ghost btn-sm" onclick="openModalDipendente()">+ Aggiungi</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Nome</th><th>Ruolo</th><th>Telefono</th><th></th></tr></thead>
+            <tbody id="tbody-dipendenti"></tbody>
+          </table>
+          <div class="empty-state" id="empty-dipendenti" style="display:none"><p>Nessun dipendente ancora.</p></div>
+        </div>
+      </div>
     </div><!-- /imp-panel-meccanici -->
 
   </div>
@@ -9118,78 +9437,70 @@ initDocumenti();
 
     <!-- VENDITA A BANCO -->
     <div id="doc-panel-vendita">
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:16px">
-        <div style="font-size:14px;font-weight:700;margin-bottom:16px">Nuova vendita</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
-          <div class="form-group">
-            <label>Cliente</label>
-            <div style="display:flex;gap:6px;align-items:center">
-              <select id="vb-cliente" style="flex:1"><option value="">— Cliente occasionale —</option></select>
-              <button type="button" class="btn btn-ghost btn-sm" onclick="toggleNuovoClienteVb()" id="btn-nuovo-cl-vb">+ Nuovo</button>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px">
+          <div style="font-size:14px;font-weight:700;margin-bottom:16px">Nuova vendita</div>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;margin-bottom:8px">
+            <div class="form-group" style="margin:0"><label>Cliente</label><select id="vb-cliente"><option value="">— Cliente occasionale —</option></select></div>
+            <button class="btn btn-ghost btn-sm" onclick="toggleNuovoClienteVb()" style="white-space:nowrap">+ Nuovo</button>
+          </div>
+          <div id="vb-nuovo-cliente-form" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:14px">
+            <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px">Nuovo cliente</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div class="form-group" style="grid-column:span 2;margin:0"><label>Ragione sociale *</label><input type="text" id="vb-c-ragione" placeholder="Es. Mario Rossi Trasporti"></div>
+              <div class="form-group" style="margin:0"><label>P.IVA / CF</label><input type="text" id="vb-c-piva" placeholder="IT12345678901"></div>
+              <div class="form-group" style="margin:0"><label>Telefono</label><input type="tel" id="vb-c-tel" placeholder="+39…"></div>
+              <div class="form-group" style="margin:0"><label>Email</label><input type="email" id="vb-c-email" placeholder="info@…"></div>
+              <div class="form-group" style="margin:0"><label>SDI</label><input type="text" id="vb-c-sdi" placeholder="0000000"></div>
+              <div class="form-group" style="grid-column:span 2;margin:0"><label>Indirizzo</label><input type="text" id="vb-c-indirizzo" placeholder="Via, CAP, Città"></div>
+              <div class="form-group" style="margin:0"><label>Metodo pagamento</label>
+                <select id="vb-c-pagamento"><option value="">— non specificato —</option><option value="contanti">Contanti</option><option value="carta">Carta/POS</option><option value="bonifico">Bonifico</option><option value="riba">Ri.Ba.</option><option value="30gg">30 gg</option><option value="60gg">60 gg</option><option value="90gg">90 gg</option></select>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end">
+              <button class="btn btn-ghost btn-sm" onclick="toggleNuovoClienteVb()">Annulla</button>
+              <button class="btn btn-primary btn-sm" onclick="salvaNuovoClienteVb()">Salva cliente</button>
             </div>
           </div>
-          <div class="form-group"><label>Data</label><input type="date" id="vb-data"></div>
-          <div class="form-group" style="grid-column:span 2"><label>Note</label><input type="text" id="vb-note" placeholder="Riferimento, ordine…"></div>
-        </div>
-        <div id="vb-nuovo-cliente-form" style="display:none;background:var(--bg);border:1.5px dashed var(--border);border-radius:var(--radius);padding:14px;margin-bottom:14px">
-          <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--accent);margin-bottom:10px">Nuovo cliente</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-            <div class="form-group" style="grid-column:span 2"><label>Ragione sociale / Nome *</label><input type="text" id="vb-c-ragione" placeholder="Es. Rossi Mario"></div>
-            <div class="form-group"><label>P.IVA</label><input type="text" id="vb-c-piva" placeholder="IT12345678901"></div>
-            <div class="form-group"><label>Telefono</label><input type="tel" id="vb-c-tel" placeholder="+39 02 1234567"></div>
-            <div class="form-group"><label>Email</label><input type="email" id="vb-c-email" placeholder="info@esempio.it"></div>
-            <div class="form-group"><label>Indirizzo</label><input type="text" id="vb-c-indirizzo" placeholder="Via Roma 1, Milano"></div>
-            <div class="form-group"><label>Metodo di pagamento</label>
-              <select id="vb-c-pagamento">
-                <option value="">— Seleziona —</option>
-                <option value="contanti">Contanti</option>
-                <option value="carta">Carta di credito/debito</option>
-                <option value="bonifico">Bonifico bancario</option>
-                <option value="riba">Ri.Ba.</option>
-                <option value="30gg">30 giorni data fattura</option>
-                <option value="60gg">60 giorni data fattura</option>
-                <option value="90gg">90 giorni data fattura</option>
-              </select>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+            <div class="form-group"><label>Data</label><input type="date" id="vb-data"></div>
+            <div class="form-group"><label>Note</label><input type="text" id="vb-note" placeholder="Riferimenti…"></div>
+          </div>
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:8px">Articoli</div>
+          <div style="position:relative;margin-bottom:12px">
+            <div style="display:flex;gap:8px">
+              <input type="text" id="vb-search-input" placeholder="Cerca per nome, codice o barcode…"
+                oninput="cercaRicambioVb(this.value)"
+                onkeydown="if(event.key==='Enter'){event.preventDefault();aggiungiPrimoProdottoVb()}"
+                style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px">
+              <button onclick="aggiungiPrimoProdottoVb()" class="btn btn-secondary">Aggiungi</button>
             </div>
-            <div class="form-group"><label>Cod. SDI</label><input type="text" id="vb-c-sdi" placeholder="ABCDE12" style="text-transform:uppercase"></div>
+            <div id="vb-search-drop" style="display:none;position:absolute;left:0;right:0;top:calc(100%+4px);background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);z-index:50;max-height:220px;overflow-y:auto"></div>
           </div>
-          <div style="display:flex;gap:8px;margin-top:8px">
-            <button type="button" class="btn btn-primary btn-sm" onclick="salvaNuovoClienteVb()">Salva cliente</button>
-            <button type="button" class="btn btn-ghost btn-sm" onclick="toggleNuovoClienteVb()">Annulla</button>
+          <div id="vb-righe"></div>
+          <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+            <div><div style="font-size:12px;color:var(--text3)">Totale imponibile</div><div style="font-size:20px;font-weight:800;font-family:'DM Mono',monospace" id="vb-totale">€ 0,00</div></div>
+            <button class="btn btn-primary" onclick="emmettiDDT()">Emetti DDT →</button>
           </div>
         </div>
-        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:8px">Aggiungi ricambi</div>
-        <div style="position:relative;margin-bottom:12px">
-          <div style="display:flex;gap:8px">
-            <input type="text" id="vb-search-input" placeholder="Cerca per nome, codice o barcode…"
-              oninput="cercaRicambioVb(this.value)"
-              onkeydown="if(event.key==='Enter'){event.preventDefault();aggiungiPrimoProdottoVb()}"
-              style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;outline:none;font-family:'DM Sans',sans-serif">
-            <button onclick="aggiungiPrimoProdottoVb()" class="btn btn-secondary">Aggiungi</button>
-          </div>
-          <div id="vb-search-drop" style="display:none;position:absolute;left:0;right:0;top:calc(100%+4px);background:white;border:1.5px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);z-index:300;max-height:200px;overflow-y:auto"></div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px">
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--text3);margin-bottom:8px">Ultime vendite</div>
+          <div id="vb-storico"></div>
         </div>
-        <div id="vb-righe"></div>
-        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-          <div><div style="font-size:12px;color:var(--text3)">Totale imponibile</div><div style="font-size:22px;font-weight:700;font-family:'DM Mono',monospace" id="vb-totale">€ 0,00</div></div>
-          <button class="btn btn-primary" onclick="emmettiDDT()">Emetti DDT →</button>
-        </div>
-      </div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px">
-        <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--text3);margin-bottom:10px">Ultime vendite</div>
-        <div id="vb-storico"></div>
       </div>
     </div>
 
     <!-- DDT -->
     <div id="doc-panel-ddt" style="display:none">
       <div style="display:flex;gap:12px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
-        <div style="background:white;border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 12px;display:flex;align-items:center;gap:8px;flex:1;min-width:160px">
+        <div style="background:white;border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 12px;display:flex;gap:8px;align-items:center;flex:1;min-width:160px">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:var(--text3)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="search-ddt" placeholder="Cerca DDT…" oninput="renderDDT()" style="border:none;outline:none;font-size:14px;width:100%">
+          <input type="text" id="search-ddt" placeholder="Cerca DDT…" oninput="renderDDT()" style="border:none;outline:none;width:100%;font-size:14px;background:transparent">
         </div>
-        <button id="btn-fattura-cumulativa" class="btn btn-secondary" style="display:none" onclick="creaFatturaCumulativa()">Fattura cumulativa (<span id="ddt-sel-count">0</span>)</button>
         <button class="btn btn-primary" onclick="apriNuovaDDT()">+ Nuova DDT</button>
+        <button id="btn-fattura-cumulativa" class="btn btn-secondary" onclick="creaFatturaCumulativa()" style="display:none">
+          Fattura cumulativa (<span id="ddt-sel-count">0</span>)
+        </button>
       </div>
       <div id="lista-ddt"></div>
       <div id="empty-ddt" style="text-align:center;padding:40px;color:var(--text3)">
@@ -9300,17 +9611,4 @@ initDocumenti();
     <!-- Panel QR -->
     <div id="fpanel-qr" style="display:none;padding:20px;text-align:center">
       <div style="font-size:13px;color:var(--text2);margin-bottom:16px">Fai scansionare al cliente per firmare dal suo telefono</div>
-      <div id="firma-qr-code" style="display:inline-block;padding:16px;background:white;border-radius:var(--radius-lg);border:1px solid var(--border);margin-bottom:16px"></div>
-      <div id="firma-qr-stato" style="font-size:13px;color:var(--text3)">In attesa della firma…</div>
-      <div id="firma-qr-ok" style="display:none">
-        <div style="font-size:32px">✅</div>
-        <div style="font-size:14px;font-weight:700;color:var(--success);margin-top:8px">Firma ricevuta!</div>
-        <button onclick="confermaSalvaCommessa()" style="margin-top:14px;padding:12px 24px;background:var(--success);color:white;border:none;border-radius:var(--radius-lg);font-size:14px;font-weight:700;cursor:pointer">Crea commessa</button>
-      </div>
-    </div>
-
-  </div>
-</div>
-
-</body>
-</html>
+      <div id="firma-qr-code" style="display:inline-bl
