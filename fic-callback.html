@@ -1,79 +1,120 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FiC Callback</title>
-  <style>
-    body { font-family: system-ui, sans-serif; display:flex; align-items:center;
-           justify-content:center; min-height:100vh; margin:0; background:#f8fafc; }
-    .box { text-align:center; color:#64748b; max-width:520px; padding:32px; }
-    .debug { margin-top:16px; font-family:monospace; font-size:13px;
-             background:#f1f5f9; border-radius:8px; padding:16px;
-             text-align:left; word-break:break-all; line-height:1.8; }
-    .ok  { color:#16a34a; font-weight:700; font-size:18px; }
-    .err { color:#dc2626; font-weight:700; font-size:18px; }
-    .warn { color:#d97706; font-weight:700; font-size:18px; }
-    .btn { margin-top:20px; display:inline-block; padding:10px 24px;
-           background:#6366f1; color:#fff; border-radius:8px; text-decoration:none;
-           font-weight:600; cursor:pointer; border:none; font-size:15px; }
-    .redirect-note { margin-top:12px; font-size:13px; color:#94a3b8; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ORMIA – Connessione FiC</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+         background: #f8fafc; display: flex; align-items: center; justify-content: center;
+         min-height: 100vh; padding: 24px; }
+  .card { background: white; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,.08);
+          padding: 40px 48px; max-width: 420px; width: 100%; text-align: center; }
+  .logo { font-size: 28px; font-weight: 800; letter-spacing: -1px; margin-bottom: 8px; color: #1a1a2e; }
+  .subtitle { font-size: 14px; color: #64748b; margin-bottom: 32px; }
+  .spinner { width: 48px; height: 48px; border: 4px solid #e2e8f0; border-top-color: #3b82f6;
+             border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 20px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .status { font-size: 15px; font-weight: 600; color: #1e293b; margin-bottom: 8px; }
+  .detail { font-size: 13px; color: #64748b; line-height: 1.6; }
+  .icon-ok  { font-size: 52px; margin-bottom: 16px; }
+  .icon-err { font-size: 52px; margin-bottom: 16px; }
+  .btn { display: inline-block; margin-top: 24px; padding: 10px 24px; background: #3b82f6;
+         color: white; border-radius: 8px; font-size: 14px; font-weight: 600;
+         text-decoration: none; cursor: pointer; border: none; }
+  .btn:hover { background: #2563eb; }
+</style>
 </head>
 <body>
-  <div class="box">
-    <div id="msg"></div>
-    <div class="debug" id="dbg"></div>
-    <div class="redirect-note" id="redirect-note"></div>
-    <br>
-    <button class="btn" id="btn-continue">Continua →</button>
+<div class="card">
+  <div class="logo">ORMIA</div>
+  <div class="subtitle">Connessione Fatture in Cloud</div>
+  <div id="content">
+    <div class="spinner"></div>
+    <div class="status">Completamento autorizzazione…</div>
+    <div class="detail">Scambio codice OAuth2 in corso</div>
   </div>
-  <script>
-    (function() {
-      var p    = new URLSearchParams(window.location.search);
-      var code = p.get('code');
-      var err  = p.get('error');
-      var desc = p.get('error_description');
-      var state = p.get('state') || '';
-      var msg  = document.getElementById('msg');
-      var dbg  = document.getElementById('dbg');
-      var note = document.getElementById('redirect-note');
-      var btn  = document.getElementById('btn-continue');
+</div>
 
-      // Determina destinazione dal parametro state
-      var dest = 'https://ormiaofficina.netlify.app/ormia-finance';
-      if (state === 'fic-test') {
-        dest = 'https://ormiaofficina.netlify.app/fic-test';
-      }
+<script>
+(async function() {
+  var content = document.getElementById('content');
 
-      btn.onclick = function() { window.location.replace(dest); };
+  function showOk(msg) {
+    content.innerHTML = '<div class="icon-ok">✅</div>'
+      + '<div class="status">FiC collegato!</div>'
+      + '<div class="detail">' + msg + '</div>';
+  }
 
-      if (code) {
-        sessionStorage.setItem('_ficPendingCode', code);
-        sessionStorage.setItem('_ficOAuthState', state);
-        msg.innerHTML = '<span class="ok">✓ Codice ricevuto</span>';
-        dbg.innerHTML =
-          'code: <b>' + code.substring(0, 20) + '…</b><br>' +
-          'lunghezza: ' + code.length + ' caratteri<br>' +
-          (state ? 'state: <b>' + state + '</b>' : '');
-        note.textContent = 'Redirect verso: ' + dest;
+  function showErr(msg) {
+    content.innerHTML = '<div class="icon-err">❌</div>'
+      + '<div class="status">Errore autorizzazione</div>'
+      + '<div class="detail">' + msg + '</div>'
+      + '<button class="btn" onclick="window.location.href=\'/ORMIA-finance.html#fic\'">Torna a ORMIA Finance</button>';
+  }
 
-        // Auto-redirect dopo 2s
-        setTimeout(function() { window.location.replace(dest); }, 2000);
+  function tornaAFinance() {
+    window.location.href = '/ORMIA-finance.html?fic=ok';
+  }
 
-      } else if (err) {
-        sessionStorage.setItem('_ficOAuthError', desc || err);
-        msg.innerHTML = '<span class="err">✗ Errore FiC</span>';
-        dbg.innerHTML =
-          'error: <b>' + err + '</b>' +
-          (desc ? '<br>description: <b>' + desc + '</b>' : '') +
-          (state ? '<br>state: <b>' + state + '</b>' : '') +
-          '<br><br>URL completo:<br>' + window.location.href;
-      } else {
-        msg.innerHTML = '<span class="warn">⚠ Nessun parametro ricevuto</span>';
-        dbg.innerHTML = 'URL completo:<br>' + window.location.href;
-      }
-    })();
-  </script>
+  var params   = new URLSearchParams(window.location.search);
+  var code     = params.get('code');
+  var errFic   = params.get('error');
+  var state    = params.get('state') || '';
+
+  if (errFic) {
+    showErr('FiC ha rifiutato: ' + (params.get('error_description') || errFic));
+    return;
+  }
+
+  if (!code) {
+    showErr('Nessun codice ricevuto da FiC.');
+    return;
+  }
+
+  var cfg = null;
+  try { cfg = JSON.parse(localStorage.getItem('ormia_fic_config') || 'null'); } catch(e) {}
+
+  if (!cfg || !cfg.client_id || !cfg.client_secret) {
+    showErr('Configurazione FiC non trovata. Torna su ORMIA Finance → Fatture in Cloud e salva le credenziali prima di autorizzare.');
+    return;
+  }
+
+  var REDIRECT_URI = 'https://ormiaofficina.netlify.app/fic-callback';
+
+  try {
+    var res = await fetch('/.netlify/functions/fic-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        grant_type:    'authorization_code',
+        code:          code,
+        client_id:     cfg.client_id,
+        client_secret: cfg.client_secret,
+        redirect_uri:  REDIRECT_URI,
+      }),
+    });
+
+    var data = await res.json();
+
+    if (!res.ok || data.error) {
+      showErr('Errore scambio codice: ' + (data.error_description || data.error || 'HTTP ' + res.status));
+      return;
+    }
+
+    var token = Object.assign({}, data, {
+      expires_at: Date.now() + (data.expires_in || 3600) * 1000,
+    });
+    localStorage.setItem('ormia_fic_token', JSON.stringify(token));
+
+    showOk('Token salvato. Reindirizzamento in corso…');
+    setTimeout(tornaAFinance, 1500);
+
+  } catch(e) {
+    showErr('Errore di rete: ' + e.message);
+  }
+})();
+</script>
 </body>
 </html>
