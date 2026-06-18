@@ -1630,8 +1630,7 @@ function autorizzaSumUp() {
   if (!_sumupConfig.client_id) { alert('Salva prima la configurazione SumUp.'); return; }
   const authUrl = `${SUMUP_AUTH_URL}?response_type=code`
     + `&client_id=${encodeURIComponent(_sumupConfig.client_id)}`
-    + `&redirect_uri=${encodeURIComponent(SUMUP_REDIRECT_URI)}`
-    + `&scope=${encodeURIComponent('payments transactions.history')}`;
+    + `&redirect_uri=${encodeURIComponent(SUMUP_REDIRECT_URI)}`;
   const info = document.getElementById('sumup-auth-info');
   if (info) info.style.display = '';
   window.location.href = authUrl;
