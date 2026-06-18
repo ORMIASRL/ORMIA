@@ -380,16 +380,13 @@ tr:hover td { background:var(--surface2); }
             <div style="font-size:13px;color:var(--text3);margin-bottom:16px">Connessione OAuth2 — credenziali da <strong>developer.sumup.com → Le tue app</strong></div>
             <div class="alert alert-info" style="margin-bottom:16px">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              Redirect URI da registrare su SumUp: <code style="font-size:11px">https://ormiaofficina.netlify.app/ormia-finance</code>
+              Redirect URI da registrare su developer.sumup.com:
             </div>
+            <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);background:var(--surface2);padding:8px 10px;border-radius:6px;border:1px solid var(--border);margin-bottom:16px">https://ormiaofficina.netlify.app/sumup-callback</div>
             <div class="form-grid">
               <div class="form-group">
                 <label>Client ID</label>
                 <input type="text" id="sumup-client-id" placeholder="cc_classic_…" style="font-family:'DM Mono',monospace;font-size:12px">
-              </div>
-              <div class="form-group">
-                <label>Redirect URI</label>
-                <input type="text" id="sumup-redirect-uri" placeholder="https://ormiaofficina.netlify.app/ormia-finance" style="font-family:'DM Mono',monospace;font-size:12px">
               </div>
               <div class="form-group">
                 <label>Client Secret</label>
@@ -415,21 +412,9 @@ tr:hover td { background:var(--surface2); }
                   Autorizza SumUp
                 </button>
               </div>
-              <div id="sumup-auth-step2" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px">
-                <div style="font-size:12px;font-weight:700;margin-bottom:6px">📋 Completa l'autorizzazione</div>
-                <div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.7">
-                  1. Si è aperta la pagina SumUp — accedi e autorizza ORMIA<br>
-                  2. Dopo aver autorizzato, copia l'URL completo della pagina di redirect<br>
-                  3. Incollalo qui sotto (o solo il valore del parametro <code>?code=</code>)
-                </div>
-                <div class="form-group" style="margin-bottom:8px">
-                  <input type="text" id="sumup-auth-code" placeholder="Incolla URL di redirect o codice…" style="font-size:12px;font-family:'DM Mono',monospace">
-                </div>
-                <div style="display:flex;gap:8px">
-                  <button class="btn btn-primary btn-sm" onclick="completaAutorizzazioneSumUp()">Completa autorizzazione</button>
-                  <button class="btn btn-ghost btn-sm" onclick="document.getElementById('sumup-auth-step2').style.display='none'">Annulla</button>
-                </div>
-                <div id="sumup-auth-result" style="margin-top:8px;font-size:12px;display:none"></div>
+              <div id="sumup-auth-info" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;font-size:12px;color:var(--text2);line-height:1.7">
+                ⏳ Redirect in corso verso SumUp… accedi e autorizza ORMIA.<br>
+                Verrai reindirizzato automaticamente al termine.
               </div>
             </div>
           </div>
@@ -702,6 +687,11 @@ async function showApp() {
     _ficToken = JSON.parse(localStorage.getItem('ormia_fic_token') || 'null');
     setSection('fic');
     setTimeout(() => showToastFin('✓ FiC collegato correttamente!'), 300);
+  } else if (urlParams.get('sumup') === 'ok') {
+    history.replaceState(null, '', window.location.pathname);
+    _sumupToken = JSON.parse(localStorage.getItem('ormia_sumup_token') || 'null');
+    setSection('sumup');
+    setTimeout(() => showToastFin('✓ SumUp collegato correttamente!'), 300);
   } else {
     setSection('dashboard');
   }
@@ -1412,10 +1402,10 @@ function updateFicTokenStatus() {
 }
 
 function caricaFormSumUp() {
+  _sumupToken = JSON.parse(localStorage.getItem('ormia_sumup_token') || 'null');
   const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
-  set('sumup-client-id',    _sumupConfig.client_id   || '');
-  set('sumup-redirect-uri', _sumupConfig.redirect_uri|| 'https://ormiaofficina.netlify.app/ormia-finance');
-  set('sumup-merchant',     _sumupConfig.merchant    || '');
+  set('sumup-client-id', _sumupConfig.client_id || '');
+  set('sumup-merchant',  _sumupConfig.merchant  || '');
   const panel = document.getElementById('sumup-auth-panel');
   if (panel) panel.style.display = _sumupConfig.client_id ? '' : 'none';
   updateSumUpTokenStatus();
@@ -1589,8 +1579,9 @@ async function sincronizzaFICManuale() { await sincronizzaFIC(false); }
 // CONFIGURAZIONI
 // ══════════════════════════════════════════════════
 // ── SumUp OAuth2 ─────────────────────────────────
-const SUMUP_TOKEN_URL = 'https://api.sumup.com/token';
-const SUMUP_AUTH_URL  = 'https://api.sumup.com/authorize';
+const SUMUP_TOKEN_URL    = 'https://api.sumup.com/token';
+const SUMUP_AUTH_URL     = 'https://api.sumup.com/authorize';
+const SUMUP_REDIRECT_URI = 'https://ormiaofficina.netlify.app/sumup-callback';
 
 function _saveSumUpToken(d) {
   _sumupToken = {
@@ -1617,56 +1608,45 @@ async function getSumUpAccessToken() {
       });
       if (res.ok) { _saveSumUpToken(await res.json()); return _sumupToken.access_token; }
     } catch(_) {}
+    // prova via Netlify proxy
+    try {
+      const res2 = await fetch('/.netlify/functions/sumup-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          grant_type:    'refresh_token',
+          client_id:     _sumupConfig.client_id,
+          client_secret: _sumupConfig.client_secret,
+          refresh_token: _sumupToken.refresh_token,
+        }),
+      });
+      if (res2.ok) { _saveSumUpToken(await res2.json()); return _sumupToken.access_token; }
+    } catch(_) {}
   }
   throw new Error('SumUp non autorizzato. Vai su Integrazioni → SumUp POS e autorizza.');
 }
 
 function autorizzaSumUp() {
   if (!_sumupConfig.client_id) { alert('Salva prima la configurazione SumUp.'); return; }
-  const redirectUri = document.getElementById('sumup-redirect-uri')?.value?.trim()
-    || 'https://ormiaofficina.netlify.app/ormia-finance';
   const authUrl = `${SUMUP_AUTH_URL}?response_type=code`
     + `&client_id=${encodeURIComponent(_sumupConfig.client_id)}`
-    + `&redirect_uri=${encodeURIComponent(redirectUri)}`
+    + `&redirect_uri=${encodeURIComponent(SUMUP_REDIRECT_URI)}`
     + `&scope=${encodeURIComponent('payments transactions.history')}`;
-  window.open(authUrl, '_blank');
-  document.getElementById('sumup-auth-step2').style.display = '';
-}
-
-async function completaAutorizzazioneSumUp() {
-  const input = document.getElementById('sumup-auth-code').value.trim();
-  if (!input) { alert("Incolla l'URL di redirect o il codice."); return; }
-  let code = input;
-  try { const u = new URL(input); code = u.searchParams.get('code') || input; } catch(_) {}
-  const redirectUri = document.getElementById('sumup-redirect-uri')?.value?.trim()
-    || 'https://ormiaofficina.netlify.app/ormia-finance';
-  const el = document.getElementById('sumup-auth-result');
-  el.style.display = ''; el.innerHTML = '<span style="color:var(--text3)">Scambio codice…</span>';
-  try {
-    const res = await fetch(SUMUP_TOKEN_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code', client_id: _sumupConfig.client_id,
-        client_secret: _sumupConfig.client_secret, redirect_uri: redirectUri, code,
-      }),
-    });
-    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error_description||e.error||`Errore ${res.status}`); }
-    _saveSumUpToken(await res.json());
-    el.innerHTML = '<span style="color:var(--success)">✓ Autorizzazione completata — SumUp collegato!</span>';
-    document.getElementById('sumup-auth-step2').style.display = 'none';
-  } catch(e) {
-    el.innerHTML = `<span style="color:var(--danger)">✗ ${e.message}</span>`;
-  }
+  const info = document.getElementById('sumup-auth-info');
+  if (info) info.style.display = '';
+  window.location.href = authUrl;
 }
 
 function updateSumUpTokenStatus() {
   const el = document.getElementById('sumup-token-status');
   if (!el) return;
-  if (_sumupToken?.access_token && _sumupToken.expires_at > Date.now()) {
-    const exp = new Date(_sumupToken.expires_at).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
-    el.innerHTML = `<span style="color:var(--success)">✓ Token valido fino alle ${exp}</span>`;
-  } else if (_sumupToken?.refresh_token) {
+  const tok = _sumupToken;
+  const hasAccess  = tok?.access_token;
+  const notExpired = !tok?.expires_at || tok.expires_at > Date.now();
+  if (hasAccess && notExpired) {
+    const exp = tok.expires_at ? new Date(tok.expires_at).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}) : '';
+    el.innerHTML = `<span style="color:var(--success)">✓ Collegato${exp ? ' (valido fino alle '+exp+')' : ''}</span>`;
+  } else if (tok?.refresh_token) {
     el.innerHTML = '<span style="color:var(--warning)">⚠ Token scaduto — rinnovato auto al prossimo uso</span>';
   } else {
     el.innerHTML = '<span style="color:var(--danger)">✗ Non autorizzato — clicca "Autorizza SumUp"</span>';
@@ -1702,7 +1682,7 @@ function salvaSumUp() {
     client_id:     document.getElementById('sumup-client-id').value.trim(),
     client_secret: document.getElementById('sumup-client-secret').value.trim(),
     merchant:      document.getElementById('sumup-merchant').value.trim(),
-    redirect_uri:  document.getElementById('sumup-redirect-uri')?.value?.trim() || 'https://ormiaofficina.netlify.app/ormia-finance',
+    redirect_uri:  SUMUP_REDIRECT_URI,
   };
   localStorage.setItem('ormia_sumup_config', JSON.stringify(_sumupConfig));
   _sumupToken = null; localStorage.removeItem('ormia_sumup_token');

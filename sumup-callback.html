@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SumUp — Autorizzazione ORMIA</title>
+<style>
+  body { font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center;
+         min-height: 100vh; margin: 0; background: #F5F4F1; color: #1A1917; }
+  .box { background: white; border-radius: 12px; padding: 32px 40px; max-width: 400px; width: 90%;
+         box-shadow: 0 4px 20px rgba(0,0,0,.08); text-align: center; }
+  .icon { font-size: 40px; margin-bottom: 16px; }
+  h2 { margin: 0 0 8px; font-size: 18px; font-weight: 700; }
+  p  { margin: 0; font-size: 13px; color: #6B6A65; line-height: 1.6; }
+  .err { color: #C53030; }
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="icon" id="icon">⏳</div>
+  <h2 id="titolo">Autorizzazione in corso…</h2>
+  <p id="messaggio">Scambio del codice con SumUp, attendere.</p>
+</div>
+<script>
+(async function() {
+  const params  = new URLSearchParams(window.location.search);
+  const code    = params.get('code');
+  const errCode = params.get('error');
+
+  function fail(msg) {
+    document.getElementById('icon').textContent = '✗';
+    document.getElementById('titolo').textContent = 'Autorizzazione fallita';
+    document.getElementById('messaggio').innerHTML = '<span class="err">' + msg + '</span>';
+  }
+
+  if (errCode) { fail('SumUp ha restituito: ' + errCode + (params.get('error_description') ? ' — ' + params.get('error_description') : '')); return; }
+  if (!code)   { fail('Codice di autorizzazione mancante.'); return; }
+
+  const config = JSON.parse(localStorage.getItem('ormia_sumup_config') || 'null');
+  if (!config?.client_id || !config?.client_secret) {
+    fail('Configurazione SumUp non trovata. Torna su ORMIA Finance e salva le credenziali.');
+    return;
+  }
+
+  const REDIRECT_URI = 'https://ormiaofficina.netlify.app/sumup-callback';
+
+  try {
+    const res = await fetch('/.netlify/functions/sumup-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        grant_type:    'authorization_code',
+        client_id:     config.client_id,
+        client_secret: config.client_secret,
+        redirect_uri:  REDIRECT_URI,
+        code:          code,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.access_token) {
+      fail('Errore dal server: ' + (data.error_description || data.error || data.message || 'risposta non valida'));
+      return;
+    }
+
+    const token = {
+      access_token:  data.access_token,
+      refresh_token: data.refresh_token || null,
+      expires_at:    Date.now() + (data.expires_in || 3600) * 1000,
+    };
+    localStorage.setItem('ormia_sumup_token', JSON.stringify(token));
+
+    document.getElementById('icon').textContent = '✓';
+    document.getElementById('titolo').textContent = 'Collegato!';
+    document.getElementById('messaggio').textContent = 'SumUp autorizzato. Reindirizzamento…';
+
+    setTimeout(() => {
+      window.location.href = '/ORMIA-finance.html?sumup=ok';
+    }, 800);
+
+  } catch(e) {
+    fail('Errore di rete: ' + e.message);
+  }
+})();
+</script>
+</body>
+</html>
