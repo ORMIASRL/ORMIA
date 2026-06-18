@@ -520,6 +520,45 @@ tr:hover td { background:var(--surface2); }
         </div>
       </div>
 
+      <!-- ══════════ SEZIONE PRESENZE ══════════ -->
+      <div id="section-presenze" style="display:none">
+        <!-- Header + nav mese inline -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:16px">
+            <div>
+              <div style="font-size:17px;font-weight:800">Presenze</div>
+              <div style="font-size:12px;color:var(--text3)" id="pres-sub">Riepilogo mensile dipendenti</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button onclick="cambiaMessePresenze(-1)" class="btn btn-secondary btn-sm">‹</button>
+              <div style="font-size:14px;font-weight:700;min-width:160px;text-align:center" id="pres-titolo-mese"></div>
+              <button onclick="cambiaMessePresenze(1)" class="btn btn-secondary btn-sm">›</button>
+            </div>
+          </div>
+          <button onclick="exportPresenzeXLSX()" class="btn btn-primary btn-sm">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:5px;vertical-align:-2px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Esporta Excel
+          </button>
+        </div>
+        <!-- Tabella -->
+        <div class="table-wrap">
+          <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead>
+              <tr style="border-bottom:2px solid var(--border)">
+                <th style="padding:8px 14px;text-align:left;font-weight:700">Dipendente</th>
+                <th style="padding:8px 14px;text-align:left;font-weight:700">Ruolo</th>
+                <th style="padding:8px 14px;text-align:center;font-weight:700">Giorni</th>
+                <th style="padding:8px 14px;text-align:right;font-weight:700">Ore totali</th>
+                <th style="padding:8px 14px;text-align:center;font-weight:700">Media/giorno</th>
+                <th style="padding:8px 4px;width:36px"></th>
+              </tr>
+            </thead>
+            <tbody id="pres-tbody"></tbody>
+          </table>
+          <div id="pres-empty" style="display:none;padding:28px;text-align:center;color:var(--text3);font-size:14px">Nessuna presenza registrata per questo mese.</div>
+        </div>
+      </div>
+
     </div><!-- /content -->
   </main>
 </div>
@@ -572,50 +611,6 @@ tr:hover td { background:var(--surface2); }
 .metodo-btn.active { border-color:var(--accent); background:var(--accent-light); color:var(--accent); }
 @keyframes spin { to { transform:rotate(360deg); } }
 </style>
-
-      <!-- ══════════ SEZIONE PRESENZE ══════════ -->
-      <div id="section-presenze" style="display:none">
-        <div style="max-width:900px">
-
-        <!-- Header + nav mese inline -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-          <div style="display:flex;align-items:center;gap:16px">
-            <div>
-              <div style="font-size:17px;font-weight:800">Presenze</div>
-              <div style="font-size:12px;color:var(--text3)" id="pres-sub">Riepilogo mensile dipendenti</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px">
-              <button onclick="cambiaMessePresenze(-1)" class="btn btn-secondary btn-sm">‹</button>
-              <div style="font-size:14px;font-weight:700;min-width:160px;text-align:center" id="pres-titolo-mese"></div>
-              <button onclick="cambiaMessePresenze(1)" class="btn btn-secondary btn-sm">›</button>
-            </div>
-          </div>
-          <button onclick="exportPresenzeXLSX()" class="btn btn-primary btn-sm">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:5px;vertical-align:-2px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Esporta Excel
-          </button>
-        </div>
-
-        <!-- Tabella -->
-        <div class="table-wrap">
-          <table style="width:100%;border-collapse:collapse;font-size:13px">
-            <thead>
-              <tr style="border-bottom:2px solid var(--border)">
-                <th style="padding:8px 14px;text-align:left;font-weight:700">Dipendente</th>
-                <th style="padding:8px 14px;text-align:left;font-weight:700">Ruolo</th>
-                <th style="padding:8px 14px;text-align:center;font-weight:700">Giorni</th>
-                <th style="padding:8px 14px;text-align:right;font-weight:700">Ore totali</th>
-                <th style="padding:8px 14px;text-align:center;font-weight:700">Media/giorno</th>
-                <th style="padding:8px 4px;width:36px"></th>
-              </tr>
-            </thead>
-            <tbody id="pres-tbody"></tbody>
-          </table>
-          <div id="pres-empty" style="display:none;padding:28px;text-align:center;color:var(--text3);font-size:14px">Nessuna presenza registrata per questo mese.</div>
-        </div>
-
-        </div><!-- /max-width:900px -->
-      </div>
 
 <script>
 const SUPA_URL = 'https://crcfwmkemnwippplteqm.supabase.co';
