@@ -2566,6 +2566,22 @@ function init() {
     <div class="detail-row"><span class="detail-key">Meccanici</span><span class="detail-val" id="dc-meccanici" style="text-align:right"></span></div>
   </div>
 
+  <!-- NOTE MECCANICO -->
+  <div class="detail-section" id="dc-nota-mec-section" style="display:none">
+    <div class="detail-section-title">✏️ Note meccanico</div>
+    <div id="dc-nota-mec" style="font-size:13px;color:var(--text2);line-height:1.6;background:var(--surface2);border-radius:var(--radius);padding:10px 12px;border-left:3px solid var(--accent)"></div>
+  </div>
+
+  <!-- FOTO GARANZIA -->
+  <div class="detail-section" id="dc-foto-section" style="display:none">
+    <div class="detail-section-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>📸 Foto garanzia</span>
+      <span id="dc-foto-count" style="font-size:11px;color:var(--text3);font-weight:400"></span>
+    </div>
+    <div id="dc-foto-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px"></div>
+    <div id="dc-foto-empty" style="font-size:12px;color:var(--text3);padding:8px 0;display:none">Nessuna foto caricata ancora dal meccanico.</div>
+  </div>
+
   <!-- TIMBRATURA COMMESSA -->
   <div class="detail-section" id="dc-tim-section" style="background:var(--surface2)">
     <div class="detail-section-title" style="display:flex;align-items:center;justify-content:space-between">
@@ -2802,22 +2818,6 @@ function init() {
     </div>
   </div>
   <div class="detail-section"><div class="detail-section-title">Note</div><div id="dc-note" style="font-size:13px;color:var(--text2);line-height:1.6">—</div></div>
-  <div class="detail-section" id="dc-nota-mec-section" style="display:none">
-    <div class="detail-section-title">✏️ Note meccanico</div>
-    <div id="dc-nota-mec" style="font-size:13px;color:var(--text2);line-height:1.6;background:var(--surface2);border-radius:var(--radius);padding:10px 12px;border-left:3px solid var(--accent)"></div>
-  </div>
-
-  <!-- FOTO GARANZIA -->
-  <div class="detail-section" id="dc-foto-section" style="display:none">
-    <div class="detail-section-title" style="display:flex;align-items:center;justify-content:space-between">
-      <span>📸 Foto garanzia</span>
-      <span id="dc-foto-count" style="font-size:11px;color:var(--text3);font-weight:400"></span>
-    </div>
-    <div id="dc-foto-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px"></div>
-    <div id="dc-foto-empty" style="font-size:12px;color:var(--text3);padding:8px 0;display:none">Nessuna foto caricata ancora dal meccanico.</div>
-  </div>
-
-
   <div style="padding:16px 24px;display:flex;gap:8px;flex-wrap:wrap">
     <button class="btn btn-secondary btn-sm" id="dc-btn-cambia-stato" onclick="cambiaStato()">Cambia stato</button>
     <button class="btn btn-primary btn-sm" id="dc-btn-riapri" style="display:none" onclick="riaprirCommessa()">🔄 Riapri</button>
@@ -9945,7 +9945,7 @@ initDocumenti();
 </div>
 
 <!-- ══ PANNELLO NOTE DESTRA ══ -->
-<div id="bn-panel" style="position:fixed;top:0;right:0;bottom:0;width:280px;transform:translateX(248px);background:var(--surface);border-left:1px solid var(--border);z-index:300;display:flex;flex-direction:column;transition:transform .25s ease;box-shadow:-2px 0 12px rgba(0,0,0,.07)">
+<div id="bn-panel" style="position:fixed;top:0;right:0;bottom:0;width:280px;transform:translateX(248px);background:var(--surface);border-left:1px solid var(--border);z-index:140;display:flex;flex-direction:column;transition:transform .25s ease;box-shadow:-2px 0 12px rgba(0,0,0,.07)">
   <!-- Tab verticale sempre visibile -->
   <div onclick="bnToggle()" style="position:absolute;left:-32px;top:50%;transform:translateY(-50%);width:32px;height:96px;background:var(--surface);border:1px solid var(--border);border-right:none;border-radius:8px 0 0 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;box-shadow:-2px 0 8px rgba(0,0,0,.06)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:var(--text2)"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
