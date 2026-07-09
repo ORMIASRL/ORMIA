@@ -8,6 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -5427,9 +5428,125 @@ async function scaricaZipGaranzia(comId) {
   const zip = new JSZip();
   const folder = zip.folder(dirName);
 
-  // ── PDF commessa come HTML ──────────────────────────
-  const htmlPdf = generaHtmlCommessa(cm, cl, v, off, inGar, garScad, null);
-  folder.file('commessa.html', htmlPdf);
+  // ── PDF commessa con jsPDF ──────────────────────────
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const pw = 210; // larghezza A4
+    const ml = 18;  // margine sinistro
+    const mr = 18;  // margine destro
+    const cw = pw - ml - mr; // larghezza contenuto
+    let y = 20;
+
+    const addText = (text, x, yy, opts={}) => {
+      doc.setFontSize(opts.size||12);
+      doc.setFont('helvetica', opts.style||'normal');
+      doc.setTextColor(...(opts.color||[26,25,23]));
+      doc.text(String(text||''), x, yy, opts);
+    };
+
+    const addLine = (yy, color=[228,226,220]) => {
+      doc.setDrawColor(...color);
+      doc.line(ml, yy, pw-mr, yy);
+    };
+
+    const nextY = (n=6) => { y += n; if (y > 270) { doc.addPage(); y = 20; } };
+
+    // Intestazione officina
+    addText(off.ragione||'Officina', ml, y, {size:18, style:'bold', color:[27,79,216]});
+    addText(cm.numero||'', pw-mr, y, {size:16, style:'bold', align:'right', color:[26,25,23]});
+    nextY(6);
+    if (off.indirizzo) { addText(off.indirizzo, ml, y, {size:9, color:[102,102,102]}); nextY(4); }
+    if (off.tel) { addText('Tel: '+off.tel, ml, y, {size:9, color:[102,102,102]}); nextY(4); }
+    if (off.piva) { addText('P.IVA: '+off.piva, ml, y, {size:9, color:[102,102,102]}); nextY(4); }
+    if (inGar) { addText('🔧 IN GARANZIA'+(garScad?' · scad. '+garScad:''), pw-mr, y-8, {size:9, style:'bold', align:'right', color:[146,64,14]}); }
+    nextY(2);
+    addLine(y); nextY(8);
+
+    // Cliente + Veicolo
+    doc.setFillColor(245,244,241);
+    doc.roundedRect(ml, y, cw/2-3, 28, 2, 2, 'F');
+    doc.roundedRect(ml+cw/2+3, y, cw/2-3, 28, 2, 2, 'F');
+    addText('CLIENTE', ml+4, y+6, {size:8, style:'bold', color:[153,153,153]});
+    addText(cl?.ragione||'—', ml+4, y+12, {size:11, style:'bold'});
+    if (cl?.piva) addText('P.IVA: '+cl.piva, ml+4, y+18, {size:9, color:[85,85,85]});
+    if (cl?.tel)  addText('Tel: '+cl.tel, ml+4, y+23, {size:9, color:[85,85,85]});
+    const vx = ml+cw/2+7;
+    addText('VEICOLO', vx, y+6, {size:8, style:'bold', color:[153,153,153]});
+    if (v) {
+      doc.setFillColor(26,25,23); doc.roundedRect(vx, y+8, 28, 7, 1, 1, 'F');
+      addText(v.targa||'', vx+2, y+13, {size:9, style:'bold', color:[255,255,255]});
+      addText([v.marca,v.modello,v.anno].filter(Boolean).join(' '), vx+32, y+13, {size:9});
+      if (v.vin)  addText('Telaio: '+v.vin, vx, y+20, {size:8, color:[85,85,85]});
+      if (v.km)   addText('Km: '+Number(v.km).toLocaleString('it'), vx, y+25, {size:8, color:[85,85,85]});
+    }
+    nextY(36);
+
+    // Data apertura
+    addText('Aperta il: '+( cm.dataApertura ? new Date(cm.dataApertura).toLocaleDateString('it-IT') : '—'), ml, y, {size:9, color:[136,136,136]});
+    nextY(8);
+
+    // Descrizione lavoro
+    doc.setFillColor(238,242,255);
+    doc.setDrawColor(199,215,248);
+    doc.roundedRect(ml, y, cw, 16, 2, 2, 'FD');
+    addText('LAVORAZIONE RICHIESTA', ml+4, y+6, {size:8, style:'bold', color:[27,79,216]});
+    const descLines = doc.splitTextToSize(cm.descrizione||cm.desc||'—', cw-8);
+    addText(descLines[0]||'', ml+4, y+12, {size:11, style:'bold'});
+    nextY(22);
+
+    // Voci
+    const renderVoci = (label, voci) => {
+      if (!voci || !voci.filter(r=>r.desc).length) return;
+      addText(label, ml, y, {size:8, style:'bold', color:[153,153,153]});
+      nextY(5);
+      addLine(y, [200,200,200]); nextY(1);
+      for (const r of voci.filter(r=>r.desc)) {
+        if (y > 265) { doc.addPage(); y = 20; }
+        addText(r.desc, ml, y, {size:10});
+        addText(`${r.qta||1}`, ml+cw-40, y, {size:10, align:'right'});
+        addText(`€ ${((r.qta||1)*(r.prezzo||0)).toFixed(2)}`, ml+cw, y, {size:10, align:'right'});
+        nextY(6);
+        addLine(y, [240,240,240]); nextY(1);
+      }
+      nextY(4);
+    };
+
+    renderVoci('MANODOPERA', cm.vociMano);
+    renderVoci('RICAMBI', cm.vociRic);
+    renderVoci('EXTRA', cm.vociExtra);
+
+    // Totale
+    nextY(2);
+    addLine(y, [27,79,216]); nextY(6);
+    addText('TOTALE', ml, y, {size:10, style:'bold', color:[102,102,102]});
+    addText('€ '+(cm.totale||0).toFixed(2).replace('.',','), ml+cw, y, {size:14, style:'bold', align:'right'});
+    nextY(10);
+
+    // Note
+    if (cm.note) {
+      addLine(y); nextY(6);
+      addText('NOTE', ml, y, {size:8, style:'bold', color:[153,153,153]}); nextY(5);
+      const noteLines = doc.splitTextToSize(cm.note, cw);
+      for (const l of noteLines) { addText(l, ml, y, {size:10, color:[85,85,85]}); nextY(5); }
+    }
+
+    // Nota meccanico
+    const notaMec = cm.notaMec || cm.nota_mec;
+    if (notaMec) {
+      nextY(2); addLine(y); nextY(6);
+      addText('NOTE MECCANICO', ml, y, {size:8, style:'bold', color:[153,153,153]}); nextY(5);
+      const mecLines = doc.splitTextToSize(notaMec, cw);
+      for (const l of mecLines) { addText(l, ml, y, {size:10, color:[85,85,85]}); nextY(5); }
+    }
+
+    const pdfBlob = doc.output('blob');
+    folder.file('commessa.pdf', pdfBlob);
+  } catch(e) {
+    console.warn('Errore generazione PDF:', e);
+    // Fallback: salva HTML
+    folder.file('commessa.html', generaHtmlCommessa(cm, cl, v, off, inGar, garScad, null));
+  }
 
   // ── Foto inizio (oggetto {slot: url}) ──────────────
   const urlsInizio = Object.entries(cm.fotoInizio || {});
