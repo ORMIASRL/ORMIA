@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1583,6 +1584,10 @@
           <input type="text" id="v-km" placeholder="150000">
         </div>
         <div class="form-group">
+          <label>Ore motore *</label>
+          <input type="text" id="v-ore-motore" placeholder="Es. 4500" oninput="this.value=this.value.replace(/\D/g,'')">
+        </div>
+        <div class="form-group">
           <label>Telaio (VIN) *</label>
           <input type="text" id="v-vin" placeholder="VIN / n° telaio" style="font-family:'DM Mono',monospace">
         </div>
@@ -1694,6 +1699,7 @@
     <div class="detail-row"><span class="detail-key">Marca / Modello</span><span class="detail-val" id="dv-marca-modello">—</span></div>
     <div class="detail-row"><span class="detail-key">Anno</span><span class="detail-val" id="dv-anno">—</span></div>
     <div class="detail-row"><span class="detail-key">Km attuali</span><span class="detail-val" id="dv-km">—</span></div>
+    <div class="detail-row"><span class="detail-key">Ore motore</span><span class="detail-val" id="dv-ore-motore">—</span></div>
     <div class="detail-row"><span class="detail-key">VIN</span><span class="detail-val" id="dv-vin">—</span></div>
     <div class="detail-row"><span class="detail-key">Telaio (VIN)</span><span class="detail-val" id="dv-vin" style="font-family:'DM Mono',monospace;font-size:11px">—</span></div>
   </div>
@@ -1970,6 +1976,7 @@ function openModal(type, preselectClienteId, editId) {
         document.getElementById('v-modello').value = v.modello||'';
         document.getElementById('v-anno').value = v.anno||'';
         document.getElementById('v-km').value = v.km||'';
+        document.getElementById('v-ore-motore').value = v.oreMotore||'';
         document.getElementById('v-vin').value = v.vin||'';
         document.getElementById('v-revisione').value = v.revisione||'';
         document.getElementById('v-tachigrafo').value = v.tachigrafo||'';
@@ -1984,6 +1991,7 @@ function openModal(type, preselectClienteId, editId) {
       document.getElementById('v-garanzia').checked = false;
       document.getElementById('v-garanzia-scadenza').value = '';
       document.getElementById('v-garanzia-scadenza-wrap').style.display = 'none';
+      document.getElementById('v-ore-motore').value = '';
       if (preselectClienteId) document.getElementById('v-cliente').value = preselectClienteId;
     }
     document.getElementById('modal-veicolo').style.display='flex';
@@ -2053,6 +2061,7 @@ async function saveVeicolo() {
   const clienteId = document.getElementById('v-cliente').value;
   const vin       = document.getElementById('v-vin').value.trim();
   const km        = document.getElementById('v-km').value.trim();
+  const oreMotore = document.getElementById('v-ore-motore').value.trim();
   const garanzia  = document.getElementById('v-garanzia').checked;
   const garanziaScadenza = document.getElementById('v-garanzia-scadenza').value;
 
@@ -2061,6 +2070,7 @@ async function saveVeicolo() {
   if (!clienteId)errs.push('• Cliente');
   if (!vin)      errs.push('• Numero telaio (VIN)');
   if (!km)       errs.push('• Chilometraggio attuale');
+  if (!oreMotore)errs.push('• Ore motore');
   if (garanzia && !garanziaScadenza) errs.push('• Data scadenza garanzia (obbligatoria se in garanzia)');
 
   if (errs.length) {
@@ -2074,6 +2084,7 @@ async function saveVeicolo() {
     modello:   document.getElementById('v-modello').value.trim(),
     anno:      document.getElementById('v-anno').value.trim(),
     km,
+    oreMotore,
     vin,
     revisione:   document.getElementById('v-revisione').value || null,
     tachigrafo:  document.getElementById('v-tachigrafo').value || null,
@@ -2163,6 +2174,7 @@ function showDetailVeicolo(id) {
   document.getElementById('dv-marca-modello').textContent = [v.marca,v.modello].filter(Boolean).join(' ')||'—';
   document.getElementById('dv-anno').textContent = v.anno||'—';
   document.getElementById('dv-km').textContent = v.km?Number(v.km).toLocaleString('it')+' km':'—';
+  document.getElementById('dv-ore-motore').textContent = v.oreMotore ? Number(v.oreMotore).toLocaleString('it')+' h' : '—';
   document.getElementById('dv-vin').textContent = v.vin||'—';
   document.getElementById('dv-note').textContent = v.note||'—';
 
@@ -2429,6 +2441,14 @@ function init() {
           <div style="font-size:11px;color:var(--text3);margin-top:3px">Aggiorna i km del veicolo in anagrafica</div>
         </div>
         <div class="form-group">
+          <label>Ore motore *
+            <span style="font-size:10px;font-weight:400;color:var(--text3)" id="com-ore-motore-hint"></span>
+          </label>
+          <input type="text" id="com-ore-motore" placeholder="Es. 4500" style="font-family:'DM Mono',monospace"
+            oninput="this.value=this.value.replace(/\D/g,'')">
+          <div style="font-size:11px;color:var(--text3);margin-top:3px">Aggiorna le ore motore in anagrafica</div>
+        </div>
+        <div class="form-group">
           <label>Stato</label>
           <select id="com-stato">
             <option value="aperta">Aperta</option>
@@ -2523,6 +2543,10 @@ function init() {
       <button class="btn btn-secondary btn-sm" onclick="stampaCommessa(selectedCommessaId)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
         Stampa
+      </button>
+      <button class="btn btn-secondary btn-sm" id="dc-btn-zip" onclick="scaricaZipGaranzia(selectedCommessaId)" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        ZIP
       </button>
       <button class="btn btn-secondary btn-sm" id="dc-btn-fattura" onclick="emettiFatturaCommessa(selectedCommessaId)" style="display:none">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
@@ -3178,6 +3202,8 @@ function openModalCommessa(editId) {
   document.getElementById('com-note').value = '';
   document.getElementById('com-km').value = '';
   document.getElementById('com-km-hint').textContent = '';
+  document.getElementById('com-ore-motore').value = '';
+  document.getElementById('com-ore-motore-hint').textContent = '';
   document.getElementById('com-mec-chips').innerHTML = '';
   document.getElementById('com-totale').textContent = '€ 0,00';
 
@@ -3216,12 +3242,26 @@ function onVeicoloChange() {
   const v = veicoli.find(x=>x.id===vId);
   const hint = document.getElementById('com-km-hint');
   const kmInput = document.getElementById('com-km');
-  if (v && v.km) {
-    hint.textContent = `— attualmente ${Number(v.km).toLocaleString('it')} km`;
-    kmInput.value = v.km;
+  const oreHint = document.getElementById('com-ore-motore-hint');
+  const oreInput = document.getElementById('com-ore-motore');
+  if (v) {
+    if (v.km) {
+      hint.textContent = `— attualmente ${Number(v.km).toLocaleString('it')} km`;
+    } else {
+      hint.textContent = '';
+    }
+    kmInput.value = '';
+    if (v.oreMotore) {
+      oreHint.textContent = `— attualmente ${Number(v.oreMotore).toLocaleString('it')} h`;
+    } else {
+      oreHint.textContent = '';
+    }
+    oreInput.value = '';
   } else {
     hint.textContent = '';
     kmInput.value = '';
+    oreHint.textContent = '';
+    oreInput.value = '';
   }
 }
 
@@ -3397,9 +3437,11 @@ async function saveCommessa(firmaDataUrl=null) {
   const desc = document.getElementById('com-desc').value.trim();
   const vId  = document.getElementById('com-veicolo').value;
   const km   = document.getElementById('com-km').value.trim();
+  const oreMotore = document.getElementById('com-ore-motore').value.trim();
   if (!desc) { alert('Inserisci una descrizione del lavoro.'); return; }
   if (!vId)  { alert('Cerca e seleziona un veicolo per targa.'); return; }
   if (!km)   { alert('I km attuali del veicolo sono obbligatori.'); document.getElementById('com-km').focus(); return; }
+  if (!oreMotore) { alert('Le ore motore sono obbligatorie.'); document.getElementById('com-ore-motore').focus(); return; }
   const clienteId = document.getElementById('com-cliente').value;
 
   const nuoveRic = comVociRic.filter(v=>v.desc||v.prezzo);
@@ -3481,13 +3523,16 @@ async function saveCommessa(firmaDataUrl=null) {
     updateBadgeMagazzino();
    
 
-    // Aggiorna km veicolo se compilato e diverso dal precedente
+    // Aggiorna km e ore motore veicolo in anagrafica
     const nuoviKm = document.getElementById('com-km').value.trim();
-    if (nuoviKm && data.veicoloId) {
+    const nuoveOre = document.getElementById('com-ore-motore').value.trim();
+    if (data.veicoloId) {
       const vi = veicoli.findIndex(v=>v.id===data.veicoloId);
-      if (vi>=0 && veicoli[vi].km !== nuoviKm) {
-        veicoli[vi].km = nuoviKm;
-        await dbSaveVeicolo({...veicoli[vi], km: nuoviKm});
+      if (vi >= 0) {
+        let changed = false;
+        if (nuoviKm && veicoli[vi].km !== nuoviKm) { veicoli[vi].km = nuoviKm; changed = true; }
+        if (nuoveOre && veicoli[vi].oreMotore !== nuoveOre) { veicoli[vi].oreMotore = nuoveOre; changed = true; }
+        if (changed) await dbSaveVeicolo({...veicoli[vi]});
       }
     }
 
@@ -3760,7 +3805,7 @@ function showDetailCommessa(id) {
   const v  = veicoli.find(x=>x.id===cm.veicoloId);
   document.getElementById('dc-num').textContent = cm.numero||'';
   document.getElementById('dc-desc').textContent = cm.descrizione||cm.desc||'';
-  document.getElementById('dc-cliente-veicolo').textContent = [cl?.ragione, v?.targa, v?.km ? Number(v.km).toLocaleString('it')+' km' : ''].filter(Boolean).join(' · ');
+  document.getElementById('dc-cliente-veicolo').textContent = [cl?.ragione, v?.targa, [v?.marca, v?.modello].filter(Boolean).join(' ') || '', v?.km ? Number(v.km).toLocaleString('it')+' km' : ''].filter(Boolean).join(' · ');
   const _pagBadge = document.getElementById('dc-pagamento-badge');
   if (_pagBadge) {
     const PAG_LABEL = {contanti:'💵 Contanti',bonifico:'🏦 Bonifico',carta:'💳 Carta/POS',assegno:'📄 Assegno',finanziamento:'📋 Finanziamento'};
@@ -3803,6 +3848,10 @@ function showDetailCommessa(id) {
   const btnFatt = document.getElementById('dc-btn-fattura');
   if (btnFatt) btnFatt.style.display = 'none'; // sostituito dal checkout inline
 
+  // Mostra tasto ZIP solo se commessa chiusa o fatturata
+  const btnZip = document.getElementById('dc-btn-zip');
+  if (btnZip) btnZip.style.display = (cm.stato==='chiusa'||cm.stato==='fatturata') ? '' : 'none';
+
   // Sezione timbratura: nascosta se chiusa
   const timSec = document.getElementById('dc-tim-section');
   if (timSec) timSec.style.display = cm.stato === 'chiusa' ? 'none' : '';
@@ -3841,28 +3890,31 @@ function showDetailCommessa(id) {
 
   document.getElementById('dc-note').textContent = cm.note||'—';
 
-  // Nota meccanico
+  // Nota meccanico (salvata da ORMIA-mec come nota_mec → mappata in notaMec)
   const notaMecSection = document.getElementById('dc-nota-mec-section');
   const notaMecEl = document.getElementById('dc-nota-mec');
-  if (cm.nota_mec) {
+  const notaMecVal = cm.notaMec || cm.nota_mec || '';
+  if (notaMecVal) {
     notaMecSection.style.display = '';
-    notaMecEl.textContent = cm.nota_mec;
+    notaMecEl.textContent = notaMecVal;
   } else {
     notaMecSection.style.display = 'none';
   }
 
-  // Foto garanzia
+  // Foto garanzia — ORMIA-mec salva su fotoInizio (oggetto) e fotoFine (array)
   const fotoSection = document.getElementById('dc-foto-section');
   const fotoGrid    = document.getElementById('dc-foto-grid');
   const fotoEmpty   = document.getElementById('dc-foto-empty');
   const fotoCount   = document.getElementById('dc-foto-count');
   if (isVeicoloInGaranzia(cm.veicoloId)) {
     fotoSection.style.display = '';
-    const foto = cm.foto || [];
-    fotoCount.textContent = foto.length + ' foto';
-    if (foto.length) {
+    const urlsInizio = Object.values(cm.fotoInizio || {}).filter(Boolean);
+    const urlsFine   = (cm.fotoFine || []).filter(Boolean);
+    const tutte      = [...urlsInizio, ...urlsFine];
+    fotoCount.textContent = tutte.length + ' foto';
+    if (tutte.length) {
       fotoEmpty.style.display = 'none';
-      fotoGrid.innerHTML = foto.map(url => `
+      fotoGrid.innerHTML = tutte.map(url => `
         <div style="aspect-ratio:1;border-radius:8px;overflow:hidden;cursor:pointer;box-shadow:var(--shadow)" onclick="apriLightboxGestionale('${url}')">
           <img src="${url}" style="width:100%;height:100%;object-fit:cover;display:block">
         </div>`).join('');
@@ -3929,8 +3981,9 @@ async function cambiaStato() {
 
   // Blocco: commessa in garanzia → non può essere chiusa senza foto
   if ((nuovo === 'chiusa' || nuovo === 'fatturata') && isVeicoloInGaranzia(cm.veicoloId)) {
-    const foto = cm.foto || [];
-    if (!foto.length) {
+    const urlsInizio = Object.values(cm.fotoInizio || {}).filter(Boolean);
+    const urlsFine   = (cm.fotoFine || []).filter(Boolean);
+    if (!urlsInizio.length && !urlsFine.length) {
       alert('⚠️ Commessa in garanzia: devi allegare almeno una foto prima di chiuderla.');
       return;
     }
@@ -5353,6 +5406,67 @@ function stampaCommessa(comId) {
   const garScad = v?.garanziaScadenza ? new Date(v.garanziaScadenza).toLocaleDateString('it-IT') : null;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(cm.numero||comId)}&margin=4`;
   apriAnteprima(generaHtmlCommessa(cm, cl, v, off, inGar, garScad, qrUrl), `Commessa ${cm.numero}`);
+}
+
+async function scaricaZipGaranzia(comId) {
+  const cm  = commesse.find(c=>c.id===comId);
+  if (!cm) return;
+  const cl  = clienti.find(c=>c.id===cm.clienteId);
+  const v   = veicoli.find(x=>x.id===cm.veicoloId);
+  const off = getDatiOfficina();
+  const inGar = isVeicoloInGaranzia(cm.veicoloId);
+  const garScad = v?.garanziaScadenza ? new Date(v.garanziaScadenza).toLocaleDateString('it-IT') : null;
+
+  const targa   = (v?.targa || 'NESSUNA_TARGA').replace(/\s/g,'');
+  const numCom  = (cm.numero || comId).replace(/\//g,'-');
+  const dirName = `${targa}_${numCom}`;
+
+  showToast('Preparazione ZIP in corso…');
+
+  const zip = new JSZip();
+  const folder = zip.folder(dirName);
+
+  // ── PDF commessa come HTML ──────────────────────────
+  const htmlPdf = generaHtmlCommessa(cm, cl, v, off, inGar, garScad, null);
+  folder.file('commessa.html', htmlPdf);
+
+  // ── Foto inizio (oggetto {slot: url}) ──────────────
+  const urlsInizio = Object.entries(cm.fotoInizio || {});
+  for (const [slot, url] of urlsInizio) {
+    if (!url) continue;
+    try {
+      const resp = await fetch(url);
+      const blob = await resp.blob();
+      const ext  = blob.type.includes('video') ? 'mp4' : (url.split('.').pop().split('?')[0] || 'jpg');
+      folder.file(`foto_inizio_${slot}.${ext}`, blob);
+    } catch(e) { console.warn('Foto inizio non scaricabile:', url, e); }
+  }
+
+  // ── Foto fine (array di url) ────────────────────────
+  const urlsFine = cm.fotoFine || [];
+  for (let i = 0; i < urlsFine.length; i++) {
+    const url = urlsFine[i];
+    if (!url) continue;
+    try {
+      const resp = await fetch(url);
+      const blob = await resp.blob();
+      const ext  = blob.type.includes('video') ? 'mp4' : (url.split('.').pop().split('?')[0] || 'jpg');
+      folder.file(`foto_fine_${i+1}.${ext}`, blob);
+    } catch(e) { console.warn('Foto fine non scaricabile:', url, e); }
+  }
+
+  // ── Genera e scarica ZIP ────────────────────────────
+  try {
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${dirName}.zip`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast(`ZIP scaricato: ${dirName}.zip ✓`);
+  } catch(e) {
+    alert('Errore generazione ZIP: ' + e.message);
+  }
 }
 
 function generaHtmlCommessa(cm, cl, v, off, inGar, garScad, qrUrl) {
@@ -9181,9 +9295,11 @@ function avantiFirmaCommessa() {
   const desc = document.getElementById('com-desc').value.trim();
   const vId  = document.getElementById('com-veicolo').value;
   const km   = document.getElementById('com-km').value.trim();
+  const oreMotore = document.getElementById('com-ore-motore').value.trim();
   if (!desc) { alert('Inserisci la descrizione del lavoro.'); return; }
   if (!vId)  { alert('Cerca e seleziona un veicolo per targa.'); return; }
   if (!km)   { alert('I km attuali del veicolo sono obbligatori.'); document.getElementById('com-km').focus(); return; }
+  if (!oreMotore) { alert('Le ore motore sono obbligatorie.'); document.getElementById('com-ore-motore').focus(); return; }
 
   // Prepara il modal firma
   const v  = veicoli.find(x=>x.id===vId);
