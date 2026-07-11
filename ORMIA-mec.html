@@ -419,12 +419,22 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
 
     </div>
 
+    <!-- FOTO ACCETTAZIONE (magazziniere, mezzi non in garanzia) -->
+    <div class="det-section" id="det-foto-accettazione-wrap" style="display:none">
+      <div class="det-section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span>📷 Foto accettazione</span>
+        <span id="det-foto-acc-count" style="font-size:12px;color:var(--text3);font-weight:400">0 foto</span>
+      </div>
+      <div id="det-foto-acc-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:8px"></div>
+      <label style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:2px dashed var(--border2);border-radius:var(--radius-lg);cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);background:var(--accent-light);-webkit-tap-highlight-color:transparent">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:18px;height:18px"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        Aggiungi foto
+        <input type="file" accept="image/*" multiple capture="environment" style="display:none" onchange="caricaFotoAccettazione(this)">
+      </label>
+    </div>
+
   </div>
 </div>
-
-<!-- ═══════════════════════════════════════════════════
-     SCREEN: AGGIUNGI RICAMBIO
-════════════════════════════════════════════════════ -->
 <div id="screen-scan" class="screen hidden">
   <div class="topbar">
     <div class="topbar-back" onclick="goDetail()">
@@ -550,7 +560,7 @@ let _movimenti  = [];
 
 async function loadAll() {
   const [m, co, cl, v, p, t, pr, mo] = await Promise.all([
-    supa.from('meccanici').select('*'),
+    supa.from('dipendenti').select('*'),
     supa.from('commesse').select('*'),
     supa.from('clienti').select('*'),
     supa.from('veicoli').select('*'),
@@ -569,8 +579,40 @@ async function loadAll() {
   _movimenti  = mo.data || [];
 }
 
+function initRealtime() {
+  supa.channel('ormia-mec-changes')
+    .on('postgres_changes', {event:'*', schema:'public', table:'dipendenti'}, async () => {
+      const { data } = await supa.from('dipendenti').select('*');
+      _meccanici = data || [];
+      // Se il dipendente loggato è stato eliminato, il watcher se ne accorgerà
+    })
+    .on('postgres_changes', {event:'*', schema:'public', table:'commesse'}, async () => {
+      const { data } = await supa.from('commesse').select('*');
+      _commesse = data || [];
+      if (mecLogged) renderHome();
+    })
+    .on('postgres_changes', {event:'*', schema:'public', table:'timbrature'}, async () => {
+      const { data } = await supa.from('timbrature').select('*');
+      _timbrature = data || [];
+      if (mecLogged) renderHome();
+    })
+    .on('postgres_changes', {event:'*', schema:'public', table:'prodotti'}, async () => {
+      const { data } = await supa.from('prodotti').select('*');
+      _prodotti = data || [];
+    })
+    .subscribe();
+}
+
 // Helpers snake_case → camelCase per campi chiave
-function fixMec(m)  { return m ? {...m, codInt:m.cod_int, codForn:m.cod_forn} : null; }
+function fixMec(m)  {
+  if (!m) return null;
+  const ruoli = Array.isArray(m.ruoli) && m.ruoli.length ? m.ruoli : (m.ruolo ? [m.ruolo] : []);
+  return {...m, ruoli, ruolo: ruoli[0]||''};
+}
+function isMeccanicoOperativo(m) {
+  const operativi = ['meccanico','capo officina','magazziniere','accettazione'];
+  return (m.ruoli||[]).some(r => operativi.includes(r.toLowerCase()));
+}
 function fixProd(p) { return p ? {...p, descrizione:p.descrizione||p.desc, codInt:p.cod_int, codForn:p.cod_forn, giacenza:p.giacenza, scortaMin:p.scorta_min, qtaRiordino:p.qta_riordino, prezzoAcq:p.prezzo_acq, prezzoVend:p.prezzo_vend, fornitoreId:p.fornitore_id} : null; }
 function fixCom(c)  { return c ? {...c, clienteId:c.cliente_id, veicoloId:c.veicolo_id, dataApertura:c.data_apertura, vociMano:c.voci_mano||[], vociRic:c.voci_ric||[], vociExtra:c.voci_extra||[], desc:c.descrizione, foto:c.foto||[], fotoInizio:c.foto_inizio||{}, fotoFine:c.foto_fine||[], nota_mec:c.nota_mec||'' } : null; }
 function fixTim(t)  { return t ? {...t, mecId:t.mec_id, comId:t.com_id} : null; }
@@ -619,7 +661,7 @@ function renderPinDots(err=false) {
   }
 }
 async function checkPin() {
-  const found = getMeccanici().find(m => m.pin === pinBuffer);
+  const found = getMeccanici().filter(isMeccanicoOperativo).find(m => m.pin === pinBuffer);
   if (found) { loginOk(found); return; }
   renderPinDots(true);
   setTimeout(()=>{ pinBuffer=''; renderPinDots(); }, 700);
@@ -630,14 +672,29 @@ function loginOk(mec) {
   localStorage.setItem('ormia_mec_session', JSON.stringify({id: mec.id, ts: Date.now()}));
   showScreen('screen-home');
   renderHome();
+  startSessionWatch();
+}
+
+function startSessionWatch() {
+  if (window._sessionWatcher) clearInterval(window._sessionWatcher);
+  window._sessionWatcher = setInterval(async () => {
+    if (!mecLogged) { clearInterval(window._sessionWatcher); return; }
+    await loadAll();
+    const still = getMeccanici().filter(isMeccanicoOperativo).find(m => m.id === mecLogged.id);
+    if (!still || still.attivo === false) {
+      clearInterval(window._sessionWatcher);
+      alert('Il tuo account è stato disattivato. Contatta il responsabile.');
+      logout();
+    }
+  }, 60 * 1000); // controlla ogni 60 secondi
 }
 function logout() {
   mecLogged = null;
   pinBuffer = '';
   comSelected = null;
   localStorage.removeItem('ormia_mec_session');
+  if (window._sessionWatcher) { clearInterval(window._sessionWatcher); window._sessionWatcher = null; }
   renderPinDots();
-
   showScreen('screen-login');
 }
 
@@ -756,7 +813,11 @@ function renderHome() {
 
 
 function isMagazziniere() {
-  return mecLogged && (mecLogged.ruolo||'').toLowerCase() === 'magazziniere';
+  if (!mecLogged) return false;
+  const ruoli = Array.isArray(mecLogged.ruoli) && mecLogged.ruoli.length
+    ? mecLogged.ruoli
+    : (mecLogged.ruolo ? [mecLogged.ruolo] : []);
+  return ruoli.some(r => r.toLowerCase() === 'magazziniere');
 }
 
 function applicaPermessiMec() {
@@ -840,13 +901,22 @@ function renderDetail() {
 
   // Foto garanzia
   const fotoWrap = document.getElementById('det-foto-wrap');
+  const fotoAccWrap = document.getElementById('det-foto-accettazione-wrap');
   const inGaranzia = isVeicoloInGaranzia(v);
   if (inGaranzia) {
     fotoWrap.style.display = '';
+    if (fotoAccWrap) fotoAccWrap.style.display = 'none';
     renderFotoInizio(cm.fotoInizio);
     renderFotoFine(cm.fotoFine);
+  } else if (isMagazziniere()) {
+    fotoWrap.style.display = 'none';
+    if (fotoAccWrap) {
+      fotoAccWrap.style.display = '';
+      renderFotoAccettazione(cm.fotoFine || []);
+    }
   } else {
     fotoWrap.style.display = 'none';
+    if (fotoAccWrap) fotoAccWrap.style.display = 'none';
   }
 
   // Ricambi
@@ -1027,6 +1097,50 @@ function renderFotoFine(fotoFine) {
       <button onclick="eliminaFotoFine(${i})" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);border:none;color:white;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;padding:0">&#x2715;</button>
     </div>`;
   }).join('');
+}
+
+function renderFotoAccettazione(foto) {
+  const ff    = foto || [];
+  const count = document.getElementById('det-foto-acc-count');
+  if (count) count.textContent = ff.length + ' foto';
+  const grid  = document.getElementById('det-foto-acc-grid');
+  if (!grid) return;
+  if (!ff.length) { grid.innerHTML = ''; return; }
+  grid.innerHTML = ff.map((url, i) => `
+    <div style="position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:#eee">
+      <img src="${url}" style="width:100%;height:72px;object-fit:cover;display:block" onclick="apriLightbox('${url}')">
+      <button onclick="eliminaFotoAccettazione(${i})" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);border:none;color:white;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;padding:0">&#x2715;</button>
+    </div>`).join('');
+}
+
+async function caricaFotoAccettazione(input) {
+  if (!comSelected) return;
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  showToast('Caricamento foto…');
+  const fotoFineAttuali = [...(comSelected.fotoFine || [])];
+  for (const file of files) {
+    const path = `${comSelected.id}/acc_${Date.now()}_${Math.random().toString(36).substr(2,6)}.${file.name.split('.').pop()}`;
+    const { error: upErr } = await supa.storage.from('commesse-foto').upload(path, file, { contentType: file.type, upsert: true });
+    if (upErr) { showToast('Errore upload: ' + upErr.message); continue; }
+    const { data: { publicUrl } } = supa.storage.from('commesse-foto').getPublicUrl(path);
+    fotoFineAttuali.push(publicUrl);
+  }
+  await supa.from('commesse').update({ foto_fine: fotoFineAttuali }).eq('id', comSelected.id);
+  comSelected.fotoFine = fotoFineAttuali;
+  renderFotoAccettazione(fotoFineAttuali);
+  input.value = '';
+  showToast('Foto salvate ✓');
+}
+
+async function eliminaFotoAccettazione(idx) {
+  if (!comSelected) return;
+  const ff = [...(comSelected.fotoFine || [])];
+  ff.splice(idx, 1);
+  await supa.from('commesse').update({ foto_fine: ff }).eq('id', comSelected.id);
+  comSelected.fotoFine = ff;
+  renderFotoAccettazione(ff);
+  showToast('Foto eliminata');
 }
 
 async function caricaFotoInizio(input, slot) {
@@ -1366,7 +1480,7 @@ function showToast(msg) {
 // ══════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════
-restoreSession();
+restoreSession().then(() => initRealtime());
 </script>
 </body>
 </html>

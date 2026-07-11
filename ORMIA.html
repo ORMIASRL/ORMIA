@@ -690,8 +690,6 @@
         <div class="nav-item" id="nav-magazzino" onclick="setSection('magazzino')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
           Magazzino
-          
-          <span class="badge" id="badge-da-approvare" style="background:var(--danger);display:none">!</span>
         </div>
       </div>
       <div class="nav-section">
@@ -1076,10 +1074,6 @@
         <div class="tabs" style="margin-bottom:16px">
           <div class="tab active" id="mtab-prodotti"    onclick="setMagTab('prodotti')">Prodotti</div>
           <div class="tab"        id="mtab-movimenti"   onclick="setMagTab('movimenti')">Movimenti</div>
-          <div class="tab"        id="mtab-approvazioni" onclick="setMagTab('approvazioni')" style="position:relative">
-            Da approvare
-            <span id="mtab-badge-appr" style="position:absolute;top:-4px;right:-4px;background:var(--danger);color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;display:none">0</span>
-          </div>
         </div>
 
         <!-- TAB PRODOTTI -->
@@ -1146,18 +1140,6 @@
           </div>
         </div>
 
-                <!-- TAB APPROVAZIONI -->
-        <div id="msec-approvazioni" style="display:none">
-          <div style="font-size:13px;color:var(--text3);margin-bottom:12px">
-            Ricambi proposti dai meccanici dallo smartphone — approvando, il prodotto viene scaricato dal magazzino e aggiunto alla commessa.
-          </div>
-          <div id="lista-approvazioni"></div>
-          <div class="empty-state" id="empty-approvazioni" style="display:none">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="20 6 9 17 4 12"/></svg>
-            <p>Nessun ricambio in attesa di approvazione.</p>
-          </div>
-        </div>
-
       <!-- SEZIONE IMPOSTAZIONI -->
 
 
@@ -1206,6 +1188,54 @@
     </div><!-- /content -->
   </main>
 </div><!-- /app -->
+
+<!-- MODAL FORNITORE -->
+<div class="modal-overlay" id="modal-fornitore" style="display:none" onclick="closeModalOnBg(event,'modal-fornitore')">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-fornitore-title">Nuovo fornitore</div>
+        <div class="modal-sub">Aggiungi un fornitore all'anagrafica</div>
+      </div>
+      <button class="close-btn" onclick="closeModal('modal-fornitore')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="forn-id">
+      <div class="form-grid">
+        <div class="form-group span-2">
+          <label>Ragione sociale / Nome *</label>
+          <input type="text" id="forn-ragione" placeholder="Es. Ricambi Rossi Srl">
+        </div>
+        <div class="form-group">
+          <label>P.IVA</label>
+          <input type="text" id="forn-piva" placeholder="IT01234567890">
+        </div>
+        <div class="form-group">
+          <label>Telefono</label>
+          <input type="text" id="forn-tel" placeholder="+39 ...">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="forn-email" placeholder="info@fornitore.it">
+        </div>
+        <div class="form-group">
+          <label>Referente</label>
+          <input type="text" id="forn-referente" placeholder="Nome referente">
+        </div>
+        <div class="form-group span-2">
+          <label>Note</label>
+          <input type="text" id="forn-note" placeholder="Note aggiuntive">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-fornitore')">Annulla</button>
+      <button class="btn btn-primary" onclick="saveFornitore()">Salva fornitore</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL MANODOPERA -->
 <div class="modal-overlay" id="modal-manodopera" style="display:none" onclick="closeModalOnBg(event,'modal-manodopera')">
@@ -1509,6 +1539,15 @@
         </div>
         <div class="form-section-title">Fatturazione</div>
         <div class="form-group">
+          <label>Aliquota IVA</label>
+          <select id="c-iva">
+            <option value="22">22% — Ordinaria</option>
+            <option value="10">10% — Ridotta</option>
+            <option value="4">4% — Super ridotta</option>
+            <option value="0">0% — Esente / Fuori campo</option>
+          </select>
+        </div>
+        <div class="form-group">
           <label>Metodo di pagamento *</label>
           <select id="c-pagamento">
             <option value="">— Seleziona —</option>
@@ -1736,7 +1775,7 @@ let fornitori = [];
 let prodotti  = [];
 let movimenti = [];
 let _movPag = 0; const MOV_PER_PAG = 25;
-let _apprPag = 0; const APPR_PER_PAG = 10;
+// approvazioni ricambi rimosse (flusso gestito direttamente da ORMIA-mec su Supabase)
 let presenze  = [];
 let currentTab = 'clienti';
 let currentSection = 'anagrafiche';
@@ -1744,11 +1783,6 @@ let editingClienteId = null;
 let editingVeicoloId = null;
 let selectedClienteId = null;
 let selectedVeicoloId = null;
-
-function save() {
-  
-  
-}
 
 // initId definita nel layer Supabase
 
@@ -1955,11 +1989,13 @@ function openModal(type, preselectClienteId, editId) {
         document.getElementById('c-email').value = c.email||'';
         document.getElementById('c-indirizzo').value = c.indirizzo||'';
         document.getElementById('c-note').value = c.note||'';
+        document.getElementById('c-iva').value = c.iva ?? 22;
         document.getElementById('c-pagamento').value = c.pagamento||'';
       }
     } else {
       ['c-ragione','c-piva','c-cf','c-sdi','c-pec','c-tel','c-email','c-indirizzo','c-note'].forEach(id=>document.getElementById(id).value='');
       document.getElementById('c-tipo').value = 'Azienda';
+      document.getElementById('c-iva').value = 22;
       document.getElementById('c-pagamento').value = '';
     }
     document.getElementById('modal-cliente').style.display='flex';
@@ -2039,6 +2075,7 @@ async function saveCliente() {
     indirizzo,
     note:     document.getElementById('c-note').value.trim(),
     pagamento,
+    iva: parseFloat(document.getElementById('c-iva').value) || 22,
   };
   try {
     if (editingClienteId) {
@@ -2318,14 +2355,13 @@ function init() {
         </div>
         <div class="form-group">
           <label>Ruolo</label>
-          <select id="mec-ruolo" onchange="togglePinBadge()">
-            <option>Meccanico</option>
-            <option>Capo officina</option>
-            <option>Elettrauto</option>
-            <option>Apprendista</option>
-            <option>Magazziniere</option>
-            <option>Amministrazione</option>
-          </select>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 0" id="mec-ruoli-wrap">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="Meccanico" onchange="togglePinBadge()"> Meccanico</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="Capo officina" onchange="togglePinBadge()"> Capo officina</label>
+            <label style="display:flex;align-items:center;gap=6px;font-size:13px;cursor:pointer"><input type="checkbox" value="Magazziniere" onchange="togglePinBadge()"> Magazziniere</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="Amministrazione" onchange="togglePinBadge()"> Amministrazione</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="Accettazione" onchange="togglePinBadge()"> Accettazione</label>
+          </div>
         </div>
         <div class="form-group">
           <label>Telefono</label>
@@ -2568,22 +2604,6 @@ function init() {
     <div class="detail-row"><span class="detail-key">Meccanici</span><span class="detail-val" id="dc-meccanici" style="text-align:right"></span></div>
   </div>
 
-  <!-- NOTE MECCANICO -->
-  <div class="detail-section" id="dc-nota-mec-section" style="display:none">
-    <div class="detail-section-title">✏️ Note meccanico</div>
-    <div id="dc-nota-mec" style="font-size:13px;color:var(--text2);line-height:1.6;background:var(--surface2);border-radius:var(--radius);padding:10px 12px;border-left:3px solid var(--accent)"></div>
-  </div>
-
-  <!-- FOTO GARANZIA -->
-  <div class="detail-section" id="dc-foto-section" style="display:none">
-    <div class="detail-section-title" style="display:flex;align-items:center;justify-content:space-between">
-      <span>📸 Foto garanzia</span>
-      <span id="dc-foto-count" style="font-size:11px;color:var(--text3);font-weight:400"></span>
-    </div>
-    <div id="dc-foto-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px"></div>
-    <div id="dc-foto-empty" style="font-size:12px;color:var(--text3);padding:8px 0;display:none">Nessuna foto caricata ancora dal meccanico.</div>
-  </div>
-
   <!-- TIMBRATURA COMMESSA -->
   <div class="detail-section" id="dc-tim-section" style="background:var(--surface2)">
     <div class="detail-section-title" style="display:flex;align-items:center;justify-content:space-between">
@@ -2798,6 +2818,14 @@ function init() {
         <span style="font-size:13px;font-weight:600">Totale imponibile</span>
         <span class="totale-val" id="dc-totale" style="font-size:20px"></span>
       </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+        <span style="font-size:12px;color:var(--text3)" id="dc-iva-label">IVA 22%</span>
+        <span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--text3)" id="dc-iva-amt">€ 0,00</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding-top:6px;border-top:1px solid var(--border);margin-top:4px">
+        <span style="font-size:13px;font-weight:700">Totale con IVA</span>
+        <span style="font-family:'DM Mono',monospace;font-size:18px;font-weight:700;color:var(--accent)" id="dc-totale-lordo">€ 0,00</span>
+      </div>
       <div id="dc-tot-live-note" style="display:none;font-size:11px;color:var(--text3);text-align:right"></div>
     </div>
   </div>
@@ -2820,6 +2848,22 @@ function init() {
     </div>
   </div>
   <div class="detail-section"><div class="detail-section-title">Note</div><div id="dc-note" style="font-size:13px;color:var(--text2);line-height:1.6">—</div></div>
+  <!-- NOTE MECCANICO -->
+  <div class="detail-section" id="dc-nota-mec-section" style="display:none">
+    <div class="detail-section-title">✏️ Note meccanico</div>
+    <div id="dc-nota-mec" style="font-size:13px;color:var(--text2);line-height:1.6;background:var(--surface2);border-radius:var(--radius);padding:10px 12px;border-left:3px solid var(--accent)"></div>
+  </div>
+
+  <!-- FOTO GARANZIA -->
+  <div class="detail-section" id="dc-foto-section" style="display:none">
+    <div class="detail-section-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>📸 Foto garanzia</span>
+      <span id="dc-foto-count" style="font-size:11px;color:var(--text3);font-weight:400"></span>
+    </div>
+    <div id="dc-foto-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px"></div>
+    <div id="dc-foto-empty" style="font-size:12px;color:var(--text3);padding:8px 0;display:none">Nessuna foto caricata ancora dal meccanico.</div>
+  </div>
+
   <div style="padding:16px 24px;display:flex;gap:8px;flex-wrap:wrap">
     <button class="btn btn-secondary btn-sm" id="dc-btn-cambia-stato" onclick="cambiaStato()">Cambia stato</button>
     <button class="btn btn-primary btn-sm" id="dc-btn-riapri" style="display:none" onclick="riaprirCommessa()">🔄 Riapri</button>
@@ -2845,7 +2889,7 @@ const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
 const TABLE = {
   clienti:    'clienti',
   veicoli:    'veicoli',
-  meccanici:  'meccanici',
+  meccanici:  'dipendenti',
   commesse:   'commesse',
   fornitori:  'fornitori',
   prodotti:   'prodotti',
@@ -3096,7 +3140,134 @@ function initId() {
   });
 }
 
-// ── REALTIME ────────────────────────────────────────
+function apriEditVoce(tipo, idx) {
+  const cm = commesse.find(c=>c.id===selectedCommessaId);
+  if (!cm) return;
+  const arr = tipo==='mano' ? cm.vociMano : tipo==='ric' ? cm.vociRic : cm.vociExtra;
+  const v = arr[idx];
+  if (!v) return;
+
+  // Crea mini modal inline
+  let existing = document.getElementById('mini-modal-voce');
+  if (existing) existing.remove();
+
+  const div = document.createElement('div');
+  div.id = 'mini-modal-voce';
+  div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center';
+  div.innerHTML = `
+    <div style="background:var(--surface);border-radius:var(--radius-lg);padding:24px;width:320px;box-shadow:var(--shadow-lg)">
+      <div style="font-size:15px;font-weight:700;margin-bottom:4px">Modifica voce</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:16px">${v.desc||'—'} × ${v.qta||1}</div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Prezzo unitario (€)</label>
+        <input type="number" id="edit-voce-prezzo" value="${v.prezzo||0}" min="0" step="0.01"
+          style="font-family:'DM Mono',monospace">
+      </div>
+      <div class="form-group" style="margin-bottom:20px">
+        <label>Sconto (%)</label>
+        <input type="number" id="edit-voce-sconto" value="${v.sconto||0}" min="0" max="100" step="1"
+          style="font-family:'DM Mono',monospace">
+        <div style="font-size:11px;color:var(--text3);margin-top:3px">0 = nessuno sconto</div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('mini-modal-voce').remove()">Annulla</button>
+        <button class="btn btn-primary btn-sm" onclick="salvaEditVoce('${tipo}',${idx})">Salva</button>
+      </div>
+    </div>`;
+  document.body.appendChild(div);
+  document.getElementById('edit-voce-prezzo').focus();
+}
+
+async function salvaEditVoce(tipo, idx) {
+  const cm = commesse.find(c=>c.id===selectedCommessaId);
+  if (!cm) return;
+  const arr = tipo==='mano' ? cm.vociMano : tipo==='ric' ? cm.vociRic : cm.vociExtra;
+  const prezzo  = parseFloat(document.getElementById('edit-voce-prezzo').value)||0;
+  const sconto  = parseFloat(document.getElementById('edit-voce-sconto').value)||0;
+  arr[idx].prezzo = prezzo;
+  arr[idx].sconto = sconto;
+  // Ricalcola totale
+  cm.totale = [...(cm.vociMano||[]),...(cm.vociRic||[]),...(cm.vociExtra||[])].reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100),0);
+  await dbSaveCommessa(cm);
+  document.getElementById('mini-modal-voce').remove();
+  showDetailCommessa(selectedCommessaId);
+  showToast('Voce aggiornata ✓');
+}
+
+// ── FORNITORI ────────────────────────────────────────
+function renderFornitoriSett() {
+  const el = document.getElementById('lista-fornitori-sett');
+  if (!el) return;
+  if (!fornitori.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:13px">Nessun fornitore ancora.</div>';
+    return;
+  }
+  el.innerHTML = fornitori.map(f => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-size:14px;font-weight:600">${f.ragione||f.nome||'—'}</div>
+        <div style="font-size:12px;color:var(--text3)">${[f.piva?'P.IVA '+f.piva:'', f.tel||'', f.email||''].filter(Boolean).join(' · ')}</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary btn-sm" onclick="openModalFornitore('${f.id}')">Modifica</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteFornitore('${f.id}')">Elimina</button>
+      </div>
+    </div>`).join('');
+}
+
+function openModalFornitore(editId) {
+  document.getElementById('forn-id').value       = editId||'';
+  document.getElementById('forn-ragione').value  = '';
+  document.getElementById('forn-piva').value     = '';
+  document.getElementById('forn-tel').value      = '';
+  document.getElementById('forn-email').value    = '';
+  document.getElementById('forn-referente').value= '';
+  document.getElementById('forn-note').value     = '';
+  if (editId) {
+    const f = fornitori.find(x=>x.id===editId);
+    if (f) {
+      document.getElementById('forn-ragione').value   = f.ragione||f.nome||'';
+      document.getElementById('forn-piva').value      = f.piva||'';
+      document.getElementById('forn-tel').value       = f.tel||'';
+      document.getElementById('forn-email').value     = f.email||'';
+      document.getElementById('forn-referente').value = f.referente||'';
+      document.getElementById('forn-note').value      = f.note||'';
+    }
+    document.getElementById('modal-fornitore-title').textContent = 'Modifica fornitore';
+  } else {
+    document.getElementById('modal-fornitore-title').textContent = 'Nuovo fornitore';
+  }
+  document.getElementById('modal-fornitore').style.display = 'flex';
+}
+
+async function saveFornitore() {
+  const ragione = document.getElementById('forn-ragione').value.trim();
+  if (!ragione) { alert('Inserisci il nome o la ragione sociale.'); return; }
+  const id = document.getElementById('forn-id').value;
+  const obj = {
+    ragione, nome: ragione,
+    piva:      document.getElementById('forn-piva').value.trim(),
+    tel:       document.getElementById('forn-tel').value.trim(),
+    email:     document.getElementById('forn-email').value.trim(),
+    referente: document.getElementById('forn-referente').value.trim(),
+    note:      document.getElementById('forn-note').value.trim(),
+  };
+  if (id) obj.id = id;
+  await dbSaveFornitore(obj);
+  closeModal('modal-fornitore');
+  renderFornitoriSett();
+  showToast('Fornitore salvato ✓');
+}
+
+async function deleteFornitore(id) {
+  if (!confirm('Eliminare questo fornitore?')) return;
+  await DB.delete('fornitori', id);
+  fornitori = fornitori.filter(f=>f.id!==id);
+  renderFornitoriSett();
+  showToast('Fornitore eliminato');
+}
+
+
 function initRealtime() {
   supa.channel('ormia-changes')
     .on('postgres_changes', {event:'*', schema:'public', table:'timbrature'}, async ()=>{
@@ -3195,8 +3366,9 @@ function openModalCommessa(editId) {
   // Popola meccanici
   const selM = document.getElementById('com-mec-select');
   selM.innerHTML = '<option value="">Seleziona meccanico...</option>' +
-    meccanici.map(m=>`<option value="${m.id}">${m.nome}</option>`).join('');
-  if (!meccanici.length) selM.innerHTML += '<option disabled>— Aggiungi prima i meccanici in Impostazioni —</option>';
+    meccanici.filter(isOperativo).map(m=>`<option value="${m.id}">${m.nome}</option>`).join('');
+  if (!meccanici.filter(isOperativo).length)
+    selM.innerHTML += '<option disabled>— Aggiungi prima i meccanici in Impostazioni —</option>';
 
   document.getElementById('modal-commessa-title').textContent = editId ? 'Modifica commessa' : 'Nuova commessa';
   document.getElementById('com-data-apertura').value = new Date().toISOString().split('T')[0];
@@ -3236,8 +3408,6 @@ function openModalCommessa(editId) {
 }
 
 // Legacy stubs — rimpiazzate dalle funzioni sub-modal
-function cercaVeicoloPerTarga() {}
-function resetVeicoloSearch() { resetVeicoloCommessa(); }
 
 function onVeicoloChange() {
   const vId = document.getElementById('com-veicolo').value;
@@ -3267,7 +3437,15 @@ function onVeicoloChange() {
   }
 }
 
-function onClienteChange() { /* legacy no-op — ora gestito da selezionaClienteCommessa */ }
+// Helper: restituisce i ruoli come array per qualsiasi dipendente
+function getRuoli(m) {
+  if (!m) return [];
+  return Array.isArray(m.ruoli) && m.ruoli.length ? m.ruoli : (m.ruolo ? [m.ruolo] : []);
+}
+
+function isOperativo(m) {
+  return getRuoli(m).some(r => RUOLI_OPERATIVI.includes(r.toLowerCase()));
+}
 
 // ===== MECCANICI CHIPS =====
 function addMeccanico() {
@@ -3576,6 +3754,8 @@ function renderCommesse() {
       (cm.descrizione||cm.desc||'').toLowerCase().includes(q) ||
       (cl?.ragione||'').toLowerCase().includes(q) ||
       (v?.targa||'').toLowerCase().includes(q) ||
+      (v?.marca||'').toLowerCase().includes(q) ||
+      (v?.modello||'').toLowerCase().includes(q) ||
       (cm.numero||'').toLowerCase().includes(q);
     const matchS = !statoFiltro || cm.stato === statoFiltro;
     return matchQ && matchS;
@@ -3807,7 +3987,7 @@ function showDetailCommessa(id) {
   const v  = veicoli.find(x=>x.id===cm.veicoloId);
   document.getElementById('dc-num').textContent = cm.numero||'';
   document.getElementById('dc-desc').textContent = cm.descrizione||cm.desc||'';
-  document.getElementById('dc-cliente-veicolo').textContent = [cl?.ragione, v?.targa, [v?.marca, v?.modello].filter(Boolean).join(' ') || '', v?.km ? Number(v.km).toLocaleString('it')+' km' : ''].filter(Boolean).join(' · ');
+  document.getElementById('dc-cliente-veicolo').textContent = [cl?.ragione, v?.targa, [v?.marca, v?.modello].filter(Boolean).join(' ') || '', v?.km ? Number(v.km).toLocaleString('it')+' km' : '', v?.oreMotore ? Number(v.oreMotore).toLocaleString('it')+' h' : ''].filter(Boolean).join(' · ');
   const _pagBadge = document.getElementById('dc-pagamento-badge');
   if (_pagBadge) {
     const PAG_LABEL = {contanti:'💵 Contanti',bonifico:'🏦 Bonifico',carta:'💳 Carta/POS',assegno:'📄 Assegno',finanziamento:'📋 Finanziamento'};
@@ -3868,21 +4048,27 @@ function showDetailCommessa(id) {
     .map(mid => { const m = meccanici.find(x=>x.id===mid); return m ? m.nome : null; }).filter(Boolean);
   document.getElementById('dc-meccanici').textContent = mecAttuali.length ? mecAttuali.join(', ') : '—';
 
-  const renderVociDetail = (arr) => arr.length
-    ? arr.map(v=>`<div class="detail-row">
-        <span class="detail-key">${v.desc||'—'} × ${v.qta||1}</span>
-        <span class="detail-val" style="font-family:'DM Mono',monospace">€ ${((v.qta||1)*(v.prezzo||0)).toFixed(2)}</span>
+  const renderVociDetail = (arr, tipo) => arr.length
+    ? arr.map((v,i)=>`<div class="detail-row" style="align-items:flex-start;gap:8px">
+        <span class="detail-key" style="flex:1">${v.desc||'—'} × ${v.qta||1}</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          ${v.sconto ? `<span style="font-size:10px;background:var(--warning-light);color:var(--warning);padding:1px 5px;border-radius:4px">-${v.sconto}%</span>` : ''}
+          <span style="font-family:'DM Mono',monospace;font-size:13px">€ ${((v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100)).toFixed(2)}</span>
+          <button onclick="apriEditVoce('${tipo}',${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px" title="Modifica prezzo/sconto">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+        </div>
       </div>`).join('')
     : '<div style="font-size:12px;color:var(--text3)">Nessuna voce.</div>';
 
-  document.getElementById('dc-manodopera').innerHTML = renderVociDetail(cm.vociMano||[]);
-  document.getElementById('dc-ricambi').innerHTML    = renderVociDetail(cm.vociRic||[]);
-  document.getElementById('dc-extra').innerHTML      = renderVociDetail(cm.vociExtra||[]);
+  document.getElementById('dc-manodopera').innerHTML = renderVociDetail(cm.vociMano||[], 'mano');
+  document.getElementById('dc-ricambi').innerHTML    = renderVociDetail(cm.vociRic||[], 'ric');
+  document.getElementById('dc-extra').innerHTML      = renderVociDetail(cm.vociExtra||[], 'extra');
 
   // Calcola subtotali
-  const totMano  = (cm.vociMano||[]).reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0);
-  const totRic   = (cm.vociRic||[]).reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0);
-  const totExtra = (cm.vociExtra||[]).reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0);
+  const totMano  = (cm.vociMano||[]).reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100),0);
+  const totRic   = (cm.vociRic||[]).reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100),0);
+  const totExtra = (cm.vociExtra||[]).reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100),0);
   document.getElementById('dc-tot-mano').textContent  = '€ '+totMano.toFixed(2).replace('.',',');
   document.getElementById('dc-tot-ric').textContent   = '€ '+totRic.toFixed(2).replace('.',',');
   document.getElementById('dc-tot-extra').textContent = '€ '+totExtra.toFixed(2).replace('.',',');
@@ -4104,20 +4290,27 @@ function setSection(sec) {
   // sec === 'anagrafiche' gestito da setTab
 }
 
-const RUOLI_OPERATIVI = ['meccanico','capo officina','elettrauto','apprendista','magazziniere'];
+const RUOLI_OPERATIVI = ['meccanico','capo officina','magazziniere','accettazione'];
+
+function getRuoliSelezionati() {
+  return [...document.querySelectorAll('#mec-ruoli-wrap input[type=checkbox]:checked')].map(c=>c.value);
+}
+
+function setRuoliSelezionati(ruoli) {
+  const arr = Array.isArray(ruoli) ? ruoli : (ruoli ? [ruoli] : []);
+  document.querySelectorAll('#mec-ruoli-wrap input[type=checkbox]').forEach(cb => {
+    cb.checked = arr.includes(cb.value);
+  });
+}
 
 function togglePinBadge() {
-  const ruolo = document.getElementById('mec-ruolo').value.toLowerCase();
-  const operativo = RUOLI_OPERATIVI.includes(ruolo);
-  ['mec-pin-section','mec-pin-wrap','mec-badge-wrap'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = operativo ? '' : 'none';
-  });
-  // Sezione orari — visibile per tutti
-  ['mec-orario-section','mec-orario-wrap'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = '';
-  });
+  const ruoli = getRuoliSelezionati();
+  const operativo = ruoli.some(r => RUOLI_OPERATIVI.includes(r.toLowerCase()));
+  const pinSec  = document.getElementById('mec-pin-section');
+  const pinWrap = document.getElementById('mec-pin-wrap');
+  const badgeWrap = document.getElementById('mec-badge-wrap');
+  const uscWrap = document.getElementById('mec-ora-uscita-wrap');
+  [pinSec, pinWrap, badgeWrap, uscWrap].forEach(el => { if (el) el.style.display = operativo ? '' : 'none'; });
 }
 
 function openModalMeccanico(editId) {
@@ -4127,17 +4320,17 @@ function openModalMeccanico(editId) {
     const m = meccanici.find(x=>x.id===editId);
     if (m) {
       document.getElementById('mec-nome').value  = m.nome||'';
-      document.getElementById('mec-ruolo').value = m.ruolo||'';
-      document.getElementById('mec-tel').value   = m.tel||'';
+      document.getElementById('mec-tel').value   = m.tel||m.telefono||'';
       document.getElementById('mec-email').value = m.email||'';
       document.getElementById('mec-note').value  = m.note||'';
       document.getElementById('mec-pin').value   = m.pin||'';
       document.getElementById('mec-badge').value = m.badge||'';
       document.getElementById('mec-ora-uscita').value = m.ora_uscita_automatica||m.oraUscitaAutomatica||'17:00';
+      setRuoliSelezionati(m.ruoli||m.ruolo||[]);
     }
   } else {
     ['mec-nome','mec-tel','mec-email','mec-note','mec-pin','mec-badge'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('mec-ruolo').value = '';
+    setRuoliSelezionati([]);
   }
   togglePinBadge();
   document.getElementById('modal-meccanico').style.display='flex';
@@ -4146,8 +4339,9 @@ function openModalMeccanico(editId) {
 async function saveMeccanico() {
   const nome = document.getElementById('mec-nome').value.trim();
   if (!nome) { alert('Inserisci il nome.'); return; }
-  const ruolo = document.getElementById('mec-ruolo').value;
-  const operativo = RUOLI_OPERATIVI.includes(ruolo.toLowerCase());
+  const ruoli = getRuoliSelezionati();
+  if (!ruoli.length) { alert('Seleziona almeno un ruolo.'); return; }
+  const operativo = ruoli.some(r => RUOLI_OPERATIVI.includes(r.toLowerCase()));
   const pin = document.getElementById('mec-pin').value.trim();
   if (operativo) {
     if (!pin || pin.length !== 4) { alert('Il PIN deve essere di 4 cifre.'); document.getElementById('mec-pin').focus(); return; }
@@ -4156,13 +4350,16 @@ async function saveMeccanico() {
   }
   const data = {
     nome,
-    ruolo,
+    ruoli,
+    ruolo: ruoli[0]||'', // compatibilità legacy
     tel:    document.getElementById('mec-tel').value.trim(),
+    telefono: document.getElementById('mec-tel').value.trim(),
     email:  document.getElementById('mec-email').value.trim(),
     note:   document.getElementById('mec-note').value.trim(),
     pin:    operativo ? pin : null,
     badge:  operativo ? (document.getElementById('mec-badge').value.trim().toUpperCase() || null) : null,
     ora_uscita_automatica: document.getElementById('mec-ora-uscita').value || '17:00',
+    attivo: true,
   };
   try {
     if (editingMeccanicoId) await dbSaveMeccanico({...meccanici.find(m=>m.id===editingMeccanicoId), ...data});
@@ -4183,19 +4380,21 @@ function stampaTuttiBadge() {
 }
 
 function generaHtmlBadge(lista, off) {
-  // Usiamo l'API di QR server + jsBarcode CDN per barcode CODE-128
   const cards = lista.map(m => {
     const badgeCode = m.badge || m.pin || m.id.substr(0,8).toUpperCase();
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(badgeCode)}&margin=2`;
     const barcodeUrl = `https://barcodeapi.org/api/code128/${encodeURIComponent(badgeCode)}`;
     const initials = m.nome.split(' ').map(w=>w[0]).join('').substr(0,2).toUpperCase();
+    const ruoliArr = getRuoli(m);
+    const ruoliHtml = ruoliArr.map(r=>`<span style="background:#EEF2FF;color:#1B4FD8;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:.4px">${r}</span>`).join(' ');
 
     return `<div class="badge-card">
       <div class="badge-header">
         <div class="badge-avatar">${initials}</div>
         <div class="badge-info">
           <div class="badge-name">${m.nome}</div>
-          <div class="badge-officina">${off.ragione||'Officina'}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px">${ruoliHtml}</div>
+          <div class="badge-officina" style="margin-top:3px">${off.ragione||'Officina'}</div>
         </div>
       </div>
       <div class="badge-codes">
@@ -4251,7 +4450,11 @@ async function deleteMeccanico(id) {
 function renderMeccanici() {
   updateBadgeMeccanici();
   const q = (document.getElementById('search-meccanici')?.value||'').toLowerCase();
-  const filtered = meccanici.filter(m=>!q||m.nome.toLowerCase().includes(q)||(m.ruolo||'').toLowerCase().includes(q));
+  const filtered = meccanici.filter(m=>{
+    if (!q) return true;
+    const ruoliStr = getRuoli(m).join(' ').toLowerCase();
+    return m.nome.toLowerCase().includes(q) || ruoliStr.includes(q);
+  });
   const tbody = document.getElementById('tbody-meccanici');
   const empty = document.getElementById('empty-meccanici');
 
@@ -4264,20 +4467,18 @@ function renderMeccanici() {
 
   const ruoloColor = {
     'Capo officina':'badge-blue','Meccanico':'badge-gray',
-    'Elettrauto':'badge-green','Apprendista':'badge-yellow','Magazziniere':'badge-gray'
+    'Magazziniere':'badge-yellow','Amministrazione':'badge-green','Accettazione':'badge-blue'
   };
 
   tbody.innerHTML = filtered.map(m => {
     const initials = m.nome.split(' ').map(w=>w[0]).join('').substr(0,2).toUpperCase();
+    const ruoliArr = getRuoli(m);
+    const ruoliBadges = ruoliArr.map(r=>`<span class="badge ${ruoloColor[r]||'badge-gray'}" style="margin-right:2px">${r}</span>`).join('');
 
-    // Timbratura aperta su commessa ATTIVA (aperta o wip)
-    // Supporta sia mecId (camelCase dopo fromDb) che mec_id (snake_case raw)
     const tAperta = timbrature.find(t => (t.mecId||t.mec_id)===m.id && !t.uscita);
     const comIdTim = tAperta ? (tAperta.comId||tAperta.com_id) : null;
     const cmAttiva = comIdTim ? commesse.find(c=>c.id===comIdTim && (c.stato==='aperta'||c.stato==='wip')) : null;
     const inLavorazione = !!(tAperta && cmAttiva);
-
-    // Presenza aperta (in officina ma non su commessa attiva)
     const presente = !inLavorazione && !!presenze.find(p=>(p.dipId||p.dip_id)===m.id && !p.uscita);
 
     let commessaLabel = '<span style="color:var(--text3);font-size:12px">—</span>';
@@ -4309,10 +4510,10 @@ function renderMeccanici() {
         <div class="cell-avatar" style="background:${avatarBg};color:${avatarColor}">${initials}</div>
         <div>
           <div class="td-main">${m.nome}</div>
-          <div class="td-sub">${m.email||''}</div>
+          <div class="td-sub">${m.email||m.tel||''}</div>
         </div>
       </div></td>
-      <td><span class="badge ${ruoloColor[m.ruolo]||'badge-gray'}">${m.ruolo||'—'}</span></td>
+      <td>${ruoliBadges}</td>
       <td>${presenzaBadge}</td>
       <td>${commessaLabel}</td>
       <td>${m.tel||'—'}</td>
@@ -4323,19 +4524,6 @@ function renderMeccanici() {
       </div></td>
     </tr>`;
   }).join('');
-}
-
-function ripristinaDemoMeccanici() {
-  meccanici = [
-    { id:'demo-mec-1', nome:'Meccanico 1', ruolo:'Meccanico', tel:'', email:'', createdAt:new Date().toISOString() },
-    { id:'demo-mec-2', nome:'Meccanico 2', ruolo:'Meccanico', tel:'', email:'', createdAt:new Date().toISOString() },
-    { id:'demo-mec-3', nome:'Meccanico 3', ruolo:'Meccanico', tel:'', email:'', createdAt:new Date().toISOString() },
-    { id:'demo-mec-4', nome:'Meccanico 4', ruolo:'Capo officina', tel:'', email:'', createdAt:new Date().toISOString() },
-    { id:'demo-mec-5', nome:'Meccanico 5', ruolo:'Apprendista', tel:'', email:'', createdAt:new Date().toISOString() },
-  ];
-  
-  renderMeccanici();
-  showToast('Meccanici demo ripristinati ✓');
 }
 
 function updateBadgeMeccanici() {
@@ -4518,58 +4706,6 @@ async function timbraUscita() {
     showToast('Uscita registrata ✓');
     renderLive(); updateBadgeTimbrature();
   } catch(e) { alert('Errore: '+e.message); }
-}
-
-// ===== TIMBRA QR =====
-function cercaCommessaQR() {
-  const val = document.getElementById('t-qr-input').value.trim().toUpperCase();
-  const res = document.getElementById('t-qr-result');
-  if (!val) { res.style.display='none'; return; }
-  const cm = commesse.find(c=>(c.numero||'').toUpperCase()===val);
-  if (!cm) { res.style.display='none'; return; }
-  const cl = clienti.find(x=>x.id===cm.clienteId);
-  const v  = veicoli.find(x=>x.id===cm.veicoloId);
-  document.getElementById('t-qr-desc').textContent = cm.descrizione||cm.desc;
-  document.getElementById('t-qr-meta').textContent = [cm.numero, v?.targa, cl?.ragione].filter(Boolean).join(' · ');
-  res.style.display='block';
-  res.dataset.comId = cm.id;
-}
-
-function timbraQREntrata() {
-  const res = document.getElementById('t-qr-result');
-  const mecId = document.getElementById('t-qr-meccanico').value;
-  if (!mecId) { alert('Seleziona un meccanico.'); return; }
-  if (res.style.display==='none'||!res.dataset.comId) { alert('Inserisci un numero commessa valido.'); return; }
-  const comId = res.dataset.comId;
-  const aperta = timbrature.find(t=>t.mecId===mecId&&t.comId===comId&&!t.uscita);
-  if (aperta) { alert('Timbratura già aperta su questa commessa.'); return; }
-  const ora = new Date().toISOString();
-  chiudiAltreTimbratureAperte(mecId, comId, ora);
-  timbrature.push({ id:initId(), mecId, comId, entrata:ora, uscita:null, tipo:'qr', note:'', createdAt:ora });
-  saveTimbrature();
-  registraPresenzaAutomatica(mecId, ora);
-  showToast('Entrata QR registrata ✓');
-  document.getElementById('t-qr-input').value='';
-  res.style.display='none';
-  renderLive(); renderTimbrature(); updateBadgeTimbrature();
-}
-
-function timbraQRUscita() {
-  const res = document.getElementById('t-qr-result');
-  const mecId = document.getElementById('t-qr-meccanico').value;
-  if (!mecId) { alert('Seleziona un meccanico.'); return; }
-  if (res.style.display==='none'||!res.dataset.comId) { alert('Inserisci un numero commessa valido.'); return; }
-  const comId = res.dataset.comId;
-  const aperta = timbrature.find(t=>t.mecId===mecId&&t.comId===comId&&!t.uscita);
-  if (!aperta) { alert('Nessuna entrata trovata.'); return; }
-  const ora = new Date().toISOString();
-  aperta.uscita = ora;
-  saveTimbrature();
-  chiudiPresenzaAutomatica(mecId, ora);
-  showToast('Uscita QR registrata ✓');
-  document.getElementById('t-qr-input').value='';
-  res.style.display='none';
-  renderLive(); renderTimbrature(); updateBadgeTimbrature();
 }
 
 // ===== LIVE =====
@@ -4794,7 +4930,8 @@ function openModalTimbraturaManuale() {
   // Popola select meccanici
   const selMec = document.getElementById('tm-meccanico');
   selMec.innerHTML = '<option value="">— Seleziona meccanico —</option>' +
-    meccanici.filter(m=>m.attivo!==false).map(m=>`<option value="${m.id}">${m.nome} (${m.ruolo||'—'})</option>`).join('');
+    meccanici.filter(m=>m.attivo!==false).filter(isOperativo)
+    .map(m=>`<option value="${m.id}">${m.nome} (${getRuoli(m).join(', ')})</option>`).join('');
   // Popola select commesse attive
   const selCom = document.getElementById('tm-commessa');
   selCom.innerHTML = '<option value="">— Seleziona commessa —</option>' +
@@ -4832,14 +4969,7 @@ async function salvaTimbraturaManualeForm() {
 }
 
 // ===== PRESENZE =====
-let dipendenti = (() => { try { return JSON.parse(localStorage.getItem('officina_dipendenti') || '[]'); } catch(e) { return []; } })();
-// presenze già dichiarata sopra
-let editingDipendenteId = null;
-
-function savePresenze() {
-  localStorage.setItem('officina_dipendenti', JSON.stringify(dipendenti));
-  localStorage.setItem('officina_presenze',   JSON.stringify(presenze));
-}
+// dipendenti ora è meccanici da Supabase — variabile legacy rimossa
 
 const TIPO_BADGE = {
   presenza:     { cls:'badge-blue',   label:'Presenza'     },
@@ -4895,24 +5025,20 @@ function renderDipendenti() {
 
 async function deleteMeccanicoConPresenze(id) {
   if (!confirm('Eliminare questo dipendente? Anche le presenze associate verranno rimosse.')) return;
+  // Elimina presenze da Supabase
+  const presenzeToDelete = presenze.filter(p => p.dipId === id);
+  for (const p of presenzeToDelete) {
+    await DB.delete('presenze', p.id).catch(()=>{});
+  }
   presenze = presenze.filter(p => p.dipId !== id);
   await dbDeleteMeccanico(id);
   renderMeccanici(); renderDipendenti(); showToast('Dipendente eliminato');
 }
 
-function deleteDipendente(id) {
-  if (!confirm('Eliminare questo dipendente? Anche le presenze associate verranno rimosse.')) return;
-  presenze   = presenze.filter(p=>p.dipId!==id);
-  dipendenti = dipendenti.filter(d=>d.id!==id);
-  savePresenze(); initPresenze(); showToast('Dipendente eliminato');
-}
-
 function initPresenze() {
-  dipendenti = JSON.parse(localStorage.getItem('officina_dipendenti') || '[]');
-  presenze   = JSON.parse(localStorage.getItem('officina_presenze')   || '[]');
   const sel = document.getElementById('p-dipendente');
   if (sel) sel.innerHTML = '<option value="">Seleziona dipendente...</option>' +
-    dipendenti.map(d=>`<option value="${d.id}">${d.nome} — ${d.ruolo||''}</option>`).join('');
+    meccanici.filter(m=>m.attivo!==false).map(m=>`<option value="${m.id}">${m.nome} — ${getRuoli(m).join(', ')}</option>`).join('');
   const oggi = new Date().toISOString().split('T')[0];
   const fd = document.getElementById('p-filter-data');
   if (fd && !fd.value) fd.value = oggi;
@@ -4931,8 +5057,10 @@ function presenzaEntrata() {
   const straord = parseFloat(document.getElementById('p-straordinario').value)||0;
   if (!dipId) { alert('Seleziona un dipendente.'); return; }
   if (presenze.find(p=>p.dipId===dipId&&!p.uscita)) { alert('Timbratura già aperta per questo dipendente.'); return; }
-  presenze.push({ id:initId(), dipId, tipo, entrata:getOra('p-ora'), uscita:null, straordinario:straord, createdAt:new Date().toISOString() });
-  savePresenze(); showToast('Entrata registrata ✓');
+  const nuova = { id:initId(), dipId, dip_id:dipId, tipo, entrata:getOra('p-ora'), uscita:null, straordinario:straord, createdAt:new Date().toISOString() };
+  presenze.push(nuova);
+  dbSavePresenza(nuova).catch(e=>console.error('Errore salvataggio presenza:', e));
+  showToast('Entrata registrata ✓');
   renderLivePresenze(); renderPresenze(); updateBadgePresenze();
   document.getElementById('p-straordinario').value='';
 }
@@ -4943,7 +5071,8 @@ function presenzaUscita() {
   const aperta = presenze.find(p=>p.dipId===dipId&&!p.uscita);
   if (!aperta) { alert('Nessuna entrata aperta.'); return; }
   aperta.uscita = getOra('p-ora');
-  savePresenze(); showToast('Uscita registrata ✓');
+  dbSavePresenza(aperta).catch(e=>console.error('Errore salvataggio presenza:', e));
+  showToast('Uscita registrata ✓');
   renderLivePresenze(); renderPresenze(); updateBadgePresenze();
 }
 
@@ -4951,7 +5080,8 @@ function chiudiPresenza(id) {
   const p = presenze.find(x=>x.id===id);
   if (!p) return;
   p.uscita = new Date().toISOString();
-  savePresenze(); showToast('Uscita registrata ✓');
+  dbSavePresenza(p).catch(e=>console.error('Errore salvataggio presenza:', e));
+  showToast('Uscita registrata ✓');
   renderLivePresenze(); renderPresenze(); updateBadgePresenze();
 }
 
@@ -4961,7 +5091,7 @@ function renderLivePresenze() {
   if (!el) return;
   if (!aperte.length) { el.innerHTML='<div style="font-size:13px;color:var(--text3)">Nessun dipendente in sede.</div>'; return; }
   el.innerHTML = aperte.map(p=>{
-    const d = dipendenti.find(x=>x.id===p.dipId);
+    const d = meccanici.find(x=>x.id===p.dipId);
     const mins = Math.floor((new Date()-new Date(p.entrata))/60000);
     const dur = mins>=60?`${Math.floor(mins/60)}h${String(mins%60).padStart(2,'0')}`:`${mins}m`;
     return `<div class="t-live-chip"><span class="dot"></span><strong>${d?d.nome:'—'}</strong><span style="opacity:.7">· ${dur}</span><span onclick="chiudiPresenza('${p.id}')" style="cursor:pointer;margin-left:4px;opacity:.6;font-size:14px">×</span></div>`;
@@ -4969,15 +5099,13 @@ function renderLivePresenze() {
 }
 
 function renderPresenze() {
-  dipendenti = JSON.parse(localStorage.getItem('officina_dipendenti') || '[]');
-  presenze   = JSON.parse(localStorage.getItem('officina_presenze')   || '[]');
   updateBadgePresenze();
   renderDipendenti();
   const q    = (document.getElementById('search-presenze')?.value||'').toLowerCase();
   const fd   = document.getElementById('p-filter-data')?.value||'';
   const ft   = document.getElementById('p-filter-tipo')?.value||'';
   const filtered = [...presenze].reverse().filter(p=>{
-    const d = dipendenti.find(x=>x.id===p.dipId);
+    const d = meccanici.find(x=>x.id===p.dipId);
     return (!q||(d?.nome||'').toLowerCase().includes(q)) &&
            (!fd||p.entrata.startsWith(fd)) &&
            (!ft||p.tipo===ft);
@@ -4988,16 +5116,17 @@ function renderPresenze() {
   if (!filtered.length) { tbody.innerHTML=''; empty.style.display=''; return; }
   empty.style.display='none';
   tbody.innerHTML = filtered.map(p=>{
-    const d = dipendenti.find(x=>x.id===p.dipId);
+    const d = meccanici.find(x=>x.id===p.dipId);
     const ore = calcOre(p.entrata, p.uscita);
     const tb = TIPO_BADGE[p.tipo]||{cls:'badge-gray',label:p.tipo};
     const dataStr = p.entrata?new Date(p.entrata).toLocaleDateString('it-IT'):'—';
+    const ruoliStr = d ? (Array.isArray(d.ruoli)&&d.ruoli.length ? d.ruoli.join(', ') : d.ruolo||'—') : '—';
     return `<tr>
       <td><div class="cell-with-avatar">
         <div class="cell-avatar" style="font-size:11px">${d?d.nome.split(' ').map(w=>w[0]).join('').substr(0,2).toUpperCase():'?'}</div>
         <div class="td-main">${d?d.nome:'—'}</div>
       </div></td>
-      <td><span class="badge badge-gray" style="font-size:11px">${d?d.ruolo||'—':'—'}</span></td>
+      <td><span class="badge badge-gray" style="font-size:11px">${ruoliStr}</span></td>
       <td style="font-size:12px">${dataStr}</td>
       <td style="font-family:'DM Mono',monospace;font-size:12px">${formatDateTime(p.entrata)}</td>
       <td style="font-family:'DM Mono',monospace;font-size:12px">${p.uscita?formatDateTime(p.uscita):'<span class="badge badge-yellow">Aperta</span>'}</td>
@@ -5012,10 +5141,11 @@ function renderPresenze() {
   }).join('');
 }
 
-function deletePresenza(id) {
+async function deletePresenza(id) {
   if (!confirm('Eliminare questa presenza?')) return;
+  await DB.delete('presenze', id).catch(e=>console.error(e));
   presenze = presenze.filter(p=>p.id!==id);
-  savePresenze(); renderLivePresenze(); renderPresenze(); updateBadgePresenze();
+  renderLivePresenze(); renderPresenze(); updateBadgePresenze();
 }
 
 function resetFiltriP() {
@@ -5044,7 +5174,7 @@ function renderRiepilogoPresenze() {
   });
   el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">` +
     Object.entries(riepilogo).map(([dipId,r])=>{
-      const d = dipendenti.find(x=>x.id===dipId);
+      const d = meccanici.find(x=>x.id===dipId);
       const oreContr = (d?.oreContratto||8)*r.giorni;
       const diff = r.ore-oreContr;
       const diffStr = diff>=0?`+${diff.toFixed(1)}h`:`${diff.toFixed(1)}h`;
@@ -5080,6 +5210,10 @@ function aggiornaLiveTotal(comId) {
 
   const totBase = (cm.totale||0);
 
+  // IVA dal cliente
+  const cl = clienti.find(c=>c.id===cm.clienteId);
+  const aliquotaIva = cl?.iva ?? 22;
+
   // Calcola ore live dalle timbrature aperte
   const timb = timbrature;
   const aperte = timb.filter(t=>t.comId===comId&&!t.uscita);
@@ -5090,7 +5224,6 @@ function aggiornaLiveTotal(comId) {
   aperte.forEach(t=>{
     const mins = Math.floor((new Date()-new Date(t.entrata))/60000);
     oreLive += mins/60;
-    // Prendi il prezzo dalla tariffa normale (default)
     const tariffa = getTariffa('normale');
     costoLive += (mins/60) * (tariffa.cli||0);
   });
@@ -5099,20 +5232,34 @@ function aggiornaLiveTotal(comId) {
   const liveEl   = document.getElementById('dc-tot-live');
   const liveNote = document.getElementById('dc-tot-live-note');
   const totEl    = document.getElementById('dc-totale');
+  const ivaLabel = document.getElementById('dc-iva-label');
+  const ivaAmt   = document.getElementById('dc-iva-amt');
+  const totLordoEl = document.getElementById('dc-totale-lordo');
+
+  const fmt = n => '€ '+n.toFixed(2).replace('.',',');
 
   if (aperte.length && oreLive > 0) {
     liveRow.style.display = 'flex';
-    liveEl.textContent = '+ € '+costoLive.toFixed(2).replace('.',',');
+    liveEl.textContent = '+ '+fmt(costoLive);
     liveNote.style.display = 'block';
     liveNote.textContent = `${aperte.length} meccanico/i in lavorazione · ${oreLive.toFixed(1)}h live`;
-    const totLive = totBase + costoLive;
-    totEl.textContent = '€ '+totLive.toFixed(2).replace('.',',');
+    const imponibile = totBase + costoLive;
+    const iva = imponibile * aliquotaIva / 100;
+    totEl.textContent = fmt(imponibile);
     totEl.style.color = 'var(--warning)';
+    if (ivaLabel) ivaLabel.textContent = `IVA ${aliquotaIva}%`;
+    if (ivaAmt)   ivaAmt.textContent   = fmt(iva);
+    if (totLordoEl) totLordoEl.textContent = fmt(imponibile + iva);
   } else {
     liveRow.style.display = 'none';
     liveNote.style.display = 'none';
-    totEl.textContent = totBase ? '€ '+totBase.toFixed(2).replace('.',',') : '€ 0,00';
+    const imponibile = totBase;
+    const iva = imponibile * aliquotaIva / 100;
+    totEl.textContent = imponibile ? fmt(imponibile) : '€ 0,00';
     totEl.style.color = '';
+    if (ivaLabel) ivaLabel.textContent = `IVA ${aliquotaIva}%`;
+    if (ivaAmt)   ivaAmt.textContent   = fmt(iva);
+    if (totLordoEl) totLordoEl.textContent = fmt(imponibile + iva);
   }
 }
 
@@ -5137,7 +5284,7 @@ function openModalManodopera(preselComId) {
   // Popola meccanici
   document.getElementById('mano-meccanico').innerHTML =
     '<option value="">Seleziona...</option>' +
-    meccanici.map(m=>`<option value="${m.id}">${m.nome} — ${m.ruolo||''}</option>`).join('');
+    meccanici.filter(isOperativo).map(m=>`<option value="${m.id}">${m.nome} — ${getRuoli(m).join(', ')}</option>`).join('');
 
   // Reset campi
   document.getElementById('mano-desc').value = '';
@@ -5519,8 +5666,20 @@ async function scaricaZipGaranzia(comId) {
     // Totale
     nextY(2);
     addLine(y, [27,79,216]); nextY(6);
-    addText('TOTALE', ml, y, {size:10, style:'bold', color:[102,102,102]});
-    addText('€ '+(cm.totale||0).toFixed(2).replace('.',','), ml+cw, y, {size:14, style:'bold', align:'right'});
+    const clIva = clienti.find(c=>c.id===cm.clienteId);
+    const aliqIva = clIva?.iva ?? 22;
+    const imponibile = cm.totale||0;
+    const ivaAmt = imponibile * aliqIva / 100;
+    const totLordo = imponibile + ivaAmt;
+    addText('IMPONIBILE', ml, y, {size:10, style:'bold', color:[102,102,102]});
+    addText('€ '+imponibile.toFixed(2).replace('.',','), ml+cw, y, {size:13, style:'bold', align:'right'});
+    nextY(7);
+    addText(`IVA ${aliqIva}%`, ml, y, {size:10, color:[136,136,136]});
+    addText('€ '+ivaAmt.toFixed(2).replace('.',','), ml+cw, y, {size:11, align:'right', color:[136,136,136]});
+    nextY(7);
+    addLine(y, [27,79,216]); nextY(6);
+    addText('TOTALE CON IVA', ml, y, {size:11, style:'bold'});
+    addText('€ '+totLordo.toFixed(2).replace('.',','), ml+cw, y, {size:15, style:'bold', align:'right', color:[27,79,216]});
     nextY(10);
 
     // Note
@@ -6010,7 +6169,7 @@ async function confermaScan() {
     const voceEsistente = commesse[ci].vociRic.find(v=>v.prodId===p.id);
     if (voceEsistente) { voceEsistente.qta = (voceEsistente.qta||1)+qta; }
     else { commesse[ci].vociRic.push({ prodId:p.id, desc:p.descrizione||p.desc+(p.codForn?' ('+p.codForn+')':''), qta, prezzo:p.prezzoVend||0 }); }
-    commesse[ci].totale = [...(commesse[ci].vociMano||[]),...(commesse[ci].vociRic||[]),...(commesse[ci].vociExtra||[])].reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0);
+    commesse[ci].totale = [...(commesse[ci].vociMano||[]),...(commesse[ci].vociRic||[]),...(commesse[ci].vociExtra||[])].reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100),0);
     await dbSaveCommessa(commesse[ci]);
   }
 
@@ -6195,7 +6354,7 @@ async function creaESalvaNuovoRicambio() {
     const ci = commesse.findIndex(x=>x.id===selectedCommessaId);
     if (!commesse[ci].vociRic) commesse[ci].vociRic=[];
     commesse[ci].vociRic.push({ prodId:nuovoProd.id, desc, qta, prezzo:vend });
-    commesse[ci].totale=[...(commesse[ci].vociMano||[]),...(commesse[ci].vociRic||[]),...(commesse[ci].vociExtra||[])].reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0);
+    commesse[ci].totale=[...(commesse[ci].vociMano||[]),...(commesse[ci].vociRic||[]),...(commesse[ci].vociExtra||[])].reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100),0);
     await dbSaveCommessa(commesse[ci]);
 
     showToast(`"${desc}" creato e aggiunto ✓`);
@@ -6248,7 +6407,7 @@ async function confermaScansioneRicambio() {
       const voceEsistente = commesse[ci].vociRic.find(v=>v.prodId===p.id);
       if (voceEsistente) voceEsistente.qta=(voceEsistente.qta||1)+qta;
       else commesse[ci].vociRic.push({ prodId:p.id, desc:(p.descrizione||p.desc)+(p.codForn?' ('+p.codForn+')':''), qta, prezzo:p.prezzoVend||0 });
-      commesse[ci].totale=[...(commesse[ci].vociMano||[]),...(commesse[ci].vociRic||[]),...(commesse[ci].vociExtra||[])].reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0);
+      commesse[ci].totale=[...(commesse[ci].vociMano||[]),...(commesse[ci].vociRic||[]),...(commesse[ci].vociExtra||[])].reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100),0);
       await dbSaveCommessa(commesse[ci]);
     }
 
@@ -6294,7 +6453,7 @@ function setMagTab(tab) {
   });
   if (tab==='prodotti')     renderProdotti();
   if (tab==='movimenti')    { _movPag=0; popolaSelMovimento(); renderMovimenti(); }
-  if (tab==='approvazioni') { _apprPag=0; renderApprovazioni(); }
+  if (tab==='approvazioni') { /* rimosso */ }
 }
 
 function updateStatsMagazzino() {
@@ -6333,7 +6492,7 @@ function renderProdotti() {
   empty.style.display='none';
   tbody.innerHTML = filtered.map(p => {
     const st = statoProdotto(p);
-    const forn = clienti.find(c=>c.id===p.fornitoreId);
+    const forn = fornitori.find(f=>f.id===p.fornitoreId);
     return `<tr>
       <td><div class="td-main">${p.descrizione||p.desc}</div><div class="td-sub">${p.categoria||''} · ${p.um||'pz'}</div></td>
       <td style="font-family:'DM Mono',monospace;font-size:11px">${p.codInt||'—'}</td>
@@ -6358,7 +6517,7 @@ function openModalProdotto(editId) {
   // Popola fornitori
   const sel = document.getElementById('p-fornitore');
   sel.innerHTML = '<option value="">— Nessun fornitore —</option>' +
-    clienti.map(c=>`<option value="${c.id}">${c.ragione}</option>`).join('');
+    fornitori.map(f=>`<option value="${f.id}">${f.ragione||f.nome||'—'}</option>`).join('');
   if (editId) {
     const p = prodotti.find(x=>x.id===editId);
     if (p) {
@@ -6580,121 +6739,6 @@ function importaDati(input) {
 }
 
 // ===== APPROVAZIONI RICAMBI =====
-function updateBadgeApprovazioni() {
-  const prop = JSON.parse(localStorage.getItem('officina_proposte') || '[]');
-  const pending = prop.filter(p=>p.stato==='attesa').length;
-  const badge = document.getElementById('badge-da-approvare');
-  const mtabBadge = document.getElementById('mtab-badge-appr');
-  if (badge) { badge.style.display = pending>0?'':'none'; badge.textContent = pending; }
-  if (mtabBadge) { mtabBadge.style.display = pending>0?'':'none'; mtabBadge.textContent = pending; }
-}
-
-function renderApprovazioni() {
-  const proposte = JSON.parse(localStorage.getItem('officina_proposte') || '[]');
-  const pendingAll = proposte.filter(p=>p.stato==='attesa');
-  const lista    = document.getElementById('lista-approvazioni');
-  const empty    = document.getElementById('empty-approvazioni');
-  if (!lista) return;
-  if (!pendingAll.length) { lista.innerHTML=''; empty.style.display=''; renderPagApprovazioni(0,0); return; }
-  empty.style.display='none';
-  const apprTot   = pendingAll.length;
-  const apprPages = Math.ceil(apprTot / APPR_PER_PAG);
-  _apprPag = Math.max(0, Math.min(_apprPag, apprPages-1));
-  const pending = pendingAll.slice(_apprPag*APPR_PER_PAG, (_apprPag+1)*APPR_PER_PAG);
-  lista.innerHTML = pending.map(p=>{
-    const cm  = commesse.find(x=>x.id===p.comId);
-    const mec = meccanici.find(x=>x.id===p.mecId);
-    const pr  = prodotti.find(x=>x.id===p.prodId);
-    const cl  = cm ? clienti.find(x=>x.id===cm.clienteId) : null;
-    const v   = cm ? veicoli.find(x=>x.id===cm.veicoloId) : null;
-    const disponibile = pr ? pr.giacenza >= p.qta : false;
-    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;margin-bottom:10px;box-shadow:var(--shadow)">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-        <div>
-          <div style="font-size:14px;font-weight:600">${pr?pr.descrizione||pr.desc:'Prodotto sconosciuto'}</div>
-          <div style="font-size:12px;color:var(--text3);margin-top:3px">
-            ${pr?'Cod: '+(pr.codForn||pr.codInt||'—'):'—'} ·
-            Giacenza: <strong style="color:${disponibile?'var(--success)':'var(--danger)'}">${pr?pr.giacenza:0} ${pr?pr.um||'pz':'pz'}</strong>
-          </div>
-        </div>
-        <div style="text-align:right">
-          <span class="badge badge-yellow">In attesa</span>
-          <div style="font-size:11px;color:var(--text3);margin-top:4px">${formatDateTime(p.createdAt)}</div>
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;font-size:12px">
-        <div><span style="color:var(--text3)">Meccanico</span><br><strong>${mec?mec.nome:'—'}</strong></div>
-        <div><span style="color:var(--text3)">Commessa</span><br><strong>${cm?cm.numero:'—'}</strong><br><span style="color:var(--text3)">${v?v.targa:''} ${cl?cl.ragione:''}</span></div>
-        <div><span style="color:var(--text3)">Quantità</span><br><strong style="font-family:'DM Mono',monospace;font-size:15px">${p.qta} ${pr?pr.um||'pz':'pz'}</strong></div>
-      </div>
-      ${p.note?`<div style="font-size:12px;color:var(--text2);background:var(--surface2);border-radius:var(--radius);padding:8px 10px;margin-bottom:10px">💬 ${p.note}</div>`:''}
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-primary btn-sm" style="flex:1" onclick="approvaRicambio('${p.id}')" ${!disponibile?'disabled title="Giacenza insufficiente"':''}>
-          ✓ Approva e scarica magazzino
-        </button>
-        <button class="btn btn-danger btn-sm" onclick="rifiutaRicambio('${p.id}')">Rifiuta</button>
-      </div>
-    </div>`;
-  }).join('');
-  renderPagApprovazioni(apprPages, apprTot);
-}
-
-function renderPagApprovazioni(pages, tot) {
-  let wrap = document.getElementById('pag-approvazioni');
-  if (!wrap) {
-    wrap = document.createElement('div');
-    wrap.id = 'pag-approvazioni';
-    const empty = document.getElementById('empty-approvazioni');
-    if (empty) empty.after(wrap);
-  }
-  if (!pages || pages <= 1) { wrap.innerHTML=''; return; }
-  const from = _apprPag*APPR_PER_PAG+1, to = Math.min((_apprPag+1)*APPR_PER_PAG, tot);
-  wrap.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 4px;font-size:13px;color:var(--text2)">
-    <button class="btn btn-secondary btn-sm" onclick="_apprPag--;renderApprovazioni()" ${_apprPag===0?'disabled':''}>‹ Indietro</button>
-    <span>${from}–${to} di ${tot}</span>
-    <button class="btn btn-secondary btn-sm" onclick="_apprPag++;renderApprovazioni()" ${_apprPag>=pages-1?'disabled':''}>Avanti ›</button>
-  </div>`;
-}
-
-async function approvaRicambio(id) {
-  let proposte = JSON.parse(localStorage.getItem('officina_proposte') || '[]');
-  const p = proposte.find(x=>x.id===id);
-  if (!p) return;
-  const pr = prodotti.find(x=>x.id===p.prodId);
-  if (pr && pr.giacenza < p.qta) { alert('Giacenza insufficiente per approvare.'); return; }
-  try {
-    if (pr) {
-      const pi = prodotti.findIndex(x=>x.id===p.prodId);
-      prodotti[pi].giacenza -= p.qta;
-      await dbSaveMovimento({ id:initId(), prodId:p.prodId, tipo:'scarico', qta:p.qta, comId:p.comId, note:'Approvazione proposta meccanico', data:new Date().toISOString(), createdAt:new Date().toISOString() });
-      await dbSaveProdotto(prodotti[pi]);
-    }
-    const ci = commesse.findIndex(x=>x.id===p.comId);
-    if (ci>=0) {
-      if (!commesse[ci].vociRic) commesse[ci].vociRic=[];
-      const ve = commesse[ci].vociRic.find(v=>v.prodId===p.prodId);
-      if (ve) ve.qta=(ve.qta||1)+p.qta;
-      else commesse[ci].vociRic.push({ prodId:p.prodId, desc:(pr?pr.descrizione||pr.desc:'Ricambio')+(p.note?' — '+p.note:''), qta:p.qta, prezzo:pr?pr.prezzoVend||0:0 });
-      commesse[ci].totale = [...(commesse[ci].vociMano||[]),...(commesse[ci].vociRic||[]),...(commesse[ci].vociExtra||[])].reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0);
-      await dbSaveCommessa(commesse[ci]);
-    }
-    p.stato = 'approvata';
-    localStorage.setItem('officina_proposte', JSON.stringify(proposte));
-    showToast('Ricambio approvato ✓');
-    renderApprovazioni(); updateBadgeApprovazioni();
-  } catch(err) { alert('Errore: '+err.message); }
-}
-
-function rifiutaRicambio(id) {
-  if (!confirm('Rifiutare questa proposta?')) return;
-  let proposte = JSON.parse(localStorage.getItem('officina_proposte') || '[]');
-  const p = proposte.find(x=>x.id===id);
-  if (p) p.stato='rifiutata';
-  localStorage.setItem('officina_proposte', JSON.stringify(proposte));
-  showToast('Proposta rifiutata');
-  renderApprovazioni(); updateBadgeApprovazioni();
-}
-
 // ===== TARIFFE MANODOPERA =====
 const TARIFFE_DEFAULT = {
   normale:      { int:0, cli:0 },
@@ -6704,7 +6748,7 @@ const TARIFFE_DEFAULT = {
 };
 
 function caricaTariffe() {
-  const saved = JSON.parse(localStorage.getItem('officina_tariffe') || 'null') || TARIFFE_DEFAULT;
+  const saved = _impostazioni.tariffe || JSON.parse(localStorage.getItem('officina_tariffe') || 'null') || TARIFFE_DEFAULT;
   ['normale','straordinario','strada','festivo'].forEach(tipo => {
     const t = saved[tipo]||{int:0,cli:0};
     const elInt = document.getElementById('tariffa-'+tipo+'-int');
@@ -6714,7 +6758,7 @@ function caricaTariffe() {
   });
 }
 
-function salvaTariffe() {
+async function salvaTariffe() {
   const tariffe = {};
   ['normale','straordinario','strada','festivo'].forEach(tipo => {
     tariffe[tipo] = {
@@ -6722,12 +6766,18 @@ function salvaTariffe() {
       cli: parseFloat(document.getElementById('tariffa-'+tipo+'-cli').value)||0,
     };
   });
-  localStorage.setItem('officina_tariffe', JSON.stringify(tariffe));
-  showToast('Tariffe salvate ✓');
+  try {
+    await supa.from('impostazioni').upsert({id:'default', tariffe});
+    _impostazioni.tariffe = tariffe;
+    localStorage.removeItem('officina_tariffe'); // pulizia legacy
+    showToast('Tariffe salvate ✓');
+  } catch(e) {
+    showToast('Errore salvataggio tariffe: '+e.message);
+  }
 }
 
 function getTariffa(tipo) {
-  const saved = JSON.parse(localStorage.getItem('officina_tariffe') || 'null') || TARIFFE_DEFAULT;
+  const saved = _impostazioni.tariffe || JSON.parse(localStorage.getItem('officina_tariffe') || 'null') || TARIFFE_DEFAULT;
   return saved[tipo]||{int:0,cli:0};
 }
 
@@ -6736,7 +6786,7 @@ function getTariffa(tipo) {
 // BLOCCO NOTE CONDIVISO
 // ══════════════════════════════════════════════════
 let _bnOpen    = false;
-let _bnSeenAt  = localStorage.getItem('bn_seen_at') || '';
+let _bnSeenAt  = (typeof _impostazioni !== 'undefined' && _impostazioni?.bn_seen_at) || localStorage.getItem('bn_seen_at') || '';
 let _bnChannel = null;
 let _bnMsgs    = [];
 const BN_SHOW  = 5; // messaggi recenti visibili, il resto collassato
@@ -6764,6 +6814,7 @@ function bnClearBadge() {
   document.getElementById('bn-badge').style.display = 'none';
   _bnSeenAt = new Date().toISOString();
   localStorage.setItem('bn_seen_at', _bnSeenAt);
+  supa.from('impostazioni').upsert({id:'default', bn_seen_at: _bnSeenAt}).catch(()=>{});
 }
 
 function bnGetAutore() {
@@ -7040,7 +7091,6 @@ updateBadgeTimbrature();
 updateBadgePresenze();
 updateBadgeMagazzino();
 bnLoad(); bnSubscribe();
-updateBadgeApprovazioni();
 
 </script>
 <!-- ═══════════════ MODAL PREVENTIVO ═══════════════ -->
@@ -7242,6 +7292,7 @@ let _impostazioni = {};
 async function loadImpostazioni() {
   const { data } = await supa.from('impostazioni').select('*').eq('id','default').single();
   _impostazioni = data || {};
+  if (_impostazioni.bn_seen_at) _bnSeenAt = _impostazioni.bn_seen_at;
   caricaDatiOfficina();
   caricaTariffe();
 }
@@ -7281,21 +7332,6 @@ async function salvaNomeChat() {
   showToast('Nome chat aggiornato ✓');
 }
 
-async function salvaTariffe() {
-  const tariffe = {};
-  ['normale','straordinario','strada','festivo'].forEach(tipo => {
-    tariffe[tipo] = {
-      int: parseFloat(document.getElementById('tariffa-'+tipo+'-int').value)||0,
-      cli: parseFloat(document.getElementById('tariffa-'+tipo+'-cli').value)||0,
-    };
-  });
-  const { error } = await supa.from('impostazioni').update({tariffe}).eq('id','default');
-  if (error) { alert('Errore salvataggio: '+error.message); return; }
-  _impostazioni.tariffe = tariffe;
-  localStorage.setItem('officina_tariffe', JSON.stringify(tariffe)); // compat
-  showToast('Tariffe salvate ✓');
-}
-
 function caricaDatiOfficina() {
   const d = _impostazioni;
   const set = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
@@ -7310,22 +7346,6 @@ function caricaDatiOfficina() {
   set('off-banca',d.banca); set('off-note-doc',d.note_doc);
   set('off-soglia-morosi', d.soglia_morosi??0);
   set('off-num-prev',d.num_prev||1); set('off-num-ddt',d.num_ddt||1); set('off-num-fatt',d.num_fatt||1);
-}
-
-function caricaTariffe() {
-  const tariffe = _impostazioni.tariffe || JSON.parse(localStorage.getItem('officina_tariffe')||'null') || TARIFFE_DEFAULT;
-  ['normale','straordinario','strada','festivo'].forEach(tipo => {
-    const t = tariffe[tipo]||{int:0,cli:0};
-    const elInt = document.getElementById('tariffa-'+tipo+'-int');
-    const elCli = document.getElementById('tariffa-'+tipo+'-cli');
-    if (elInt) elInt.value = t.int||'';
-    if (elCli) elCli.value = t.cli||'';
-  });
-}
-
-function getTariffa(tipo) {
-  const tariffe = _impostazioni.tariffe || JSON.parse(localStorage.getItem('officina_tariffe')||'null') || TARIFFE_DEFAULT;
-  return tariffe[tipo]||{int:0,cli:0};
 }
 
 // Incrementa numeratori su Supabase
@@ -7459,7 +7479,7 @@ function addVocePrev(tipo) {
 
 function calcTotalePreventivo() {
   const iva = parseFloat(document.getElementById('prev-iva')?.value)||22;
-  const imponibile = [...prevVociMano,...prevVociRic,...prevVociExtra].reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0);
+  const imponibile = [...prevVociMano,...prevVociRic,...prevVociExtra].reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100),0);
   const ivaAmt = imponibile*iva/100;
   const totale = imponibile+ivaAmt;
   const fmt = n => '€ '+n.toFixed(2).replace('.',',');
@@ -7654,7 +7674,9 @@ async function convertiInDDT(prevId) {
 let vbRighe=[];
 
 function initVendita() {
-  document.getElementById('vb-cliente').innerHTML='<option value="">— Cliente occasionale —</option>'+clienti.map(c=>`<option value="${c.id}">${c.ragione}</option>`).join('');
+  // Reset ricerca cliente
+  resetVbCliente();
+  document.getElementById('vb-cliente').innerHTML='<option value=""></option>'+clienti.map(c=>`<option value="${c.id}">${c.ragione}</option>`).join('');
   document.getElementById('vb-data').value=new Date().toISOString().split('T')[0];
   vbRighe=[{prodId:'',desc:'',qta:1,prezzo:0}];
   renderRigheVb(); renderStoricoVb();
@@ -7844,7 +7866,8 @@ async function salvaNuovoClienteVb() {
   try {
     const r = await DB.insert('clienti', obj); clienti.push(r);
     const sel = document.getElementById('vb-cliente');
-    if (sel) { const o=document.createElement('option'); o.value=r.id; o.textContent=r.ragione; sel.appendChild(o); sel.value=r.id; }
+    if (sel) { const o=document.createElement('option'); o.value=r.id; o.textContent=r.ragione; sel.appendChild(o); }
+    selezionaClienteVb(r.id);
     toggleNuovoClienteVb(); showToast(`Cliente "${r.ragione}" salvato ✓`);
   } catch(e) { alert('Errore: '+e.message); }
 }
@@ -7893,7 +7916,7 @@ async function incassaRapido(metodo) {
   const cm = commesse.find(c=>c.id===selectedCommessaId);
   if (!cm) return;
   const totale = (cm.vociMano||[]).concat(cm.vociRic||[],cm.vociExtra||[])
-    .reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0);
+    .reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100),0);
   const pagato = (cm.pagamenti||[]).reduce((s,p)=>s+(parseFloat(p.importo)||0),0);
   const residuo = Math.max(0, totale - pagato);
   if (residuo <= 0) { showToast('Commessa già saldata ✓'); return; }
@@ -8237,6 +8260,49 @@ function apriNuovaDDT() {
   setTimeout(()=>document.getElementById('ddt-cliente-search').focus(), 100);
 }
 
+function cercaClienteVb(q) {
+  const dd = document.getElementById('vb-cliente-dropdown');
+  if (!q.trim()) { dd.style.display = 'none'; return; }
+  const ql = q.toLowerCase();
+  const matches = clienti.filter(c =>
+    (c.ragione||'').toLowerCase().includes(ql) ||
+    (c.piva||'').toLowerCase().includes(ql) ||
+    (c.tel||'').includes(q)
+  ).slice(0, 8);
+  let html = matches.map(c => `
+    <div onclick="selezionaClienteVb('${c.id}')"
+      style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px"
+      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <div style="font-weight:600">${c.ragione}</div>
+      <div style="font-size:11px;color:var(--text3)">${[c.piva,c.tel].filter(Boolean).join(' · ')}</div>
+    </div>`).join('');
+  if (!matches.length) html = `<div style="padding:10px 14px;font-size:13px;color:var(--text3)">Nessun cliente trovato</div>`;
+  dd.innerHTML = html;
+  dd.style.display = '';
+}
+
+function selezionaClienteVb(id) {
+  const cl = clienti.find(c => c.id === id);
+  if (!cl) return;
+  document.getElementById('vb-cliente').value = id;
+  document.getElementById('vb-chip-nome').textContent = cl.ragione;
+  document.getElementById('vb-chip-sub').textContent = [cl.piva, cl.tel].filter(Boolean).join(' · ');
+  document.getElementById('vb-cliente-chip').style.display = 'flex';
+  document.getElementById('vb-cliente-search').style.display = 'none';
+  document.getElementById('vb-cliente-dropdown').style.display = 'none';
+}
+
+function resetVbCliente() {
+  const chip   = document.getElementById('vb-cliente-chip');
+  const search = document.getElementById('vb-cliente-search');
+  const dd     = document.getElementById('vb-cliente-dropdown');
+  const sel    = document.getElementById('vb-cliente');
+  if (sel)    sel.value = '';
+  if (chip)   chip.style.display = 'none';
+  if (search) { search.style.display = ''; search.value = ''; }
+  if (dd)     dd.style.display = 'none';
+}
+
 function cercaClienteDDT(q) {
   const dd = document.getElementById('ddt-cliente-dropdown');
   const nf = document.getElementById('ddt-nuovo-cliente-form');
@@ -8547,7 +8613,7 @@ function apriFatturaModal(draft) {
   document.getElementById('fatt-data').value     = oggi;
   document.getElementById('fatt-scadenza').value = '';
   document.getElementById('fatt-pagamento').value= 'Immediato';
-  document.getElementById('fatt-iva').value      = '22';
+  document.getElementById('fatt-iva').value      = String(cl?.iva ?? 22);
   document.getElementById('fatt-note').value     = '';
   document.getElementById('fatt-email').value    = cl?.email||'';
   calcolaFattTotali(draft.righe);
@@ -8624,13 +8690,17 @@ async function salvaFattura() {
 
 // ── Auto-invio su Fatture in Cloud (chiamato da salvaFattura) ─────────────────
 async function autoInviaFIC(fatt) {
-  // Legge config FiC salvata da ORMIA-finance.html (stesso localStorage)
-  let ficCfg = {};
-  try { ficCfg = JSON.parse(localStorage.getItem('ormia_fic_config') || '{}'); } catch(_) {}
-  if (!ficCfg.company_id || !ficCfg.client_id) return; // FiC non configurato, skip silenzioso
-  let ficToken = {};
-  try { ficToken = JSON.parse(localStorage.getItem('ormia_fic_token') || '{}'); } catch(_) {}
-  if (!ficToken.access_token && !ficToken.refresh_token) return; // non autorizzato
+  // Legge config FiC da Supabase (impostazioni) con fallback localStorage
+  let ficCfg = _impostazioni.fic_config || {};
+  if (!ficCfg.company_id || !ficCfg.client_id) {
+    try { ficCfg = JSON.parse(localStorage.getItem('ormia_fic_config') || '{}'); } catch(_) {}
+  }
+  if (!ficCfg.company_id || !ficCfg.client_id) return;
+  let ficToken = _impostazioni.fic_token || {};
+  if (!ficToken.access_token && !ficToken.refresh_token) {
+    try { ficToken = JSON.parse(localStorage.getItem('ormia_fic_token') || '{}'); } catch(_) {}
+  }
+  if (!ficToken.access_token && !ficToken.refresh_token) return;
 
   // Se il token è scaduto e c'è un refresh, proviamo a rinnovarlo
   let accessToken = ficToken.access_token;
@@ -8648,10 +8718,13 @@ async function autoInviaFIC(fatt) {
       if (!res.ok) return;
       const d = await res.json();
       accessToken = d.access_token;
-      localStorage.setItem('ormia_fic_token', JSON.stringify({
+      const nuovoToken = {
         access_token: d.access_token, refresh_token: d.refresh_token || ficToken.refresh_token,
         expires_at: Date.now() + (d.expires_in || 3600) * 1000,
-      }));
+      };
+      localStorage.setItem('ormia_fic_token', JSON.stringify(nuovoToken));
+      _impostazioni.fic_token = nuovoToken;
+      supa.from('impostazioni').upsert({id:'default', fic_token: nuovoToken}).catch(()=>{});
     } catch(_) { return; }
   }
 
@@ -9129,11 +9202,15 @@ function chiudiDocumenti() {
 function setImpTab(tab) {
   document.getElementById('imp-panel-officina').style.display  = tab==='officina'  ? '' : 'none';
   document.getElementById('imp-panel-meccanici').style.display = tab==='meccanici' ? '' : 'none';
+  document.getElementById('imp-panel-fornitori').style.display = tab==='fornitori' ? '' : 'none';
   document.getElementById('imp-tab-officina').style.borderBottomColor  = tab==='officina'  ? 'var(--accent)' : 'transparent';
   document.getElementById('imp-tab-officina').style.color  = tab==='officina'  ? 'var(--accent)' : 'var(--text2)';
   document.getElementById('imp-tab-meccanici').style.borderBottomColor = tab==='meccanici' ? 'var(--accent)' : 'transparent';
   document.getElementById('imp-tab-meccanici').style.color = tab==='meccanici' ? 'var(--accent)' : 'var(--text2)';
+  document.getElementById('imp-tab-fornitori').style.borderBottomColor = tab==='fornitori' ? 'var(--accent)' : 'transparent';
+  document.getElementById('imp-tab-fornitori').style.color = tab==='fornitori' ? 'var(--accent)' : 'var(--text2)';
   if (tab==='meccanici') { renderMeccanici(); renderDipendenti(); }
+  if (tab==='fornitori') { renderFornitoriSett(); }
 }
 
 // ═══════════════════════════════════════════════════
@@ -9757,6 +9834,7 @@ initDocumenti();
     <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:24px">
       <button id="imp-tab-officina" onclick="setImpTab('officina')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent);margin-bottom:-2px;font-family:'DM Sans',sans-serif">Officina & Tariffe</button>
       <button id="imp-tab-meccanici" onclick="setImpTab('meccanici')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);margin-bottom:-2px;font-family:'DM Sans',sans-serif">Dipendenti</button>
+      <button id="imp-tab-fornitori" onclick="setImpTab('fornitori')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);margin-bottom:-2px;font-family:'DM Sans',sans-serif">Fornitori</button>
     </div>
     <!-- PANEL OFFICINA -->
     <div id="imp-panel-officina">
@@ -9866,6 +9944,17 @@ initDocumenti();
       </div>
     </div><!-- /imp-panel-meccanici -->
 
+    <!-- PANEL FORNITORI -->
+    <div id="imp-panel-fornitori" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div style="font-size:15px;font-weight:700">Fornitori</div>
+        <button class="btn btn-primary btn-sm" onclick="openModalFornitore()">+ Aggiungi fornitore</button>
+      </div>
+      <div id="lista-fornitori-sett" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:4px 20px">
+        <div style="color:var(--text3);font-size:13px;padding:16px 0">Nessun fornitore ancora.</div>
+      </div>
+    </div><!-- /imp-panel-fornitori -->
+
   </div>
 </div>
 
@@ -9889,7 +9978,23 @@ initDocumenti();
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px">
           <div style="font-size:14px;font-weight:700;margin-bottom:16px">Nuova vendita</div>
           <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;margin-bottom:8px">
-            <div class="form-group" style="margin:0"><label>Cliente</label><select id="vb-cliente"><option value="">— Cliente occasionale —</option></select></div>
+            <div class="form-group" style="margin:0">
+              <label>Cliente</label>
+              <div style="position:relative">
+                <div id="vb-cliente-chip" style="display:none;align-items:center;gap:8px;padding:8px 12px;background:var(--accent-light);border:1.5px solid var(--accent);border-radius:var(--radius);font-size:13px">
+                  <div style="flex:1">
+                    <div style="font-weight:600" id="vb-chip-nome"></div>
+                    <div style="font-size:11px;color:var(--text3)" id="vb-chip-sub"></div>
+                  </div>
+                  <button onclick="resetVbCliente()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;padding:0">✕</button>
+                </div>
+                <input type="text" id="vb-cliente-search" placeholder="🔍 Cerca cliente per nome, P.IVA…"
+                  oninput="cercaClienteVb(this.value)"
+                  style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;box-sizing:border-box">
+                <div id="vb-cliente-dropdown" style="display:none;position:absolute;left:0;right:0;top:calc(100%+2px);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);z-index:500;max-height:200px;overflow-y:auto"></div>
+                <select id="vb-cliente" style="display:none"></select>
+              </div>
+            </div>
             <button class="btn btn-ghost btn-sm" onclick="toggleNuovoClienteVb()" style="white-space:nowrap">+ Nuovo</button>
           </div>
           <div id="vb-nuovo-cliente-form" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:14px">
