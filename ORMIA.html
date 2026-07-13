@@ -1568,9 +1568,10 @@
           <label>PEC <span style="font-size:10px;color:var(--text3);font-weight:400">* (o SDI)</span></label>
           <input type="email" id="c-pec" placeholder="fatture@pec.azienda.it">
         </div>
-        <div class="form-group span-2">
+        <div class="form-group span-2" style="position:relative">
           <label>Indirizzo *</label>
-          <input type="text" id="c-indirizzo" placeholder="Via Roma 1, 20100 Milano">
+          <input type="text" id="c-indirizzo" placeholder="Via Roma 1, 20100 Milano" autocomplete="off" oninput="_cercaIndirizzo(this.value,'c-indirizzo-dd')">
+          <div id="c-indirizzo-dd" style="display:none;position:absolute;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);z-index:500;max-height:200px;overflow-y:auto"></div>
         </div>
         <div class="form-group span-2">
           <label>Note</label>
@@ -2101,16 +2102,18 @@ async function saveVeicolo() {
   const vin       = document.getElementById('v-vin').value.trim();
   const km        = document.getElementById('v-km').value.trim();
   const oreMotore = document.getElementById('v-ore-motore').value.trim();
+  const marca     = document.getElementById('v-marca').value.trim().toLowerCase();
   const garanzia  = document.getElementById('v-garanzia').checked;
   const garanziaScadenza = document.getElementById('v-garanzia-scadenza').value;
+  const isFord    = marca === 'ford';
 
   const errs = [];
   if (!targa)    errs.push('• Targa');
   if (!clienteId)errs.push('• Cliente');
   if (!vin)      errs.push('• Numero telaio (VIN)');
   if (!km)       errs.push('• Chilometraggio attuale');
-  if (!oreMotore)errs.push('• Ore motore');
-  if (garanzia && !garanziaScadenza) errs.push('• Data scadenza garanzia (obbligatoria se in garanzia)');
+  if (isFord && !oreMotore) errs.push('• Ore motore (obbligatorie per Ford)');
+  if (isFord && garanzia && !garanziaScadenza) errs.push('• Data scadenza garanzia (obbligatoria se in garanzia)');
 
   if (errs.length) {
     alert('Campi obbligatori mancanti:\n\n' + errs.join('\n'));
@@ -3621,7 +3624,10 @@ async function saveCommessa(firmaDataUrl=null) {
   if (!desc) { alert('Inserisci una descrizione del lavoro.'); return; }
   if (!vId)  { alert('Cerca e seleziona un veicolo per targa.'); return; }
   if (!km)   { alert('I km attuali del veicolo sono obbligatori.'); document.getElementById('com-km').focus(); return; }
-  if (!oreMotore) { alert('Le ore motore sono obbligatorie.'); document.getElementById('com-ore-motore').focus(); return; }
+  // Ore motore obbligatorie solo per Ford
+  const veicoloSel = veicoli.find(x=>x.id===vId);
+  const isFordCom  = (veicoloSel?.marca||'').toLowerCase().trim() === 'ford';
+  if (isFordCom && !oreMotore) { alert('Le ore motore sono obbligatorie per veicoli Ford.'); document.getElementById('com-ore-motore').focus(); return; }
   const clienteId = document.getElementById('com-cliente').value;
 
   const nuoveRic = comVociRic.filter(v=>v.desc||v.prezzo);
@@ -6739,6 +6745,47 @@ function importaDati(input) {
 }
 
 // ===== APPROVAZIONI RICAMBI =====
+// ===== AUTOCOMPLETAMENTO INDIRIZZO =====
+let _indirizzoTimer = null;
+async function _cercaIndirizzo(q, ddId) {
+  const dd = document.getElementById(ddId);
+  if (!dd) return;
+  if (!q || q.length < 4) { dd.style.display = 'none'; return; }
+  clearTimeout(_indirizzoTimer);
+  _indirizzoTimer = setTimeout(async () => {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&addressdetails=1&limit=6&countrycodes=it`;
+      const res  = await fetch(url, { headers: { 'Accept-Language': 'it' } });
+      const data = await res.json();
+      if (!data.length) { dd.style.display = 'none'; return; }
+      dd.innerHTML = data.map(r => {
+        const label = r.display_name.split(',').slice(0,4).join(',');
+        return `<div onclick="_selezionaIndirizzo('${ddId}','${label.replace(/'/g,"&#39;")}')"
+          style="padding:9px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)"
+          onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+          📍 ${label}
+        </div>`;
+      }).join('');
+      dd.style.display = '';
+    } catch(e) { dd.style.display = 'none'; }
+  }, 400);
+}
+
+function _selezionaIndirizzo(ddId, valore) {
+  const dd = document.getElementById(ddId);
+  const inputId = ddId.replace('-dd','');
+  const input = document.getElementById(inputId);
+  if (input) input.value = valore;
+  if (dd) dd.style.display = 'none';
+}
+
+// Chiudi dropdown indirizzo cliccando fuori
+document.addEventListener('click', e => {
+  document.querySelectorAll('[id$="-indirizzo-dd"]').forEach(dd => {
+    if (!dd.contains(e.target)) dd.style.display = 'none';
+  });
+});
+
 // ===== TARIFFE MANODOPERA =====
 const TARIFFE_DEFAULT = {
   normale:      { int:0, cli:0 },
@@ -9494,7 +9541,9 @@ function avantiFirmaCommessa() {
   if (!desc) { alert('Inserisci la descrizione del lavoro.'); return; }
   if (!vId)  { alert('Cerca e seleziona un veicolo per targa.'); return; }
   if (!km)   { alert('I km attuali del veicolo sono obbligatori.'); document.getElementById('com-km').focus(); return; }
-  if (!oreMotore) { alert('Le ore motore sono obbligatorie.'); document.getElementById('com-ore-motore').focus(); return; }
+  const vSel2   = veicoli.find(x=>x.id===vId);
+  const isFord2 = (vSel2?.marca||'').toLowerCase().trim() === 'ford';
+  if (isFord2 && !oreMotore) { alert('Le ore motore sono obbligatorie per veicoli Ford.'); document.getElementById('com-ore-motore').focus(); return; }
 
   // Prepara il modal firma
   const v  = veicoli.find(x=>x.id===vId);
