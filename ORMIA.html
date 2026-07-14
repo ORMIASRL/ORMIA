@@ -829,9 +829,12 @@
 
         <!-- TOOLBAR -->
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-          <div class="search-wrap" style="flex:1;min-width:180px">
+          <div class="search-wrap" style="flex:1;min-width:180px;position:relative">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" class="search-input" id="search-commesse" placeholder="Cerca numero, cliente, targa…" oninput="renderCommesse()">
+            <input type="text" class="search-input" id="search-commesse" placeholder="Cerca per numero, cliente, targa, descrizione…" autocomplete="off"
+              oninput="renderCommesse();_suggerisciCommesse(this.value)"
+              onblur="setTimeout(()=>{const d=document.getElementById('dd-commesse');if(d)d.style.display='none'},200)">
+            <div id="dd-commesse" style="display:none;position:absolute;left:0;right:0;top:calc(100%+4px);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);z-index:1200;max-height:280px;overflow-y:auto"></div>
           </div>
           <div class="stato-filter" id="stato-filter">
             <div class="stato-pill active" data-stato="" onclick="setStatoFilter(this,'')">Tutte</div>
@@ -1079,7 +1082,7 @@
         <!-- TAB PRODOTTI -->
         <div id="msec-prodotti">
           <div class="toolbar" style="margin-bottom:12px">
-            <div class="search-wrap">
+            <div class="search-wrap" style="flex:1;min-width:180px">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
               <input type="text" class="search-input" id="mag-search" placeholder="Cerca prodotto, codice..." oninput="renderProdotti()">
             </div>
@@ -6745,6 +6748,47 @@ function importaDati(input) {
 }
 
 // ===== APPROVAZIONI RICAMBI =====
+// ===== SUGGERIMENTI RICERCA COMMESSE =====
+function _suggerisciCommesse(q) {
+  const dd = document.getElementById('dd-commesse');
+  if (!dd) return;
+  if (!q || q.length < 2) { dd.style.display = 'none'; return; }
+  const ql = q.toLowerCase();
+  const matches = commesse.filter(cm => {
+    const cl = clienti.find(x => x.id === cm.clienteId);
+    const v  = veicoli.find(x => x.id === cm.veicoloId);
+    const num = (cm.numero || '').toLowerCase();
+    const numSec = num.split('-')[1] || '';
+    return numSec.includes(q) ||
+           num.includes(ql) ||
+           (cm.descrizione  || '').toLowerCase().includes(ql) ||
+           (cl?.ragione     || '').toLowerCase().includes(ql) ||
+           (v?.targa        || '').toLowerCase().includes(ql) ||
+           (v?.marca        || '').toLowerCase().includes(ql) ||
+           (v?.modello      || '').toLowerCase().includes(ql);
+  }).slice(0, 8);
+
+  if (!matches.length) { dd.style.display = 'none'; return; }
+
+  const STATO_COLOR = { aperta:'#3B82F6', wip:'#22C55E', standby:'#F59E0B', chiusa:'#9CA3AF', fatturata:'#9CA3AF' };
+  dd.innerHTML = matches.map(cm => {
+    const cl = clienti.find(x => x.id === cm.clienteId);
+    const v  = veicoli.find(x => x.id === cm.veicoloId);
+    return `<div onclick="document.getElementById('search-commesse').value='${(cm.numero||'').replace(/'/g,"'")}';document.getElementById('dd-commesse').style.display='none';renderCommesse()"
+      style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px"
+      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <span style="width:8px;height:8px;border-radius:50%;background:${STATO_COLOR[cm.stato]||'#9CA3AF'};flex-shrink:0"></span>
+      <div style="flex:1;min-width:0">
+        <div style="font-family:'DM Mono',monospace;font-size:12px;font-weight:700">${cm.numero||'—'}</div>
+        <div style="font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${cm.descrizione||'—'}</div>
+        <div style="font-size:11px;color:var(--text3)">${cl?.ragione||''} ${v?'· '+v.targa:''}</div>
+      </div>
+      <span style="font-size:10px;color:var(--text3);flex-shrink:0">${cm.stato}</span>
+    </div>`;
+  }).join('');
+  dd.style.display = '';
+}
+
 // ===== AUTOCOMPLETAMENTO INDIRIZZO =====
 let _indirizzoTimer = null;
 async function _cercaIndirizzo(q, ddId) {
@@ -7097,14 +7141,22 @@ let _postSaveVeicoloCallback = false;
 function apriModalNuovoClienteDaCommessa() {
   _postSaveClienteCallback = true;
   closeModal('modal-sel-cliente');
-  openModal('cliente');
+  setTimeout(() => {
+    const mc = document.getElementById('modal-cliente');
+    if (mc) mc.style.zIndex = '2100';
+    openModal('cliente');
+  }, 50);
 }
 
 function apriModalNuovoVeicoloDaCommessa() {
   _postSaveVeicoloCallback = true;
   const cid = document.getElementById('com-cliente').value;
   closeModal('modal-sel-veicolo');
-  openModal('veicolo', cid || null);
+  setTimeout(() => {
+    const mv = document.getElementById('modal-veicolo');
+    if (mv) mv.style.zIndex = '2100';
+    openModal('veicolo', cid || null);
+  }, 50);
 }
 
 function _checkMorosoAlert(cl) {
