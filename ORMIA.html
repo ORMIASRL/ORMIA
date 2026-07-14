@@ -3007,15 +3007,15 @@ const TABLE = {
 
 // Mapping campi JS (camelCase) → Supabase (snake_case) per ogni tabella
 const FIELD_MAP = {
-  clienti:   { createdAt:'created_at' },
-  veicoli:   { createdAt:'created_at', clienteId:'cliente_id', garanziaScadenza:'garanzia_scadenza', tagliandoKm:'tagliando_km', tagliandoData:'tagliando_data' },
+  clienti:   { createdAt:'created_at', sogliamoroso:'soglia_moroso' },
+  veicoli:   { createdAt:'created_at', clienteId:'cliente_id', garanziaScadenza:'garanzia_scadenza', tagliandoKm:'tagliando_km', tagliandoData:'tagliando_data', oreMotore:'ore_motore' },
   meccanici: { createdAt:'created_at', userId:'user_id' },
   fornitori: { createdAt:'created_at' },
   prodotti:  { createdAt:'created_at', codInt:'cod_int', codForn:'cod_forn', giacenza:'giacenza', scortaMin:'scorta_min', qtaRiordino:'qta_riordino', prezzoAcq:'prezzo_acq', prezzoVend:'prezzo_vend', fornitoreId:'fornitore_id' },
-  commesse:  { createdAt:'created_at', clienteId:'cliente_id', veicoloId:'veicolo_id', dataApertura:'data_apertura', vociMano:'voci_mano', vociRic:'voci_ric', vociExtra:'voci_extra', descrizione:'descrizione', fatturaId:'fattura_id', foto:'foto', notaMec:'nota_mec', consegnaPrevista:'consegna_prevista', firmaData:'firma_data', fotoInizio:'foto_inizio', fotoFine:'foto_fine' },
+  commesse:  { createdAt:'created_at', clienteId:'cliente_id', veicoloId:'veicolo_id', dataApertura:'data_apertura', vociMano:'voci_mano', vociRic:'voci_ric', vociExtra:'voci_extra', descrizione:'descrizione', fatturaId:'fattura_id', foto:'foto', notaMec:'nota_mec', consegnaPrevista:'consegna_prevista', firmaData:'firma_data', fotoInizio:'foto_inizio', fotoFine:'foto_fine', oreMotore:'ore_motore', dirittoChiamata:'diritto_chiamata', dirittoChiamataTipo:'diritto_chiamata_tipo', dirittoChiamataImporto:'diritto_chiamata_importo', smaltimentoPerc:'smaltimento_perc', materialeConsumoPerc:'materiale_consumo_perc' },
   movimenti: { createdAt:'created_at', prodId:'prod_id', comId:'com_id' },
-  timbrature:{ createdAt:'created_at', mecId:'mec_id', comId:'com_id' },
-  presenze:  { createdAt:'created_at', dipId:'dip_id' },
+  timbrature:{ createdAt:'created_at', mecId:'mec_id', comId:'com_id', costoInterno:'costo_interno', costoCliente:'costo_cliente' },
+  presenze:  { createdAt:'created_at', dipId:'dip_id', minutiRitardo:'minuti_ritardo', oreTotali:'ore_totali', orePermesso:'ore_permesso' },
   fatture:   { createdAt:'created_at', clienteId:'cliente_id', origineId:'origine_id',
                ivaAmt:'iva_amt', dataPagamento:'data_pagamento', clEmail:'cl_email',
                offRagione:'off_ragione', offPiva:'off_piva', offIndirizzo:'off_indirizzo',
@@ -4867,7 +4867,7 @@ async function registraPresenzaAutomatica(mecId, ora) {
     uscita:           null,
     tipo:             'normale',
     ritardo:          ritardo,
-    minuti_ritardo:   minRitardo,
+    minutiRitardo:    minRitardo,
     createdAt:        new Date().toISOString(),
   });
 
@@ -4948,9 +4948,9 @@ async function chiudiPresenzaAutomatica(mecId, ora) {
   }
 
   pAperta.uscita        = uscita;
-  pAperta.ore_totali    = oreTotali;
+  pAperta.oreTotali    = oreTotali;
   pAperta.straordinario = oreStrao > 0 ? oreStrao : null;
-  pAperta.ore_permesso  = orePermesso > 0 ? orePermesso : null;
+  pAperta.orePermesso  = orePermesso > 0 ? orePermesso : null;
   await dbSavePresenza(pAperta);
 }
 
@@ -5462,7 +5462,7 @@ function renderPresenze() {
       <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--accent)">${p.straordinario?'+'+p.straordinario+'h':'—'}</td>
       <td><span class="badge ${tb.cls}">${tb.label}</span></td>
       <td>${p.ritardo
-        ? `<span class="badge badge-red">⚠ +${p.minuti_ritardo||p.minutiRitardo||0} min</span>`
+        ? `<span class="badge badge-red">⚠ +${p.minutiRitardo||0} min</span>`
         : '<span style="color:var(--text3);font-size:12px">—</span>'
       }</td>
       <td><div class="row-actions" style="${!p.uscita?'opacity:1':''}">
@@ -5769,10 +5769,10 @@ function esportaPresenzeExcel() {
     if (p.tipo==='malattia') { r.malattia++; return; }
     if (p.tipo==='permesso') { r.permesso++; return; }
     r.giorni++;
-    r.oreTot      += p.ore_totali || p.oreTotali || 0;
+    r.oreTot      += p.oreTotali || 0;
     r.oreStrao    += p.straordinario || 0;
-    r.orePermesso += p.ore_permesso || p.orePermesso || 0;
-    if (p.ritardo) { r.ritardi++; r.minRitardo += p.minuti_ritardo || p.minutiRitardo || 0; }
+    r.orePermesso += p.orePermesso || 0;
+    if (p.ritardo) { r.ritardi++; r.minRitardo += p.minutiRitardo || 0; }
   });
   const wsR = XLSX.utils.aoa_to_sheet([
     ['Dipendente','Ruolo','Giorni presenti','Ore totali','Ore straord.','Ore permesso','N° ritardi','Min. ritardo tot.','Giorni ferie','Giorni malattia','Giorni permesso'],
@@ -5790,10 +5790,10 @@ function esportaPresenzeExcel() {
       p.entrata ? new Date(p.entrata).toLocaleDateString('it-IT') : '—',
       p.entrata ? new Date(p.entrata).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}) : '—',
       p.uscita  ? new Date(p.uscita).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})  : 'Aperta',
-      +((p.ore_totali||p.oreTotali||0)).toFixed(2),
+      +((p.oreTotali||0)).toFixed(2),
       +((p.straordinario||0)).toFixed(2),
       p.ritardo ? 'Sì' : 'No',
-      p.minuti_ritardo || p.minutiRitardo || 0,
+      p.minutiRitardo || 0,
       p.tipo || 'normale',
       p.note || '',
     ]);
@@ -8725,31 +8725,7 @@ async function vendita_differita() { await avviaVendita(); }
 async function vendita_immediata() { await avviaVendita(); }
 
 // ── Vendita immediata → DDT + Fattura + Email ─────────────────
-async function vendita_immediata() {
-  const righe = vbRighe.filter(r=>r.desc&&r.qta>0);
-  if (!righe.length) { alert('Aggiungi almeno un articolo.'); return; }
-  const cId = document.getElementById('vb-cliente')?.value || null;
-  const cl  = clienti.find(c=>c.id===cId);
-
-  // Scegli metodo pagamento
-  const metodi = [
-    { key:'carta',    label:'💳 Carta / POS' },
-    { key:'contanti', label:'💵 Contanti' },
-    { key:'bonifico', label:'🏦 Bonifico istantaneo' },
-  ];
-  const metodo = await _scegliMetodoPagamento(metodi);
-  if (!metodo) return;
-
-  const ddt = await creaVbDDT(righe, cId, metodo);
-  if (!ddt) return;
-  // Scarica magazzino
-  await _scaricoMagazzinoVb(righe);
-  resetVendita(); renderDDT(); setDocTab('ddt');
-  showToast(`DDT ${ddt.numero} emesso ✓`);
-  // Firma → poi fattura automatica
-  ddt._metodoCheckout = metodo;
-  apriFirmaDDT(ddt);
-}
+// vendita_immediata: alias definito sopra (avviaVendita)
 
 // ── Scelta metodo pagamento (mini modal inline) ───────────────
 function _scegliMetodoPagamento(metodi) {
@@ -8798,7 +8774,7 @@ async function _scaricoMagazzinoVb(righe) {
     }
   }
   renderProdotti();
-  updateBadgeSottoScorta();
+  updateBadgeMagazzino();
 }
 
 async function emmettiDDT() { await avviaVendita(); }
@@ -9770,10 +9746,7 @@ function setStatoFattFilter(el, stato) {
   renderFatture();
 }
 
-function genNumFattura() {
-  const off = getDatiOfficina();
-  return `FT-${new Date().getFullYear()}-${String(_impostazioni.num_fatt||1).padStart(4,'0')}`;
-}
+// genNumFattura: definita sopra con _nextNumero (sistema unificato)
 
 function emettiFatturaCommessa(comId) {
   const cm = commesse.find(c=>c.id===comId);
