@@ -7605,12 +7605,16 @@ async function salvaPreventivo() {
   };
   try {
     if (editingPreventivoId) {
-      const { data: r } = await supa.from('preventivi').update(data).eq('id', editingPreventivoId).select().single();
+      const { data: r, error: e } = await supa.from('preventivi').update(data).eq('id', editingPreventivoId).select().single();
+      console.log('[PREV] update:', r, e);
       const i = preventivi.findIndex(p=>p.id===editingPreventivoId);
       if (i>=0) preventivi[i] = {...preventivi[i], ...r, clienteId:r.cliente_id, veicoloId:r.veicolo_id, vociMano:r.voci_mano||[], vociRic:r.voci_ric||[], vociExtra:r.voci_extra||[], ivaAmt:r.iva_amt};
     } else {
       const numero = genNumPreventivo();
-      const { data: r } = await supa.from('preventivi').insert({...data, numero}).select().single();
+      console.log('[PREV] inserting:', {...data, numero});
+      const { data: r, error: e } = await supa.from('preventivi').insert({...data, numero}).select().single();
+      console.log('[PREV] insert result:', r, e);
+      if (e) { alert('Errore Supabase: ' + e.message); return; }
       preventivi.unshift({...r, clienteId:r.cliente_id, veicoloId:r.veicolo_id, vociMano:r.voci_mano||[], vociRic:r.voci_ric||[], vociExtra:r.voci_extra||[], ivaAmt:r.iva_amt});
       incrementaNumPreventivo();
     }
