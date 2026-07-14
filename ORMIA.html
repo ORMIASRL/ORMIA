@@ -9,6 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -717,16 +718,47 @@
         Impostazioni
       </div>
 
-      <!-- input file nascosto mantenuto per compatibilità -->
-      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importaDati(this)">
-
-      <div class="user-chip">
-        <div class="user-avatar">A</div>
-        <div>
-          <div class="user-name">Admin</div>
-          <div class="user-role">Responsabile</div>
+      <!-- MINI CHAT INTEGRATA -->
+      <div style="border-top:1px solid var(--border);padding-top:10px;margin-bottom:8px">
+        <!-- Header chat -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px;margin-bottom:6px;cursor:pointer" onclick="_bnToggleSidebar()">
+          <div style="display:flex;align-items:center;gap:6px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:var(--accent)"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            <span style="font-size:12px;font-weight:700;color:var(--text2)">Note condivise</span>
+            <span id="bn-badge" style="display:none;background:#E53E3E;color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px">NEW</span>
+          </div>
+          <svg id="bn-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;color:var(--text3);transition:transform .2s"><polyline points="18 15 12 9 6 15"/></svg>
+        </div>
+        <!-- Lista messaggi collassabile -->
+        <div id="bn-sidebar-panel" style="display:none">
+          <div id="bn-list" style="max-height:140px;overflow-y:auto;margin-bottom:6px;display:flex;flex-direction:column;gap:4px"></div>
+          <div style="display:flex;gap:4px">
+            <textarea id="bn-area" placeholder="Scrivi nota…" rows="2" onfocus="bnClearBadge()"
+              style="flex:1;resize:none;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:'DM Sans',sans-serif;background:var(--surface2)"
+              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();bnSend()}"></textarea>
+            <button onclick="bnSend()" style="background:var(--accent);border:none;border-radius:var(--radius);color:white;cursor:pointer;padding:0 8px;font-size:16px">↑</button>
+          </div>
         </div>
       </div>
+
+      <!-- BOTTONI FONDO: WhatsApp + User -->
+      <div style="display:flex;align-items:center;gap:6px">
+        <!-- WhatsApp -->
+        <button onclick="window.open('https://web.whatsapp.com','_blank')" title="Apri WhatsApp"
+          style="background:#25D366;border:none;border-radius:var(--radius);padding:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg viewBox="0 0 24 24" fill="white" style="width:16px;height:16px"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        </button>
+        <!-- User chip -->
+        <div class="user-chip" style="flex:1;padding:6px 8px">
+          <div class="user-avatar">A</div>
+          <div>
+            <div class="user-name">Admin</div>
+            <div class="user-role">Responsabile</div>
+          </div>
+        </div>
+      </div>
+
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importaDati(this)">
     </div>
   </aside>
 
@@ -969,7 +1001,8 @@
             <option value="straordinario">Straordinario</option>
           </select>
           <button class="btn btn-secondary btn-sm" onclick="resetFiltriP()">Reset</button>
-          <div style="margin-left:auto">
+          <div style="margin-left:auto;display:flex;gap:8px">
+            <button class="btn btn-secondary btn-sm" onclick="esportaPresenzeExcel()">📊 Excel commercialista</button>
             <button class="btn btn-secondary btn-sm" onclick="openModalDipendente()">+ Dipendente</button>
           </div>
         </div>
@@ -1042,7 +1075,7 @@
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th>Dipendente</th><th>Ruolo</th><th>Data</th><th>Entrata</th><th>Uscita</th><th>Ore</th><th>Straord.</th><th>Tipo</th><th></th>
+              <th>Dipendente</th><th>Ruolo</th><th>Data</th><th>Entrata</th><th>Uscita</th><th>Ore</th><th>Straord.</th><th>Tipo</th><th>Ritardo</th><th></th>
             </tr></thead>
             <tbody id="tbody-presenze"></tbody>
           </table>
@@ -1430,6 +1463,15 @@
         </div>
         <div class="form-group span-2"><label>Note</label><textarea id="p-note" placeholder="Compatibilità, varianti..."></textarea></div>
       </div>
+
+      <!-- FORNITORI -->
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Fornitori</div>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="aggiungiFornitoreRiga()">+ Aggiungi fornitore</button>
+        </div>
+        <div id="p-fornitori-lista"></div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-prodotto')">Annulla</button>
@@ -1576,9 +1618,16 @@
           <input type="text" id="c-indirizzo" placeholder="Via Roma 1, 20100 Milano" autocomplete="off" oninput="_cercaIndirizzo(this.value,'c-indirizzo-dd')">
           <div id="c-indirizzo-dd" style="display:none;position:absolute;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);z-index:500;max-height:200px;overflow-y:auto"></div>
         </div>
-        <div class="form-group span-2">
-          <label>Note</label>
-          <textarea id="c-note" placeholder="Note interne sul cliente..."></textarea>
+        <div class="form-group span-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label>Note</label>
+            <textarea id="c-note" placeholder="Note interne sul cliente..."></textarea>
+          </div>
+          <div>
+            <label>Soglia morosità (giorni) <span style="font-size:11px;font-weight:400;color:var(--text3)">— lascia vuoto per nessun controllo</span></label>
+            <input type="number" id="c-soglia-moroso" min="1" max="365" placeholder="Es. 30, 60, 90…">
+            <div style="font-size:11px;color:var(--text3);margin-top:4px">Giorni dalla scadenza fattura prima di segnare il cliente come moroso</div>
+          </div>
         </div>
       </div>
     </div>
@@ -1854,7 +1903,7 @@ function renderTable() {
       return `<tr onclick="showDetailCliente('${c.id}')">
         <td><div class="cell-with-avatar">
           <div class="cell-avatar">${initials}</div>
-          <div><div class="td-main">${c.ragione}</div><div class="td-sub">${c.indirizzo||''}</div></div>
+          <div><div class="td-main">${c.ragione} ${badgeMoroso(c.id)}</div><div class="td-sub">${c.indirizzo||''}</div></div>
         </div></td>
         <td><span class="badge badge-gray">${c.tipo||'Azienda'}</span></td>
         <td style="font-family:'DM Mono',monospace;font-size:12px">${c.piva||'—'}</td>
@@ -1886,7 +1935,7 @@ function renderTable() {
       return `<tr onclick="showDetailVeicolo('${v.id}')">
         <td><span class="veicolo-targa" style="font-size:12px">${v.targa}</span></td>
         <td><div class="td-main">${[v.marca,v.modello].filter(Boolean).join(' ')||'—'}</div><div class="td-sub">${v.anno||''}</div></td>
-        <td>${cl?cl.ragione:'—'}</td>
+        <td>${cl ? cl.ragione + badgeMoroso(cl.id) : '—'}</td>
         <td style="font-family:'DM Mono',monospace;font-size:12px">${v.km?Number(v.km).toLocaleString('it')+' km':'—'}</td>
         <td style="font-size:12px">${formatDate(v.revisione)}</td>
         <td>${stato}</td>
@@ -1995,9 +2044,10 @@ function openModal(type, preselectClienteId, editId) {
         document.getElementById('c-note').value = c.note||'';
         document.getElementById('c-iva').value = c.iva ?? 22;
         document.getElementById('c-pagamento').value = c.pagamento||'';
+        document.getElementById('c-soglia-moroso').value = c.soglia_moroso || c.sogliamoroso || '';
       }
     } else {
-      ['c-ragione','c-piva','c-cf','c-sdi','c-pec','c-tel','c-email','c-indirizzo','c-note'].forEach(id=>document.getElementById(id).value='');
+      ['c-ragione','c-piva','c-cf','c-sdi','c-pec','c-tel','c-email','c-indirizzo','c-note','c-soglia-moroso'].forEach(id=>document.getElementById(id).value='');
       document.getElementById('c-tipo').value = 'Azienda';
       document.getElementById('c-iva').value = 22;
       document.getElementById('c-pagamento').value = '';
@@ -2080,6 +2130,7 @@ async function saveCliente() {
     note:     document.getElementById('c-note').value.trim(),
     pagamento,
     iva: parseFloat(document.getElementById('c-iva').value) || 22,
+    soglia_moroso: parseInt(document.getElementById('c-soglia-moroso').value) || null,
   };
   try {
     if (editingClienteId) {
@@ -2505,6 +2556,30 @@ function init() {
           <label>Annotazioni</label>
           <textarea id="com-note" placeholder="Problemi riscontrati, istruzioni..."></textarea>
         </div>
+        <!-- DIRITTO DI CHIAMATA -->
+        <div class="form-group span-2" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:0">
+            <input type="checkbox" id="com-diritto-chiamata" onchange="_toggleDirittoChiamata(this.checked)" style="width:16px;height:16px;cursor:pointer">
+            <span style="font-size:13px;font-weight:600">Diritto di chiamata</span>
+            <span style="font-size:11px;color:var(--text3);font-weight:400">(intervento su strada o fuori orario)</span>
+          </label>
+          <div id="com-diritto-chiamata-detail" style="display:none;margin-top:10px;display:none">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+              <div class="form-group" style="margin:0">
+                <label>Tipo</label>
+                <select id="com-diritto-tipo" onchange="_aggiornaDirittoImporto()" style="font-size:13px">
+                  <option value="standard">Standard — orario normale</option>
+                  <option value="straordinario">Straordinario — sab/pom o 18-22</option>
+                  <option value="festivo">Festivo — domenica o notte</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin:0">
+                <label>Importo €</label>
+                <input type="number" id="com-diritto-importo" min="0" step="0.5" style="font-family:'DM Mono',monospace;font-size:13px">
+              </div>
+            </div>
+          </div>
+        </div>
         <!-- campi nascosti per compatibilità JS -->
         <div style="display:none">
           <select id="com-mec-select"></select>
@@ -2513,6 +2588,19 @@ function init() {
           <div id="voci-ricambi"></div>
           <div id="voci-extra"></div>
           <span id="com-totale"></span>
+        </div>
+        <!-- Voci automatiche smaltimento e materiale consumo -->
+        <div id="com-voce-smaltimento" style="display:none;grid-column:span 2;display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--surface2);border-radius:var(--radius);font-size:12px;color:var(--text3)">
+            <span>🗑 Smaltimento rifiuti (<span id="com-smalt-perc"></span>% sui ricambi)</span>
+            <span class="voce-importo" style="font-family:'DM Mono',monospace;font-weight:600;color:var(--text2)"></span>
+          </div>
+        </div>
+        <div id="com-voce-matcons" style="display:none;grid-column:span 2;display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--surface2);border-radius:var(--radius);font-size:12px;color:var(--text3)">
+            <span>🧰 Materiale di consumo (<span id="com-mat-perc"></span>% su man.+ric.)</span>
+            <span class="voce-importo" style="font-family:'DM Mono',monospace;font-weight:600;color:var(--text2)"></span>
+          </div>
         </div>
       </div>
     </div>
@@ -2813,6 +2901,19 @@ function init() {
         <span style="font-size:12px;color:var(--text3)">Voci aggiuntive</span>
         <span style="font-family:'DM Mono',monospace;font-size:13px" id="dc-tot-extra">€ 0,00</span>
       </div>
+      <!-- Voci automatiche -->
+      <div id="dc-row-smaltimento" style="display:none;justify-content:space-between;align-items:center;padding:4px 0">
+        <span style="font-size:12px;color:var(--text3)">🗑 Smaltimento rifiuti</span>
+        <span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--text3)" id="dc-smaltimento">€ 0,00</span>
+      </div>
+      <div id="dc-row-matcons" style="display:none;justify-content:space-between;align-items:center;padding:4px 0">
+        <span style="font-size:12px;color:var(--text3)">🧰 Materiale di consumo</span>
+        <span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--text3)" id="dc-matcons">€ 0,00</span>
+      </div>
+      <div id="dc-row-diritto" style="display:none;justify-content:space-between;align-items:center;padding:4px 0">
+        <span style="font-size:12px;color:var(--text3)">📞 Diritto di chiamata (<span id="dc-diritto-tipo"></span>)</span>
+        <span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--text3)" id="dc-diritto-importo">€ 0,00</span>
+      </div>
       <div id="dc-tot-live-row" style="display:none;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--warning-light);border-radius:var(--radius);border:1px solid #FDE68A">
         <span style="font-size:12px;color:var(--warning);display:flex;align-items:center;gap:5px">
           <span style="width:7px;height:7px;border-radius:50%;background:var(--warning);animation:pulse 1.5s infinite;display:inline-block"></span>
@@ -3023,6 +3124,8 @@ async function showApp() {
   document.querySelector('.app').style.display='block';
   init();
   applicaPermessiRuolo();
+  // Timer fine turno automatico
+  _avviaTimerFineTurno();
   // Timbratura automatica entrata per amministrazione
   setTimeout(() => registraEntrataAmministrazione(), 500);
 }
@@ -3073,10 +3176,12 @@ async function registraUscitaAmministrazione(dip) {
 
 // ── CARICA TUTTI I DATI IN MEMORIA ──────────────────
 async function loadAllData() {
-  [clienti, veicoli, meccanici, commesse, fornitori, prodotti, movimenti, timbrature, presenze] = await Promise.all([
-    DB.load('clienti'), DB.load('veicoli'), DB.load('meccanici'), DB.load('commesse'),
+  [clienti, veicoli, commesse, fornitori, prodotti, movimenti, timbrature, presenze] = await Promise.all([
+    DB.load('clienti'), DB.load('veicoli'), DB.load('commesse'),
     DB.load('fornitori'), DB.load('prodotti'), DB.load('movimenti'), DB.load('timbrature'), DB.load('presenze'),
   ]);
+  // Carica solo da dipendenti (tabella unificata)
+  meccanici = await DB.load('dipendenti').catch(()=>[]);
 }
 
 // ── SAVE HELPERS (sostituiscono localStorage) ───────
@@ -3100,10 +3205,17 @@ async function dbDeleteVeicolo(id) { await DB.delete('veicoli', id); veicoli = v
 
 async function dbSaveMeccanico(obj) {
   if (obj.id && meccanici.find(m=>m.id===obj.id)) {
-    const r = await DB.update('meccanici', obj.id, obj); const i = meccanici.findIndex(m=>m.id===obj.id); meccanici[i]=r; return r;
-  } else { const r = await DB.insert('meccanici', obj); meccanici.push(r); return r; }
+    const r = await DB.update('dipendenti', obj.id, obj);
+    const i = meccanici.findIndex(m=>m.id===obj.id); meccanici[i]=r; return r;
+  } else {
+    const r = await DB.insert('dipendenti', obj);
+    meccanici.push(r); return r;
+  }
 }
-async function dbDeleteMeccanico(id) { await DB.delete('meccanici', id); meccanici = meccanici.filter(m=>m.id!==id); }
+async function dbDeleteMeccanico(id) {
+  await DB.delete('dipendenti', id);
+  meccanici = meccanici.filter(m=>m.id!==id);
+}
 
 async function dbSaveCommessa(obj) {
   if (obj.id && commesse.find(c=>c.id===obj.id)) {
@@ -3125,6 +3237,29 @@ async function dbSaveTimbratura(obj) {
   if (obj.id && timbrature.find(t=>t.id===obj.id)) {
     const r = await DB.update('timbrature', obj.id, obj); const i = timbrature.findIndex(t=>t.id===obj.id); timbrature[i]=r; return r;
   } else { const r = await DB.insert('timbrature', obj); timbrature.push(r); return r; }
+}
+
+// ── Tariffa automatica da orario/giorno ──────────────────────
+function _getTariffaAuto(dataOra) {
+  const d    = dataOra ? new Date(dataOra) : new Date();
+  const h    = d.getHours();
+  const giorno = d.getDay(); // 0=dom, 6=sab
+  const fest = _isFestivo(d);
+  const imp  = _impostazioni || {};
+  const tar  = imp.tariffe || {};
+
+  let tipo;
+  if (fest || giorno === 0)              tipo = 'festivo';
+  else if (h >= 22 || h < 6)            tipo = 'notturno';
+  else if (giorno === 6 && h >= 12)     tipo = 'straordinario';
+  else if (h >= 18)                     tipo = 'straordinario';
+  else                                  tipo = 'normale';
+
+  return {
+    tipo,
+    costoInterno: tar[tipo]?.int || 0,
+    costoCliente: tar[tipo]?.cli || 0,
+  };
 }
 
 async function dbSavePresenza(obj) {
@@ -3354,10 +3489,8 @@ let statoFiltro = '';
 let comVociMano = [], comVociRic = [], comVociExtra = [];
 
 // ===== NUMERO COMMESSA =====
-function genNumCommessa() {
-  const yr = new Date().getFullYear();
-  const n = commesse.filter(c => c.numero && c.numero.startsWith('C'+yr)).length + 1;
-  return 'C' + yr + '-' + String(n).padStart(4,'0');
+async function _genNumCommessa() {
+  return await _nextNumero('num_commesse', (a,n) => `C${a}-${String(n).padStart(4,'0')}`);
 }
 
 // ===== MODAL COMMESSA =====
@@ -3382,6 +3515,13 @@ function openModalCommessa(editId) {
   document.getElementById('com-note').value = '';
   document.getElementById('com-km').value = '';
   document.getElementById('com-km-hint').textContent = '';
+  const dcCheck = document.getElementById('com-diritto-chiamata');
+  if (dcCheck) { dcCheck.checked = false; _toggleDirittoChiamata(false); }
+  const imp2 = _impostazioni || {};
+  const smaltEl = document.getElementById('com-smalt-perc');
+  const matEl   = document.getElementById('com-mat-perc');
+  if (smaltEl) smaltEl.textContent = imp2.smaltimento_perc || imp2.smaltimentoPerc || 0;
+  if (matEl)   matEl.textContent   = imp2.materiale_consumo_perc || imp2.materialeConsumoPerc || 0;
   document.getElementById('com-ore-motore').value = '';
   document.getElementById('com-ore-motore-hint').textContent = '';
   document.getElementById('com-mec-chips').innerHTML = '';
@@ -3398,6 +3538,16 @@ function openModalCommessa(editId) {
       document.getElementById('com-data-apertura').value = cm.dataApertura || '';
       document.getElementById('com-stato').value = cm.stato || 'aperta';
       document.getElementById('com-note').value = cm.note || '';
+      // Diritto di chiamata
+      const dcChk = document.getElementById('com-diritto-chiamata');
+      if (dcChk) {
+        dcChk.checked = cm.dirittoChiamata || false;
+        _toggleDirittoChiamata(dcChk.checked);
+        if (dcChk.checked) {
+          document.getElementById('com-diritto-tipo').value    = cm.dirittoChiamataTipo || 'standard';
+          document.getElementById('com-diritto-importo').value = cm.dirittoChiamataImporto || 0;
+        }
+      }
       comMeccaniciSel = [...(cm.meccanici||[])];
       comVociMano  = (cm.vociMano||[]).map(v=>({...v}));
       comVociRic   = (cm.vociRic||[]).map(v=>({...v}));
@@ -3501,10 +3651,12 @@ function renderVoci(tipo) {
     const giacBadge = prodObj
       ? `<span title="Giacenza magazzino" style="font-size:10px;padding:1px 6px;border-radius:10px;background:${prodObj.giacenza<=0?'var(--danger-light)':prodObj.giacenza<=prodObj.scortaMin?'var(--warning-light)':'var(--success-light)'};color:${prodObj.giacenza<=0?'var(--danger)':prodObj.giacenza<=prodObj.scortaMin?'var(--warning)':'var(--success)'};font-family:'DM Mono',monospace;white-space:nowrap">▼ ${prodObj.giacenza} ${prodObj.um||'pz'}</span>`
       : '';
-    return `<div class="voce-row" style="grid-template-columns:${isMano?'120px ':''} 1fr${isRic?' auto':''} 80px 90px 90px 28px">
+    const totRiga = (v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100);
+    return `<div class="voce-row" style="grid-template-columns:${isMano?'120px ':''} 1fr${isRic?' auto':''} 80px 90px 60px 90px 28px">
       ${isMano ? `<select style="padding:6px 9px;font-size:12px;border:1px solid var(--border);border-radius:var(--radius);font-family:'DM Sans',sans-serif" onchange="onTipoManoChange(this,${i})">
         <option value="normale"       ${(v.tipoTariffa||'normale')==='normale'       ?'selected':''}>Normale</option>
         <option value="straordinario" ${(v.tipoTariffa||'')==='straordinario'?'selected':''}>Straordinario</option>
+        <option value="notturno"      ${(v.tipoTariffa||'')==='notturno'     ?'selected':''}>Notturno</option>
         <option value="strada"        ${(v.tipoTariffa||'')==='strada'       ?'selected':''}>Su strada</option>
         <option value="festivo"       ${(v.tipoTariffa||'')==='festivo'      ?'selected':''}>Festivo</option>
       </select>` : ''}
@@ -3524,8 +3676,12 @@ function renderVoci(tipo) {
         oninput="getVociArr('${tipo}')[${i}].qta=parseFloat(this.value)||0;calcTotale();renderVoci('${tipo}')">
       <input type="number" placeholder="0,00" min="0" step="0.01" value="${v.prezzo||''}" id="mano-prezzo-${tipo}-${i}"
         oninput="getVociArr('${tipo}')[${i}].prezzo=parseFloat(this.value)||0;calcTotale()">
+      <input type="number" placeholder="%" min="0" max="100" step="1" value="${v.sconto||''}"
+        title="Sconto %"
+        oninput="getVociArr('${tipo}')[${i}].sconto=parseFloat(this.value)||0;calcTotale()"
+        style="border:1px solid var(--border);border-radius:var(--radius);padding:6px 9px;font-size:12px;font-family:'DM Mono',monospace;text-align:center">
       <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);display:flex;align-items:center">
-        € ${((v.qta||1)*(v.prezzo||0)).toFixed(2)}
+        € ${totRiga.toFixed(2)}
       </span>
       <button type="button" class="del-btn" onclick="removeVoce('${tipo}',${i})">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
@@ -3611,11 +3767,36 @@ function addVoce(tipo) {
 }
 
 function calcTotale() {
-  const tot = [...comVociMano,...comVociRic,...comVociExtra]
-    .reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0), 0);
+  const imp    = _impostazioni || {};
+  const totMano = comVociMano.reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100), 0);
+  const totRic  = comVociRic.reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100), 0);
+  const totExtra= comVociExtra.reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100), 0);
+
+  // Diritto di chiamata
+  const dc = document.getElementById('com-diritto-chiamata')?.checked
+    ? (parseFloat(document.getElementById('com-diritto-importo')?.value) || 0) : 0;
+
+  // Smaltimento rifiuti (% sui ricambi)
+  const smaltPerc = parseFloat(imp.smaltimento_perc || imp.smaltimentoPerc || 0);
+  const smalt     = +(totRic * smaltPerc / 100).toFixed(2);
+
+  // Materiale di consumo (% su manodopera + ricambi)
+  const matPerc = parseFloat(imp.materiale_consumo_perc || imp.materialeConsumoPerc || 0);
+  const matCons = +((totMano + totRic) * matPerc / 100).toFixed(2);
+
+  const totale = totMano + totRic + totExtra + dc + smalt + matCons;
+
+  // Aggiorna display voci automatiche
+  const elSmalt = document.getElementById('com-voce-smaltimento');
+  const elMat   = document.getElementById('com-voce-matcons');
+  if (elSmalt) elSmalt.style.display = smalt > 0 ? '' : 'none';
+  if (elSmalt) elSmalt.querySelector('.voce-importo').textContent = '€ ' + smalt.toFixed(2).replace('.',',');
+  if (elMat)   elMat.style.display = matCons > 0 ? '' : 'none';
+  if (elMat)   elMat.querySelector('.voce-importo').textContent = '€ ' + matCons.toFixed(2).replace('.',',');
+
   const el = document.getElementById('com-totale');
-  if (el) el.textContent = '€ ' + tot.toFixed(2).replace('.',',');
-  return tot;
+  if (el) el.textContent = '€ ' + totale.toFixed(2).replace('.',',');
+  return totale;
 }
 
 // ===== SALVA COMMESSA =====
@@ -3647,6 +3828,11 @@ async function saveCommessa(firmaDataUrl=null) {
     firmaData: firmaDataUrl ? new Date().toISOString() : null,
     stato: document.getElementById('com-stato').value,
     note: document.getElementById('com-note').value.trim(),
+    dirittoChiamata:        document.getElementById('com-diritto-chiamata')?.checked || false,
+    dirittoChiamataTipo:    document.getElementById('com-diritto-tipo')?.value || null,
+    dirittoChiamataImporto: parseFloat(document.getElementById('com-diritto-importo')?.value) || 0,
+    smaltimentoPerc:        parseFloat(_impostazioni?.smaltimento_perc || _impostazioni?.smaltimentoPerc || 0),
+    materialeConsumoPerc:   parseFloat(_impostazioni?.materiale_consumo_perc || _impostazioni?.materialeConsumoPerc || 0),
     vociMano:  comVociMano.filter(v=>v.desc||v.prezzo),
     vociRic:   nuoveRic,
     vociExtra: comVociExtra.filter(v=>v.desc||v.prezzo),
@@ -3692,7 +3878,7 @@ async function saveCommessa(firmaDataUrl=null) {
       }
     } else {
       comId = initId();
-      const numero = genNumCommessa();
+      const numero = await _genNumCommessa();
       await dbSaveCommessa({id: comId, numero, createdAt: new Date().toISOString(), ...data});
 
       for (const v of nuoveRic.filter(v=>v.prodId)) {
@@ -4125,6 +4311,27 @@ function showDetailCommessa(id) {
 
   // Aggiorna totale live (con timbrature aperte)
   aggiornaLiveTotal(id);
+
+  // Voci automatiche nel dettaglio
+  const imp2       = _impostazioni || {};
+  const totRicDC   = (cm.vociRic||[]).reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0);
+  const totManoDC  = (cm.vociMano||[]).reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0);
+  const smaltPerc  = cm.smaltimentoPerc ?? imp2.smaltimento_perc ?? imp2.smaltimentoPerc ?? 0;
+  const matPerc    = cm.materialeConsumoPerc ?? imp2.materiale_consumo_perc ?? imp2.materialeConsumoPerc ?? 0;
+  const smalt      = +(totRicDC  * smaltPerc / 100).toFixed(2);
+  const matCons    = +((totManoDC+totRicDC) * matPerc / 100).toFixed(2);
+
+  const rowSmalt = document.getElementById('dc-row-smaltimento');
+  const rowMat   = document.getElementById('dc-row-matcons');
+  const rowDC    = document.getElementById('dc-row-diritto');
+
+  if (rowSmalt) { rowSmalt.style.display = smalt>0 ? 'flex' : 'none'; document.getElementById('dc-smaltimento').textContent = '€ '+smalt.toFixed(2).replace('.',','); }
+  if (rowMat)   { rowMat.style.display   = matCons>0 ? 'flex' : 'none'; document.getElementById('dc-matcons').textContent   = '€ '+matCons.toFixed(2).replace('.',','); }
+  if (rowDC && cm.dirittoChiamata) {
+    rowDC.style.display = 'flex';
+    document.getElementById('dc-diritto-tipo').textContent    = cm.dirittoChiamataTipo||'standard';
+    document.getElementById('dc-diritto-importo').textContent = '€ '+(cm.dirittoChiamataImporto||0).toFixed(2).replace('.',',');
+  } else if (rowDC) { rowDC.style.display = 'none'; }
 
   // Avvia timer aggiornamento ogni 30 secondi
   if (window._liveTotalTimer) clearInterval(window._liveTotalTimer);
@@ -4638,19 +4845,113 @@ function getOra(inputId) {
 // ===== PRESENZA AUTOMATICA DA TIMBRATURA =====
 async function registraPresenzaAutomatica(mecId, ora) {
   const giàAperta = presenze.find(p=>p.dipId===mecId&&!p.uscita);
-  if (!giàAperta) {
-    await dbSavePresenza({ id:initId(), dipId:mecId, entrata:ora||new Date().toISOString(), uscita:null, createdAt:new Date().toISOString() });
-  }
+  if (giàAperta) return;
+
+  const oraEntrata   = ora || new Date().toISOString();
+  const imp          = _impostazioni || {};
+  const orarioInizio = imp.orario_inizio || imp.orarioInizio || '08:30';
+  const sogliaRit    = imp.soglia_ritardo || imp.sogliaRitardo || '09:00';
+
+  // Calcola ritardo
+  const oggi       = oraEntrata.split('T')[0];
+  const tsInizio   = new Date(`${oggi}T${orarioInizio}:00`);
+  const tsSoglia   = new Date(`${oggi}T${sogliaRit}:00`);
+  const tsEntrata  = new Date(oraEntrata);
+  const ritardo    = tsEntrata > tsSoglia;
+  const minRitardo = ritardo ? Math.round((tsEntrata - tsInizio) / 60000) : 0;
+
+  await dbSavePresenza({
+    id:               initId(),
+    dipId:            mecId,
+    entrata:          oraEntrata,
+    uscita:           null,
+    tipo:             'normale',
+    ritardo:          ritardo,
+    minuti_ritardo:   minRitardo,
+    createdAt:        new Date().toISOString(),
+  });
+
+  if (ritardo) showToast(`⚠ ${meccanici.find(m=>m.id===mecId)?.nome||'Dipendente'} in ritardo di ${minRitardo} min`, 'warning');
 }
 
 async function chiudiPresenzaAutomatica(mecId, ora) {
   const altreAperte = timbrature.filter(t=>t.mecId===mecId&&!t.uscita);
   if (altreAperte.length > 0) return;
   const pAperta = presenze.find(p=>p.dipId===mecId&&!p.uscita);
-  if (pAperta) {
-    pAperta.uscita = ora||new Date().toISOString();
-    await dbSavePresenza(pAperta);
+  if (!pAperta) return;
+
+  const uscita      = ora || new Date().toISOString();
+  const imp         = _impostazioni || {};
+  const fineTurno   = imp.fine_turno || imp.fineTurno || '17:30';
+  const oggi        = uscita.split('T')[0];
+  const tsFineTurno = new Date(`${oggi}T${fineTurno}:00`);
+  const tsUscita    = new Date(uscita);
+  const tsEntrata   = new Date(pAperta.entrata);
+
+  // Check pausa pranzo
+  const ultiTimbr  = [...timbrature].filter(t=>t.mecId===mecId&&t.entrata).sort((a,b)=>new Date(b.entrata)-new Date(a.entrata))[0];
+  const eraPausa   = await _checkPausaPranzo(mecId, ultiTimbr?.comId, pAperta.entrata, uscita);
+
+  // Ore totali (con eventuale detrazione pausa)
+  let minTotali = Math.round((tsUscita - tsEntrata) / 60000);
+  if (eraPausa) minTotali -= 60;
+  const oreTotali = +(Math.max(0, minTotali) / 60).toFixed(2);
+
+  // Straordinari
+  const minStand  = Math.round((tsFineTurno - tsEntrata) / 60000);
+  const oreStand  = Math.max(0, minStand / 60);
+  const oreStrao  = +(Math.max(0, oreTotali - oreStand)).toFixed(2);
+
+  // Check permessi — se ha lavorato meno delle ore standard
+  const dip         = meccanici.find(m=>m.id===mecId);
+  const oreSettStd  = (dip?.ore_settimanali || dip?.oreSettimanali || 40) / 5; // ore giornaliere
+  const diffOre     = +(oreSettStd - oreTotali).toFixed(2);
+  let orePermesso   = 0;
+
+  if (diffOre > 0 && diffOre < oreSettStd && oreStrao === 0) {
+    // Ha lavorato meno — chiedi se scalare dai permessi
+    const nome = dip?.nome || 'Il dipendente';
+    const scala = await new Promise(resolve => {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center';
+      overlay.innerHTML = `
+        <div style="background:var(--surface);border-radius:var(--radius-lg);padding:28px;max-width:380px;width:90%;box-shadow:var(--shadow-lg)">
+          <div style="font-size:17px;font-weight:800;margin-bottom:8px">⏱ Ore mancanti</div>
+          <div style="font-size:14px;color:var(--text2);margin-bottom:20px;line-height:1.5">
+            <strong>${nome}</strong> ha lavorato <strong>${oreTotali}h</strong> su ${oreSettStd}h standard.<br>
+            Scalare <strong>${diffOre}h</strong> dai permessi?
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <button onclick="this.closest('[data-perm-overlay]').dataset.result='si'"
+              style="padding:12px;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--surface);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif"
+              onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+              ✅ Sì, scala permessi
+            </button>
+            <button onclick="this.closest('[data-perm-overlay]').dataset.result='no'"
+              style="padding:12px;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--surface);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif"
+              onmouseover="this.style.borderColor='var(--text3)'" onmouseout="this.style.borderColor='var(--border)'">
+              ✗ No
+            </button>
+          </div>
+        </div>`;
+      overlay.setAttribute('data-perm-overlay','');
+      const poll = setInterval(() => {
+        const result = overlay.dataset.result;
+        if (!result) return;
+        clearInterval(poll);
+        document.body.removeChild(overlay);
+        resolve(result === 'si');
+      }, 100);
+      document.body.appendChild(overlay);
+    });
+    if (scala) orePermesso = diffOre;
   }
+
+  pAperta.uscita        = uscita;
+  pAperta.ore_totali    = oreTotali;
+  pAperta.straordinario = oreStrao > 0 ? oreStrao : null;
+  pAperta.ore_permesso  = orePermesso > 0 ? orePermesso : null;
+  await dbSavePresenza(pAperta);
 }
 
 // Chiude tutte le timbrature aperte su una commessa (es. quando viene chiusa manualmente)
@@ -4689,12 +4990,21 @@ async function timbraEntrata() {
   const aperta = timbrature.find(t=>t.mecId===mecId&&t.comId===comId&&!t.uscita);
   if (aperta) { alert('Questo meccanico ha già una timbratura aperta su questa commessa.'); return; }
   const ora = getOra('t-ora');
+  // Tariffa automatica da orario
+  const tariffa = _getTariffaAuto(ora);
   try {
     await chiudiAltreTimbratureAperte(mecId, comId, ora);
-    await dbSaveTimbratura({ id:initId(), mecId, comId, entrata:ora, uscita:null, tipo:'lista', createdAt:new Date().toISOString() });
+    await dbSaveTimbratura({
+      id: initId(), mecId, comId, entrata: ora, uscita: null,
+      tipo:          tariffa.tipo,
+      costoInterno:  tariffa.costoInterno,
+      costoCliente:  tariffa.costoCliente,
+      createdAt:     new Date().toISOString(),
+    });
     await registraPresenzaAutomatica(mecId, ora);
     await syncStatoCommessaDaTimbrature(comId);
-    showToast('Entrata registrata ✓');
+    const labelTipo = { normale:'', straordinario:' — ⚡ Straordinario', notturno:' — 🌙 Notturno', festivo:' — 🎉 Festivo' };
+    showToast(`Entrata registrata ✓${labelTipo[tariffa.tipo]||''}`);
     renderLive(); updateBadgeTimbrature();
   } catch(e) { alert('Errore: '+e.message); }
 }
@@ -4707,12 +5017,21 @@ async function timbraUscita() {
   const aperta = timbrature.find(t=>t.mecId===mecId&&t.comId===comId&&!t.uscita);
   if (!aperta) { alert('Nessuna timbratura di entrata trovata.'); return; }
   const ora = getOra('t-ora');
+  // Calcola ore e costo finale
+  const tsEnt = new Date(aperta.entrata);
+  const tsUsc = new Date(ora);
+  const ore   = +((tsUsc - tsEnt) / 3600000).toFixed(2);
+  const costoCliente  = +(ore * (aperta.costoCliente  || 0)).toFixed(2);
+  const costoInterno  = +(ore * (aperta.costoInterno  || 0)).toFixed(2);
+  aperta.uscita       = ora;
+  aperta.ore          = ore;
+  aperta.costoCliente = costoCliente;
+  aperta.costoInterno = costoInterno;
   try {
-    aperta.uscita = ora;
     await dbSaveTimbratura(aperta);
     await chiudiPresenzaAutomatica(mecId, ora);
     await syncStatoCommessaDaTimbrature(comId);
-    showToast('Uscita registrata ✓');
+    showToast(`Uscita registrata ✓ — ${ore}h · € ${costoCliente.toFixed(2)}`);
     renderLive(); updateBadgeTimbrature();
   } catch(e) { alert('Errore: '+e.message); }
 }
@@ -5142,6 +5461,10 @@ function renderPresenze() {
       <td style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600">${ore}</td>
       <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--accent)">${p.straordinario?'+'+p.straordinario+'h':'—'}</td>
       <td><span class="badge ${tb.cls}">${tb.label}</span></td>
+      <td>${p.ritardo
+        ? `<span class="badge badge-red">⚠ +${p.minuti_ritardo||p.minutiRitardo||0} min</span>`
+        : '<span style="color:var(--text3);font-size:12px">—</span>'
+      }</td>
       <td><div class="row-actions" style="${!p.uscita?'opacity:1':''}">
         ${!p.uscita?`<button class="btn btn-primary btn-sm" onclick="chiudiPresenza('${p.id}')">Chiudi</button>`:''}
         <button class="btn btn-danger btn-sm" onclick="deletePresenza('${p.id}')">Elimina</button>
@@ -5162,6 +5485,348 @@ function resetFiltriP() {
   document.getElementById('p-filter-tipo').value = '';
   document.getElementById('search-presenze').value = '';
   renderPresenze();
+}
+
+// ── Helper: controlla pausa pranzo ───────────────────────────
+async function _checkPausaPranzo(mecId, comId, entrata, uscita) {
+  const imp        = _impostazioni || {};
+  const pausaInizio = imp.pausa_inizio || imp.pausaInizio || '13:00';
+  const pausaFine   = imp.pausa_fine   || imp.pausaFine   || '14:00';
+  const oggi        = (uscita||entrata).split('T')[0];
+  const MARGINE     = 15; // minuti
+
+  const tsPI  = new Date(`${oggi}T${pausaInizio}:00`);
+  const tsPF  = new Date(`${oggi}T${pausaFine}:00`);
+  const tsENT = new Date(entrata);
+  const tsUSC = uscita ? new Date(uscita) : new Date();
+
+  // La timbratura attraversa la pausa pranzo?
+  if (tsENT >= tsPF || tsUSC <= tsPI) return false; // non tocca la pausa
+  if (tsUSC <= tsPI) return false;
+
+  // Verifica se ha già timbrato uscita/entrata vicino alla pausa (±15 min)
+  const timbMec = timbrature.filter(t => t.mecId === mecId);
+  const uscitaVicina  = timbMec.some(t => t.uscita  && Math.abs(new Date(t.uscita)  - tsPI) <= MARGINE * 60000);
+  const entrataVicina = timbMec.some(t => t.entrata && Math.abs(new Date(t.entrata) - tsPF) <= MARGINE * 60000);
+
+  if (uscitaVicina && entrataVicina) return false; // pausa già registrata
+
+  // Pop-up per magazziniere/accettazione
+  const mec = meccanici.find(m=>m.id===mecId);
+  const cm  = commesse.find(c=>c.id===comId);
+  const nome = mec?.nome || 'Il meccanico';
+  const numCom = cm?.numero || 'commessa';
+
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center';
+    overlay.innerHTML = `
+      <div style="background:var(--surface);border-radius:var(--radius-lg);padding:28px;max-width:400px;width:90%;box-shadow:var(--shadow-lg)">
+        <div style="font-size:18px;font-weight:800;margin-bottom:8px">⚠ Pausa pranzo</div>
+        <div style="font-size:14px;color:var(--text2);margin-bottom:20px;line-height:1.5">
+          <strong>${nome}</strong> non ha timbrato la pausa pranzo (${pausaInizio}–${pausaFine}) sulla commessa <strong>${numCom}</strong>.<br><br>
+          Era davvero al lavoro o era in pausa?
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <button onclick="this.closest('[data-pausa-overlay]').dataset.result='lavorato'"
+            style="padding:14px;border:1.5px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif"
+            onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+            ✅ Ha lavorato<br><span style="font-size:11px;font-weight:400;color:var(--text3)">Conta tutto il tempo</span>
+          </button>
+          <button onclick="this.closest('[data-pausa-overlay]').dataset.result='pausa'"
+            style="padding:14px;border:1.5px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif"
+            onmouseover="this.style.borderColor='var(--warning)'" onmouseout="this.style.borderColor='var(--border)'">
+            ☕ Era in pausa<br><span style="font-size:11px;font-weight:400;color:var(--text3)">Detrai 1h automaticamente</span>
+          </button>
+        </div>
+      </div>`;
+    overlay.setAttribute('data-pausa-overlay','');
+    const poll = setInterval(() => {
+      const result = overlay.dataset.result;
+      if (!result) return;
+      clearInterval(poll);
+      document.body.removeChild(overlay);
+      resolve(result === 'pausa'); // true = era in pausa → detrai
+    }, 100);
+    document.body.appendChild(overlay);
+  });
+}
+// ── Conversione preventivo intelligente ──────────────────────
+function apriConvertPrev(prevId) {
+  const p = preventivi.find(x=>x.id===prevId);
+  if (!p) return;
+
+  const hasMano  = (p.vociMano||[]).some(v=>v.desc||v.prezzo);
+  const hasRic   = (p.vociRic||[]).some(v=>v.desc||v.prezzo);
+  const hasExtra = (p.vociExtra||[]).some(v=>v.desc||v.prezzo);
+
+  // Scelta suggerita
+  let suggerita = 'commessa';
+  if (hasMano)                    suggerita = 'commessa';
+  else if (hasRic && !hasMano)    suggerita = 'ddt';
+  else if (!hasRic && !hasMano)   suggerita = 'commessa';
+
+  const cl = clienti.find(c=>c.id===p.clienteId);
+  const IMMEDIATI = ['contanti','carta','pos','bonifico'];
+  const metodoCliente = cl?.pagamento || '';
+  const isImmediato   = IMMEDIATI.includes(metodoCliente);
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border-radius:var(--radius-lg);padding:28px;max-width:440px;width:90%;box-shadow:var(--shadow-lg)">
+      <div style="font-size:17px;font-weight:800;margin-bottom:4px">Converti preventivo ${p.numero}</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:20px">
+        ${hasMano?'✅ Ha manodopera':''}${hasMano&&hasRic?' · ':''}${hasRic?'✅ Ha ricambi ('+p.vociRic.filter(v=>v.desc).length+')':''}${!hasMano&&!hasRic?'Nessuna voce rilevata':''}
+        ${cl?'<br>Cliente: <strong>'+cl.ragione+'</strong> · Pagamento: '+(metodoCliente||'non impostato'):''}
+      </div>
+
+      <!-- Commessa -->
+      <div onclick="_selectConvert(this,'commessa')" data-tipo="commessa"
+        style="padding:14px 16px;border:2px solid ${suggerita==='commessa'?'var(--accent)':'var(--border)'};border-radius:var(--radius-lg);margin-bottom:8px;cursor:pointer;background:${suggerita==='commessa'?'var(--accent-light)':'var(--surface)'};transition:all .15s"
+        onmouseover="if(this.dataset.selected!=='1')this.style.borderColor='var(--accent)'" onmouseout="if(this.dataset.selected!=='1')this.style.borderColor='var(--border)'">
+        <div style="font-weight:700;font-size:14px">🔧 Commessa</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:3px">Lavorazione in officina — fattura dopo chiusura lavori</div>
+        ${suggerita==='commessa'?'<div style="font-size:11px;color:var(--accent);margin-top:4px;font-weight:600">✓ Suggerito — ha manodopera</div>':''}
+      </div>
+
+      <!-- DDT differito -->
+      <div onclick="_selectConvert(this,'ddt')" data-tipo="ddt"
+        style="padding:14px 16px;border:2px solid ${suggerita==='ddt'?'var(--accent)':'var(--border)'};border-radius:var(--radius-lg);margin-bottom:8px;cursor:pointer;background:${suggerita==='ddt'?'var(--accent-light)':'var(--surface)'};transition:all .15s"
+        onmouseover="if(this.dataset.selected!=='1')this.style.borderColor='var(--accent)'" onmouseout="if(this.dataset.selected!=='1')this.style.borderColor='var(--border)'">
+        <div style="font-weight:700;font-size:14px">📋 DDT + fattura differita</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:3px">Solo ricambi/materiale — fattura da emettere dopo</div>
+        ${suggerita==='ddt'?'<div style="font-size:11px;color:var(--accent);margin-top:4px;font-weight:600">✓ Suggerito — solo ricambi</div>':''}
+      </div>
+
+      <!-- DDT + fattura immediata -->
+      <div onclick="_selectConvert(this,'ddt_immediato')" data-tipo="ddt_immediato"
+        style="padding:14px 16px;border:2px solid ${isImmediato&&suggerita==='ddt'?'var(--accent)':'var(--border)'};border-radius:var(--radius-lg);margin-bottom:20px;cursor:pointer;background:var(--surface);transition:all .15s"
+        onmouseover="if(this.dataset.selected!=='1')this.style.borderColor='var(--accent)'" onmouseout="if(this.dataset.selected!=='1')this.style.borderColor='var(--border)'">
+        <div style="font-weight:700;font-size:14px">💳 DDT + fattura immediata</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:3px">Pagamento ${metodoCliente||'da scegliere'} — genera DDT + fattura + email subito</div>
+      </div>
+
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button onclick="this.closest('[data-conv-overlay]').remove()" class="btn btn-secondary">Annulla</button>
+        <button onclick="_eseguiConvert('${prevId}')" class="btn btn-primary">Converti →</button>
+      </div>
+    </div>`;
+  overlay.setAttribute('data-conv-overlay','');
+  // Pre-seleziona la scelta suggerita
+  document.body.appendChild(overlay);
+  const suggerito = overlay.querySelector(`[data-tipo="${suggerita}"]`);
+  if (suggerito) { suggerito.dataset.selected='1'; suggerito.style.borderColor='var(--accent)'; suggerito.style.background='var(--accent-light)'; }
+  overlay._prevId  = prevId;
+  overlay._scelta  = suggerita;
+}
+
+function _selectConvert(el, tipo) {
+  const overlay = el.closest('[data-conv-overlay]');
+  // Deseleziona tutti
+  overlay.querySelectorAll('[data-tipo]').forEach(d => {
+    d.dataset.selected='0';
+    d.style.borderColor='var(--border)';
+    d.style.background='var(--surface)';
+  });
+  // Seleziona questo
+  el.dataset.selected='1';
+  el.style.borderColor='var(--accent)';
+  el.style.background='var(--accent-light)';
+  overlay._scelta = tipo;
+}
+
+async function _eseguiConvert(prevId) {
+  const overlay = document.querySelector('[data-conv-overlay]');
+  const scelta  = overlay?._scelta || 'commessa';
+  overlay?.remove();
+
+  if (scelta === 'commessa')      await convertiInCommessa(prevId);
+  else if (scelta === 'ddt')      await convertiInDDT(prevId);
+  else if (scelta === 'ddt_immediato') await convertiInDDTImmediato(prevId);
+}
+
+async function convertiInDDTImmediato(prevId) {
+  const p  = preventivi.find(x=>x.id===prevId);
+  if (!p) return;
+  const cl = clienti.find(c=>c.id===p.clienteId);
+  const IMMEDIATI = ['contanti','carta','pos','bonifico'];
+  const metodoCl  = cl?.pagamento || '';
+
+  // Scelta metodo se non impostato
+  let metodo = metodoCl;
+  if (!IMMEDIATI.includes(metodoCl)) {
+    metodo = await _scegliMetodoPagamento([
+      { key:'carta',    label:'💳 Carta / POS' },
+      { key:'contanti', label:'💵 Contanti' },
+      { key:'bonifico', label:'🏦 Bonifico istantaneo' },
+    ]);
+    if (!metodo) return;
+  }
+
+  try {
+    // Crea DDT con le righe del preventivo
+    const righe = (p.vociRic||[]).filter(v=>v.desc).map(v=>({
+      desc:v.desc, qta:v.qta||1, prezzo:v.prezzo||0, sconto:v.sconto||0, prodId:v.prodId||null
+    }));
+    if (!righe.length) { alert('Nessuna voce ricambi nel preventivo.'); return; }
+
+    // Usa flusso avviaVendita con righe pre-caricate
+    vbRighe = righe;
+    if (cl) {
+      document.getElementById('vb-cliente').value = cl.id;
+    }
+    const ddt = await creaVbDDT(righe, p.clienteId||null, metodo);
+    if (!ddt) return;
+
+    // Scarico magazzino
+    await _scaricoMagazzinoVb(righe);
+
+    // Segna preventivo convertito
+    await supa.from('preventivi').update({ commessa_creata:true, stato:'convertito' }).eq('id',prevId);
+    p.commessaCreata=true; p.stato='convertito';
+    renderPreventivi();
+
+    // Firma → poi fattura + email
+    ddt._metodoCheckout = metodo;
+    apriFirmaDDT(ddt);
+    showToast(`DDT ${ddt.numero} creato ✓`);
+  } catch(e) { alert('Errore: '+e.message); }
+}
+function _toggleDirittoChiamata(checked) {
+  const det = document.getElementById('com-diritto-chiamata-detail');
+  if (!det) return;
+  det.style.display = checked ? '' : 'none';
+  if (checked) {
+    // Auto-seleziona tipo in base a ora/giorno corrente
+    const ora  = new Date();
+    const giorno = ora.getDay(); // 0=dom, 6=sab
+    const h    = ora.getHours();
+    const festivi = _isFestivo(ora);
+    let tipo = 'standard';
+    if (festivi || giorno === 0 || h >= 22 || h < 6) tipo = 'festivo';
+    else if (giorno === 6 && h >= 12) tipo = 'straordinario';
+    else if (h >= 18) tipo = 'straordinario';
+    document.getElementById('com-diritto-tipo').value = tipo;
+    _aggiornaDirittoImporto();
+  }
+}
+
+function _aggiornaDirittoImporto() {
+  const tipo = document.getElementById('com-diritto-tipo')?.value;
+  const imp  = _impostazioni || {};
+  const dc   = imp.diritti_chiamata || imp.dirittiChiamata || [];
+  // Prende il primo diritto configurato (principale) o default
+  const d = dc[0] || {};
+  const importi = { standard: d.giorno||0, straordinario: d.notte||0, festivo: d.festivo||0 };
+  document.getElementById('com-diritto-importo').value = importi[tipo] || 0;
+}
+
+function _isFestivo(data) {
+  const m = data.getMonth() + 1;
+  const g = data.getDate();
+  const y = data.getFullYear();
+  // Festività fisse italiane
+  const fisse = [[1,1],[6,1],[25,4],[1,5],[2,6],[15,8],[1,11],[8,12],[25,12],[26,12]];
+  if (fisse.some(([mm,gg]) => mm===m && gg===g)) return true;
+  // Patrono locale (configurato nelle impostazioni es. "29/06")
+  const patrono = _impostazioni?.patrono || '';
+  if (patrono) {
+    const [ggP, mmP] = patrono.split('/').map(Number);
+    if (ggP === g && mmP === m) return true;
+  }
+  // Pasqua (algoritmo di Gauss)
+  const a=y%19, b=Math.floor(y/100), c=y%100;
+  const d2=Math.floor(b/4), e=b%4, f=Math.floor((b+8)/25);
+  const g2=Math.floor((b-f+1)/3), h2=(19*a+b-d2-g2+15)%30;
+  const i=Math.floor(c/4), k=c%4, l=(32+2*e+2*i-h2-k)%7;
+  const m2=Math.floor((a+11*h2+22*l)/451);
+  const meseP=Math.floor((h2+l-7*m2+114)/31);
+  const giornoP=((h2+l-7*m2+114)%31)+1;
+  const pasqua = new Date(y, meseP-1, giornoP);
+  const pasquetta = new Date(y, meseP-1, giornoP+1);
+  if (data.toDateString()===pasqua.toDateString()) return true;
+  if (data.toDateString()===pasquetta.toDateString()) return true;
+  return false;
+}
+function esportaPresenzeExcel() {
+  const XLSX = window.XLSX;
+  if (!XLSX) { alert('Libreria Excel non disponibile — ricarica la pagina.'); return; }
+  const mese = document.getElementById('p-filter-mese')?.value || new Date().toISOString().substr(0,7);
+  const [anno, meseNum] = mese.split('-').map(Number);
+  const nomeMese = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'][meseNum-1];
+  const wb = XLSX.utils.book_new();
+
+  // Riepilogo mensile
+  const presMese = presenze.filter(p => p.entrata && p.entrata.startsWith(mese));
+  const riepilogo = {};
+  presMese.forEach(p => {
+    const dip = meccanici.find(m=>m.id===p.dipId);
+    if (!dip) return;
+    if (!riepilogo[p.dipId]) riepilogo[p.dipId] = { nome:dip.nome, ruolo:dip.ruolo||(Array.isArray(dip.ruoli)?dip.ruoli[0]:''), giorni:0, oreTot:0, oreStrao:0, orePermesso:0, ritardi:0, minRitardo:0, ferie:0, malattia:0, permesso:0 };
+    const r = riepilogo[p.dipId];
+    if (p.tipo==='ferie')    { r.ferie++;    return; }
+    if (p.tipo==='malattia') { r.malattia++; return; }
+    if (p.tipo==='permesso') { r.permesso++; return; }
+    r.giorni++;
+    r.oreTot      += p.ore_totali || p.oreTotali || 0;
+    r.oreStrao    += p.straordinario || 0;
+    r.orePermesso += p.ore_permesso || p.orePermesso || 0;
+    if (p.ritardo) { r.ritardi++; r.minRitardo += p.minuti_ritardo || p.minutiRitardo || 0; }
+  });
+  const wsR = XLSX.utils.aoa_to_sheet([
+    ['Dipendente','Ruolo','Giorni presenti','Ore totali','Ore straord.','Ore permesso','N° ritardi','Min. ritardo tot.','Giorni ferie','Giorni malattia','Giorni permesso'],
+    ...Object.values(riepilogo).map(r=>[r.nome,r.ruolo,r.giorni,+r.oreTot.toFixed(2),+r.oreStrao.toFixed(2),+r.orePermesso.toFixed(2),r.ritardi,r.minRitardo,r.ferie,r.malattia,r.permesso])
+  ]);
+  wsR['!cols'] = [22,18,14,12,12,12,16,12,14,14].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, wsR, 'Riepilogo');
+
+  // Dettaglio giornaliero
+  const righe = [['Dipendente','Data','Entrata','Uscita','Ore','Straord.','Ritardo','Min. ritardo','Tipo','Note']];
+  [...presMese].sort((a,b)=>a.entrata.localeCompare(b.entrata)).forEach(p => {
+    const dip = meccanici.find(m=>m.id===p.dipId);
+    righe.push([
+      dip?.nome||'—',
+      p.entrata ? new Date(p.entrata).toLocaleDateString('it-IT') : '—',
+      p.entrata ? new Date(p.entrata).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}) : '—',
+      p.uscita  ? new Date(p.uscita).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})  : 'Aperta',
+      +((p.ore_totali||p.oreTotali||0)).toFixed(2),
+      +((p.straordinario||0)).toFixed(2),
+      p.ritardo ? 'Sì' : 'No',
+      p.minuti_ritardo || p.minutiRitardo || 0,
+      p.tipo || 'normale',
+      p.note || '',
+    ]);
+  });
+  const wsD = XLSX.utils.aoa_to_sheet(righe);
+  wsD['!cols'] = [22,12,10,10,8,10,8,12,12,20].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, wsD, 'Dettaglio giornaliero');
+
+  XLSX.writeFile(wb, `Presenze_${nomeMese}_${anno}.xlsx`);
+  showToast(`📊 Presenze_${nomeMese}_${anno}.xlsx scaricato ✓`, 'success');
+}
+
+function _avviaTimerFineTurno() {
+  setInterval(async () => {
+    const imp       = _impostazioni || {};
+    const fineTurno = imp.fine_turno || imp.fineTurno || '17:30';
+    const ora       = new Date();
+    const [hFT, mFT] = fineTurno.split(':').map(Number);
+    if (ora.getHours() !== hFT || ora.getMinutes() !== mFT) return;
+    const presenzeAperte = presenze.filter(p => !p.uscita);
+    for (const p of presenzeAperte) {
+      const mec = meccanici.find(m=>m.id===p.dipId);
+      const oraUscitaDip = mec?.ora_uscita_automatica || mec?.oraUscitaAutomatica || fineTurno;
+      const [hD, mD] = oraUscitaDip.split(':').map(Number);
+      if (ora.getHours() >= hD && ora.getMinutes() >= mD) {
+        await chiudiPresenzaAutomatica(p.dipId, ora.toISOString());
+      }
+    }
+    if (presenzeAperte.length) {
+      renderLivePresenze(); renderPresenze(); updateBadgePresenze();
+      showToast('Fine turno — presenze chiuse automaticamente', 'info');
+    }
+  }, 60000);
 }
 
 function renderRiepilogoPresenze() {
@@ -6559,6 +7224,10 @@ function openModalProdotto(editId) {
     document.getElementById('p-fornitore').value    = '';
   }
   document.getElementById('modal-prodotto').style.display='flex';
+  // Carica fornitori associati
+  _prodFornitori = [];
+  renderProdFornitori();
+  if (editId) loadProdFornitori(editId);
 }
 
 async function saveProdotto() {
@@ -6582,9 +7251,22 @@ async function saveProdotto() {
     note:        document.getElementById('p-note').value.trim(),
   };
   try {
-    if (editingProdottoId) await dbSaveProdotto({...prodotti.find(x=>x.id===editingProdottoId), ...data});
-    else await dbSaveProdotto({id:initId(), createdAt:new Date().toISOString(), ...data});
+    let savedProd;
+    if (editingProdottoId) {
+      await dbSaveProdotto({...prodotti.find(x=>x.id===editingProdottoId), ...data});
+      await saveProdFornitori(editingProdottoId);
+    } else {
+      savedProd = await dbSaveProdotto({id:initId(), createdAt:new Date().toISOString(), ...data});
+      if (savedProd) await saveProdFornitori(savedProd.id);
+    }
     closeModal('modal-prodotto'); renderProdotti(); showToast('Prodotto salvato ✓');
+    // Callback preventivo: aggiungi il nuovo prodotto alla voce ricambio
+    if (_postSaveProdottoPrevCallback !== null && savedProd) {
+      const idx = _postSaveProdottoPrevCallback;
+      _postSaveProdottoPrevCallback = null;
+      prevVociRic[idx] = { ...prevVociRic[idx], desc: savedProd.descrizione, prezzo: savedProd.prezzoVend||0, prodId: savedProd.id };
+      renderVociPrev(); calcTotalePreventivo();
+    }
   } catch(e) { alert('Errore: '+e.message); }
 }
 
@@ -6840,31 +7522,89 @@ const TARIFFE_DEFAULT = {
 
 function caricaTariffe() {
   const saved = _impostazioni.tariffe || JSON.parse(localStorage.getItem('officina_tariffe') || 'null') || TARIFFE_DEFAULT;
-  ['normale','straordinario','strada','festivo'].forEach(tipo => {
+  ['normale','straordinario','strada','festivo','notturno'].forEach(tipo => {
     const t = saved[tipo]||{int:0,cli:0};
     const elInt = document.getElementById('tariffa-'+tipo+'-int');
     const elCli = document.getElementById('tariffa-'+tipo+'-cli');
     if (elInt) elInt.value = t.int||'';
     if (elCli) elCli.value = t.cli||'';
   });
+  // Carica orari
+  const set = (id, val) => { const el=document.getElementById(id); if(el&&val) el.value=val; };
+  set('off-orario-inizio',  _impostazioni.orario_inizio   || _impostazioni.orarioInizio  || '08:30');
+  set('off-soglia-ritardo', _impostazioni.soglia_ritardo  || _impostazioni.sogliaRitardo || '09:00');
+  set('off-fine-turno',     _impostazioni.fine_turno      || _impostazioni.fineTurno     || '17:30');
+  set('off-pausa-inizio',   _impostazioni.pausa_inizio    || _impostazioni.pausaInizio   || '13:00');
+  set('off-pausa-fine',     _impostazioni.pausa_fine      || _impostazioni.pausaFine     || '14:00');
+  set('off-patrono',        _impostazioni.patrono         || '');
+  // Carica voci automatiche
+  set('off-smaltimento',    _impostazioni.smaltimento_perc      || _impostazioni.smaltimentoPerc      || '');
+  set('off-mat-consumo',    _impostazioni.materiale_consumo_perc|| _impostazioni.materialeConsumoPerc || '');
+  // Carica diritti chiamata
+  const dc = _impostazioni.diritti_chiamata || _impostazioni.dirittiChiamata || [];
+  const d  = dc[0] || {};
+  set('off-dc-standard',      d.giorno   || '');
+  set('off-dc-straordinario', d.notte    || '');
+  set('off-dc-festivo',       d.festivo  || '');
 }
 
 async function salvaTariffe() {
   const tariffe = {};
-  ['normale','straordinario','strada','festivo'].forEach(tipo => {
+  ['normale','straordinario','strada','festivo','notturno'].forEach(tipo => {
     tariffe[tipo] = {
-      int: parseFloat(document.getElementById('tariffa-'+tipo+'-int').value)||0,
-      cli: parseFloat(document.getElementById('tariffa-'+tipo+'-cli').value)||0,
+      int: parseFloat(document.getElementById('tariffa-'+tipo+'-int')?.value)||0,
+      cli: parseFloat(document.getElementById('tariffa-'+tipo+'-cli')?.value)||0,
     };
   });
   try {
     await supa.from('impostazioni').upsert({id:'default', tariffe});
     _impostazioni.tariffe = tariffe;
-    localStorage.removeItem('officina_tariffe'); // pulizia legacy
+    localStorage.removeItem('officina_tariffe');
     showToast('Tariffe salvate ✓');
-  } catch(e) {
-    showToast('Errore salvataggio tariffe: '+e.message);
-  }
+  } catch(e) { showToast('Errore: '+e.message); }
+}
+
+async function salvaOrari() {
+  const data = {
+    orario_inizio:  document.getElementById('off-orario-inizio')?.value  || '08:30',
+    soglia_ritardo: document.getElementById('off-soglia-ritardo')?.value || '09:00',
+    fine_turno:     document.getElementById('off-fine-turno')?.value     || '17:30',
+    pausa_inizio:   document.getElementById('off-pausa-inizio')?.value   || '13:00',
+    pausa_fine:     document.getElementById('off-pausa-fine')?.value     || '14:00',
+    patrono:        document.getElementById('off-patrono')?.value.trim() || null,
+  };
+  try {
+    await supa.from('impostazioni').upsert({id:'default', ...data});
+    Object.assign(_impostazioni, data);
+    showToast('Orari salvati ✓');
+  } catch(e) { showToast('Errore: '+e.message); }
+}
+
+async function salvaVociAuto() {
+  const data = {
+    smaltimento_perc:        parseFloat(document.getElementById('off-smaltimento')?.value) || 0,
+    materiale_consumo_perc:  parseFloat(document.getElementById('off-mat-consumo')?.value) || 0,
+  };
+  try {
+    await supa.from('impostazioni').upsert({id:'default', ...data});
+    Object.assign(_impostazioni, data);
+    showToast('Voci automatiche salvate ✓');
+  } catch(e) { showToast('Errore: '+e.message); }
+}
+
+async function salvaDirittiChiamata() {
+  const dc = [{
+    nome:      'Default',
+    giorno:    parseFloat(document.getElementById('off-dc-standard')?.value)      || 0,
+    notte:     parseFloat(document.getElementById('off-dc-straordinario')?.value) || 0,
+    festivo:   parseFloat(document.getElementById('off-dc-festivo')?.value)       || 0,
+    principale: true,
+  }];
+  try {
+    await supa.from('impostazioni').upsert({id:'default', diritti_chiamata: dc});
+    _impostazioni.diritti_chiamata = dc;
+    showToast('Diritti di chiamata salvati ✓');
+  } catch(e) { showToast('Errore: '+e.message); }
 }
 
 function getTariffa(tipo) {
@@ -6882,30 +7622,50 @@ let _bnChannel = null;
 let _bnMsgs    = [];
 const BN_SHOW  = 5; // messaggi recenti visibili, il resto collassato
 
-function bnToggle() {
-  _bnOpen = !_bnOpen;
-  const panel = document.getElementById('bn-panel');
-  const main  = document.querySelector('.main');
-  if (_bnOpen) {
-    panel.style.transform = 'translateX(0)';
-    if (main) main.style.marginRight = '280px';
+// ── Blocco note sidebar ───────────────────────────────────────
+let _bnSidebarOpen = false;
+function bnToggle() { _bnToggleSidebar(); } // alias compatibilità
+function _bnToggleSidebar() {
+  _bnSidebarOpen = !_bnSidebarOpen;
+  const panel   = document.getElementById('bn-sidebar-panel');
+  const chevron = document.getElementById('bn-chevron');
+  if (panel)   panel.style.display   = _bnSidebarOpen ? '' : 'none';
+  if (chevron) chevron.style.transform = _bnSidebarOpen ? 'rotate(180deg)' : '';
+  if (_bnSidebarOpen) {
     bnClearBadge();
+    bnRenderSidebar();
     setTimeout(() => {
       const list = document.getElementById('bn-list');
       if (list) list.scrollTop = list.scrollHeight;
-      document.getElementById('bn-area').focus();
+      document.getElementById('bn-area')?.focus();
     }, 50);
-  } else {
-    panel.style.transform = 'translateX(248px)';
-    if (main) main.style.marginRight = '32px';
   }
+}
+
+function bnRenderSidebar() {
+  const el = document.getElementById('bn-list');
+  if (!el) return;
+  if (!_bnMsgs.length) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">Nessuna nota ancora.</div>';
+    return;
+  }
+  el.innerHTML = _bnMsgs.slice(-20).map(m => {
+    const autore = m.aggiornato_da || '?';
+    const ora    = m.aggiornato_at ? new Date(m.aggiornato_at).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}) : '';
+    const isMe   = autore === bnGetAutore();
+    return `<div style="display:flex;flex-direction:column;align-items:${isMe?'flex-end':'flex-start'}">
+      <div style="max-width:85%;background:${isMe?'var(--accent)':'var(--surface2)'};color:${isMe?'white':'var(--text1)'};border-radius:${isMe?'12px 12px 2px 12px':'12px 12px 12px 2px'};padding:5px 9px;font-size:12px;line-height:1.4">${m.messaggio}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:2px">${isMe?'':autore+' · '}${ora}</div>
+    </div>`;
+  }).join('');
+  el.scrollTop = el.scrollHeight;
 }
 
 function bnClearBadge() {
   document.getElementById('bn-badge').style.display = 'none';
   _bnSeenAt = new Date().toISOString();
   localStorage.setItem('bn_seen_at', _bnSeenAt);
-  supa.from('impostazioni').upsert({id:'default', bn_seen_at: _bnSeenAt}).catch(()=>{});
+  supa.from('impostazioni').upsert({id:'default', bn_seen_at: _bnSeenAt}).then(()=>{}).catch(()=>{});
 }
 
 function bnGetAutore() {
@@ -6997,7 +7757,8 @@ function bnSubscribe() {
       payload => {
         _bnMsgs.push(payload.new);
         bnRender();
-        if (!_bnOpen) document.getElementById('bn-badge').style.display = '';
+        bnRenderSidebar();
+        if (!_bnOpen && !_bnSidebarOpen) document.getElementById('bn-badge').style.display = '';
       })
     .subscribe();
 }
@@ -7448,24 +8209,37 @@ function caricaDatiOfficina() {
 }
 
 // Incrementa numeratori su Supabase
-async function incrementaNumPreventivo() {
-  const n = (_impostazioni.num_prev||1)+1;
-  _impostazioni.num_prev = n;
-  await supa.from('impostazioni').update({num_prev:n}).eq('id','default');
-  caricaDatiOfficina();
+// ═══════════════════════════════════════════════════
+// NUMERATORI DOCUMENTI — unica fonte di verità Supabase
+// Reset automatico a inizio anno
+// ═══════════════════════════════════════════════════
+async function _nextNumero(campo, formato) {
+  const annoCorrente = new Date().getFullYear();
+  const annoShort    = String(annoCorrente).slice(-2);
+  const imp          = _impostazioni || {};
+  // Reset se anno cambiato
+  const annoDB = imp.anno_corrente || imp.annoCorrente || 0;
+  let n = annoDB !== annoCorrente ? 1 : ((imp[campo] || imp[campo.replace('_','')] || 0) + 1);
+  // Salva su Supabase
+  await supa.from('impostazioni').update({
+    [campo]: n,
+    anno_corrente: annoCorrente,
+  }).eq('id','default');
+  // Aggiorna locale
+  _impostazioni[campo] = n;
+  _impostazioni.anno_corrente = annoCorrente;
+  return formato(annoShort, n);
 }
-async function incrementaNumFattura() {
-  const n = (_impostazioni.num_fatt||1)+1;
-  _impostazioni.num_fatt = n;
-  await supa.from('impostazioni').update({num_fatt:n}).eq('id','default');
-  caricaDatiOfficina();
-}
-async function incrementaNumDDT() {
-  const n = (_impostazioni.num_ddt||1)+1;
-  _impostazioni.num_ddt = n;
-  await supa.from('impostazioni').update({num_ddt:n}).eq('id','default');
-  caricaDatiOfficina();
-}
+
+function genNumCommessa()   { return _nextNumero('num_commesse',   (a,n) => `C${a}-${String(n).padStart(4,'0')}`); }
+function genNumPreventivo() { return _nextNumero('num_preventivi', (a,n) => `PRV-${a}-${String(n).padStart(4,'0')}`); }
+function genNumFattura()    { return _nextNumero('num_fatture',    (a,n) => `FAT${a}-${String(n).padStart(3,'0')}`); }
+function genNumDDT()        { return _nextNumero('num_ddt',        (a,n) => `DDT-${a}-${String(n).padStart(4,'0')}`); }
+
+// Alias compatibilità (le vecchie chiamate usavano incrementa*)
+async function incrementaNumPreventivo() { /* già fatto in genNumPreventivo */ }
+async function incrementaNumFattura()    { /* già fatto in genNumFattura */ }
+async function incrementaNumDDT()        { /* già fatto in genNumDDT */ }
 
 // ═══════════════════════════════════════════════════
 // PREVENTIVI
@@ -7482,7 +8256,7 @@ async function loadDocumenti() {
     supa.from('ddt').select('*').order('created_at', {ascending:false}),
     supa.from('vendite').select('*').order('created_at', {ascending:false}),
   ]);
-  preventivi = (prev.data||[]).map(p=>({...p, clienteId:p.cliente_id, veicoloId:p.veicolo_id, vociMano:p.voci_mano||[], vociRic:p.voci_ric||[], vociExtra:p.voci_extra||[], ivaAmt:p.iva_amt, commessaCreata:p.commessa_creata}));
+  preventivi = (prev.data||[]).map(p=>({...p, clienteId:p.cliente_id, veicoloId:p.veicolo_id, vociMano:p.voci_mano||[], vociRic:p.voci_ric||[], vociExtra:p.voci_extra||[], ivaAmt:p.iva_amt, commessaCreata:p.commessa_creata, createdAt:p.created_at}));
   fatture    = (fatt.data||[]).map(f=>({...f, clienteId:f.cliente_id, origineId:f.origine_id, ivaAmt:f.iva_amt, dataPagamento:f.data_pagamento, clEmail:f.cl_email, offRagione:f.off_ragione, offPiva:f.off_piva, offIndirizzo:f.off_indirizzo, offTel:f.off_tel, offEmail:f.off_email, offIban:f.off_iban, offBanca:f.off_banca, offNoteDoc:f.off_note_doc, clRagione:f.cl_ragione, clPiva:f.cl_piva, clCf:f.cl_cf, clIndirizzo:f.cl_indirizzo, clSdi:f.cl_sdi, clPec:f.cl_pec}));
   ddts       = (ddt.data||[]).map(d=>({...d, clienteId:d.cliente_id}));
   vendite    = (vend.data||[]).map(v=>({...v, clienteId:v.cliente_id, totNetto:v.tot_netto, ivaAmt:v.iva_amt}));
@@ -7497,10 +8271,8 @@ function setStatoPrevFilter(el, stato) {
   renderPreventivi();
 }
 
-function genNumPreventivo() {
-  const d = getDatiOfficina();
-  const n = d.numPrev || 1;
-  return `PRV-${new Date().getFullYear()}-${String(n).padStart(4,'0')}`;
+async function _genNumPreventivo() {
+  return await _nextNumero('num_preventivi', (a,n) => `PRV-${a}-${String(n).padStart(4,'0')}`);
 }
 
 function openModalPreventivo(editId) {
@@ -7524,7 +8296,7 @@ function openModalPreventivo(editId) {
     prevVociMano=[...(p.vociMano||[])]; prevVociRic=[...(p.vociRic||[])]; prevVociExtra=[...(p.vociExtra||[])];
   } else {
     document.getElementById('modal-preventivo-title').textContent = 'Nuovo preventivo';
-    document.getElementById('modal-preventivo-num').textContent = genNumPreventivo();
+    document.getElementById('modal-preventivo-num').textContent = '— verrà assegnato al salvataggio —';
     ['prev-oggetto','prev-note'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('prev-data').value = new Date().toISOString().split('T')[0];
     document.getElementById('prev-validita').value = 30;
@@ -7564,10 +8336,94 @@ function renderVociPrev() {
         </button>
       </div>`).join('');
   };
+
+  // Ricambi con suggerimenti da magazzino
+  const ricEl = document.getElementById('prev-voci-ric-container');
+  if (ricEl) {
+    ricEl.innerHTML = prevVociRic.map((v,i)=>`
+      <div style="display:grid;grid-template-columns:1fr 80px 90px 90px 28px;gap:6px;margin-bottom:6px;align-items:center">
+        <div style="position:relative">
+          <input type="text" placeholder="Cerca o scrivi ricambio…" value="${v.desc||''}"
+            autocomplete="off"
+            oninput="prevVociRic[${i}].desc=this.value;calcTotalePreventivo();_suggerisciRicPrev(this,${i})"
+            onblur="setTimeout(()=>{const d=document.getElementById('dd-ric-prev-${i}');if(d)d.style.display='none'},200)"
+            style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif">
+          <div id="dd-ric-prev-${i}" style="display:none;position:absolute;left:0;right:0;top:calc(100%+2px);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);z-index:2200;max-height:200px;overflow-y:auto">
+            <div onclick="_creaProdottoDaPreventivo(${i})" style="padding:9px 12px;cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px"
+              onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+              + Crea nuovo articolo in magazzino
+            </div>
+          </div>
+        </div>
+        <input type="number" placeholder="1" min="0" step="0.5" value="${v.qta||1}"
+          oninput="prevVociRic[${i}].qta=parseFloat(this.value)||0;calcTotalePreventivo()"
+          style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace;text-align:center">
+        <input type="number" placeholder="0,00" min="0" step="0.01" value="${v.prezzo||''}"
+          oninput="prevVociRic[${i}].prezzo=parseFloat(this.value)||0;calcTotalePreventivo()"
+          style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace">
+        <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);text-align:right">€ ${((v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100)).toFixed(2)}</span>
+        <button type="button" class="del-btn" onclick="prevVociRic.splice(${i},1);renderVociPrev();calcTotalePreventivo()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+        </button>
+      </div>`).join('');
+  }
+
   renderGrp(prevVociMano,  'prevVociMano',  'prev-voci-mano-container');
-  renderGrp(prevVociRic,   'prevVociRic',   'prev-voci-ric-container');
   renderGrp(prevVociExtra, 'prevVociExtra', 'prev-voci-extra-container');
 }
+
+// Suggerimenti ricambi da magazzino nel preventivo
+function _suggerisciRicPrev(input, idx) {
+  const q  = input.value.toLowerCase();
+  const dd = document.getElementById(`dd-ric-prev-${idx}`);
+  if (!dd) return;
+  if (!q || q.length < 2) { dd.style.display = 'none'; return; }
+
+  const matches = prodotti.filter(p =>
+    (p.descrizione||'').toLowerCase().includes(q) ||
+    (p.codInt||'').toLowerCase().includes(q) ||
+    (p.codForn||'').toLowerCase().includes(q) ||
+    ([...(Array.isArray(p.barcode)?p.barcode:(p.barcode?[p.barcode]:[])).join(' ')].join('').toLowerCase().includes(q))
+  ).slice(0, 8);
+
+  const creaRow = `<div onclick="_creaProdottoDaPreventivo(${idx})" style="padding:9px 12px;cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">+ Crea nuovo articolo in magazzino</div>`;
+
+  if (!matches.length) {
+    dd.innerHTML = creaRow;
+    dd.style.display = '';
+    return;
+  }
+
+  dd.innerHTML = matches.map(p => `
+    <div onclick="_selezionaRicPrev(${idx},'${p.id}')"
+      style="padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px"
+      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <div style="font-weight:600">${p.descrizione}</div>
+      <div style="font-size:11px;color:var(--text3)">
+        ${p.codInt||''} · Giacenza: ${p.giacenza||0} ${p.um||'pz'} · € ${(p.prezzoVend||0).toFixed(2)}
+      </div>
+    </div>`).join('') + creaRow;
+  dd.style.display = '';
+}
+
+function _selezionaRicPrev(idx, prodId) {
+  const p = prodotti.find(x => x.id === prodId);
+  if (!p) return;
+  prevVociRic[idx] = { ...prevVociRic[idx], desc: p.descrizione, prezzo: p.prezzoVend||0, prodId: p.id };
+  renderVociPrev();
+  calcTotalePreventivo();
+  document.getElementById(`dd-ric-prev-${idx}`)?.style && (document.getElementById(`dd-ric-prev-${idx}`).style.display = 'none');
+}
+
+function _creaProdottoDaPreventivo(idx) {
+  // Chiudi dropdown
+  document.getElementById(`dd-ric-prev-${idx}`)?.style && (document.getElementById(`dd-ric-prev-${idx}`).style.display = 'none');
+  // Apri modal prodotto con callback
+  _postSaveProdottoPrevCallback = idx;
+  const mp = document.getElementById('modal-prodotto');
+  if (mp) { mp.style.zIndex = '2300'; openModalProdotto(); }
+}
+let _postSaveProdottoPrevCallback = null;
 
 function addVocePrev(tipo) {
   if (tipo==='mano')  prevVociMano.push({desc:'',qta:1,prezzo:0});
@@ -7584,8 +8440,9 @@ function calcTotalePreventivo() {
   const fmt = n => '€ '+n.toFixed(2).replace('.',',');
   const s = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
   s('prev-totale',fmt(totale)); s('prev-tot-netto',fmt(imponibile)); s('prev-tot-iva',fmt(ivaAmt));
+  s('prev-imponibile',fmt(imponibile)); s('prev-iva-amt',fmt(ivaAmt));
   const lbl=document.getElementById('prev-iva-label'); if(lbl) lbl.textContent=iva+'%';
-  return {imponibile,ivaAmt,totale,iva};
+  return imponibile;
 }
 
 async function salvaPreventivo() {
@@ -7608,15 +8465,14 @@ async function salvaPreventivo() {
       const { data: r, error: e } = await supa.from('preventivi').update(data).eq('id', editingPreventivoId).select().single();
       console.log('[PREV] update:', r, e);
       const i = preventivi.findIndex(p=>p.id===editingPreventivoId);
-      if (i>=0) preventivi[i] = {...preventivi[i], ...r, clienteId:r.cliente_id, veicoloId:r.veicolo_id, vociMano:r.voci_mano||[], vociRic:r.voci_ric||[], vociExtra:r.voci_extra||[], ivaAmt:r.iva_amt};
+      if (i>=0) preventivi[i] = {...preventivi[i], ...r, clienteId:r.cliente_id, veicoloId:r.veicolo_id, vociMano:r.voci_mano||[], vociRic:r.voci_ric||[], vociExtra:r.voci_extra||[], ivaAmt:r.iva_amt, createdAt:r.created_at};
     } else {
-      const numero = genNumPreventivo();
+      const numero = await _genNumPreventivo();
       console.log('[PREV] inserting:', {...data, numero});
       const { data: r, error: e } = await supa.from('preventivi').insert({...data, numero}).select().single();
       console.log('[PREV] insert result:', r, e);
       if (e) { alert('Errore Supabase: ' + e.message); return; }
-      preventivi.unshift({...r, clienteId:r.cliente_id, veicoloId:r.veicolo_id, vociMano:r.voci_mano||[], vociRic:r.voci_ric||[], vociExtra:r.voci_extra||[], ivaAmt:r.iva_amt});
-      incrementaNumPreventivo();
+      preventivi.unshift({...r, clienteId:r.cliente_id, veicoloId:r.veicolo_id, vociMano:r.voci_mano||[], vociRic:r.voci_ric||[], vociExtra:r.voci_extra||[], ivaAmt:r.iva_amt, createdAt:r.created_at});
     }
     closeModal('modal-preventivo'); renderPreventivi();
     const _bp=document.getElementById('badge-preventivi'); if(_bp) _bp.textContent=preventivi.filter(p=>p.stato==='bozza'||p.stato==='inviato').length;
@@ -7663,8 +8519,7 @@ function renderPreventivi() {
         <div style="display:flex;gap:6px">
           <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();stampaPreventivo('${p.id}')">PDF</button>
           ${p.stato==='accettato'?`
-            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();convertiInCommessa('${p.id}')">→ Commessa</button>
-            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();convertiInDDT('${p.id}')">→ DDT</button>
+            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();apriConvertPrev('${p.id}')">→ Converti</button>
           `:''}
           ${p.stato==='convertito'?'<span class="badge badge-gray" style="align-self:center">✓ Convertito</span>':''}
           <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();eliminaPreventivo('${p.id}')">Elimina</button>
@@ -7687,7 +8542,7 @@ async function convertiInCommessa(prevId) {
   if (!p) return;
   if (!confirm(`Convertire ${p.numero} in commessa?\nI ricambi presenti verranno scaricati dal magazzino.`)) return;
   try {
-    const numero = genNumCommessa();
+    const numero = await _genNumCommessa();
     const comId  = initId();
     const vociRic = (p.vociRic || []).map(v => ({...v}));
 
@@ -7745,7 +8600,7 @@ async function convertiInDDT(prevId) {
     ].filter(r => r.desc);
     if (!righe.length) { alert('Nessuna voce da convertire.'); return; }
 
-    const numDdt = `DDT-${new Date().getFullYear()}-${String(_impostazioni.num_ddt || 1).padStart(4, '0')}`;
+    const numDdt = await _nextNumero('num_ddt',(a,n)=>`DDT-${new Date().getFullYear()}-${String(n).padStart(4,'0')}`);
     const row = {
       numero: numDdt,
       data: new Date().toISOString().split('T')[0],
@@ -7757,7 +8612,6 @@ async function convertiInDDT(prevId) {
     const { data: r, error } = await supa.from('ddt').insert(row).select().single();
     if (error) throw error;
     ddts.unshift({ ...r, clienteId: r.cliente_id });
-    await incrementaNumDDT();
 
     // Segna preventivo come convertito
     await supa.from('preventivi').update({ commessa_creata: true, stato: 'convertito' }).eq('id', p.id);
@@ -7836,18 +8690,120 @@ function aggiungiPrimoProdottoVb() {
 let _checkoutDdt = null;
 let _pendingFirmaDDT = null;
 
-async function emmettiDDT() {
+// ── Vendita differita → solo DDT ─────────────────────────────
+// ── Vendita unificata — metodo dall'anagrafica cliente ────────
+async function avviaVendita() {
   const righe = vbRighe.filter(r=>r.desc&&r.qta>0);
-  if (!righe.length) { alert('Aggiungi almeno un ricambio.'); return; }
+  if (!righe.length) { alert('Aggiungi almeno un articolo.'); return; }
   const cId = document.getElementById('vb-cliente')?.value || null;
-  const ddt = await creaVbDDT(righe, cId);
+  const cl  = clienti.find(c=>c.id===cId);
+  const IMMEDIATI = ['contanti','carta','pos','bonifico'];
+  const metodoCl  = cl?.pagamento || '';
+  let metodo    = metodoCl;
+  let immediato = IMMEDIATI.includes(metodoCl);
+  if (!metodoCl) {
+    metodo = await _scegliMetodoPagamento([
+      { key:'carta',    label:'💳 Carta / POS — immediato' },
+      { key:'contanti', label:'💵 Contanti — immediato' },
+      { key:'bonifico', label:'🏦 Bonifico istantaneo — immediato' },
+      { key:'30gg',     label:'📋 30 giorni — differito' },
+      { key:'60gg',     label:'📋 60 giorni — differito' },
+      { key:'riba',     label:'📋 Ri.Ba. — differito' },
+    ]);
+    if (!metodo) return;
+    immediato = IMMEDIATI.includes(metodo);
+  }
+  const ddt = await creaVbDDT(righe, cId, metodo);
   if (!ddt) return;
-  resetVendita();
-  renderDDT();
-  setDocTab('ddt');
+  await _scaricoMagazzinoVb(righe);
+  resetVendita(); renderDDT(); setDocTab('ddt');
   showToast(`DDT ${ddt.numero} emesso ✓`);
-  await checkoutDDT(ddt);
+  ddt._metodoCheckout = immediato ? metodo : 'solo-ddt';
+  apriFirmaDDT(ddt);
 }
+async function vendita_differita() { await avviaVendita(); }
+async function vendita_immediata() { await avviaVendita(); }
+
+// ── Vendita immediata → DDT + Fattura + Email ─────────────────
+async function vendita_immediata() {
+  const righe = vbRighe.filter(r=>r.desc&&r.qta>0);
+  if (!righe.length) { alert('Aggiungi almeno un articolo.'); return; }
+  const cId = document.getElementById('vb-cliente')?.value || null;
+  const cl  = clienti.find(c=>c.id===cId);
+
+  // Scegli metodo pagamento
+  const metodi = [
+    { key:'carta',    label:'💳 Carta / POS' },
+    { key:'contanti', label:'💵 Contanti' },
+    { key:'bonifico', label:'🏦 Bonifico istantaneo' },
+  ];
+  const metodo = await _scegliMetodoPagamento(metodi);
+  if (!metodo) return;
+
+  const ddt = await creaVbDDT(righe, cId, metodo);
+  if (!ddt) return;
+  // Scarica magazzino
+  await _scaricoMagazzinoVb(righe);
+  resetVendita(); renderDDT(); setDocTab('ddt');
+  showToast(`DDT ${ddt.numero} emesso ✓`);
+  // Firma → poi fattura automatica
+  ddt._metodoCheckout = metodo;
+  apriFirmaDDT(ddt);
+}
+
+// ── Scelta metodo pagamento (mini modal inline) ───────────────
+function _scegliMetodoPagamento(metodi) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+    overlay.innerHTML = `
+      <div style="background:var(--surface);border-radius:var(--radius-lg);padding:24px;max-width:360px;width:90%;box-shadow:var(--shadow-lg)">
+        <div style="font-size:16px;font-weight:700;margin-bottom:16px">Metodo di pagamento</div>
+        ${metodi.map(m=>`
+          <button onclick="this.closest('[data-metodo-overlay]').dataset.result='${m.key}'"
+            style="width:100%;padding:14px;margin-bottom:8px;border:1.5px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);font-size:14px;font-weight:600;cursor:pointer;text-align:left;font-family:'DM Sans',sans-serif"
+            onmouseover="this.style.borderColor='var(--accent)';this.style.background='var(--accent-light)'"
+            onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--surface)'">
+            ${m.label}
+          </button>`).join('')}
+        <button onclick="this.closest('[data-metodo-overlay]').dataset.result='cancel'"
+          style="width:100%;padding:10px;border:none;background:none;cursor:pointer;font-size:13px;color:var(--text3);font-family:'DM Sans',sans-serif">
+          Annulla
+        </button>
+      </div>`;
+    overlay.setAttribute('data-metodo-overlay','');
+    const observer = new MutationObserver(() => {
+      const result = overlay.dataset.result;
+      if (!result) return;
+      observer.disconnect();
+      document.body.removeChild(overlay);
+      resolve(result === 'cancel' ? null : result);
+    });
+    observer.observe(overlay, { attributes: true, attributeFilter: ['data-result'] });
+    // Workaround: poll dataset
+    const poll = setInterval(() => {
+      if (overlay.dataset.result) { clearInterval(poll); observer.disconnect(); document.body.removeChild(overlay); resolve(overlay.dataset.result==='cancel'?null:overlay.dataset.result); }
+    }, 100);
+    document.body.appendChild(overlay);
+  });
+}
+
+// ── Scarico magazzino da righe vendita ────────────────────────
+async function _scaricoMagazzinoVb(righe) {
+  for (const r of righe.filter(x=>x.prodId)) {
+    const pi = prodotti.findIndex(p=>p.id===r.prodId);
+    if (pi>=0) {
+      prodotti[pi].giacenza = (prodotti[pi].giacenza||0) - (r.qta||1);
+      await dbSaveProdotto(prodotti[pi]);
+    }
+  }
+  renderProdotti();
+  updateBadgeSottoScorta();
+}
+
+async function emmettiDDT() { await avviaVendita(); }
+
+// ── Vendita differita → solo DDT ─────────────────────────────
 
 async function checkoutDDT(ddt) {
   _checkoutDdt = ddt;
@@ -7904,14 +8860,34 @@ function saltaFirmaDDT() {
 
 async function postFirmaDDT(ddt) {
   if (!ddt) return;
-  const metodo = ddt._metodoCheckout;
-  const righe  = (ddt.righe||[]).map(r=>({desc:r.desc,qta:r.qta||1,prezzo:r.prezzo||0}));
-  if (metodo && metodo !== 'solo-ddt') {
+  const metodo  = ddt._metodoCheckout;
+  const cl      = clienti.find(c=>c.id===ddt.clienteId);
+  const off     = getDatiOfficina();
+  const righe   = (ddt.righe||[]).map(r=>({desc:r.desc,qta:r.qta||1,prezzo:r.prezzo||0,sconto:r.sconto||0}));
+  const immediato = metodo && metodo !== 'solo-ddt';
+
+  // EMAIL — sempre, se il cliente ha email
+  if (cl?.email) {
+    try {
+      await inviaEmailDDT(ddt, cl, off);
+      showToast(`📧 DDT inviato a ${cl.email}`, 'success');
+    } catch(e) { console.warn('Email DDT non inviata:', e.message); }
+  }
+
+  // FATTURA — solo se pagamento immediato
+  if (immediato) {
     apriFatturaModal({
       origine:'ddt', origineId:ddt.id,
       clienteId:ddt.clienteId||null,
       descrizione:`DDT ${ddt.numero}`, veicolo:'', righe,
     });
+  } else {
+    showToast(`DDT ${ddt.numero} salvato — fattura da emettere`, 'info');
+  }
+
+  // STAMPA — opzionale, chiedi
+  if (confirm(`Stampare il DDT ${ddt.numero}?`)) {
+    apriStampa(generaHtmlDDT(ddt, off, cl));
   }
 }
 
@@ -8098,7 +9074,7 @@ async function creaVbDDT(righe, clienteIdOverride) {
   const cId  = document.getElementById('vb-cliente').value;
   const data = document.getElementById('vb-data').value;
   const note = document.getElementById('vb-note').value;
-  const numDdt = `DDT-${new Date().getFullYear()}-${String(_impostazioni.num_ddt||1).padStart(4,'0')}`;
+  const numDdt = await _nextNumero('num_ddt',(a,n)=>`DDT-${new Date().getFullYear()}-${String(n).padStart(4,'0')}`);
   try {
     // Scarica giacenze
     for (const r of righe.filter(r=>r.prodId)) {
@@ -8115,7 +9091,6 @@ async function creaVbDDT(righe, clienteIdOverride) {
     if (error) throw error;
     const ddt = {...r, clienteId:r.cliente_id};
     ddts.unshift(ddt);
-    await incrementaNumDDT();
     updateBadgeMagazzino();
     return ddt;
   } catch(e) { alert('Errore: '+e.message); return null; }
@@ -8131,50 +9106,97 @@ function resetVendita() {
   if (drop) drop.style.display='none';
 }
 
-function aggiungiRigaVb() { vbRighe.push({prodId:'',desc:'',qta:1,prezzo:0}); renderRigheVb(); }
+function aggiungiRigaVb() { vbRighe.push({prodId:'',desc:'',qta:1,prezzo:0,sconto:0}); renderRigheVb(); }
 
 function renderRigheVb() {
-  document.getElementById('vb-righe').innerHTML=vbRighe.map((r,i)=>`
-    <div style="display:grid;grid-template-columns:1fr 70px 90px 90px 28px;gap:6px;margin-bottom:6px;align-items:center">
+  document.getElementById('vb-righe').innerHTML = vbRighe.map((r,i)=>`
+    <div style="display:grid;grid-template-columns:1fr 65px 85px 55px 75px 28px;gap:6px;margin-bottom:6px;align-items:center">
       <div style="position:relative">
-        <input type="text" placeholder="Articolo / codice" value="${r.desc||''}"
+        <input type="text" placeholder="Cerca articolo…" value="${r.desc||''}"
+          autocomplete="off"
           oninput="vbRighe[${i}].desc=this.value;cercaProdottoVb(this,${i})"
+          onblur="setTimeout(()=>{const d=document.getElementById('vb-drop-${i}');if(d)d.style.display='none'},200)"
           style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif">
-        <div id="vb-drop-${i}" style="display:none;position:absolute;left:0;right:0;top:calc(100%+2px);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);z-index:300;max-height:160px;overflow-y:auto"></div>
+        <div id="vb-drop-${i}" style="display:none;position:absolute;left:0;right:0;top:calc(100%+2px);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);z-index:2200;max-height:200px;overflow-y:auto"></div>
       </div>
-      <input type="number" placeholder="1" min="0" step="0.5" value="${r.qta||1}"
+      <input type="number" placeholder="Qtà" min="0" step="0.5" value="${r.qta||1}"
         oninput="vbRighe[${i}].qta=parseFloat(this.value)||0;calcTotaleVb()"
-        style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace;text-align:center">
-      <input type="number" placeholder="0,00" min="0" step="0.01" value="${r.prezzo||''}"
+        style="padding:7px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace;text-align:center">
+      <input type="number" placeholder="€" min="0" step="0.01" value="${r.prezzo||''}"
         oninput="vbRighe[${i}].prezzo=parseFloat(this.value)||0;calcTotaleVb()"
-        style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace">
-      <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);text-align:right">€${((r.qta||1)*(r.prezzo||0)).toFixed(2)}</span>
+        style="padding:7px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace">
+      <input type="number" placeholder="Sc%" min="0" max="100" value="${r.sconto||''}"
+        oninput="vbRighe[${i}].sconto=parseFloat(this.value)||0;calcTotaleVb()"
+        style="padding:7px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace;text-align:center">
+      <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);text-align:right">
+        €${((r.qta||1)*(r.prezzo||0)*(1-(r.sconto||0)/100)).toFixed(2)}
+      </span>
       <button type="button" class="del-btn" onclick="vbRighe.splice(${i},1);renderRigheVb();calcTotaleVb()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
       </button>
     </div>`).join('');
+  // Intestazione colonne
+  const head = document.getElementById('vb-righe-head');
+  if (head) head.innerHTML = vbRighe.length ? `
+    <div style="display:grid;grid-template-columns:1fr 65px 85px 55px 75px 28px;gap:6px;margin-bottom:4px">
+      <div style="font-size:11px;color:var(--text3);font-weight:600">Articolo</div>
+      <div style="font-size:11px;color:var(--text3);font-weight:600;text-align:center">Qtà</div>
+      <div style="font-size:11px;color:var(--text3);font-weight:600">Prezzo €</div>
+      <div style="font-size:11px;color:var(--text3);font-weight:600;text-align:center">Sc. %</div>
+      <div style="font-size:11px;color:var(--text3);font-weight:600;text-align:right">Totale</div>
+      <div></div>
+    </div>` : '';
   calcTotaleVb();
 }
 
-function cercaProdottoVb(input,idx) {
-  const q=input.value.trim().toLowerCase();
-  const drop=document.getElementById('vb-drop-'+idx);
-  if(q.length<2){drop.style.display='none';return;}
-  const filtrati=prodotti.filter(p=>(p.descrizione||p.desc||'').toLowerCase().includes(q)||(p.codInt||'').toLowerCase().includes(q)).slice(0,6);
-  if(!filtrati.length){drop.style.display='none';return;}
-  drop.style.display='block';
-  drop.innerHTML=filtrati.map(p=>`<div onclick="selezionaProdottoVb(${idx},'${p.id}')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:12px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''"><div style="font-weight:500">${p.descrizione||p.desc}</div><div style="color:var(--text3);font-family:'DM Mono',monospace;font-size:11px">Giac:${p.giacenza} · €${(p.prezzoVend||0).toFixed(2)}</div></div>`).join('');
+function cercaProdottoVb(input, idx) {
+  const q = input.value.trim().toLowerCase();
+  const drop = document.getElementById('vb-drop-'+idx);
+  if (!drop) return;
+  if (q.length < 2) { drop.style.display='none'; return; }
+  const filtrati = prodotti.filter(p =>
+    (p.descrizione||p.desc||'').toLowerCase().includes(q) ||
+    (p.codInt||'').toLowerCase().includes(q) ||
+    ([...(Array.isArray(p.barcode)?p.barcode:[])].join(' ')).toLowerCase().includes(q)
+  ).slice(0, 8);
+  if (!filtrati.length) { drop.style.display='none'; return; }
+  drop.style.display = 'block';
+  drop.innerHTML = filtrati.map(p=>`
+    <div onclick="selezionaProdottoVb(${idx},'${p.id}')"
+      style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:12px"
+      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <div style="font-weight:500">${p.descrizione||p.desc}</div>
+      <div style="color:var(--text3);font-family:'DM Mono',monospace;font-size:11px">
+        Giacenza: ${p.giacenza||0} ${p.um||'pz'} · € ${(p.prezzoVend||0).toFixed(2)}
+      </div>
+    </div>`).join('');
 }
 
-function selezionaProdottoVb(idx,prodId) {
-  const p=prodotti.find(x=>x.id===prodId); if(!p) return;
-  vbRighe[idx]={prodId:p.id,desc:p.descrizione||p.desc,qta:1,prezzo:p.prezzoVend||0};
-  document.getElementById('vb-drop-'+idx).style.display='none'; renderRigheVb();
+function selezionaProdottoVb(idx, prodId) {
+  const p = prodotti.find(x=>x.id===prodId); if(!p) return;
+  vbRighe[idx] = {prodId:p.id, desc:p.descrizione||p.desc, qta:1, prezzo:p.prezzoVend||0, sconto:0};
+  document.getElementById('vb-drop-'+idx).style.display='none';
+  renderRigheVb();
 }
 
 function calcTotaleVb() {
-  const tot=vbRighe.reduce((s,r)=>s+(r.qta||1)*(r.prezzo||0),0);
-  document.getElementById('vb-totale').textContent='€ '+tot.toFixed(2).replace('.',','); return tot;
+  const cl  = clienti.find(c=>c.id===document.getElementById('vb-cliente')?.value);
+  const iva = cl?.iva || 22;
+  const imp = vbRighe.reduce((s,r)=>s+(r.qta||1)*(r.prezzo||0)*(1-(r.sconto||0)/100), 0);
+  const ivaAmt = imp * iva / 100;
+  const tot    = imp + ivaAmt;
+  const el = document.getElementById('vb-totale');
+  if (el) el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);padding:4px 0">
+      <span>Imponibile</span><span style="font-family:'DM Mono',monospace">€ ${imp.toFixed(2).replace('.',',')}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);padding:4px 0">
+      <span>IVA ${iva}%</span><span style="font-family:'DM Mono',monospace">€ ${ivaAmt.toFixed(2).replace('.',',')}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:700;padding:8px 0;border-top:2px solid var(--border);margin-top:4px">
+      <span>Totale</span><span style="font-family:'DM Mono',monospace">€ ${tot.toFixed(2).replace('.',',')}</span>
+    </div>`;
+  return { imp, ivaAmt, tot, iva };
 }
 
 async function stampaVendita() {
@@ -8212,7 +9234,89 @@ function ristampaVendita(id) {
   apriStampa(generaHtmlDocumento('Documento di vendita',v,getDatiOfficina(),clienti.find(c=>c.id===v.clienteId)));
 }
 // ═══════════════════════════════════════════════════
-// DDT
+// PRODOTTI FORNITORI
+// ═══════════════════════════════════════════════════
+let _prodFornitori = []; // righe in editing
+
+function renderProdFornitori() {
+  const el = document.getElementById('p-fornitori-lista');
+  if (!el) return;
+  if (!_prodFornitori.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0">Nessun fornitore associato.</div>';
+    return;
+  }
+  el.innerHTML = _prodFornitori.map((r, i) => `
+    <div style="display:grid;grid-template-columns:1fr 110px 120px 80px 28px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+      <select onchange="_prodFornitori[${i}].fornitoreId=this.value"
+        style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif">
+        <option value="">— Seleziona fornitore —</option>
+        ${fornitori.map(f=>`<option value="${f.id}" ${f.id===r.fornitoreId?'selected':''}>${f.ragione}</option>`).join('')}
+      </select>
+      <input type="text" value="${r.codForn||''}" placeholder="Cod. fornitore"
+        oninput="_prodFornitori[${i}].codForn=this.value"
+        style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace">
+      <input type="number" value="${r.prezzoAcq||''}" placeholder="€ acquisto" min="0" step="0.01"
+        oninput="_prodFornitori[${i}].prezzoAcq=parseFloat(this.value)||0"
+        style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;white-space:nowrap">
+        <input type="checkbox" ${r.principale?'checked':''} onchange="_setPrincipale(${i},this.checked)"> Principale
+      </label>
+      <button type="button" class="del-btn" onclick="_prodFornitori.splice(${i},1);renderProdFornitori()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+      </button>
+    </div>`).join('');
+}
+
+function _setPrincipale(idx, val) {
+  if (val) _prodFornitori.forEach((r,i) => r.principale = i===idx);
+  else _prodFornitori[idx].principale = false;
+  renderProdFornitori();
+}
+
+function aggiungiFornitoreRiga() {
+  _prodFornitori.push({ fornitoreId:'', codForn:'', prezzoAcq:0, principale:_prodFornitori.length===0 });
+  renderProdFornitori();
+}
+
+async function loadProdFornitori(prodId) {
+  try {
+    const { data } = await supa.from('prodotti_fornitori').select('*').eq('prod_id', prodId);
+    _prodFornitori = (data||[]).map(r=>({
+      id: r.id,
+      fornitoreId: r.fornitore_id,
+      codForn:     r.cod_forn || '',
+      prezzoAcq:   r.prezzo_acq || 0,
+      principale:  r.principale || false,
+    }));
+  } catch(e) { _prodFornitori = []; }
+  renderProdFornitori();
+}
+
+async function saveProdFornitori(prodId) {
+  // Elimina vecchie righe e reinserisce
+  try {
+    await supa.from('prodotti_fornitori').delete().eq('prod_id', prodId);
+    const righe = _prodFornitori.filter(r=>r.fornitoreId);
+    if (!righe.length) return;
+    await supa.from('prodotti_fornitori').insert(righe.map(r=>({
+      prod_id:      prodId,
+      fornitore_id: r.fornitoreId,
+      cod_forn:     r.codForn || null,
+      prezzo_acq:   r.prezzoAcq || 0,
+      principale:   r.principale || false,
+    })));
+    // Aggiorna prezzo acquisto principale sul prodotto
+    const princ = righe.find(r=>r.principale) || righe[0];
+    if (princ?.prezzoAcq) {
+      const pi = prodotti.findIndex(p=>p.id===prodId);
+      if (pi>=0 && prodotti[pi].prezzoAcq !== princ.prezzoAcq) {
+        prodotti[pi].prezzoAcq = princ.prezzoAcq;
+        await supa.from('prodotti').update({prezzo_acq: princ.prezzoAcq}).eq('id', prodId);
+      }
+    }
+  } catch(e) { console.warn('saveProdFornitori error:', e.message); }
+}
+
 // ═══════════════════════════════════════════════════
 
 async function generaDDTdaVendita() {
@@ -8220,13 +9324,12 @@ async function generaDDTdaVendita() {
   if(!righe.length){alert('Aggiungi almeno un articolo.');return;}
   const off=getDatiOfficina(); const cId=document.getElementById('vb-cliente').value;
   const cl=clienti.find(c=>c.id===cId); const data=document.getElementById('vb-data').value;
-  const numDdt=`DDT-${new Date().getFullYear()}-${String(_impostazioni.num_ddt||1).padStart(4,'0')}`;
+  const numDdt=await _nextNumero('num_ddt',(a,n)=>`DDT-${new Date().getFullYear()}-${String(n).padStart(4,'0')}`);
   try {
     const row = {numero:numDdt, data:data||null, cliente_id:cId||null, righe, note:document.getElementById('vb-note').value, causale:'Vendita a banco'};
     const { data:r, error } = await supa.from('ddt').insert(row).select().single();
     if (error) throw error;
     ddts.unshift({...r, clienteId:r.cliente_id});
-    incrementaNumDDT();
     apriStampa(generaHtmlDDT({...r, clienteId:r.cliente_id},off,cl));
     renderDDT(); showToast('DDT emesso ✓');
   } catch(e) { showToast('Errore: '+e.message); }
@@ -8541,14 +9644,13 @@ async function salvaEStampaDDT() {
   const data    = document.getElementById('ddt-data').value;
   const causale = document.getElementById('ddt-causale').value;
   const note    = document.getElementById('ddt-note').value;
-  const numDdt  = `DDT-${new Date().getFullYear()}-${String(_impostazioni.num_ddt||1).padStart(4,'0')}`;
+  const numDdt  = await _nextNumero('num_ddt',(a,n)=>`DDT-${new Date().getFullYear()}-${String(n).padStart(4,'0')}`);
   try {
     const row = {numero:numDdt, data:data||null, cliente_id:_ddtClienteId||null, righe, causale, note, stato:'aperto'};
     const { data:r, error } = await supa.from('ddt').insert(row).select().single();
     if (error) throw error;
     const ddt = {...r, clienteId:r.cliente_id};
     ddts.unshift(ddt);
-    await incrementaNumDDT();
     closeModal('modal-ddt');
     renderDDT();
     showToast('DDT emesso ✓');
@@ -8707,7 +9809,7 @@ function apriFatturaModal(draft) {
   _fattDraft = draft;
   const cl  = clienti.find(c=>c.id===draft.clienteId);
   const oggi = new Date().toISOString().split('T')[0];
-  document.getElementById('fatt-numero').textContent      = genNumFattura();
+  document.getElementById('fatt-numero').textContent = '— verrà assegnato al salvataggio —';
   document.getElementById('fatt-cliente-nome').textContent = cl?cl.ragione:'Cliente occasionale';
   document.getElementById('fatt-cliente-det').textContent  = cl?[cl.piva?'P.IVA: '+cl.piva:'',cl.indirizzo||'',cl.tel?'Tel: '+cl.tel:''].filter(Boolean).join(' · '):'';
   document.getElementById('fatt-desc').textContent        = draft.descrizione;
@@ -8740,7 +9842,7 @@ async function salvaFattura() {
   const tots = calcolaFattTotali();
   const cl   = clienti.find(c=>c.id===_fattDraft.clienteId);
   const off  = getDatiOfficina();
-  const numero = genNumFattura();
+  const numero = await _nextNumero('num_fatture',(a,n)=>`FAT${new Date().getFullYear()}-${String(n).padStart(3,'0')}`);
   const row = {
     numero,
     data:       document.getElementById('fatt-data').value || null,
@@ -8770,7 +9872,6 @@ async function salvaFattura() {
       offTel:r.off_tel, offEmail:r.off_email, offIban:r.off_iban, offBanca:r.off_banca, offNoteDoc:r.off_note_doc,
       clRagione:r.cl_ragione, clPiva:r.cl_piva, clCf:r.cl_cf, clIndirizzo:r.cl_indirizzo, clSdi:r.cl_sdi, clPec:r.cl_pec};
     fatture.unshift(fatt);
-    incrementaNumFattura();
     if (_fattDraft.origine==='commessa' && _fattDraft.origineId) {
       const ci = commesse.findIndex(c=>c.id===_fattDraft.origineId);
       if (ci>=0) { commesse[ci].stato='fatturata'; commesse[ci].fatturaId=fatt.id; await dbSaveCommessa({...commesse[ci]}); }
@@ -8859,19 +9960,54 @@ async function autoInviaFIC(fatt) {
   renderFatture();
 }
 
+// ── Helper globale: cliente moroso? ──────────────────────────
+function isMoroso(clienteId) {
+  const cl = clienti.find(c => c.id === clienteId);
+  if (!cl) return false;
+  const sogliaGiorni = cl.soglia_moroso || cl.sogliamoroso || null;
+  if (!sogliaGiorni) return false;
+  const oggi = new Date();
+  return fatture.some(f => {
+    if (f.clienteId !== clienteId) return false;
+    if (f.stato === 'scaduta') return true;
+    if (f.stato === 'emessa' && f.scadenza) {
+      return Math.floor((oggi - new Date(f.scadenza)) / 86400000) >= sogliaGiorni;
+    }
+    return false;
+  });
+}
+
+function badgeMoroso(clienteId) {
+  return isMoroso(clienteId)
+    ? '<span style="background:#FEE2E2;color:#991B1B;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:4px">⚠ MOROSO</span>'
+    : '';
+}
+
 // ── Helper: aggiorna alert moroso su un elemento dato il cliente ──────────────
 function _aggiornaAlertMoroso(alertEl, clienteId) {
   if (!alertEl || !clienteId) return;
-  const soglia = _impostazioni?.soglia_morosi ?? 0;
-  const fattureScadute = fatture.filter(f =>
-    f.clienteId === clienteId &&
-    (f.stato === 'scaduta' || (f.stato === 'emessa' && f.scadenza && new Date(f.scadenza) < new Date()))
-  );
+  const cl = clienti.find(c => c.id === clienteId);
+  // Usa soglia del singolo cliente — se null/0 nessun controllo
+  const sogliaGiorni = cl?.soglia_moroso || cl?.sogliamoroso || null;
+  if (!sogliaGiorni) { alertEl.style.display = 'none'; alertEl.innerHTML = ''; return; }
+
+  const oggi = new Date();
+  const fattureScadute = fatture.filter(f => {
+    if (f.clienteId !== clienteId) return false;
+    if (f.stato === 'scaduta') return true;
+    if (f.stato === 'emessa' && f.scadenza) {
+      const scad = new Date(f.scadenza);
+      const giorniScaduta = Math.floor((oggi - scad) / 86400000);
+      return giorniScaduta >= sogliaGiorni;
+    }
+    return false;
+  });
+
   const totale = fattureScadute.reduce((s, f) => s + (f.totale||0), 0);
-  if (fattureScadute.length > 0 && totale > soglia) {
+  if (fattureScadute.length > 0) {
     alertEl.style.display = '';
     alertEl.innerHTML = `<div style="background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;padding:10px 14px;color:#92400E;font-size:13px">
-      ⚠️ <strong>Cliente moroso</strong> — ${fattureScadute.length} fattura/e scaduta/e per un totale di <strong>€ ${totale.toLocaleString('it-IT',{minimumFractionDigits:2})}</strong>
+      ⚠️ <strong>Cliente moroso</strong> — ${fattureScadute.length} fattura/e scaduta/e da oltre ${sogliaGiorni} giorni · totale <strong>€ ${totale.toLocaleString('it-IT',{minimumFractionDigits:2})}</strong>
     </div>`;
   } else {
     alertEl.style.display = 'none'; alertEl.innerHTML = '';
@@ -9002,6 +10138,22 @@ ${f.stato==='pagata'&&f.dataPagamento?`<div class="tr_" style="margin-top:8px;fo
 ${f.note?`<div style="font-size:11px;color:#888;margin-bottom:12px"><strong>Note:</strong> ${f.note}</div>`:''}
 ${f.offNoteDoc?`<div class="ft">${f.offNoteDoc}</div>`:''}
 </body></html>`;
+}
+
+async function inviaEmailDDT(ddt, cl, off) {
+  if (!cl?.email) throw new Error('Email cliente non disponibile');
+  const imp = (ddt.righe||[]).reduce((s,r)=>s+(r.qta||1)*(r.prezzo||0)*(1-(r.sconto||0)/100),0);
+  const iva  = cl.iva || 22;
+  const tot  = imp * (1 + iva/100);
+  const ogg  = encodeURIComponent(`DDT ${ddt.numero} — ${off?.ragione||'Officina'}`);
+  const corpo = encodeURIComponent(
+    `Gentile ${cl.ragione||'Cliente'},\n\n` +
+    `In allegato il DDT n. ${ddt.numero} del ${ddt.data ? new Date(ddt.data).toLocaleDateString('it-IT') : new Date().toLocaleDateString('it-IT')}.\n\n` +
+    `Totale: € ${tot.toFixed(2)} (IVA ${iva}% inclusa)\n` +
+    `Articoli: ${(ddt.righe||[]).length}\n\n` +
+    `Cordiali saluti,\n${off?.ragione||'Officina'}${off?.tel?'\nTel: '+off.tel:''}${off?.email?'\n'+off.email:''}`
+  );
+  window.location.href = `mailto:${cl.email}?subject=${ogg}&body=${corpo}`;
 }
 
 function inviaEmailFattura(id) {
@@ -9993,8 +11145,48 @@ initDocumenti();
         <div style="padding:10px 14px;border-top:1px solid var(--border)">Festivo</div>
         <div style="padding:6px 10px;border-top:1px solid var(--border);border-left:1px solid var(--border)"><input type="number" id="tariffa-festivo-int" min="0" step="0.5" placeholder="0" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-family:monospace;font-size:13px"></div>
         <div style="padding:6px 10px;border-top:1px solid var(--border);border-left:1px solid var(--border)"><input type="number" id="tariffa-festivo-cli" min="0" step="0.5" placeholder="0" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-family:monospace;font-size:13px"></div>
+        <div style="padding:10px 14px;border-top:1px solid var(--border)">Notturno (22:00–06:00)</div>
+        <div style="padding:6px 10px;border-top:1px solid var(--border);border-left:1px solid var(--border)"><input type="number" id="tariffa-notturno-int" min="0" step="0.5" placeholder="0" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-family:monospace;font-size:13px"></div>
+        <div style="padding:6px 10px;border-top:1px solid var(--border);border-left:1px solid var(--border)"><input type="number" id="tariffa-notturno-cli" min="0" step="0.5" placeholder="0" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-family:monospace;font-size:13px"></div>
       </div>
       <div style="margin-top:16px;display:flex;justify-content:flex-end"><button class="btn btn-primary" onclick="salvaTariffe()">Salva tariffe</button></div>
+    </div>
+
+    <!-- ORARI OFFICINA -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:16px">
+      <div style="font-size:15px;font-weight:700;margin-bottom:16px">Orari officina</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        <div class="form-group"><label>Inizio turno</label><input type="time" id="off-orario-inizio" value="08:30"></div>
+        <div class="form-group"><label>Soglia ritardo</label><input type="time" id="off-soglia-ritardo" value="09:00"></div>
+        <div class="form-group"><label>Fine turno auto</label><input type="time" id="off-fine-turno" value="17:30"></div>
+        <div class="form-group"><label>Inizio pausa pranzo</label><input type="time" id="off-pausa-inizio" value="13:00"></div>
+        <div class="form-group"><label>Fine pausa pranzo</label><input type="time" id="off-pausa-fine" value="14:00"></div>
+        <div class="form-group"><label>Festività patrono (gg/mm)</label><input type="text" id="off-patrono" placeholder="Es. 29/06" maxlength="5"></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn btn-primary" onclick="salvaOrari()">Salva orari</button></div>
+    </div>
+
+    <!-- VOCI AUTOMATICHE COMMESSA -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:16px">
+      <div style="font-size:15px;font-weight:700;margin-bottom:4px">Voci automatiche commessa</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:16px">Vengono calcolate automaticamente su ogni commessa</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group"><label>Smaltimento rifiuti (% sui ricambi)</label><input type="number" id="off-smaltimento" min="0" max="100" step="0.1" placeholder="Es. 2" style="font-family:monospace"></div>
+        <div class="form-group"><label>Materiale di consumo (% su man.+ric.)</label><input type="number" id="off-mat-consumo" min="0" max="100" step="0.1" placeholder="Es. 3" style="font-family:monospace"></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end"><button class="btn btn-primary" onclick="salvaVociAuto()">Salva voci automatiche</button></div>
+    </div>
+
+    <!-- DIRITTI DI CHIAMATA -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:16px">
+      <div style="font-size:15px;font-weight:700;margin-bottom:4px">Diritti di chiamata</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:16px">Importi per interventi su strada o fuori orario</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        <div class="form-group"><label>Standard (orario normale) €</label><input type="number" id="off-dc-standard" min="0" step="0.5" placeholder="0" style="font-family:monospace"></div>
+        <div class="form-group"><label>Straordinario (sab/pom, 18-22) €</label><input type="number" id="off-dc-straordinario" min="0" step="0.5" placeholder="0" style="font-family:monospace"></div>
+        <div class="form-group"><label>Festivo (dom, notte) €</label><input type="number" id="off-dc-festivo" min="0" step="0.5" placeholder="0" style="font-family:monospace"></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end"><button class="btn btn-primary" onclick="salvaDirittiChiamata()">Salva diritti di chiamata</button></div>
     </div>
     <!-- Nome chat -->
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:16px">
@@ -10135,10 +11327,17 @@ initDocumenti();
             </div>
             <div id="vb-search-drop" style="display:none;position:absolute;left:0;right:0;top:calc(100%+4px);background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);z-index:50;max-height:220px;overflow-y:auto"></div>
           </div>
+          <div id="vb-righe-head"></div>
           <div id="vb-righe"></div>
-          <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-            <div><div style="font-size:12px;color:var(--text3)">Totale imponibile</div><div style="font-size:20px;font-weight:800;font-family:'DM Mono',monospace" id="vb-totale">€ 0,00</div></div>
-            <button class="btn btn-primary" onclick="emmettiDDT()">Emetti DDT →</button>
+          <button class="btn btn-ghost btn-sm" onclick="aggiungiRigaVb()" style="margin-top:4px">+ Aggiungi riga</button>
+          <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+            <div id="vb-totale" style="margin-bottom:16px"></div>
+            <div style="display:grid;grid-template-columns:1fr;gap:10px">
+              <button class="btn btn-primary" style="padding:16px;height:auto;gap:4px;justify-content:center;flex-direction:column" onclick="avviaVendita()">
+                <span style="font-size:15px;font-weight:700">✓ Conferma vendita</span>
+                <span style="font-size:11px;color:rgba(255,255,255,.8);font-weight:400">Il metodo di pagamento viene letto dall'anagrafica cliente</span>
+              </button>
+            </div>
           </div>
         </div>
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px">
