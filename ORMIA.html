@@ -8713,12 +8713,12 @@ async function avviaVendita() {
     if (!metodo) return;
     immediato = IMMEDIATI.includes(metodo);
   }
-  const ddt = await creaVbDDT(righe, cId, metodo);
+  const ddt = await creaVbDDT(righe, cId, immediato ? metodo : 'solo-ddt');
   if (!ddt) return;
   await _scaricoMagazzinoVb(righe);
+  updateBadgeMagazzino();
   resetVendita(); renderDDT(); setDocTab('ddt');
   showToast(`DDT ${ddt.numero} emesso ✓`);
-  ddt._metodoCheckout = immediato ? metodo : 'solo-ddt';
   apriFirmaDDT(ddt);
 }
 async function vendita_differita() { await avviaVendita(); }
@@ -9046,30 +9046,19 @@ async function eliminaPagamento(pid) {
   showToast('Pagamento eliminato');
 }
 
-async function creaVbDDT(righe, clienteIdOverride) {
-  const cId  = document.getElementById('vb-cliente').value;
+async function creaVbDDT(righe, clienteIdOverride, metodo) {
+  const cId  = clienteIdOverride || document.getElementById('vb-cliente').value;
   const data = document.getElementById('vb-data').value;
   const note = document.getElementById('vb-note').value;
   const numDdt = await _nextNumero('num_ddt',(a,n)=>`DDT-${new Date().getFullYear()}-${String(n).padStart(4,'0')}`);
   try {
-    // Scarica giacenze
-    for (const r of righe.filter(r=>r.prodId)) {
-      const pi = prodotti.findIndex(p=>p.id===r.prodId);
-      if (pi>=0) {
-        const nuovaGiac = Math.max(0, (prodotti[pi].giacenza||0) - (r.qta||1));
-        await supa.from('prodotti').update({giacenza:nuovaGiac}).eq('id',r.prodId);
-        await supa.from('movimenti').insert({id:crypto.randomUUID(),prod_id:r.prodId,tipo:'scarico',qta:r.qta||1,note:'Vendita '+numDdt,data:new Date().toISOString(),created_at:new Date().toISOString()});
-        prodotti[pi].giacenza = nuovaGiac;
-      }
-    }
-    const row = {numero:numDdt,data:data||null,cliente_id:clienteIdOverride||cId||null,righe,causale:'Vendita a banco',note,stato:'aperto'};
-    const {data:r,error} = await supa.from('ddt').insert(row).select().single();
+    const row = {numero:numDdt, data:data||null, cliente_id:cId||null, righe, causale:'Vendita a banco', note, stato:'aperto'};
+    const {data:r, error} = await supa.from('ddt').insert(row).select().single();
     if (error) throw error;
-    const ddt = {...r, clienteId:r.cliente_id};
+    const ddt = {...r, clienteId:r.cliente_id, _metodoCheckout: metodo || 'solo-ddt'};
     ddts.unshift(ddt);
-    updateBadgeMagazzino();
     return ddt;
-  } catch(e) { alert('Errore: '+e.message); return null; }
+  } catch(e) { alert('Errore DDT: '+e.message); return null; }
 }
 
 function resetVendita() {
@@ -9087,13 +9076,8 @@ function aggiungiRigaVb() { vbRighe.push({prodId:'',desc:'',qta:1,prezzo:0,scont
 function renderRigheVb() {
   document.getElementById('vb-righe').innerHTML = vbRighe.map((r,i)=>`
     <div style="display:grid;grid-template-columns:1fr 65px 85px 55px 75px 28px;gap:6px;margin-bottom:6px;align-items:center">
-      <div style="position:relative">
-        <input type="text" placeholder="Cerca articolo…" value="${r.desc||''}"
-          autocomplete="off"
-          oninput="vbRighe[${i}].desc=this.value;cercaProdottoVb(this,${i})"
-          onblur="setTimeout(()=>{const d=document.getElementById('vb-drop-${i}');if(d)d.style.display='none'},200)"
-          style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif">
-        <div id="vb-drop-${i}" style="display:none;position:absolute;left:0;right:0;top:calc(100%+2px);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);z-index:2200;max-height:200px;overflow-y:auto"></div>
+      <div style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r.desc||''}">
+        ${r.desc || '<span style=\'color:var(--text3)\'>—</span>'}
       </div>
       <input type="number" placeholder="Qtà" min="0" step="0.5" value="${r.qta||1}"
         oninput="vbRighe[${i}].qta=parseFloat(this.value)||0;calcTotaleVb()"
