@@ -762,6 +762,15 @@ function populateClienteSelects() {
 }
 
 // ══════════════════════════════════════════════════
+// UTILITY
+// ══════════════════════════════════════════════════
+function formatDateFin(d) {
+  if (!d) return '—';
+  try { return new Date(d).toLocaleDateString('it-IT', {day:'2-digit',month:'2-digit',year:'numeric'}); }
+  catch(e) { return d; }
+}
+
+// ══════════════════════════════════════════════════
 // NAVIGAZIONE
 // ══════════════════════════════════════════════════
 function setSection(sec) {
