@@ -665,12 +665,12 @@
         <div class="nav-item active" id="nav-clienti" onclick="setTab('clienti')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
           Clienti
-          
+          <span id="badge-clienti" style="display:none;background:var(--accent);color:white;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span>
         </div>
         <div class="nav-item" id="nav-veicoli" onclick="setTab('veicoli')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
           Veicoli
-          
+          <span id="badge-veicoli" style="display:none;background:var(--accent);color:white;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span>
         </div>
       </div>
       <div class="nav-section">
@@ -678,12 +678,7 @@
         <div class="nav-item" id="nav-commesse" onclick="setSection('commesse')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           Commesse
-          
-        </div>
-        <div class="nav-item" id="nav-presenze" onclick="setSection('presenze')" style="display:none">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-          Presenze
-          
+          <span id="badge-commesse" style="display:none;background:var(--accent);color:white;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span>
         </div>
       </div>
       <div class="nav-section">
@@ -691,6 +686,7 @@
         <div class="nav-item" id="nav-magazzino" onclick="setSection('magazzino')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
           Magazzino
+          <span id="badge-magazzino" style="display:none;background:var(--danger);color:white;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span>
         </div>
       </div>
       <div class="nav-section">
@@ -698,7 +694,7 @@
         <div class="nav-item" id="nav-preventivi" onclick="setSection('preventivi')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
           Preventivi
-          
+          <span id="badge-preventivi" style="display:none;background:var(--accent);color:white;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span>
         </div>
         <div class="nav-item" id="nav-documenti" onclick="apriDocumenti()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
@@ -1062,9 +1058,9 @@
             <thead><tr>
               <th>Nome</th><th>Ruolo</th><th>Ore/giorno</th><th>Assunzione</th><th>Stato oggi</th><th></th>
             </tr></thead>
-            <tbody id="tbody-dipendenti"></tbody>
+            <tbody id="tbody-dipendenti-presenze"></tbody>
           </table>
-          <div class="empty-state" id="empty-dipendenti" style="display:none">
+          <div class="empty-state" id="empty-dipendenti-presenze" style="display:none">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
             <p>Nessun dipendente ancora. Aggiungine uno!</p>
             <button class="btn btn-primary" onclick="openModalDipendente()">+ Aggiungi dipendente</button>
@@ -1211,7 +1207,7 @@
       <!-- Placeholder nascosti per compatibilità JS documenti -->
       <div style="display:none">
         <span id="badge-fatture"></span>
-        <div id="doc-panel-ddt"></div><div id="doc-panel-fatture"></div><div id="doc-panel-vendita"></div>
+        <div id="doc-panel-fatture"></div>
         <div id="empty-ddt"></div><div id="empty-fatture"></div>
         <div id="lista-ddt"></div><div id="lista-fatture"></div>
         <input id="search-ddt"><input id="search-fatture">
@@ -2997,6 +2993,7 @@ const TABLE = {
   clienti:    'clienti',
   veicoli:    'veicoli',
   meccanici:  'dipendenti',
+  dipendenti: 'dipendenti',
   commesse:   'commesse',
   fornitori:  'fornitori',
   prodotti:   'prodotti',
@@ -3181,7 +3178,7 @@ async function loadAllData() {
     DB.load('fornitori'), DB.load('prodotti'), DB.load('movimenti'), DB.load('timbrature'), DB.load('presenze'),
   ]);
   // Carica solo da dipendenti (tabella unificata)
-  meccanici = await DB.load('dipendenti').catch(()=>[]);
+  meccanici = await DB.load('meccanici').catch(()=>[]);
 }
 
 // ── SAVE HELPERS (sostituiscono localStorage) ───────
@@ -3205,15 +3202,15 @@ async function dbDeleteVeicolo(id) { await DB.delete('veicoli', id); veicoli = v
 
 async function dbSaveMeccanico(obj) {
   if (obj.id && meccanici.find(m=>m.id===obj.id)) {
-    const r = await DB.update('dipendenti', obj.id, obj);
+    const r = await DB.update('meccanici', obj.id, obj);
     const i = meccanici.findIndex(m=>m.id===obj.id); meccanici[i]=r; return r;
   } else {
-    const r = await DB.insert('dipendenti', obj);
+    const r = await DB.insert('meccanici', obj);
     meccanici.push(r); return r;
   }
 }
 async function dbDeleteMeccanico(id) {
-  await DB.delete('dipendenti', id);
+  await DB.delete('meccanici', id);
   meccanici = meccanici.filter(m=>m.id!==id);
 }
 
@@ -4200,7 +4197,6 @@ function showDetailCommessa(id) {
   // Alert cliente moroso
   const alertMoroso = document.getElementById('dc-alert-moroso');
   if (alertMoroso) {
-    const soglia = _impostazioni?.soglia_morosi ?? 0;
     const fattureScadute = fatture.filter(f =>
       f.clienteId === cm.clienteId &&
       (f.stato === 'scaduta' || (f.stato === 'emessa' && f.scadenza && new Date(f.scadenza) < new Date()))
@@ -5308,16 +5304,11 @@ const TIPO_BADGE = {
 };
 
 function renderDipendenti() {
-  // Usa meccanici da Supabase come unica fonte di verità
   const q = (document.getElementById('search-presenze')?.value||'').toLowerCase();
   const filtered = meccanici.filter(d => !q || (d.nome||'').toLowerCase().includes(q) || (d.ruolo||'').toLowerCase().includes(q));
-  const tbody = document.getElementById('tbody-dipendenti');
-  const empty = document.getElementById('empty-dipendenti');
-  if (!tbody) return;
-  if (!filtered.length) { tbody.innerHTML=''; empty.style.display=''; return; }
-  empty.style.display='none';
   const oggi = new Date().toISOString().split('T')[0];
-  tbody.innerHTML = filtered.map(d => {
+
+  const righe = filtered.map(d => {
     const initials = (d.nome||'?').split(' ').map(w=>w[0]).join('').substr(0,2).toUpperCase();
     const pAperta  = presenze.find(p=>p.dipId===d.id&&!p.uscita);
     const pOggi    = presenze.find(p=>p.dipId===d.id&&p.entrata&&p.entrata.startsWith(oggi));
@@ -5340,7 +5331,7 @@ function renderDipendenti() {
         </div>
       </div></td>
       <td><span class="badge badge-gray">${d.ruolo||'—'}</span></td>
-      <td style="font-family:'DM Mono',monospace;font-size:12px">${d.ora_uscita_automatica||'17:00'}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px">${d.ora_uscita_automatica||d.oraUscitaAutomatica||'17:00'}</td>
       <td style="font-size:12px">${d.pin?'<span class="badge badge-blue">PIN ✓</span>':'—'}</td>
       <td>${statoOggi}</td>
       <td><div class="row-actions" style="opacity:1">
@@ -5349,6 +5340,18 @@ function renderDipendenti() {
       </div></td>
     </tr>`;
   }).join('');
+
+  // Popola sezione impostazioni/meccanici
+  const tbody = document.getElementById('tbody-dipendenti');
+  const empty = document.getElementById('empty-dipendenti');
+  if (tbody) { tbody.innerHTML = righe; }
+  if (empty) { empty.style.display = filtered.length ? 'none' : ''; }
+
+  // Popola anche sezione presenze
+  const tbody2 = document.getElementById('tbody-dipendenti-presenze');
+  const empty2 = document.getElementById('empty-dipendenti-presenze');
+  if (tbody2) { tbody2.innerHTML = righe; }
+  if (empty2) { empty2.style.display = filtered.length ? 'none' : ''; }
 }
 
 async function deleteMeccanicoConPresenze(id) {
@@ -7692,26 +7695,7 @@ async function bnSend() {
 }
 
 function bnRender() {
-  const list    = document.getElementById('bn-list');
-  const oldList = document.getElementById('bn-old-list');
-  const oldWrap = document.getElementById('bn-old-wrap');
-  if (!list) return;
-
-  const recenti  = _bnMsgs.slice(-BN_SHOW);
-  const vecchi   = _bnMsgs.slice(0, -BN_SHOW);
-
-  list.innerHTML = recenti.map(bnMsgHtml).join('');
-  list.scrollTop = list.scrollHeight;
-
-  if (vecchi.length) {
-    oldWrap.style.display = '';
-    oldList.innerHTML = vecchi.map(bnMsgHtml).join('');
-    const toggle = document.getElementById('bn-old-toggle');
-    const aperto = oldList.style.display !== 'none';
-    toggle.textContent = aperto ? '▲ Nascondi precedenti' : `▼ ${vecchi.length} messaggi precedenti`;
-  } else {
-    oldWrap.style.display = 'none';
-  }
+  bnRenderSidebar();
 }
 
 function bnMsgHtml(m) {
@@ -7923,19 +7907,26 @@ function apriModalNuovoVeicoloDaCommessa() {
 function _checkMorosoAlert(cl) {
   const alertEl = document.getElementById('com-alert-moroso');
   if (!alertEl || !cl) return;
-  const soglia = _impostazioni?.soglia_morosi ?? 0;
-  const fattureScadute = fatture.filter(f =>
-    f.clienteId === cl.id &&
-    (f.stato === 'scaduta' || (f.stato === 'emessa' && f.scadenza && new Date(f.scadenza) < new Date()))
-  );
+  // Soglia per cliente (non globale)
+  const sogliaGiorni = cl.soglia_moroso || cl.sogliamoroso || null;
+  if (!sogliaGiorni) { alertEl.style.display='none'; alertEl.innerHTML=''; return; }
+  const oggi = new Date();
+  const fattureScadute = fatture.filter(f => {
+    if (f.clienteId !== cl.id) return false;
+    if (f.stato === 'scaduta') return true;
+    if (f.stato === 'emessa' && f.scadenza) {
+      return Math.floor((oggi - new Date(f.scadenza)) / 86400000) >= sogliaGiorni;
+    }
+    return false;
+  });
   const totale = fattureScadute.reduce((s,f)=>s+(f.totale||0),0);
-  if (fattureScadute.length && totale > soglia) {
+  if (fattureScadute.length) {
     alertEl.style.display = '';
     alertEl.innerHTML = `<div style="background:#FEF2F2;border:1.5px solid #FCA5A5;border-radius:var(--radius-lg);padding:12px 16px;display:flex;align-items:center;gap:10px">
       <span style="font-size:20px">⚠️</span>
       <div>
         <div style="font-size:13px;font-weight:700;color:#B91C1C">Attenzione — cliente con fatture non pagate!</div>
-        <div style="font-size:12px;color:#DC2626">${fattureScadute.length} fattura${fattureScadute.length>1?'e':''} in sospeso · totale € ${totale.toFixed(2).replace('.',',')}${soglia>0?' (soglia: €'+soglia+')':''}</div>
+        <div style="font-size:12px;color:#DC2626">${fattureScadute.length} fattura${fattureScadute.length>1?'e':''} scaduta/e da oltre ${sogliaGiorni} giorni · totale € ${totale.toFixed(2).replace('.',',')}</div>
       </div>
     </div>`;
   } else {
@@ -8172,7 +8163,6 @@ async function salvaDatiOfficina() {
     iban:      document.getElementById('off-iban').value.trim(),
     banca:     document.getElementById('off-banca').value.trim(),
     note_doc:  document.getElementById('off-note-doc').value.trim(),
-    soglia_morosi: parseFloat(document.getElementById('off-soglia-morosi').value)||0,
     num_prev:  parseInt(document.getElementById('off-num-prev').value)||1,
     num_ddt:   parseInt(document.getElementById('off-num-ddt').value)||1,
     num_fatt:  parseInt(document.getElementById('off-num-fatt').value)||1,
@@ -8204,7 +8194,6 @@ function caricaDatiOfficina() {
   set('off-indirizzo',d.indirizzo); set('off-tel',d.tel); set('off-email',d.email);
   set('off-pec',d.pec); set('off-sdi',d.sdi); set('off-iban',d.iban);
   set('off-banca',d.banca); set('off-note-doc',d.note_doc);
-  set('off-soglia-morosi', d.soglia_morosi??0);
   set('off-num-prev',d.num_prev||1); set('off-num-ddt',d.num_ddt||1); set('off-num-fatt',d.num_fatt||1);
 }
 
@@ -8970,13 +8959,37 @@ function chiudiFrmPagamento() {
 async function incassaRapido(metodo) {
   const cm = commesse.find(c=>c.id===selectedCommessaId);
   if (!cm) return;
+
+  // SumUp per carta/POS
+  if (metodo === 'carta') {
+    const totale = (cm.vociMano||[]).concat(cm.vociRic||[],cm.vociExtra||[])
+      .reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100),0);
+    const pagato  = (cm.pagamenti||[]).reduce((s,p)=>s+(parseFloat(p.importo)||0),0);
+    const residuo = Math.max(0, totale - pagato);
+    if (residuo <= 0) { showToast('Commessa già saldata ✓'); return; }
+    // Apri SumUp
+    const sumupConfig = _impostazioni?.fic_config || _impostazioni?.sumup_config;
+    const affiliateKey = sumupConfig?.affiliate_key || sumupConfig?.affiliateKey || '';
+    const amount = residuo.toFixed(2);
+    const ref = cm.numero || cm.id;
+    if (affiliateKey) {
+      window.open(`https://pay.sumup.io/p/${affiliateKey}?amount=${amount}&currency=EUR&description=${encodeURIComponent('Commessa '+ref)}`, '_blank');
+    } else {
+      window.open('https://me.sumup.com', '_blank');
+    }
+    // Chiedi conferma manuale dopo SumUp
+    if (!confirm(`Pagamento SumUp completato?\n€ ${amount} — Commessa ${ref}`)) return;
+    metodo = 'carta';
+  }
+
   const totale = (cm.vociMano||[]).concat(cm.vociRic||[],cm.vociExtra||[])
     .reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100),0);
-  const pagato = (cm.pagamenti||[]).reduce((s,p)=>s+(parseFloat(p.importo)||0),0);
+  const pagato  = (cm.pagamenti||[]).reduce((s,p)=>s+(parseFloat(p.importo)||0),0);
   const residuo = Math.max(0, totale - pagato);
   if (residuo <= 0) { showToast('Commessa già saldata ✓'); return; }
   const LABEL = {contanti:'Contanti',carta:'Carta/POS',bonifico:'Bonifico'};
-  if (!confirm(`Registrare pagamento di € ${residuo.toFixed(2)} con ${LABEL[metodo]}?`)) return;
+  if (metodo !== 'carta' && !confirm(`Registrare pagamento di € ${residuo.toFixed(2)} con ${LABEL[metodo]}?`)) return;
+
   const entry = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2,5),
     data: new Date().toISOString().split('T')[0],
@@ -8985,11 +8998,19 @@ async function incassaRapido(metodo) {
     note: `Incasso rapido — ${LABEL[metodo]}`
   };
   const pagamenti = [...(cm.pagamenti||[]), entry];
+  const nuovoPagato = pagamenti.reduce((s,p)=>s+(p.importo||0),0);
+  const nuovoStato  = nuovoPagato >= totale ? 'chiusa' : cm.stato;
+
   try {
-    await supa.from('commesse').update({pagamenti}).eq('id', cm.id);
+    await supa.from('commesse').update({pagamenti, stato: nuovoStato}).eq('id', cm.id);
     cm.pagamenti = pagamenti;
-    renderPagamentiCommessa(cm);
-    showToast(`Incassato € ${residuo.toFixed(2)} (${LABEL[metodo]}) ✓`);
+    cm.stato     = nuovoStato;
+    // Aggiorna badge stato nel detail
+    const statoEl = document.getElementById('dc-stato');
+    if (statoEl) statoEl.value = nuovoStato;
+    renderCommesse();
+    showToast(`✓ Incassato € ${residuo.toFixed(2)} (${LABEL[metodo]})`);
+    if (nuovoStato === 'chiusa') showToast('Commessa chiusa ✓', 'success');
   } catch(e) { alert('Errore: '+e.message); }
 }
 
@@ -10412,17 +10433,101 @@ function chiudiDocumenti() {
 }
 
 function setImpTab(tab) {
-  document.getElementById('imp-panel-officina').style.display  = tab==='officina'  ? '' : 'none';
-  document.getElementById('imp-panel-meccanici').style.display = tab==='meccanici' ? '' : 'none';
-  document.getElementById('imp-panel-fornitori').style.display = tab==='fornitori' ? '' : 'none';
-  document.getElementById('imp-tab-officina').style.borderBottomColor  = tab==='officina'  ? 'var(--accent)' : 'transparent';
-  document.getElementById('imp-tab-officina').style.color  = tab==='officina'  ? 'var(--accent)' : 'var(--text2)';
-  document.getElementById('imp-tab-meccanici').style.borderBottomColor = tab==='meccanici' ? 'var(--accent)' : 'transparent';
-  document.getElementById('imp-tab-meccanici').style.color = tab==='meccanici' ? 'var(--accent)' : 'var(--text2)';
-  document.getElementById('imp-tab-fornitori').style.borderBottomColor = tab==='fornitori' ? 'var(--accent)' : 'transparent';
-  document.getElementById('imp-tab-fornitori').style.color = tab==='fornitori' ? 'var(--accent)' : 'var(--text2)';
+  ['officina','meccanici','presenze','fornitori'].forEach(t => {
+    const panel = document.getElementById('imp-panel-'+t);
+    const btn   = document.getElementById('imp-tab-'+t);
+    if (panel) panel.style.display = t===tab ? '' : 'none';
+    if (btn) {
+      btn.style.borderBottomColor = t===tab ? 'var(--accent)' : 'transparent';
+      btn.style.color = t===tab ? 'var(--accent)' : 'var(--text2)';
+    }
+  });
   if (tab==='meccanici') { renderMeccanici(); renderDipendenti(); }
   if (tab==='fornitori') { renderFornitoriSett(); }
+  if (tab==='presenze')  {
+    const el = document.getElementById('imp-pres-mese');
+    if (el && !el.value) el.value = new Date().toISOString().substr(0,7);
+    renderImpPresenze();
+  }
+}
+
+function renderImpPresenze() {
+  const mese = document.getElementById('imp-pres-mese')?.value || new Date().toISOString().substr(0,7);
+  const lista = document.getElementById('imp-pres-lista-dip');
+  if (!lista) return;
+  const presMese = presenze.filter(p => p.entrata && p.entrata.startsWith(mese));
+  lista.innerHTML = meccanici.map(d => {
+    const dp      = presMese.filter(p => p.dipId === d.id);
+    const giorni  = dp.filter(p => !['ferie','malattia','permesso'].includes(p.tipo)).length;
+    const oreTot  = dp.reduce((s,p) => s+(p.oreTotali||0), 0);
+    const ritardi = dp.filter(p => p.ritardo).length;
+    const assenze = dp.filter(p => ['ferie','malattia','permesso'].includes(p.tipo)).length;
+    const initials = (d.nome||'?').split(' ').map(w=>w[0]).join('').substr(0,2).toUpperCase();
+    return `<div onclick="apriReportDipendente('${d.id}')"
+      style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;cursor:pointer;transition:border-color .15s"
+      onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div style="width:38px;height:38px;border-radius:50%;background:var(--accent-light);color:var(--accent);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center">${initials}</div>
+        <div><div style="font-weight:700;font-size:14px">${d.nome}</div><div style="font-size:11px;color:var(--text3)">${d.ruolo||'—'}</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px">
+        <div style="color:var(--text3)">Giorni: <strong>${giorni}</strong></div>
+        <div style="color:var(--text3)">Ore: <strong>${oreTot.toFixed(1)}</strong></div>
+        <div style="color:${ritardi>0?'var(--danger)':'var(--text3)'}">Ritardi: <strong>${ritardi}</strong></div>
+        <div style="color:${assenze>0?'var(--warning)':'var(--text3)'}">Assenze: <strong>${assenze}</strong></div>
+      </div>
+    </div>`;
+  }).join('') || '<div style="color:var(--text3);font-size:13px;padding:20px">Nessun dipendente.</div>';
+}
+
+function apriReportDipendente(dipId) {
+  const mese = document.getElementById('imp-pres-mese')?.value || new Date().toISOString().substr(0,7);
+  const d = meccanici.find(m=>m.id===dipId); if (!d) return;
+  const [y, mo] = mese.split('-').map(Number);
+  const giorniMese = new Date(y, mo, 0).getDate();
+  const presMese   = presenze.filter(p => p.dipId===dipId && p.entrata && p.entrata.startsWith(mese));
+  const TIPI = ['normale','ferie','malattia','permesso','straordinario'];
+  const tbody = document.getElementById('imp-pres-report-body');
+  tbody.innerHTML = Array.from({length:giorniMese},(_,i)=>{
+    const giorno  = String(i+1).padStart(2,'0');
+    const dataStr = `${mese}-${giorno}`;
+    const dow = new Date(dataStr).getDay();
+    if (dow===0||dow===6) return '';
+    const p   = presMese.find(x=>x.entrata&&x.entrata.startsWith(dataStr));
+    const ent = p?.entrata ? new Date(p.entrata).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}) : '—';
+    const usc = p?.uscita  ? new Date(p.uscita).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}) : p ? '<span style="color:var(--danger)">Aperta</span>' : '—';
+    const ore = p?.oreTotali ? p.oreTotali.toFixed(1)+'h' : '—';
+    const rit = p?.ritardo ? `<span style="color:var(--danger);font-size:11px">+${p.minutiRitardo||0}m</span>` : '—';
+    return `<tr style="${!p?'background:var(--surface2)':''}">
+      <td style="font-family:'DM Mono',monospace;font-size:12px">${giorno}/${String(mo).padStart(2,'0')}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px">${ent}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px">${usc}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px">${ore}</td>
+      <td>${rit}</td>
+      <td><select onchange="aggiornaPresenzaTipo('${p?.id||''}','${dipId}','${dataStr}',this.value)"
+        style="font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:var(--radius)">
+        ${!p ? '<option value="">— assente —</option>' : ''}
+        ${TIPI.map(t=>`<option value="${t}" ${(p?.tipo||'normale')===t?'selected':''}>${t.charAt(0).toUpperCase()+t.slice(1)}</option>`).join('')}
+      </select></td>
+      <td style="font-size:11px;color:var(--danger)">${!p?'Assente':''}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('imp-pres-lista-dip').style.display = 'none';
+  document.getElementById('imp-pres-report').style.display    = '';
+  document.getElementById('imp-pres-report-nome').textContent = d.nome;
+}
+
+async function aggiornaPresenzaTipo(presId, dipId, data, tipo) {
+  if (!tipo) return;
+  if (!presId) {
+    const nuova = { id:initId(), dipId, entrata:data+'T08:00:00.000Z', tipo, createdAt:new Date().toISOString() };
+    await dbSavePresenza(nuova);
+    presenze.push(nuova);
+  } else {
+    const p = presenze.find(x=>x.id===presId);
+    if (p) { p.tipo=tipo; await dbSavePresenza(p); }
+  }
+  showToast('Presenza aggiornata ✓');
 }
 
 // ═══════════════════════════════════════════════════
@@ -11048,6 +11153,7 @@ initDocumenti();
     <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:24px">
       <button id="imp-tab-officina" onclick="setImpTab('officina')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent);margin-bottom:-2px;font-family:'DM Sans',sans-serif">Officina & Tariffe</button>
       <button id="imp-tab-meccanici" onclick="setImpTab('meccanici')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);margin-bottom:-2px;font-family:'DM Sans',sans-serif">Dipendenti</button>
+      <button id="imp-tab-presenze" onclick="setImpTab('presenze')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);margin-bottom:-2px;font-family:'DM Sans',sans-serif">Presenze</button>
       <button id="imp-tab-fornitori" onclick="setImpTab('fornitori')" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);margin-bottom:-2px;font-family:'DM Sans',sans-serif">Fornitori</button>
     </div>
     <!-- PANEL OFFICINA -->
@@ -11068,11 +11174,10 @@ initDocumenti();
         <div class="form-group" style="grid-column:span 2"><label>Note piè di pagina</label><input type="text" id="off-note-doc" placeholder="Pagamento entro 30 giorni..."></div>
         <div class="form-group span-2" style="background:var(--surface2);border-radius:var(--radius);padding:12px;border:1px solid var(--border)">
           <label style="display:flex;align-items:center;gap:6px">
-            <svg viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            Soglia alert clienti morosi (€)
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Morosità
           </label>
-          <input type="number" id="off-soglia-morosi" min="0" step="1" value="0" placeholder="0" style="font-family:monospace;width:120px;margin-top:6px">
-          <div style="font-size:11px;color:var(--text3);margin-top:4px">Alert scatta solo se il totale insoluto supera questa cifra. Metti 0 per avvisare sempre.</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px">La soglia di morosità si configura per ogni singolo cliente nell'anagrafica cliente. Se non impostata, nessun controllo viene effettuato.</div>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
@@ -11209,6 +11314,37 @@ initDocumenti();
       </div>
     </div><!-- /imp-panel-fornitori -->
 
+    <!-- PANEL PRESENZE -->
+    <div id="imp-panel-presenze" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <input type="month" id="imp-pres-mese" style="padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace"
+            onchange="renderImpPresenze()">
+        </div>
+        <button class="btn btn-primary" onclick="esportaPresenzeExcel()">📊 Scarica Excel — tutti i dipendenti</button>
+      </div>
+
+      <!-- Lista dipendenti cliccabili -->
+      <div id="imp-pres-lista-dip" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:20px"></div>
+
+      <!-- Report mensile dipendente selezionato -->
+      <div id="imp-pres-report" style="display:none">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <button onclick="document.getElementById('imp-pres-report').style.display='none';document.getElementById('imp-pres-lista-dip').style.display='grid'"
+            style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:13px;font-weight:600">← Tutti i dipendenti</button>
+          <div style="font-size:16px;font-weight:700" id="imp-pres-report-nome"></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Data</th><th>Entrata</th><th>Uscita</th><th>Ore</th><th>Ritardo</th><th>Tipo</th><th>Note</th>
+            </tr></thead>
+            <tbody id="imp-pres-report-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div><!-- /imp-panel-presenze -->
+
   </div>
 </div>
 
@@ -11227,7 +11363,7 @@ initDocumenti();
     </div>
 
     <!-- VENDITA A BANCO -->
-    <div id="doc-panel-vendita">
+    <div id="doc-panel-vendita" style="display:none">
       <div style="display:flex;flex-direction:column;gap:16px">
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px">
           <div style="font-size:14px;font-weight:700;margin-bottom:16px">Nuova vendita</div>
@@ -11278,11 +11414,12 @@ initDocumenti();
             <div style="display:flex;gap:8px">
               <input type="text" id="vb-search-input" placeholder="Cerca per nome, codice o barcode…"
                 oninput="cercaRicambioVb(this.value)"
+                onblur="setTimeout(()=>{const d=document.getElementById('vb-search-drop');if(d)d.style.display='none'},200)"
                 onkeydown="if(event.key==='Enter'){event.preventDefault();aggiungiPrimoProdottoVb()}"
                 style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px">
               <button onclick="aggiungiPrimoProdottoVb()" class="btn btn-secondary">Aggiungi</button>
             </div>
-            <div id="vb-search-drop" style="display:none;position:absolute;left:0;right:0;top:calc(100%+4px);background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);z-index:50;max-height:220px;overflow-y:auto"></div>
+            <div id="vb-search-drop" style="display:none;position:absolute;left:0;right:0;top:calc(100%+4px);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);z-index:2200;max-height:220px;overflow-y:auto"></div>
           </div>
           <div id="vb-righe-head"></div>
           <div id="vb-righe"></div>
@@ -11429,34 +11566,6 @@ initDocumenti();
 </div>
 
 <!-- ══ PANNELLO NOTE DESTRA ══ -->
-<div id="bn-panel" style="position:fixed;top:0;right:0;bottom:0;width:280px;transform:translateX(248px);background:var(--surface);border-left:1px solid var(--border);z-index:140;display:flex;flex-direction:column;transition:transform .25s ease;box-shadow:-2px 0 12px rgba(0,0,0,.07)">
-  <!-- Tab verticale sempre visibile -->
-  <div onclick="bnToggle()" style="position:absolute;left:-32px;top:50%;transform:translateY(-50%);width:32px;height:96px;background:var(--surface);border:1px solid var(--border);border-right:none;border-radius:8px 0 0 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;box-shadow:-2px 0 8px rgba(0,0,0,.06)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:var(--text2)"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-    <span style="writing-mode:vertical-rl;font-size:11px;font-weight:600;color:var(--text2);letter-spacing:.5px">NOTE</span>
-    <span id="bn-badge" style="display:none;background:#E53E3E;color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px">NEW</span>
-  </div>
-  <!-- Header pannello -->
-  <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
-    <span style="font-size:13px;font-weight:700;color:var(--text)">Note condivise</span>
-    <button onclick="bnToggle()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;line-height:1;padding:0">×</button>
-  </div>
-  <!-- Messaggi vecchi collassati -->
-  <div id="bn-old-wrap" style="display:none;flex-shrink:0;padding:0 12px">
-    <div id="bn-old-toggle" onclick="bnToggleOld()" style="font-size:11px;color:var(--accent);cursor:pointer;padding:6px 0;text-align:center">▲ Mostra precedenti</div>
-    <div id="bn-old-list" style="display:none;max-height:120px;overflow-y:auto;margin-bottom:6px"></div>
-  </div>
-  <!-- Lista messaggi recenti -->
-  <div id="bn-list" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px"></div>
-  <!-- Input -->
-  <div style="padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:6px;align-items:flex-end;flex-shrink:0">
-    <textarea id="bn-area" rows="2" placeholder="Scrivi un messaggio…"
-      style="flex:1;border:1px solid var(--border);border-radius:var(--radius);padding:7px 9px;font-size:12px;font-family:inherit;color:var(--text);background:var(--surface2);line-height:1.5;outline:none;resize:none;box-sizing:border-box"
-      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();bnSend()}"
-      onfocus="bnClearBadge()"></textarea>
-    <button onclick="bnSend()" style="background:var(--accent);color:white;border:none;border-radius:var(--radius);padding:7px 10px;cursor:pointer;font-size:16px;line-height:1;flex-shrink:0">↑</button>
-  </div>
-</div>
 
 </body>
 </html>
