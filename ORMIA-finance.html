@@ -237,17 +237,17 @@ tr:hover td { background:var(--surface2); }
           <div class="kpi-card" style="border-top:3px solid var(--success)">
             <div class="kpi-label">Incassato questo mese</div>
             <div class="kpi-val" id="kpi-incassato" style="color:var(--success)">€ 0</div>
-            <div class="kpi-sub" id="kpi-incassato-sub">—</div>
+            <div class="kpi-sub">—</div>
           </div>
           <div class="kpi-card" style="border-top:3px solid var(--accent)">
             <div class="kpi-label">Da incassare</div>
             <div class="kpi-val" id="kpi-da-incassare" style="color:var(--accent)">€ 0</div>
-            <div class="kpi-sub" id="kpi-da-incassare-sub">—</div>
+            <div class="kpi-sub">—</div>
           </div>
           <div class="kpi-card" style="border-top:3px solid var(--danger)">
             <div class="kpi-label">Scaduto</div>
             <div class="kpi-val" id="kpi-scaduto" style="color:var(--danger)">€ 0</div>
-            <div class="kpi-sub" id="kpi-scaduto-sub">—</div>
+            <div class="kpi-sub">—</div>
           </div>
           <div class="kpi-card" style="border-top:3px solid #6D28D9">
             <div class="kpi-label">Da riconciliare</div>
@@ -766,8 +766,18 @@ function populateClienteSelects() {
 // ══════════════════════════════════════════════════
 function formatDateFin(d) {
   if (!d) return '—';
-  try { return new Date(d).toLocaleDateString('it-IT', {day:'2-digit',month:'2-digit',year:'numeric'}); }
+  try { return new Date(d).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric'}); }
   catch(e) { return d; }
+}
+
+function statoFattLabel(stato) {
+  const map = {emessa:'Emessa',pagata:'Pagata',parziale:'Parziale',annullata:'Annullata',bozza:'Bozza',scaduta:'Scaduta'};
+  return map[stato] || stato || '—';
+}
+
+function metodoBadge(metodo) {
+  const map = {contanti:'💵 Contanti',carta:'💳 Carta',pos:'💳 POS',bonifico:'🏦 Bonifico',riba:'📋 Ri.Ba.',assegno:'📄 Assegno',sumup:'💳 SumUp'};
+  return `<span style="font-size:11px;color:var(--text2)">${map[metodo]||metodo||'—'}</span>`;
 }
 
 // ══════════════════════════════════════════════════
@@ -814,11 +824,6 @@ function residuoFattura(fatturaId) {
 }
 
 /** Quanto di un incasso è già stato allocato su fatture */
-function allocatoIncasso(incassoId) {
-  return _incassi
-    .filter(i=>i.id!==incassoId && i.incasso_origine_id===incassoId)
-    .reduce((s,i)=>s+(i.importo||0),0);
-}
 
 // ══════════════════════════════════════════════════
 // DASHBOARD
@@ -1730,20 +1735,7 @@ async function salvaFIC() {
   showToastFin('Configurazione salvata ✓ — ora clicca "Autorizza FiC"');
 }
 
-async function testSumUp() {
-  try {
-    await caricaTransazioniSumUp();
-    showToastFin('✓ SumUp risponde correttamente');
-  } catch(e) { alert('Test SumUp: ' + e.message); }
-}
 
-async function testFIC() {
-  try {
-    await ficFetch(`/c/${_ficConfig.company_id}/issued_documents?type=invoice&per_page=1`);
-    showToastFin('✓ FiC risponde correttamente');
-    checkIntegrazioni();
-  } catch(e) { alert('Test FiC: ' + e.message); }
-}
 
 function configuraPollingSinc() { avviaPollingFIC(); showToastFin('Polling FiC attivato ✓'); }
 

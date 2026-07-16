@@ -63,7 +63,7 @@ html, body { height:100%; background:var(--bg); font-family:'DM Sans',sans-serif
 
 <!-- OVERLAY FEEDBACK (post-scan) -->
 <div id="overlay-feedback">
-  <div id="overlay-card" style="background:white;border-radius:20px;padding:40px 48px;text-align:center;min-width:360px;box-shadow:0 24px 60px rgba(0,0,0,.3)">
+  <div style="background:white;border-radius:20px;padding:40px 48px;text-align:center;min-width:360px;box-shadow:0 24px 60px rgba(0,0,0,.3)">
     <div id="overlay-icon" style="font-size:56px;margin-bottom:16px"></div>
     <div id="overlay-title" style="font-size:22px;font-weight:800;margin-bottom:8px"></div>
     <div id="overlay-sub" style="font-size:15px;color:var(--text2)"></div>
@@ -242,9 +242,6 @@ document.getElementById('clock').textContent = new Date().toLocaleTimeString('it
 
 // ── RUOLI ─────────────────────────────────────────────
 const RUOLI_COMMESSA = ['meccanico','capo officina','elettrauto','apprendista'];
-function isMeccanicoOperativo(mec) {
-  return RUOLI_COMMESSA.includes((mec.ruolo||'').toLowerCase());
-}
 
 // ── GARANZIA ─────────────────────────────────────────
 function daysUntil(d) {

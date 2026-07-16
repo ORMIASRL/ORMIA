@@ -616,9 +616,7 @@ function isMeccanicoOperativo(m) {
 function fixProd(p) { return p ? {...p, descrizione:p.descrizione||p.desc, codInt:p.cod_int, codForn:p.cod_forn, giacenza:p.giacenza, scortaMin:p.scorta_min, qtaRiordino:p.qta_riordino, prezzoAcq:p.prezzo_acq, prezzoVend:p.prezzo_vend, fornitoreId:p.fornitore_id} : null; }
 function fixCom(c)  { return c ? {...c, clienteId:c.cliente_id, veicoloId:c.veicolo_id, dataApertura:c.data_apertura, vociMano:c.voci_mano||[], vociRic:c.voci_ric||[], vociExtra:c.voci_extra||[], desc:c.descrizione, foto:c.foto||[], fotoInizio:c.foto_inizio||{}, fotoFine:c.foto_fine||[], nota_mec:c.nota_mec||'' } : null; }
 function fixTim(t)  { return t ? {...t, mecId:t.mec_id, comId:t.com_id} : null; }
-function fixPres(p) { return p ? {...p, dipId:p.dip_id} : null; }
 function fixVei(v)  { return v ? {...v, clienteId:v.cliente_id, garanziaScadenza:v.garanzia_scadenza} : null; }
-function fixMov(m)  { return m ? {...m, prodId:m.prod_id, comId:m.com_id} : null; }
 
 function getMeccanici()  { return _meccanici.map(fixMec); }
 function getCommesse()   { return _commesse.map(fixCom); }
@@ -626,7 +624,6 @@ function getClienti()    { return _clienti; }
 function getVeicoli()    { return _veicoli.map(fixVei); }
 function getProdotti()   { return _prodotti.map(fixProd); }
 function getTimbrature() { return _timbrature.map(fixTim); }
-function getPresenze()   { return _presenze.map(fixPres); }
 
 function genId() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
