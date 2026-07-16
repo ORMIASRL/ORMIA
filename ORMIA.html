@@ -5620,12 +5620,6 @@ ${cm.note ? `
   <!-- Riepilogo -->
   <div id="firma-riepilogo" style="padding:10px 20px;border-bottom:1px solid rgba(255,255,255,.1);font-size:13px;color:rgba(255,255,255,.7);background:#111;flex-shrink:0"></div>
 
-  <!-- Tabs -->
-  <div style="display:flex;border-bottom:1px solid rgba(255,255,255,.1);background:#111;flex-shrink:0">
-    <button id="ftab-pad" onclick="setFirmaTab('pad')" style="flex:1;padding:12px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--accent);color:white">✍️ Firma qui</button>
-    <button id="ftab-qr" onclick="setFirmaTab('qr')" style="flex:1;padding:12px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:rgba(255,255,255,.5)">📱 QR — usa telefono</button>
-  </div>
-
   <!-- Panel firma pad -->
   <div id="fpanel-pad" style="flex:1;display:flex;flex-direction:column;padding:16px 20px;min-height:0;overflow:hidden">
     <div style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:10px;text-align:center;letter-spacing:.5px">FIRMA DEL CLIENTE</div>
@@ -5635,19 +5629,7 @@ ${cm.note ? `
       <button onclick="clearFirmaCanvas()" style="flex:1;padding:14px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:var(--radius-lg);cursor:pointer;font-size:14px;font-weight:600;color:white">🗑 Cancella</button>
       <button onclick="confermaSalvaCommessa()" style="flex:3;padding:14px;background:var(--success);color:white;border:none;border-radius:var(--radius-lg);font-size:15px;font-weight:700;cursor:pointer">✓ Conferma e salva</button>
     </div>
-  </div>
 
-  <!-- Panel QR -->
-  <div id="fpanel-qr" style="display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center">
-    <div style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:16px">Fai scansionare al cliente per firmare dal suo telefono</div>
-    <div id="firma-qr-code" style="display:inline-block;padding:16px;background:white;border-radius:var(--radius-lg);margin-bottom:16px"></div>
-    <div id="firma-qr-stato" style="font-size:13px;color:rgba(255,255,255,.5)">In attesa della firma…</div>
-    <div id="firma-qr-ok" style="display:none">
-      <div style="font-size:40px">✅</div>
-      <div style="font-size:15px;font-weight:700;color:var(--success);margin-top:8px">Firma ricevuta!</div>
-      <button onclick="confermaSalvaCommessa()" style="margin-top:16px;padding:14px 32px;background:var(--success);color:white;border:none;border-radius:var(--radius-lg);font-size:15px;font-weight:700;cursor:pointer">Crea commessa</button>
-    </div>
-  </div>
 </div>
 
 </body>
@@ -7959,9 +7941,7 @@ let _editAppId = null;
 // ═══════════════════════════════════════════════════
 // FIRMA COMMESSA
 // ═══════════════════════════════════════════════════
-let _firmaToken = null;
 
-let _firmaRealtime = null;
 
 let _firmaDataUrl = null;
 
@@ -8715,30 +8695,16 @@ function avantiFirmaCommessa() {
   `;
 
   _firmaDataUrl = null;
-  _firmaToken = crypto.randomUUID();
 
   // Mostra modal
   const m = document.getElementById('modal-firma');
   m.style.display = 'block';
-  setFirmaTab('pad');
   requestAnimationFrame(() => initFirmaCanvas());
 }
 
 function chiudiFirma() {
   document.getElementById('modal-firma').style.display = 'none';
-  if (_firmaRealtime) { supa.removeChannel(_firmaRealtime); _firmaRealtime = null; }
-  _firmaToken = null;
   _firmaDataUrl = null;
-}
-
-function setFirmaTab(tab) {
-  const qr = document.getElementById('fpanel-qr');
-  if (tab === 'qr') {
-    qr.style.display = 'flex';
-    avviaFirmaQR();
-  } else {
-    qr.style.display = 'none';
-  }
 }
 
 function initFirmaCanvas() {
@@ -8795,63 +8761,11 @@ function getFirmaDataUrl() {
   return canvas.toDataURL('image/png');
 }
 
-async function avviaFirmaQR() {
-  const vId = document.getElementById('com-veicolo').value;
-  const desc = document.getElementById('com-desc').value.trim();
-  const km = document.getElementById('com-km').value.trim();
-  const v = veicoli.find(x=>x.id===vId);
-  const cl = clienti.find(c=>c.id===document.getElementById('com-cliente').value);
-
-  // Crea record temporaneo su Supabase per la firma
-  const token = _firmaToken;
-  await supa.from('firma_pending').upsert({
-    id: token,
-    targa: v?.targa||'',
-    descrizione: desc,
-    km,
-    cliente: cl?.ragione||'',
-    firma: null,
-    created_at: new Date().toISOString()
-  });
-
-  // Genera QR con URL firma
-  const firmaUrl = `${window.location.origin}${window.location.pathname.replace('ORMIA.html','firma.html')}?t=${token}`;
-  const qrEl = document.getElementById('firma-qr-code');
-  qrEl.innerHTML = '';
-  // Usa QR code via API
-  const qrImg = document.createElement('img');
-  qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(firmaUrl)}`;
-  qrImg.style.cssText = 'width:180px;height:180px;display:block';
-  qrEl.appendChild(qrImg);
-
-  document.getElementById('firma-qr-stato').textContent = 'In attesa della firma…';
-  document.getElementById('firma-qr-ok').style.display = 'none';
-
-  // Ascolta su Supabase realtime per la firma
-  if (_firmaRealtime) supa.removeChannel(_firmaRealtime);
-  _firmaRealtime = supa.channel('firma-'+token)
-    .on('postgres_changes', {event:'UPDATE', schema:'public', table:'firma_pending', filter:`id=eq.${token}`},
-      async (payload) => {
-        if (payload.new.firma) {
-          _firmaDataUrl = payload.new.firma;
-          document.getElementById('firma-qr-stato').style.display = 'none';
-          document.getElementById('firma-qr-ok').style.display = '';
-          supa.removeChannel(_firmaRealtime);
-          // Pulizia record firma_pending dopo 5 minuti
-          setTimeout(() => supa.from('firma_pending').delete().eq('id', token), 5 * 60 * 1000);
-        }
-      })
-    .subscribe();
-}
-
 async function confermaSalvaCommessa() {
-  // Se QR panel visibile usa firma ricevuta, altrimenti leggi canvas
-  if (document.getElementById('fpanel-qr').style.display === 'none') {
-    _firmaDataUrl = getFirmaDataUrl();
-    if (!_firmaDataUrl) {
-      alert('Il cliente deve firmare prima di procedere.');
-      return;
-    }
+  _firmaDataUrl = getFirmaDataUrl();
+  if (!_firmaDataUrl) {
+    alert('Il cliente deve firmare prima di procedere.');
+    return;
   }
   chiudiFirma();
   await saveCommessa(_firmaDataUrl);
@@ -10889,22 +10803,8 @@ initDocumenti();
     <button onclick="chiudiFirma()" style="padding:10px 16px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:var(--radius-lg);cursor:pointer;font-size:13px;font-weight:600;color:white;touch-action:manipulation;flex-shrink:0">✕ Esci</button>
     <button onclick="clearFirmaCanvas()" style="padding:10px 16px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:var(--radius-lg);cursor:pointer;font-size:13px;font-weight:600;color:white;touch-action:manipulation;flex-shrink:0">🗑 Cancella</button>
     <button onclick="confermaSalvaCommessa()" style="flex:1;padding:10px;background:var(--success);color:white;border:none;border-radius:var(--radius-lg);font-size:15px;font-weight:700;cursor:pointer;touch-action:manipulation">✓ Conferma e salva</button>
-    <button onclick="setFirmaTab('qr')" style="padding:10px 14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:var(--radius-lg);cursor:pointer;font-size:12px;color:rgba(255,255,255,.6);touch-action:manipulation;flex-shrink:0">📱 QR</button>
-  </div>
-
-  <!-- Panel QR: overlay sopra il canvas quando attivo -->
-  <div id="fpanel-qr" style="display:none;position:absolute;top:0;left:0;right:0;bottom:80px;background:#111;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center;z-index:8">
-    <button onclick="setFirmaTab('pad')" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,.1);border:none;color:white;border-radius:var(--radius);padding:8px 14px;cursor:pointer;font-size:12px;font-weight:600;touch-action:manipulation">✕ Torna alla firma</button>
-    <div style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:16px">Fai scansionare al cliente per firmare dal suo telefono</div>
-    <div id="firma-qr-code" style="display:inline-block;padding:16px;background:white;border-radius:var(--radius-lg);margin-bottom:16px"></div>
-    <div id="firma-qr-stato" style="font-size:13px;color:rgba(255,255,255,.5)">In attesa della firma…</div>
-    <div id="firma-qr-ok" style="display:none">
-      <div style="font-size:40px">✅</div>
-      <div style="font-size:15px;font-weight:700;color:var(--success);margin-top:8px">Firma ricevuta!</div>
-      <button onclick="confermaSalvaCommessa()" style="margin-top:16px;padding:14px 32px;background:var(--success);color:white;border:none;border-radius:var(--radius-lg);font-size:15px;font-weight:700;cursor:pointer;touch-action:manipulation">Crea commessa</button>
-    </div>
   </div>
 </div>
 
 </body>
-</html>                                                                                                                 
+</html>
