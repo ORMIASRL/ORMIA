@@ -4,7 +4,7 @@
 
 var https = require('https');
 
-var ORIGIN       = 'https://ormiaofficina.netlify.app';
+var ORIGIN       = 'https://ormiaofficinapro.netlify.app';
 var SUMUP_HOST   = 'api.sumup.com';
 var SUMUP_PATH   = '/token';
 
