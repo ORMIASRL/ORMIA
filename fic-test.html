@@ -281,7 +281,7 @@
              style="font-family:var(--mono);font-size:12px">
 
       <label>Redirect URI</label>
-      <input type="text" id="cfg-redirect-uri" value="https://ormiaofficina.netlify.app/fic-callback"
+      <input type="text" id="cfg-redirect-uri" value="https://ormiaofficinapro.netlify.app/fic-callback"
              style="font-family:var(--mono);font-size:12px">
 
       <label>Scope</label>
@@ -484,7 +484,7 @@ function riempiForm() {
   var set = function(id, val) { var el = document.getElementById(id); if (el && val !== undefined) el.value = val; };
   set('cfg-client-id',     _cfg.client_id     || '');
   set('cfg-client-secret', _cfg.client_secret || '');
-  set('cfg-redirect-uri',  _cfg.redirect_uri  || 'https://ormiaofficina.netlify.app/fic-callback');
+  set('cfg-redirect-uri',  _cfg.redirect_uri  || 'https://ormiaofficinapro.netlify.app/fic-callback');
   if (_cfg.scopes && _cfg.scopes.length) {
     document.querySelectorAll('input[name="scope"]').forEach(function(cb) { cb.checked = _cfg.scopes.indexOf(cb.value) !== -1; });
     aggiornaScopes();
