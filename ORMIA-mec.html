@@ -820,7 +820,9 @@ function isMagazziniere() {
   const ruoli = Array.isArray(mecLogged.ruoli) && mecLogged.ruoli.length
     ? mecLogged.ruoli
     : (mecLogged.ruolo ? [mecLogged.ruolo] : []);
-  return ruoli.some(r => r.toLowerCase() === 'magazziniere');
+  // Restrizioni solo per chi è SOLO magazziniere: se è anche meccanico/capo officina può timbrare
+  const lower = ruoli.map(r => String(r).toLowerCase());
+  return lower.includes('magazziniere') && !lower.some(r => r === 'meccanico' || r === 'capo officina');
 }
 
 function applicaPermessiMec() {
@@ -832,7 +834,14 @@ function applicaPermessiMec() {
 
 // Wrapper che applica restrizioni magazziniere nel dettaglio
 function applicaPermessiDettaglio() {
-  if (!isMagazziniere()) return;
+  if (!isMagazziniere()) {
+    // Ripristina eventuali elementi nascosti da un login precedente (es. magazziniere sullo stesso dispositivo)
+    const a = document.getElementById('det-actions'); if (a) a.style.display = '';
+    const bm = document.getElementById('btn-aggiungi-media'); if (bm) bm.style.display = '';
+    const gf = document.getElementById('det-foto-fine-grid'); if (gf && gf.closest('.det-section')) gf.closest('.det-section').style.display = '';
+    document.querySelectorAll('.scan-panel').forEach(el => el.style.display = '');
+    return;
+  }
   // Nascondi azioni (timbratura/avanzamento stato)
   const actions = document.getElementById('det-actions');
   if (actions) actions.style.display = 'none';
