@@ -559,6 +559,12 @@ let _presenze   = [];
 let _movimenti  = [];
 
 async function loadAll() {
+  // Garantisce una sessione (anche anonima) prima di leggere i dati: senza sessione RLS restituisce 0 dipendenti
+  try {
+    const { data: { session } } = await supa.auth.getSession();
+    if (!session) await supa.auth.signInAnonymously();
+  } catch(e) { console.warn('Sessione anonima non disponibile', e); }
+
   const [m, co, cl, v, p, t, pr, mo] = await Promise.all([
     supa.from('dipendenti').select('*'),
     supa.from('commesse').select('*'),
