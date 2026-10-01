@@ -3674,7 +3674,7 @@ function renderDipendenti() {
     } else {
       statoOggi = `<span class="badge badge-gray" style="color:var(--text3)">Non registrato</span>`;
     }
-    return `<tr>
+    return `<tr style="cursor:pointer" title="Apri scheda dipendente" onclick="openModalMeccanico('${d.id}')">
       <td><div class="cell-with-avatar">
         <div class="cell-avatar">${initials}</div>
         <div>
@@ -3686,7 +3686,7 @@ function renderDipendenti() {
       <td style="font-family:'DM Mono',monospace;font-size:12px">${d.ora_uscita_automatica||d.oraUscitaAutomatica||'17:00'}</td>
       <td style="font-size:12px">${d.pin?'<span class="badge badge-blue">PIN ✓</span>':'—'}</td>
       <td>${statoOggi}</td>
-      <td><div class="row-actions" style="opacity:1">
+      <td onclick="event.stopPropagation()"><div class="row-actions" style="opacity:1">
         <button class="btn btn-ghost btn-sm" onclick="openModalMeccanico('${d.id}')">Modifica</button>
         <button class="btn btn-danger btn-sm" onclick="deleteMeccanicoConPresenze('${d.id}')">Elimina</button>
       </div></td>
@@ -4324,7 +4324,7 @@ function renderMeccanici() {
     const avatarBg    = inLavorazione ? 'var(--success)' : presente ? 'var(--accent)' : 'var(--accent-light)';
     const avatarColor = inLavorazione || presente ? 'white' : 'var(--accent)';
 
-    return `<tr>
+    return `<tr style="cursor:pointer" title="Apri scheda dipendente" onclick="openModalMeccanico('${m.id}')">
       <td><div class="cell-with-avatar">
         <div class="cell-avatar" style="background:${avatarBg};color:${avatarColor}">${initials}</div>
         <div>
@@ -4336,7 +4336,7 @@ function renderMeccanici() {
       <td>${presenzaBadge}</td>
       <td>${commessaLabel}</td>
       <td>${m.tel||'—'}</td>
-      <td><div class="row-actions" style="opacity:1">
+      <td onclick="event.stopPropagation()"><div class="row-actions" style="opacity:1">
         <button class="btn btn-ghost btn-sm" onclick="openModalMeccanico('${m.id}')">Modifica</button>
         <button class="btn btn-ghost btn-sm" onclick="stampaBadgeMeccanico('${m.id}')">Badge</button>
         <button class="btn btn-danger btn-sm" onclick="deleteMeccanico('${m.id}')">Elimina</button>
