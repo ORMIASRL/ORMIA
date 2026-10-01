@@ -26,7 +26,7 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text)
 /* ── LAYOUT ── */
 .app { display:none; }
 .sidebar { width:220px; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; position:fixed; top:0; left:0; bottom:0; z-index:100; }
-.main { margin-left:220px; margin-right:32px; display:flex; flex-direction:column; min-width:0; transition:margin-right .25s ease; }
+.main { margin-left:220px; margin-right:0; display:flex; flex-direction:column; min-width:0; transition:margin-right .25s ease; }
 .topbar { background:var(--surface); border-bottom:1px solid var(--border); padding:14px 24px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:50; }
 .content { padding:24px 28px; }
 
@@ -204,7 +204,30 @@ tr:hover td { background:var(--surface2); }
       </div>
     </nav>
 
-    <!-- ══ BLOCCO NOTE CONDIVISO ══ -->
+    <!-- ══ BLOCCO NOTE CONDIVISO (in basso a sinistra, come in ORMIA) ══ -->
+    <div style="border-top:1px solid var(--border);padding:10px 10px 4px">
+      <div onclick="bnToggle()" style="display:flex;align-items:center;justify-content:space-between;padding:0 4px;margin-bottom:6px;cursor:pointer">
+        <div style="display:flex;align-items:center;gap:6px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:var(--accent)"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          <span style="font-size:12px;font-weight:700;color:var(--text2)">Note condivise</span>
+          <span id="bn-badge" style="display:none;background:#E53E3E;color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px">NEW</span>
+        </div>
+        <svg id="bn-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;color:var(--text3);transition:transform .2s"><polyline points="18 15 12 9 6 15"/></svg>
+      </div>
+      <div id="bn-panel" style="display:none">
+        <div id="bn-old-wrap" style="display:none">
+          <div id="bn-old-toggle" onclick="bnToggleOld()" style="font-size:11px;color:var(--accent);cursor:pointer;padding:2px 0 6px;text-align:center">▲ Mostra precedenti</div>
+          <div id="bn-old-list" style="display:none;max-height:120px;overflow-y:auto;margin-bottom:6px"></div>
+        </div>
+        <div id="bn-list" style="max-height:180px;overflow-y:auto;margin-bottom:6px;display:flex;flex-direction:column;gap:4px"></div>
+        <div style="display:flex;gap:4px">
+          <textarea id="bn-area" rows="2" placeholder="Scrivi nota…" onfocus="bnClearBadge()"
+            style="flex:1;resize:none;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:inherit;color:var(--text);background:var(--surface2);outline:none"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();bnSend()}"></textarea>
+          <button onclick="bnSend()" style="background:var(--accent);border:none;border-radius:var(--radius);color:white;cursor:pointer;padding:0 8px;font-size:16px">↑</button>
+        </div>
+      </div>
+    </div>
 
     <div class="sidebar-footer">
       <div style="display:flex;align-items:center;justify-content:space-between">
@@ -2132,20 +2155,17 @@ const BN_SHOW  = 5;
 
 function bnToggle() {
   _bnOpen = !_bnOpen;
-  const panel = document.getElementById('bn-panel');
-  const main  = document.querySelector('.main');
+  const panel   = document.getElementById('bn-panel');
+  const chevron = document.getElementById('bn-chevron');
+  if (panel)   panel.style.display = _bnOpen ? '' : 'none';
+  if (chevron) chevron.style.transform = _bnOpen ? 'rotate(180deg)' : '';
   if (_bnOpen) {
-    panel.style.width = '280px';
-    if (main) main.style.marginRight = '280px';
     bnClearBadge();
     setTimeout(() => {
       const list = document.getElementById('bn-list');
       if (list) list.scrollTop = list.scrollHeight;
-      document.getElementById('bn-area').focus();
+      document.getElementById('bn-area')?.focus();
     }, 50);
-  } else {
-    panel.style.width = '32px';
-    if (main) main.style.marginRight = '32px';
   }
 }
 
@@ -2319,37 +2339,6 @@ initAuth();
     </div>
   </div>
 </div>
-
-<!-- ══ PANNELLO NOTE DESTRA ══ -->
-<!-- NOTE panel: width:32px chiuso, width:280px aperto — rimane SEMPRE a right:0 → nessun overflow orizzontale -->
-<div id="bn-panel" style="position:fixed;top:0;right:0;bottom:0;width:32px;overflow:hidden;background:var(--surface);border-left:1px solid var(--border);border-radius:8px 0 0 8px;z-index:300;display:flex;flex-direction:row;transition:width .25s ease;box-shadow:-2px 0 12px rgba(0,0,0,.07)">
-  <!-- Tab (sempre visibile, leftmost 32px) -->
-  <div onclick="bnToggle()" style="width:32px;flex-shrink:0;position:absolute;left:0;top:50%;transform:translateY(-50%);height:96px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:var(--text2)"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-    <span style="writing-mode:vertical-rl;font-size:11px;font-weight:600;color:var(--text2);letter-spacing:.5px">NOTE</span>
-    <span id="bn-badge" style="display:none;background:#E53E3E;color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px">NEW</span>
-  </div>
-  <!-- Contenuto pannello (a destra del tab, visibile solo quando aperto) -->
-  <div style="margin-left:32px;flex:1;display:flex;flex-direction:column;min-width:248px;overflow:hidden">
-    <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
-      <span style="font-size:13px;font-weight:700;color:var(--text)">Note condivise</span>
-      <button onclick="bnToggle()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;line-height:1;padding:0">×</button>
-    </div>
-    <div id="bn-old-wrap" style="display:none;flex-shrink:0;padding:0 12px">
-      <div id="bn-old-toggle" onclick="bnToggleOld()" style="font-size:11px;color:var(--accent);cursor:pointer;padding:6px 0;text-align:center">▲ Mostra precedenti</div>
-      <div id="bn-old-list" style="display:none;max-height:120px;overflow-y:auto;margin-bottom:6px"></div>
-    </div>
-    <div id="bn-list" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px"></div>
-    <div style="padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:6px;align-items:flex-end;flex-shrink:0">
-      <textarea id="bn-area" rows="2" placeholder="Scrivi un messaggio…"
-        style="flex:1;border:1px solid var(--border);border-radius:var(--radius);padding:7px 9px;font-size:12px;font-family:inherit;color:var(--text);background:var(--surface2);line-height:1.5;outline:none;resize:none;box-sizing:border-box"
-        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();bnSend()}"
-        onfocus="bnClearBadge()"></textarea>
-      <button onclick="bnSend()" style="background:var(--accent);color:white;border:none;border-radius:var(--radius);padding:7px 10px;cursor:pointer;font-size:16px;line-height:1;flex-shrink:0">↑</button>
-    </div>
-  </div>
-</div>
-
 
 </body>
 </html>
