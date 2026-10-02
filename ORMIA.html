@@ -672,6 +672,10 @@
           Veicoli
           <span id="badge-veicoli" style="display:none;background:var(--accent);color:white;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span>
         </div>
+        <div class="nav-item" id="nav-rimorchi" onclick="setTab('rimorchi')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="16" height="10" rx="1"/><line x1="18" y1="12" x2="22" y2="12"/><circle cx="7" cy="18" r="2"/><circle cx="13" cy="18" r="2"/></svg>
+          Rimorchi
+        </div>
       </div>
       <div class="nav-section">
         <div class="nav-label">Officina</div>
@@ -837,7 +841,7 @@
         <div class="empty-state" id="empty-state" style="display:none">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
           <p id="empty-msg">Nessun cliente ancora. Aggiungine uno!</p>
-          <button class="btn btn-primary" onclick="openModal(currentTab === 'clienti' ? 'cliente' : 'veicolo')">
+          <button class="btn btn-primary" onclick="openModal(currentTab === 'clienti' ? 'cliente' : 'veicolo', null, null, currentTab === 'rimorchi' ? 'rimorchio' : 'veicolo')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Aggiungi
           </button>
@@ -1766,21 +1770,21 @@ function setTab(tab) {
   document.getElementById('section-presenze').style.display    = 'none';
   // Tab attivi
   document.getElementById('tab-clienti').classList.toggle('active', tab === 'clienti');
-  document.getElementById('tab-veicoli').classList.toggle('active', tab === 'veicoli');
+  document.getElementById('tab-veicoli').classList.toggle('active', tab === 'veicoli' || tab === 'rimorchi');
   // Nav attivo
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById(tab === 'clienti' ? 'nav-clienti' : 'nav-veicoli')?.classList.add('active');
+  document.getElementById(tab === 'clienti' ? 'nav-clienti' : (tab === 'rimorchi' ? 'nav-rimorchi' : 'nav-veicoli'))?.classList.add('active');
   // Topbar
-  document.getElementById('topbar-title').textContent = tab === 'clienti' ? 'Clienti' : 'Veicoli';
-  document.getElementById('topbar-sub').textContent   = tab === 'clienti' ? 'Gestione anagrafica clienti' : 'Gestione anagrafica veicoli';
+  document.getElementById('topbar-title').textContent = tab === 'clienti' ? 'Clienti' : (tab === 'rimorchi' ? 'Rimorchi' : 'Veicoli');
+  document.getElementById('topbar-sub').textContent   = tab === 'clienti' ? 'Gestione anagrafica clienti' : (tab === 'rimorchi' ? 'Gestione anagrafica rimorchi' : 'Gestione anagrafica veicoli');
   // Bottone
   const btn = document.querySelector('.topbar-actions .btn-primary');
-  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ' + (tab === 'clienti' ? 'Nuovo cliente' : 'Nuovo veicolo');
-  btn.onclick = () => openModal(tab === 'clienti' ? 'cliente' : 'veicolo');
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ' + (tab === 'clienti' ? 'Nuovo cliente' : (tab === 'rimorchi' ? 'Nuovo rimorchio' : 'Nuovo veicolo'));
+  btn.onclick = () => openModal(tab === 'clienti' ? 'cliente' : 'veicolo', null, null, tab === 'rimorchi' ? 'rimorchio' : 'veicolo');
   // Filtro
   const filterSel = document.getElementById('filter-select');
   filterSel.innerHTML = '<option value="">Tutti</option>';
-  if (tab === 'veicoli') {
+  if (tab === 'veicoli' || tab === 'rimorchi') {
     clienti.forEach(c => {
       const o = document.createElement('option');
       o.value = c.id; o.textContent = c.ragione;
@@ -1946,10 +1950,11 @@ function renderTable() {
     let filtered = veicoli.filter(v => {
       const q2 = !q || (v.targa||'').toLowerCase().includes(q) || (v.marca||'').toLowerCase().includes(q) || (v.modello||'').toLowerCase().includes(q);
       const f2 = !f || v.clienteId === f;
-      return q2 && f2;
+      const t2 = currentTab === 'rimorchi' ? v.tipo === 'rimorchio' : v.tipo !== 'rimorchio';
+      return q2 && f2 && t2;
     });
     const tbody = document.getElementById('table-body');
-    if (!filtered.length) { showEmpty('Nessun veicolo trovato.'); return; }
+    if (!filtered.length) { showEmpty(currentTab === 'rimorchi' ? 'Nessun rimorchio trovato.' : 'Nessun veicolo trovato.'); return; }
     hideEmpty();
     tbody.innerHTML = filtered.map(v => {
       const cl = clienti.find(c=>c.id===v.clienteId);
@@ -2032,9 +2037,10 @@ async function saveVeicolo() {
   const errs = [];
   if (!targa)    errs.push('• Targa');
   if (!clienteId)errs.push('• Cliente');
-  if (!vin)      errs.push('• Numero telaio (VIN)');
-  if (!km)       errs.push('• Chilometraggio attuale');
-  if (isFord && !oreMotore) errs.push('• Ore motore (obbligatorie per Ford)');
+  const _isRim = _veicoloTipo === 'rimorchio';
+  if (!_isRim && !vin) errs.push('• Numero telaio (VIN)');
+  if (!_isRim && !km)  errs.push('• Chilometraggio attuale');
+  if (!_isRim && isFord && !oreMotore) errs.push('• Ore motore (obbligatorie per Ford)');
   if (isFord && garanzia && !garanziaScadenza) errs.push('• Data scadenza garanzia (obbligatoria se in garanzia)');
 
   if (errs.length) {
@@ -2058,6 +2064,8 @@ async function saveVeicolo() {
     garanziaScadenza: garanziaScadenza || null,
     note: document.getElementById('v-note').value.trim(),
   };
+  // Il tipo si salva solo per i rimorchi (i veicoli usano il valore predefinito del database)
+  if (_veicoloTipo === 'rimorchio') data.tipo = 'rimorchio';
   try {
     if (editingVeicoloId) {
       await dbSaveVeicolo({id:editingVeicoloId, ...data});
@@ -2204,7 +2212,8 @@ function exportCSV() {
 // ╚═══════════════════════════════════════════════════╝
 
 // ===== MODAL =====
-function openModal(type, preselectClienteId, editId) {
+let _veicoloTipo = 'veicolo'; // 'veicolo' | 'rimorchio'
+function openModal(type, preselectClienteId, editId, tipoNuovo) {
   if (type === 'cliente') {
     editingClienteId = editId || null;
     document.getElementById('modal-cliente-title').textContent = editId ? 'Modifica cliente' : 'Nuovo cliente';
@@ -2234,7 +2243,10 @@ function openModal(type, preselectClienteId, editId) {
     document.getElementById('modal-cliente').style.display='flex';
   } else {
     editingVeicoloId = editId || null;
-    document.getElementById('modal-veicolo-title').textContent = editId ? 'Modifica veicolo' : 'Nuovo veicolo';
+    const _vEdit = editId ? veicoli.find(x=>x.id===editId) : null;
+    _veicoloTipo = _vEdit ? (_vEdit.tipo === 'rimorchio' ? 'rimorchio' : 'veicolo') : (tipoNuovo === 'rimorchio' ? 'rimorchio' : 'veicolo');
+    const _nomeTipo = _veicoloTipo === 'rimorchio' ? 'rimorchio' : 'veicolo';
+    document.getElementById('modal-veicolo-title').textContent = (editId ? 'Modifica ' : 'Nuovo ') + _nomeTipo;
     const sel = document.getElementById('v-cliente');
     sel.innerHTML = clienti.map(c=>`<option value="${c.id}">${c.ragione}</option>`).join('');
     if (!clienti.length) sel.innerHTML = '<option value="">— Nessun cliente —</option>';
@@ -4654,7 +4666,7 @@ async function saveCommessa(firmaDataUrl=null) {
   const oreMotore = document.getElementById('com-ore-motore').value.trim();
   if (!desc) { alert('Inserisci una descrizione del lavoro.'); return; }
   if (!vId)  { alert('Cerca e seleziona un veicolo per targa.'); return; }
-  if (!km)   { alert('I km attuali del veicolo sono obbligatori.'); document.getElementById('com-km').focus(); return; }
+  if (!km && veicoli.find(x=>x.id===vId)?.tipo !== 'rimorchio')   { alert('I km attuali del veicolo sono obbligatori.'); document.getElementById('com-km').focus(); return; }
   // Ore motore obbligatorie solo per Ford
   const veicoloSel = veicoli.find(x=>x.id===vId);
   const isFordCom  = (veicoloSel?.marca||'').toLowerCase().trim() === 'ford';
@@ -8691,7 +8703,7 @@ function avantiFirmaCommessa() {
   const oreMotore = document.getElementById('com-ore-motore').value.trim();
   if (!desc) { alert('Inserisci la descrizione del lavoro.'); return; }
   if (!vId)  { alert('Cerca e seleziona un veicolo per targa.'); return; }
-  if (!km)   { alert('I km attuali del veicolo sono obbligatori.'); document.getElementById('com-km').focus(); return; }
+  if (!km && veicoli.find(x=>x.id===vId)?.tipo !== 'rimorchio')   { alert('I km attuali del veicolo sono obbligatori.'); document.getElementById('com-km').focus(); return; }
   const vSel2   = veicoli.find(x=>x.id===vId);
   const isFord2 = (vSel2?.marca||'').toLowerCase().trim() === 'ford';
   if (isFord2 && !oreMotore) { alert('Le ore motore sono obbligatorie per veicoli Ford.'); document.getElementById('com-ore-motore').focus(); return; }
