@@ -6780,23 +6780,67 @@ function cercaProdottoBarcode(val) {
   const notFound = document.getElementById('dc-scan-notfound');
   resEl.style.display='none'; notFound.style.display='none';
   scanProdottoId = null;
+  const sugg = _getScanSugg();
+  if (sugg) { sugg.style.display='none'; sugg.innerHTML=''; }
   if (!v) return;
 
-  
-
-  // Corrispondenza esatta su barcode, codice interno o codice fornitore
-  const trovato = prodotti.find(p =>
+  // 1) Corrispondenza esatta (barcode, codice interno, codice fornitore): selezione immediata — per la pistola barcode
+  const esatto = prodotti.find(p =>
     prodMatchBarcode(p, v) ||
     (p.codForn||'').toUpperCase() === v ||
     (p.codInt||'').toUpperCase()  === v
-  ) || prodotti.find(p=>(p.descrizione||p.desc||'').toUpperCase().includes(v));
+  );
+  if (esatto) { mostraProdottoDC(esatto); return; }
 
-  if (!trovato) {
-    prepopolaFormNuovoRicambio(v);
-    notFound.style.display='block';
+  // 2) Corrispondenze parziali: elenco di suggerimenti da cliccare
+  const parziali = prodotti.filter(p =>
+    (p.descrizione||p.desc||'').toUpperCase().includes(v) ||
+    (p.codInt||'').toUpperCase().includes(v) ||
+    (p.codForn||'').toUpperCase().includes(v) ||
+    prodMatchBarcodePartial(p, v)
+  ).slice(0, 8);
+  if (parziali.length && sugg) {
+    sugg.innerHTML = parziali.map(p => `
+      <div onclick="selezionaSuggScan('${p.id}')"
+        style="padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:12px"
+        onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+        <div style="font-weight:500;color:var(--text)">${p.descrizione||p.desc||'—'}</div>
+        <div style="color:var(--text3);font-family:'DM Mono',monospace;font-size:11px;margin-top:2px">
+          ${[p.codInt, p.codForn?'Forn:'+p.codForn:''].filter(Boolean).join(' · ')}
+          · Giac: <strong>${p.giacenza} ${p.um||'pz'}</strong>
+          ${p.prezzoVend?'· €'+Number(p.prezzoVend).toFixed(2):''}
+        </div>
+      </div>`).join('');
+    sugg.style.display = 'block';
     return;
   }
-  mostraProdottoDC(trovato);
+
+  // 3) Nessun prodotto: proponi la creazione (il cursore resta nella casella)
+  prepopolaFormNuovoRicambio(v);
+  notFound.style.display='block';
+}
+
+// Contenitore suggerimenti sotto la casella di scansione (creato al primo uso)
+function _getScanSugg() {
+  let el = document.getElementById('dc-scan-sugg');
+  if (el) return el;
+  const inp = document.getElementById('dc-scan-input');
+  if (!inp || !inp.parentElement) return null;
+  el = document.createElement('div');
+  el.id = 'dc-scan-sugg';
+  el.style.cssText = 'display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);max-height:240px;overflow-y:auto;margin:-4px 0 8px';
+  inp.parentElement.insertAdjacentElement('afterend', el);
+  return el;
+}
+
+function selezionaSuggScan(prodId) {
+  const sugg = document.getElementById('dc-scan-sugg');
+  if (sugg) { sugg.style.display='none'; sugg.innerHTML=''; }
+  const p = prodotti.find(x=>x.id===prodId);
+  if (!p) return;
+  const inp = document.getElementById('dc-scan-input');
+  if (inp) inp.value = p.codInt || p.codForn || (p.descrizione||p.desc||'');
+  mostraProdottoDC(p);
 }
 
 function prepopolaFormNuovoRicambio(testo) {
