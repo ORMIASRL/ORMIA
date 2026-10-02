@@ -948,11 +948,14 @@ function renderDetail() {
   // Ricambi
   const ricList = document.getElementById('det-ricambi-list');
   if ((cm.vociRic||[]).length) {
-    ricList.innerHTML = cm.vociRic.map(r=>`
+    ricList.innerHTML = cm.vociRic.map(r=>{
+      const _p = r.prodId ? (_prodotti||[]).find(x=>x.id===r.prodId) : null;
+      const _c = r.cod || (_p ? (_p.cod_int || _p.cod_forn || '') : '');
+      return `
       <div class="ric-row">
-        <span class="ric-desc">${r.desc||'—'}</span>
+        <span class="ric-desc">${_c && !(r.desc||'').includes(_c) ? `<b style="font-family:monospace">${_c}</b> — ` : ''}${r.desc||'—'}</span>
         <span class="ric-qta">× ${r.qta||1}</span>
-      </div>`).join('');
+      </div>`;}).join('');
   } else {
     ricList.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0">Nessun ricambio.</div>';
   }
