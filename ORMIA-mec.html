@@ -1078,6 +1078,17 @@ function renderFotoInizio(fotoInizio) {
     const empty = document.getElementById('slot-'+s+'-empty');
     const img   = document.getElementById('slot-'+s+'-img');
     const wrap  = document.getElementById('slot-'+s+'-wrap');
+    // Pulsante ✕ per cancellare e rifare la foto iniziale
+    let del = document.getElementById('slot-'+s+'-del');
+    if (!del && wrap) {
+      del = document.createElement('button');
+      del.id = 'slot-'+s+'-del'; del.type = 'button'; del.innerHTML = '&#x2715;'; del.title = 'Elimina e rifai la foto';
+      del.style.cssText = 'position:absolute;top:3px;right:3px;background:rgba(0,0,0,.6);border:none;color:white;border-radius:50%;width:22px;height:22px;display:none;align-items:center;justify-content:center;cursor:pointer;font-size:13px;padding:0;z-index:2';
+      del.onclick = (e) => { e.preventDefault(); e.stopPropagation(); eliminaFotoInizio(s); };
+      wrap.style.position = 'relative';
+      wrap.appendChild(del);
+    }
+    if (del) del.style.display = fi[s] ? 'flex' : 'none';
     if (fi[s]) {
       completi++;
       if (empty) empty.style.display = 'none';
@@ -1096,6 +1107,24 @@ function renderFotoInizio(fotoInizio) {
     badge.style.color       = completi === 3 ? 'var(--success)'       : '#92400E';
     badge.style.borderColor = completi === 3 ? '#86EFAC'              : '#FDE68A';
   }
+}
+
+async function eliminaFotoInizio(slot) {
+  if (!comSelected) return;
+  const nomi = { targa:'targa', telaio:'telaio', km:'km' };
+  if (!confirm('Eliminare la foto ' + (nomi[slot]||slot) + ' e rifarla?')) return;
+  const fi = { ...(comSelected.fotoInizio || {}) };
+  delete fi[slot];
+  try {
+    const { data: { session } } = await supa.auth.getSession();
+    if (!session) await supa.auth.signInAnonymously();
+    const { error } = await supa.from('commesse').update({ foto_inizio: fi }).eq('id', comSelected.id);
+    if (error) { showToast('Errore: ' + error.message); return; }
+    await loadAll();
+    comSelected = getCommesse().find(c => c.id === comSelected.id) || comSelected;
+    renderFotoInizio(comSelected.fotoInizio);
+    showToast('Foto eliminata — scattala di nuovo');
+  } catch(e) { showToast('Errore: ' + e.message); }
 }
 
 function renderFotoFine(fotoFine) {
