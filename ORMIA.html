@@ -2732,7 +2732,7 @@ function init() {
           placeholder="Scansiona barcode / QR o digita codice…"
           style="flex:1;padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.5px"
           oninput="cercaProdottoBarcode(this.value)"
-          onkeydown="if(event.key==='Enter')confermaScansioneRicambio()">
+          onkeydown="if(event.key==='Enter'){event.preventDefault();if(scanProdottoId)confermaScansioneRicambio();else _focusNuovoRicambio();}">
         <input type="number" id="dc-scan-qta" value="1" min="1" style="width:60px;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;text-align:center">
       </div>
       <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Collega il lettore barcode USB/BT: il codice viene riconosciuto automaticamente</div>
@@ -2744,7 +2744,7 @@ function init() {
         <input type="text" id="dc-man-input"
           placeholder="Cerca per nome, codice interno, codice fornitore…"
           style="width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif"
-          oninput="cercaManualeProdotto(this.value)">
+          oninput="cercaManualeProdotto(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();if(scanProdottoId)confermaScansioneRicambio();else _focusNuovoRicambio();}">
         <div id="dc-man-dropdown" style="display:none;position:absolute;left:0;right:0;top:calc(100% + 2px);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);z-index:400;max-height:220px;overflow-y:auto"></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
@@ -6808,12 +6808,19 @@ function prepopolaFormNuovoRicambio(testo) {
   if (sembraCodice) {
     cod.value  = testo.trim();
     desc.value = '';
-    setTimeout(()=>desc.focus(), 50);
   } else {
     desc.value = testo.trim();
     cod.value  = '';
-    setTimeout(()=>cod.focus(), 50);
   }
+}
+
+// Sposta il cursore nel modulo "nuovo ricambio" solo quando si preme Invio (mai mentre si scrive)
+function _focusNuovoRicambio() {
+  const nf = document.getElementById('dc-scan-notfound');
+  if (!nf || nf.style.display === 'none') return;
+  const desc = document.getElementById('dc-new-desc'), cod = document.getElementById('dc-new-cod');
+  const target = (desc && !desc.value) ? desc : cod;
+  if (target) target.focus();
 }
 
 async function creaESalvaNuovoRicambio() {
