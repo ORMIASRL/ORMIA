@@ -7,6 +7,58 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>ORMIA — Officina</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+/* ORMIA — ora del server: tutte le date usano l'orologio del server, non quello del PC */
+(function () {
+  if (window.__ormiaOraServer) return;
+  window.__ormiaOraServer = true;
+  const RealDate = Date;
+  let off = 0;
+  function ServerDate(...a) {
+    if (!new.target) return new RealDate(RealDate.now() + off).toString();
+    return a.length ? new RealDate(...a) : new RealDate(RealDate.now() + off);
+  }
+  ServerDate.prototype = RealDate.prototype;
+  Object.setPrototypeOf(ServerDate, RealDate);
+  ServerDate.now   = () => RealDate.now() + off;
+  ServerDate.parse = RealDate.parse;
+  ServerDate.UTC   = RealDate.UTC;
+  window.Date = ServerDate;
+
+  function avviso(min) {
+    const mostra = () => {
+      let b = document.getElementById('ormia-ora-avviso');
+      if (Math.abs(min) < 2) { if (b) b.remove(); return; }
+      if (!b) {
+        b = document.createElement('div');
+        b.id = 'ormia-ora-avviso';
+        b.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483647;background:#c0392b;color:#fff;font:600 13px/1.4 system-ui,sans-serif;padding:8px 14px;text-align:center;box-shadow:0 -2px 8px rgba(0,0,0,.25)';
+        document.body.appendChild(b);
+      }
+      const f = { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' };
+      b.textContent = '⚠️ Data/ora di questo PC errata (' + new RealDate().toLocaleString('it-IT', f) + '). ORMIA usa l\'ora corretta del server: ' + new ServerDate().toLocaleString('it-IT', f) + '.';
+    };
+    if (document.body) mostra(); else document.addEventListener('DOMContentLoaded', mostra);
+  }
+
+  async function sincronizza() {
+    try {
+      const t0 = RealDate.now();
+      const r  = await fetch(location.pathname + '?ora=' + t0, { method: 'HEAD', cache: 'no-store' });
+      const t1 = RealDate.now();
+      const h  = r.headers.get('date');
+      if (!h) return;
+      const diff = RealDate.parse(h) + 500 + (t1 - t0) / 2 - t1;   // header al secondo: +0,5 s
+      off = Math.abs(diff) > 30000 ? diff : 0;                       // sotto i 30 s il PC è considerato giusto
+      avviso(off / 60000);
+    } catch (e) { /* offline: si riprova al prossimo giro */ }
+  }
+  window.ormiaSincronizzaOra = sincronizza;
+  sincronizza();
+  setInterval(sincronizza, 5 * 60 * 1000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) sincronizza(); });
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
