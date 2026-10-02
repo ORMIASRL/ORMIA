@@ -1549,7 +1549,7 @@
         <div class="form-section-title">Dati veicolo</div>
         <div class="form-group">
           <label>Targa *</label>
-          <input autocomplete="off" type="text" id="v-targa" placeholder="AB123CD" style="font-family:'DM Mono',monospace;text-transform:uppercase">
+          <input autocomplete="off" type="text" id="v-targa" placeholder="es. AB123CD" style="font-family:'DM Mono',monospace;text-transform:uppercase">
         </div>
         <div class="form-group">
           <label>Cliente *</label>
@@ -1565,11 +1565,11 @@
         </div>
         <div class="form-group">
           <label>Anno</label>
-          <input autocomplete="off" type="text" id="v-anno" placeholder="2019">
+          <input autocomplete="off" type="text" id="v-anno" placeholder="es. 2019">
         </div>
         <div class="form-group">
           <label>Km attuali *</label>
-          <input autocomplete="off" type="text" id="v-km" placeholder="150000">
+          <input autocomplete="off" type="text" id="v-km" placeholder="es. 150000">
         </div>
         <div class="form-group">
           <label>Ore motore *</label>
@@ -2248,8 +2248,10 @@ function openModal(type, preselectClienteId, editId, tipoNuovo) {
     const _nomeTipo = _veicoloTipo === 'rimorchio' ? 'rimorchio' : 'veicolo';
     document.getElementById('modal-veicolo-title').textContent = (editId ? 'Modifica ' : 'Nuovo ') + _nomeTipo;
     const sel = document.getElementById('v-cliente');
-    sel.innerHTML = clienti.map(c=>`<option value="${c.id}">${c.ragione}</option>`).join('');
+    // Voce vuota in cima: il cliente va scelto esplicitamente (prima si selezionava da solo il primo della lista)
+    sel.innerHTML = '<option value="">— Seleziona cliente —</option>' + clienti.map(c=>`<option value="${c.id}">${c.ragione}</option>`).join('');
     if (!clienti.length) sel.innerHTML = '<option value="">— Nessun cliente —</option>';
+    sel.value = '';
     if (editId) {
       const v = veicoli.find(x=>x.id===editId);
       if (v) {
