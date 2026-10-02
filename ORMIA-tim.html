@@ -692,7 +692,8 @@ function apriPadPresenza(azione) {
   apriPadTimbra({ numero: _AZIONI_PRES[azione] || azione, veicolo_id: null, foto_inizio: {} });
   _padAzione = azione;
   const ov = document.getElementById('pad-timbra');
-  const lab = ov && ov.querySelector('div > div');
+  // Cambia solo l'etichetta "Timbra su" in "Presenza" (primo elemento della finestra)
+  const lab = ov && ov.firstElementChild && ov.firstElementChild.firstElementChild;
   if (lab) lab.textContent = 'Presenza';
 }
 
