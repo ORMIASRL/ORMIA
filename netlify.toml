@@ -1,2 +1,3 @@
+# Config Netlify - ORMIA (ripubblicazione dopo upgrade piano)
 [functions]
   directory = "netlify/functions"
