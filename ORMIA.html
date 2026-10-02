@@ -684,6 +684,11 @@
           Commesse
           <span id="badge-commesse" style="display:none;background:var(--accent);color:white;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span>
         </div>
+        <div class="nav-item" id="nav-garanzie" onclick="setSection('garanzie')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+          Pratiche garanzia
+          <span id="badge-garanzie" style="display:none;background:var(--warning);color:white;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span>
+        </div>
       </div>
       <div class="nav-section">
         <div class="nav-label">Magazzino</div>
@@ -848,6 +853,34 @@
         </div>
       </div><!-- /table-wrap -->
       </div><!-- /section-anagrafiche -->
+
+      <!-- SEZIONE PRATICHE GARANZIA -->
+      <div id="section-garanzie" style="display:none">
+        <div id="gar-kpi" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px"></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+          <div class="search-wrap" style="flex:1;min-width:180px;position:relative">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" class="search-input" id="search-garanzie" placeholder="Cerca per targa, cliente, commessa, claim, RDG…" autocomplete="off" oninput="_disegnaGaranzie()">
+          </div>
+          <div class="stato-filter" id="gar-filter">
+            <div class="stato-pill active" onclick="setGarFiltro(this,'')">Tutte</div>
+            <div class="stato-pill" onclick="setGarFiltro(this,'attesa')">In attesa</div>
+            <div class="stato-pill" onclick="setGarFiltro(this,'accettata')">Accettate</div>
+            <div class="stato-pill" onclick="setGarFiltro(this,'fatturata')">Fatturate</div>
+            <div class="stato-pill" onclick="setGarFiltro(this,'pagata')">Pagate</div>
+            <div class="stato-pill" onclick="setGarFiltro(this,'respinta')">Respinte</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Commessa</th><th>Targa</th><th>Cliente</th><th>Aperta il</th><th>N. Claim</th><th>N. RDG</th><th style="text-align:right">Valore lavoro</th><th style="text-align:right">Riconosciuto</th><th>Stato</th>
+            </tr></thead>
+            <tbody id="tbody-garanzie"></tbody>
+          </table>
+          <div class="empty-state" id="empty-garanzie" style="display:none"><p>Nessuna pratica garanzia. Le commesse in garanzia arrivano qui quando vengono chiuse.</p></div>
+        </div>
+      </div>
 
       <!-- SEZIONE COMMESSE -->
       <div id="section-commesse" style="display:none">
@@ -4946,6 +4979,9 @@ function renderCommesse() {
   });
   // Escludi sempre le fatturate dalla lista commesse
   filtered = filtered.filter(cm => cm.stato !== 'fatturata');
+  // Le garanzie chiuse passano alla sezione Pratiche garanzia
+  filtered = filtered.filter(cm => !_isPraticaGar(cm));
+  try { _badgeGaranzie(); } catch(e) {}
   filtered.sort((a,b)=>{
     const ord={aperta:0,wip:1,chiusa:2,fatturata:3};
     return (ord[a.stato]||0)-(ord[b.stato]||0) || new Date(b.createdAt)-new Date(a.createdAt);
@@ -4955,11 +4991,11 @@ function renderCommesse() {
   const nAp  = commesse.filter(c=>c.stato==='aperta').length;
   const nWip = commesse.filter(c=>c.stato==='wip').length;
   const nSby = commesse.filter(c=>c.stato==='standby').length;
-  const nCh  = commesse.filter(c=>c.stato==='chiusa').length;
+  const nCh  = commesse.filter(c=>c.stato==='chiusa' && !_isPraticaGar(c)).length;
   const nFat = commesse.filter(c=>c.stato==='fatturata').length;
   const nGarAp  = commesse.filter(c=>c.stato==='aperta'   && isVeicoloInGaranzia(c.veicoloId)).length;
   const nGarWip = commesse.filter(c=>c.stato==='wip'      && isVeicoloInGaranzia(c.veicoloId)).length;
-  const nGarCh  = commesse.filter(c=>c.stato==='chiusa'   && isVeicoloInGaranzia(c.veicoloId)).length;
+  const nGarCh  = 0; // le garanzie chiuse sono in Pratiche garanzia
   const nGarFat = commesse.filter(c=>c.stato==='fatturata'&& isVeicoloInGaranzia(c.veicoloId)).length;
   const totAttivo = commesse.filter(c=>c.stato==='aperta'||c.stato==='wip'||c.stato==='standby')
     .reduce((s,c)=>s+(c.totale||0),0);
@@ -5211,7 +5247,7 @@ function showDetailCommessa(id) {
 
   const renderVociDetail = (arr, tipo) => arr.length
     ? arr.map((v,i)=>`<div class="detail-row" style="align-items:flex-start;gap:8px">
-        <span class="detail-key" style="flex:1">${v.desc||'—'} × ${v.qta||1}</span>
+        <span class="detail-key" style="flex:1">${_descRic(v)} × ${v.qta||1}</span>
         <div style="display:flex;align-items:center;gap:6px">
           ${v.sconto ? `<span style="font-size:10px;background:var(--warning-light);color:var(--warning);padding:1px 5px;border-radius:4px">-${v.sconto}%</span>` : ''}
           <span style="font-family:'DM Mono',monospace;font-size:13px">€ ${((v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100)).toFixed(2)}</span>
@@ -5387,6 +5423,7 @@ function showSection(sec) {
   document.getElementById('section-magazzino').style.display   = sec === 'magazzino'    ? 'block' : 'none';
   document.getElementById('section-preventivi').style.display   = sec === 'preventivi'   ? 'block' : 'none';
   document.getElementById('section-calendario').style.display   = sec === 'calendario'   ? 'block' : 'none';
+  const _secGar = document.getElementById('section-garanzie'); if (_secGar) _secGar.style.display = sec === 'garanzie' ? 'block' : 'none';
   // Chiudi tutti i dropdown aperti
   document.querySelectorAll('[id$="-drop"],[id$="-dropdown"]').forEach(el => el.style.display='none');
   // Chiudi detail panels fissi se non sono nella sezione corretta
@@ -5419,6 +5456,14 @@ function setSection(sec) {
       document.getElementById('modal-impostazioni').style.display = 'block';
     }, 50);
     return; // Non aggiornare topbar né nav
+
+  } else if (sec === 'garanzie') {
+    document.getElementById('nav-garanzie').classList.add('active');
+    document.getElementById('topbar-title').textContent = 'Pratiche garanzia';
+    document.getElementById('topbar-sub').textContent   = 'Garanzie chiuse: claim, RDG, fattura e incasso';
+    btn.style.display = 'none';
+    closeDetail('detail-cliente'); closeDetail('detail-veicolo'); closeDetail('detail-commessa');
+    renderGaranzie();
 
   } else if (sec === 'preventivi') {
     document.getElementById('nav-preventivi').classList.add('active');
@@ -5581,7 +5626,7 @@ function generaHtmlCommessa(cm, cl, v, off, inGar, garScad, qrUrl) {
   // Voci ricambi
   const rowsRic = (cm.vociRic||[]).filter(r=>r.desc).map(r=>`
     <tr>
-      <td style="padding:6px 10px;border-bottom:1px solid #E4E2DC">${r.desc}</td>
+      <td style="padding:6px 10px;border-bottom:1px solid #E4E2DC">${_descRic(r)}</td>
       <td style="padding:6px 10px;border-bottom:1px solid #E4E2DC;text-align:center;font-family:monospace">${r.qta||1} pz</td>
       <td style="padding:6px 10px;border-bottom:1px solid #E4E2DC"></td>
     </tr>`).join('');
@@ -6113,6 +6158,243 @@ function onVeicoloChange() {
   }
 }
 
+// ── Codice ricambio (salvato nella voce, oppure preso dal magazzino) ──
+function _codRic(v) {
+  if (!v) return '';
+  if (v.cod) return v.cod;
+  const p = v.prodId && typeof prodotti !== 'undefined' ? prodotti.find(x=>x.id===v.prodId) : null;
+  return p ? (p.codInt || p.codForn || '') : '';
+}
+function _descRic(v) {
+  const d = (v && (v.desc || v.descrizione)) || '—';
+  const c = _codRic(v);
+  return c && !d.includes(c) ? c + ' — ' + d : d;
+}
+
+// ╔═══════════════════════════════════════════════════╗
+// ║  PRATICHE GARANZIA                                ║
+// ╚═══════════════════════════════════════════════════╝
+let _garFiltro = '';
+let _garFatture = {};
+const GAR_STATI = {
+  attesa:    { l:'In attesa',  c:'badge-yellow' },
+  accettata: { l:'Accettata',  c:'badge-blue'   },
+  fatturata: { l:'Fatturata',  c:'badge-gray'   },
+  pagata:    { l:'Pagata',     c:'badge-green'  },
+  respinta:  { l:'Respinta',   c:'badge-red'    },
+};
+function _isPraticaGar(cm) {
+  return (cm.stato === 'chiusa' || cm.stato === 'fatturata') && (!!cm.garStato || isVeicoloInGaranzia(cm.veicoloId));
+}
+function _statoPratica(cm) {
+  if (cm.garStato === 'respinta') return 'respinta';
+  if (cm.garFatturaId) {
+    const f = _garFatture[cm.garFatturaId] || (typeof fatture !== 'undefined' ? fatture.find(x=>x.id===cm.garFatturaId) : null);
+    return f && f.stato === 'pagata' ? 'pagata' : 'fatturata';
+  }
+  if (cm.garClaim && cm.garRdg && +cm.garImporto > 0) return 'accettata';
+  return 'attesa';
+}
+const _eur = n => '€ ' + (+n||0).toLocaleString('it-IT', { minimumFractionDigits:2, maximumFractionDigits:2 });
+function _badgeGaranzie() {
+  const n = commesse.filter(c => _isPraticaGar(c) && ['attesa','accettata'].includes(_statoPratica(c))).length;
+  const b = document.getElementById('badge-garanzie');
+  if (b) { b.textContent = n; b.style.display = n ? '' : 'none'; }
+}
+function setGarFiltro(el, f) {
+  _garFiltro = f;
+  document.querySelectorAll('#gar-filter .stato-pill').forEach(p => p.classList.remove('active'));
+  if (el) el.classList.add('active');
+  _disegnaGaranzie();
+}
+async function renderGaranzie() {
+  const pratiche = commesse.filter(_isPraticaGar);
+  // Fissa come pratica le garanzie chiuse (restano pratiche anche se la garanzia del veicolo scade)
+  const daMarcare = pratiche.filter(c => !c.garStato);
+  if (daMarcare.length) {
+    daMarcare.forEach(c => c.garStato = 'attesa');
+    supa.from('commesse').update({ gar_stato: 'attesa' }).in('id', daMarcare.map(c=>c.id)).then(({error}) => { if (error) console.warn('gar_stato', error); });
+  }
+  _disegnaGaranzie();
+  const ids = pratiche.map(c=>c.garFatturaId).filter(Boolean);
+  if (ids.length) {
+    const { data } = await supa.from('fatture').select('id,numero,stato,totale,imponibile,data_pagamento').in('id', ids);
+    (data||[]).forEach(f => _garFatture[f.id] = f);
+    _disegnaGaranzie();
+  }
+}
+function _disegnaGaranzie() {
+  const tbody = document.getElementById('tbody-garanzie');
+  if (!tbody) return;
+  const tutte = commesse.filter(_isPraticaGar);
+  // KPI
+  const per = st => tutte.filter(c => _statoPratica(c) === st);
+  const somma = (arr, f) => arr.reduce((s,c) => s + (+f(c)||0), 0);
+  const att = per('attesa'), acc = per('accettata'), fat = per('fatturata'), pag = per('pagata');
+  const chiuse = [...acc, ...fat, ...pag];
+  const diff = somma(chiuse, c => (c.totale||0) - (c.garImporto||0));
+  const kpi = (lab, val, sub, col, f) => `<div class="dash-kpi-card" onclick="setGarFiltro(document.querySelectorAll('#gar-filter .stato-pill')[${f}], '${['','attesa','accettata','fatturata','pagata','respinta'][f]}')" style="cursor:pointer">
+      <div class="dash-kpi-label">${lab}</div><div class="dash-kpi-val" style="color:${col}">${val}</div><div class="dash-kpi-sub">${sub}</div></div>`;
+  document.getElementById('gar-kpi').innerHTML =
+    kpi('In attesa', att.length, 'valore lavori ' + _eur(somma(att, c=>c.totale)), 'var(--warning)', 1) +
+    kpi('Accettate', acc.length, 'da fatturare ' + _eur(somma(acc, c=>c.garImporto)), 'var(--accent)', 2) +
+    kpi('Fatturate', fat.length, 'da incassare ' + _eur(somma(fat, c=>c.garImporto)), 'var(--text)', 3) +
+    kpi('Pagate', pag.length, 'incassato ' + _eur(somma(pag, c=>c.garImporto)), 'var(--success)', 4) +
+    `<div class="dash-kpi-card"><div class="dash-kpi-label">Differenza</div><div class="dash-kpi-val" style="color:${diff>0?'var(--danger)':'var(--success)'};font-size:20px">${diff>0?'– ':''}${_eur(Math.abs(diff))}</div><div class="dash-kpi-sub">lavoro fatto vs riconosciuto</div></div>`;
+  // Lista
+  const q = (document.getElementById('search-garanzie')?.value || '').toLowerCase();
+  const lista = tutte.filter(c => {
+    const cl = clienti.find(x=>x.id===c.clienteId), v = veicoli.find(x=>x.id===c.veicoloId);
+    const okQ = !q || [c.numero, cl?.ragione, v?.targa, c.garClaim, c.garRdg, c.descrizione].some(t => (t||'').toLowerCase().includes(q));
+    return okQ && (!_garFiltro || _statoPratica(c) === _garFiltro);
+  }).sort((a,b) => {
+    const ord = { attesa:0, accettata:1, fatturata:2, respinta:3, pagata:4 };
+    return (ord[_statoPratica(a)] - ord[_statoPratica(b)]) || (new Date(b.dataApertura||b.createdAt) - new Date(a.dataApertura||a.createdAt));
+  });
+  const empty = document.getElementById('empty-garanzie');
+  if (!lista.length) { tbody.innerHTML = ''; empty.style.display = ''; _badgeGaranzie(); return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = lista.map(c => {
+    const cl = clienti.find(x=>x.id===c.clienteId), v = veicoli.find(x=>x.id===c.veicoloId);
+    const st = GAR_STATI[_statoPratica(c)];
+    const dif = c.garImporto ? (c.totale||0) - c.garImporto : null;
+    return `<tr onclick="apriPratica('${c.id}')" style="cursor:pointer">
+      <td><div class="td-main" style="font-family:'DM Mono',monospace">${c.numero||'—'}</div><div style="font-size:11px;color:var(--text3);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escAllG(c.descrizione||'')}</div></td>
+      <td><span class="badge badge-gray" style="font-family:'DM Mono',monospace;letter-spacing:.5px">${v?.targa||'—'}</span></td>
+      <td style="font-size:12px">${_escAllG(cl?.ragione||'—')}</td>
+      <td style="font-size:12px">${(c.dataApertura||c.createdAt) ? new Date(c.dataApertura||c.createdAt).toLocaleDateString('it-IT') : '—'}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px">${_escAllG(c.garClaim||'—')}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px">${_escAllG(c.garRdg||'—')}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;font-size:12px">${_eur(c.totale)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;font-size:12px;font-weight:600">${c.garImporto ? _eur(c.garImporto) : '—'}${dif ? `<div style="font-size:10px;font-weight:400;color:${dif>0?'var(--danger)':'var(--success)'}">${dif>0?'–':'+'} ${_eur(Math.abs(dif))}</div>` : ''}</td>
+      <td><span class="badge ${st.c}">${st.l}</span></td>
+    </tr>`;
+  }).join('');
+  _badgeGaranzie();
+}
+
+function _cliGarDefault(cm) {
+  if (cm.garClienteId) return cm.garClienteId;
+  const marca = (veicoli.find(x=>x.id===cm.veicoloId)?.marca || '').toLowerCase().trim();
+  const prec = commesse.filter(c => c.garClienteId && c.id !== cm.id && (veicoli.find(x=>x.id===c.veicoloId)?.marca||'').toLowerCase().trim() === marca)
+    .sort((a,b) => new Date(b.garDataAccettazione||0) - new Date(a.garDataAccettazione||0))[0];
+  return prec ? prec.garClienteId : '';
+}
+
+function apriPratica(id) {
+  const cm = commesse.find(c=>c.id===id);
+  if (!cm) return;
+  const cl = clienti.find(x=>x.id===cm.clienteId), v = veicoli.find(x=>x.id===cm.veicoloId);
+  const st = _statoPratica(cm);
+  const bloccata = st === 'fatturata' || st === 'pagata';
+  const fatt = cm.garFatturaId ? (_garFatture[cm.garFatturaId] || (typeof fatture !== 'undefined' ? fatture.find(x=>x.id===cm.garFatturaId) : null)) : null;
+  const cliDef = _cliGarDefault(cm);
+  const opts = '<option value="">— Seleziona dall\'anagrafica —</option>' + [...clienti].sort((a,b)=>(a.ragione||'').localeCompare(b.ragione||''))
+    .map(c => `<option value="${c.id}" ${c.id===cliDef?'selected':''}>${_escAllG(c.ragione||'')}</option>`).join('');
+  const inp = (lab, idc, val, extra='') => `<label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--text2)">${lab}
+      <input id="${idc}" value="${_escAllG(val??'')}" ${bloccata?'disabled':''} ${extra} style="padding:9px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:'DM Mono',monospace;background:var(--surface)"></label>`;
+  document.getElementById('modal-pratica')?.remove();
+  const ov = document.createElement('div');
+  ov.id = 'modal-pratica';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML = `
+    <div style="background:var(--surface);border-radius:var(--radius-lg);padding:24px;width:520px;max-width:100%;max-height:92vh;overflow:auto;box-shadow:var(--shadow-lg)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:4px">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.5px">PRATICA GARANZIA</div>
+          <div style="font-size:18px;font-weight:800;font-family:'DM Mono',monospace">${cm.numero||''}</div>
+        </div>
+        <span class="badge ${GAR_STATI[st].c}" style="font-size:12px">${GAR_STATI[st].l}</span>
+      </div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.5">
+        <span class="badge badge-gray" style="font-family:'DM Mono',monospace">${v?.targa||'—'}</span> ${_escAllG([v?.marca,v?.modello].filter(Boolean).join(' '))} · ${_escAllG(cl?.ragione||'—')}<br>
+        <span style="color:var(--text3)">${_escAllG(cm.descrizione||'')}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:10px 12px;background:var(--surface2);border-radius:var(--radius);font-size:13px;margin-bottom:16px">
+        <span>Valore lavoro (commessa)</span><strong style="font-family:'DM Mono',monospace">${_eur(cm.totale)}</strong>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        ${inp('N. Claim', 'gp-claim', cm.garClaim)}
+        ${inp('N. RDG Ford Trucks', 'gp-rdg', cm.garRdg)}
+        ${inp('Importo riconosciuto (imponibile €)', 'gp-importo', cm.garImporto ?? '', 'type="number" step="0.01" min="0" oninput="_aggDiffPratica('+(+cm.totale||0)+')"')}
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--text2)">Fatturare a
+          <select id="gp-cliente" ${bloccata?'disabled':''} style="padding:9px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface)">${opts}</select></label>
+      </div>
+      <div id="gp-diff" style="font-size:12px;margin-top:8px;min-height:16px"></div>
+      ${fatt ? `<div style="margin-top:12px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">🧾 Fattura <strong>${fatt.numero||''}</strong> · ${_eur(fatt.totale)} ${fatt.stato==='pagata'?'· <span style="color:var(--success);font-weight:700">pagata</span>':'· in attesa di pagamento (segnala pagata in Finance)'}</div>` : ''}
+      <div style="font-size:11px;color:var(--text3);margin-top:10px;line-height:1.5">Inserisci N. Claim, N. RDG e importo quando Ford Trucks comunica l'accettazione: la pratica diventa <strong>Accettata</strong> e puoi emettere la fattura.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;align-items:center">
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('modal-pratica').remove();setSection('commesse');setTimeout(()=>showDetailCommessa('${cm.id}'),150)">Apri commessa</button>
+        <button class="btn btn-secondary btn-sm" onclick="scaricaZipGaranzia('${cm.id}')">⬇ ZIP garanzia</button>
+        ${bloccata ? '' : `<button class="btn btn-secondary btn-sm" onclick="segnaPraticaRespinta('${cm.id}')">${st==='respinta'?'↩ Annulla respinta':'✕ Respinta'}</button>`}
+        <span style="flex:1"></span>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('modal-pratica').remove()">Chiudi</button>
+        ${bloccata ? '' : `<button class="btn btn-secondary btn-sm" onclick="salvaPratica('${cm.id}',false)">Salva</button>
+        <button class="btn btn-primary btn-sm" onclick="salvaPratica('${cm.id}',true)">🧾 Fattura garanzia</button>`}
+      </div>
+    </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+  _aggDiffPratica(+cm.totale||0);
+}
+
+function _aggDiffPratica(tot) {
+  const el = document.getElementById('gp-diff'); if (!el) return;
+  const imp = parseFloat((document.getElementById('gp-importo')?.value||'').replace(',','.'));
+  if (!(imp > 0)) { el.innerHTML = ''; return; }
+  const d = tot - imp;
+  el.innerHTML = d > 0 ? `<span style="color:var(--danger)">Differenza: – ${_eur(d)} rispetto al lavoro fatto</span>` : `<span style="color:var(--success)">Differenza: + ${_eur(-d)}</span>`;
+}
+
+async function salvaPratica(id, poiFattura) {
+  const cm = commesse.find(c=>c.id===id);
+  if (!cm) return;
+  const claim = (document.getElementById('gp-claim').value||'').trim();
+  const rdg   = (document.getElementById('gp-rdg').value||'').trim();
+  const imp   = parseFloat((document.getElementById('gp-importo').value||'').replace(',','.'));
+  const cliId = document.getElementById('gp-cliente').value || null;
+  if (poiFattura) {
+    const manca = [!claim&&'N. Claim', !rdg&&'N. RDG', !(imp>0)&&'Importo riconosciuto', !cliId&&'Fatturare a (cliente)'].filter(Boolean);
+    if (manca.length) { alert('Per emettere la fattura manca:\n\n• ' + manca.join('\n• ')); return; }
+    if (cm.garStato === 'respinta') { alert('La pratica è segnata come respinta.'); return; }
+  }
+  const upd = { gar_claim: claim||null, gar_rdg: rdg||null, gar_importo: imp>0 ? +imp.toFixed(2) : null, gar_cliente_id: cliId };
+  if (claim && rdg && imp>0 && !cm.garDataAccettazione) upd.gar_data_accettazione = new Date().toISOString();
+  const { error } = await supa.from('commesse').update(upd).eq('id', id);
+  if (error) { alert('Errore salvataggio: ' + error.message); return; }
+  Object.assign(cm, { garClaim: upd.gar_claim, garRdg: upd.gar_rdg, garImporto: upd.gar_importo, garClienteId: upd.gar_cliente_id });
+  if (upd.gar_data_accettazione) cm.garDataAccettazione = upd.gar_data_accettazione;
+  document.getElementById('modal-pratica')?.remove();
+  _disegnaGaranzie();
+  if (poiFattura) emettiFatturaGaranzia(id);
+  else showToast('Pratica salvata ✓');
+}
+
+async function segnaPraticaRespinta(id) {
+  const cm = commesse.find(c=>c.id===id);
+  if (!cm) return;
+  const nuovo = cm.garStato === 'respinta' ? 'attesa' : 'respinta';
+  if (nuovo === 'respinta' && !confirm('Segnare la pratica ' + (cm.numero||'') + ' come RESPINTA da Ford Trucks?')) return;
+  const { error } = await supa.from('commesse').update({ gar_stato: nuovo }).eq('id', id);
+  if (error) { alert('Errore: ' + error.message); return; }
+  cm.garStato = nuovo;
+  document.getElementById('modal-pratica')?.remove();
+  _disegnaGaranzie();
+  showToast(nuovo === 'respinta' ? 'Pratica segnata come respinta' : 'Pratica di nuovo in attesa');
+}
+
+function emettiFatturaGaranzia(id) {
+  const cm = commesse.find(c=>c.id===id);
+  if (!cm) return;
+  const v = veicoli.find(x=>x.id===cm.veicoloId);
+  const testo = `Riparazione in garanzia — Claim n. ${cm.garClaim} — RDG n. ${cm.garRdg}`;
+  apriFatturaModal({ origine:'garanzia', origineId:id, clienteId:cm.garClienteId,
+    descrizione: testo + (v?.targa ? ' — targa ' + v.targa : '') + ' — commessa ' + (cm.numero||''),
+    veicolo: v ? `${v.targa} ${[v.marca,v.modello].filter(Boolean).join(' ')}` : '',
+    righe: [{ desc: testo, qta: 1, prezzo: +cm.garImporto }] });
+  if (document.getElementById('modal-documenti').style.display !== 'block') apriDocumenti();
+}
+
 function _escAllG(t){return String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function _disegnaAllegatiGest(allegati) {
   const box = document.getElementById('dc-allegati');
@@ -6134,6 +6416,11 @@ function _renderAllegatiGest(cm) {
 async function scaricaZipGaranzia(comId) {
   const cm  = commesse.find(c=>c.id===comId);
   if (!cm) return;
+  // La firma del cliente è obbligatoria nel PDF della garanzia
+  if (!cm.firma) {
+    if (confirm('⚠️ La commessa ' + (cm.numero||'') + ' non è firmata dal cliente.\n\nLa firma è obbligatoria nel PDF della garanzia.\nVuoi farla firmare adesso?')) faiFirmareCommessa(comId);
+    return;
+  }
   const cl  = clienti.find(c=>c.id===cm.clienteId);
   const v   = veicoli.find(x=>x.id===cm.veicoloId);
   const off = getDatiOfficina();
@@ -6149,143 +6436,144 @@ async function scaricaZipGaranzia(comId) {
   const zip = new JSZip();
   const folder = zip.folder(dirName);
 
-  // ── PDF commessa con jsPDF ──────────────────────────
+  // ── PDF commessa con jsPDF (documento di lavoro: senza prezzi, con firma) ──
   try {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-    const pw = 210; // larghezza A4
-    const ml = 18;  // margine sinistro
-    const mr = 18;  // margine destro
-    const cw = pw - ml - mr; // larghezza contenuto
-    let y = 20;
-
-    const addText = (text, x, yy, opts={}) => {
-      doc.setFontSize(opts.size||12);
-      doc.setFont('helvetica', opts.style||'normal');
-      doc.setTextColor(...(opts.color||[26,25,23]));
-      doc.text(String(text||''), x, yy, opts);
+    const pw = 210, ph = 297, ml = 16, mr = 16, cw = pw - ml - mr;
+    let y = 16;
+    const BLU = [27,79,216], NERO = [26,25,23], GRIGIO = [105,105,105], CHIARO = [150,150,150], LINEA = [225,223,218];
+    const T = (text, x, yy, o = {}) => {
+      doc.setFontSize(o.size || 10); doc.setFont('helvetica', o.style || 'normal'); doc.setTextColor(...(o.color || NERO));
+      doc.text(String(text ?? ''), x, yy, o.align ? { align: o.align } : undefined);
     };
+    const L = (yy, c = LINEA, w = 0.3) => { doc.setDrawColor(...c); doc.setLineWidth(w); doc.line(ml, yy, pw - mr, yy); };
+    const spazio = h => { if (y + h > ph - 18) { doc.addPage(); y = 16; } };
+    const fmtD = d => d ? new Date(d).toLocaleDateString('it-IT') : '—';
+    const split = (t, w, size) => { doc.setFontSize(size || 9); return doc.splitTextToSize(String(t || ''), w); };
 
-    const addLine = (yy, color=[228,226,220]) => {
-      doc.setDrawColor(...color);
-      doc.line(ml, yy, pw-mr, yy);
-    };
-
-    const nextY = (n=6) => { y += n; if (y > 270) { doc.addPage(); y = 20; } };
-
-    // Intestazione officina
-    addText(off.ragione||'Officina', ml, y, {size:18, style:'bold', color:[27,79,216]});
-    addText(cm.numero||'', pw-mr, y, {size:16, style:'bold', align:'right', color:[26,25,23]});
-    nextY(6);
-    if (off.indirizzo) { addText(off.indirizzo, ml, y, {size:9, color:[102,102,102]}); nextY(4); }
-    if (off.tel) { addText('Tel: '+off.tel, ml, y, {size:9, color:[102,102,102]}); nextY(4); }
-    if (off.piva) { addText('P.IVA: '+off.piva, ml, y, {size:9, color:[102,102,102]}); nextY(4); }
-    if (inGar) { addText('🔧 IN GARANZIA'+(garScad?' · scad. '+garScad:''), pw-mr, y-8, {size:9, style:'bold', align:'right', color:[146,64,14]}); }
-    nextY(2);
-    addLine(y); nextY(8);
-
-    // Cliente + Veicolo
-    doc.setFillColor(245,244,241);
-    doc.roundedRect(ml, y, cw/2-3, 28, 2, 2, 'F');
-    doc.roundedRect(ml+cw/2+3, y, cw/2-3, 28, 2, 2, 'F');
-    addText('CLIENTE', ml+4, y+6, {size:8, style:'bold', color:[153,153,153]});
-    addText(cl?.ragione||'—', ml+4, y+12, {size:11, style:'bold'});
-    if (cl?.piva) addText('P.IVA: '+cl.piva, ml+4, y+18, {size:9, color:[85,85,85]});
-    if (cl?.tel)  addText('Tel: '+cl.tel, ml+4, y+23, {size:9, color:[85,85,85]});
-    const vx = ml+cw/2+7;
-    addText('VEICOLO', vx, y+6, {size:8, style:'bold', color:[153,153,153]});
-    if (v) {
-      doc.setFillColor(26,25,23); doc.roundedRect(vx, y+8, 28, 7, 1, 1, 'F');
-      addText(v.targa||'', vx+2, y+13, {size:9, style:'bold', color:[255,255,255]});
-      addText([v.marca,v.modello,v.anno].filter(Boolean).join(' '), vx+32, y+13, {size:9});
-      if (v.vin)  addText('Telaio: '+v.vin, vx, y+20, {size:8, color:[85,85,85]});
-      if (v.km)   addText('Km: '+Number(v.km).toLocaleString('it'), vx, y+25, {size:8, color:[85,85,85]});
+    // Intestazione
+    T(off.ragione || 'Officina', ml, y + 4, { size: 16, style: 'bold', color: BLU });
+    const offMeta = [off.indirizzo, [off.tel ? 'Tel. ' + off.tel : '', off.email || ''].filter(Boolean).join('  ·  '), off.piva ? 'P.IVA ' + off.piva : ''].filter(Boolean);
+    offMeta.forEach((t, i) => T(t, ml, y + 10 + i * 4.2, { size: 8, color: GRIGIO }));
+    T('COMMESSA DI LAVORO', pw - mr, y + 1, { size: 7.5, style: 'bold', color: CHIARO, align: 'right' });
+    T(cm.numero || '', pw - mr, y + 8, { size: 16, style: 'bold', align: 'right' });
+    T('Aperta il ' + fmtD(cm.dataApertura || cm.createdAt), pw - mr, y + 13, { size: 8, color: GRIGIO, align: 'right' });
+    if (inGar) {
+      const lab = 'IN GARANZIA' + (garScad ? '  -  scad. ' + garScad : '');
+      doc.setFontSize(8); doc.setFont('helvetica', 'bold');
+      const w = doc.getTextWidth(lab) + 6;
+      doc.setFillColor(254,243,199); doc.setDrawColor(253,230,138); doc.setLineWidth(0.3);
+      doc.roundedRect(pw - mr - w, y + 15.5, w, 6, 1, 1, 'FD');
+      T(lab, pw - mr - 3, y + 19.6, { size: 8, style: 'bold', color: [146,64,14], align: 'right' });
     }
-    nextY(36);
+    y += Math.max(10 + offMeta.length * 4.2, 24) + 2;
+    L(y, BLU, 0.6); y += 6;
 
-    // Data apertura
-    addText('Aperta il: '+( cm.dataApertura ? new Date(cm.dataApertura).toLocaleDateString('it-IT') : '—'), ml, y, {size:9, color:[136,136,136]});
-    nextY(8);
+    // Cliente / Veicolo
+    const bw = (cw - 6) / 2, bh = 30;
+    doc.setFillColor(245,244,241);
+    doc.roundedRect(ml, y, bw, bh, 2, 2, 'F'); doc.roundedRect(ml + bw + 6, y, bw, bh, 2, 2, 'F');
+    let yy = y + 6;
+    T('CLIENTE', ml + 4, yy, { size: 7, style: 'bold', color: CHIARO });
+    yy += 6; T(split(cl?.ragione || '—', bw - 8, 11)[0], ml + 4, yy, { size: 11, style: 'bold' });
+    [cl?.piva ? 'P.IVA ' + cl.piva : '', cl?.tel ? 'Tel. ' + cl.tel : '', cl?.indirizzo || ''].filter(Boolean).slice(0, 3)
+      .forEach(t => { yy += 5; T(split(t, bw - 8, 8.5)[0], ml + 4, yy, { size: 8.5, color: GRIGIO }); });
+    const vx = ml + bw + 10; yy = y + 6;
+    T('VEICOLO', vx, yy, { size: 7, style: 'bold', color: CHIARO });
+    if (v) {
+      doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+      const tw = doc.getTextWidth(v.targa || '') + 6;
+      doc.setFillColor(...NERO); doc.roundedRect(vx, yy + 2, tw, 7, 1, 1, 'F');
+      T(v.targa || '', vx + 3, yy + 7, { size: 10, style: 'bold', color: [255,255,255] });
+      T(split([v.marca, v.modello, v.anno].filter(Boolean).join(' '), bw - tw - 16, 9.5)[0] || '', vx + tw + 3, yy + 7, { size: 9.5, style: 'bold' });
+      let vy = yy + 7;
+      [v.vin ? 'Telaio ' + v.vin : '', v.km ? 'Km ' + Number(v.km).toLocaleString('it-IT') : '', cm.oreMotore ? 'Ore motore ' + cm.oreMotore : '']
+        .filter(Boolean).forEach(t => { vy += 5; T(t, vx, vy, { size: 8.5, color: GRIGIO }); });
+    } else T('—', vx, yy + 7, { size: 10 });
+    y += bh + 7;
 
-    // Descrizione lavoro
-    doc.setFillColor(238,242,255);
-    doc.setDrawColor(199,215,248);
-    doc.roundedRect(ml, y, cw, 16, 2, 2, 'FD');
-    addText('LAVORAZIONE RICHIESTA', ml+4, y+6, {size:8, style:'bold', color:[27,79,216]});
-    const descLines = doc.splitTextToSize(cm.descrizione||cm.desc||'—', cw-8);
-    addText(descLines[0]||'', ml+4, y+12, {size:11, style:'bold'});
-    nextY(22);
+    // Lavoro richiesto
+    const descLines = split(cm.descrizione || cm.desc || '—', cw - 8, 10);
+    const dh = 9 + descLines.length * 4.6;
+    spazio(dh + 6);
+    doc.setFillColor(238,242,255); doc.setDrawColor(199,215,248); doc.setLineWidth(0.3);
+    doc.roundedRect(ml, y, cw, dh, 2, 2, 'FD');
+    T('LAVORO RICHIESTO', ml + 4, y + 5.5, { size: 7, style: 'bold', color: BLU });
+    descLines.forEach((l, i) => T(l, ml + 4, y + 10.5 + i * 4.6, { size: 10 }));
+    y += dh + 8;
 
-    // Voci
-    const renderVoci = (label, voci) => {
-      if (!voci || !voci.filter(r=>r.desc).length) return;
-      addText(label, ml, y, {size:8, style:'bold', color:[153,153,153]});
-      nextY(5);
-      addLine(y, [200,200,200]); nextY(1);
-      for (const r of voci.filter(r=>r.desc)) {
-        if (y > 265) { doc.addPage(); y = 20; }
-        addText(r.desc, ml, y, {size:10});
-        addText(`${r.qta||1}`, ml+cw-40, y, {size:10, align:'right'});
-        addText(`€ ${((r.qta||1)*(r.prezzo||0)).toFixed(2)}`, ml+cw, y, {size:10, align:'right'});
-        nextY(6);
-        addLine(y, [240,240,240]); nextY(1);
-      }
-      nextY(4);
+    // Tabelle (senza prezzi)
+    const tabella = (titolo, cols, rows) => {
+      if (!rows.length) return;
+      spazio(20);
+      T(titolo, ml, y, { size: 8, style: 'bold', color: BLU }); y += 2.5;
+      doc.setFillColor(245,244,241); doc.rect(ml, y, cw, 6.5, 'F');
+      cols.forEach(c => T(c.t, c.x, y + 4.4, { size: 7.5, style: 'bold', color: GRIGIO, align: c.align }));
+      y += 6.5;
+      rows.forEach(r => {
+        const celle = r.map((txt, i) => cols[i].w ? split(txt, cols[i].w, 9) : [String(txt ?? '')]);
+        const h = Math.max(...celle.map(c => c.length)) * 4.3 + 2.8;
+        spazio(h);
+        celle.forEach((ls, i) => ls.forEach((l, j) => T(l, cols[i].x, y + 4.6 + j * 4.3, { size: 9, style: cols[i].bold ? 'bold' : 'normal', align: cols[i].align })));
+        y += h; L(y, [236,234,229], 0.2);
+      });
+      y += 7;
     };
-
-    renderVoci('MANODOPERA', cm.vociMano);
-    renderVoci('RICAMBI', cm.vociRic);
-    renderVoci('EXTRA', cm.vociExtra);
-
-    // Totale
-    nextY(2);
-    addLine(y, [27,79,216]); nextY(6);
-    const clIva = clienti.find(c=>c.id===cm.clienteId);
-    const aliqIva = clIva?.iva ?? 22;
-    const imponibile = cm.totale||0;
-    const ivaAmt = imponibile * aliqIva / 100;
-    const totLordo = imponibile + ivaAmt;
-    addText('IMPONIBILE', ml, y, {size:10, style:'bold', color:[102,102,102]});
-    addText('€ '+imponibile.toFixed(2).replace('.',','), ml+cw, y, {size:13, style:'bold', align:'right'});
-    nextY(7);
-    addText(`IVA ${aliqIva}%`, ml, y, {size:10, color:[136,136,136]});
-    addText('€ '+ivaAmt.toFixed(2).replace('.',','), ml+cw, y, {size:11, align:'right', color:[136,136,136]});
-    nextY(7);
-    addLine(y, [27,79,216]); nextY(6);
-    addText('TOTALE CON IVA', ml, y, {size:11, style:'bold'});
-    addText('€ '+totLordo.toFixed(2).replace('.',','), ml+cw, y, {size:15, style:'bold', align:'right', color:[27,79,216]});
-    nextY(10);
+    const num = n => String(n ?? 1).replace('.', ',');
+    const mano = (cm.vociMano || []).filter(r => r.desc);
+    const ric  = (cm.vociRic  || []).filter(r => r.desc);
+    const ext  = (cm.vociExtra|| []).filter(r => r.desc);
+    tabella('MANODOPERA', [{ t: 'DESCRIZIONE', x: ml + 2, w: cw - 32 }, { t: 'ORE', x: pw - mr - 2, align: 'right' }],
+      mano.map(r => [r.desc, num(r.qta || 1)]));
+    tabella('RICAMBI', [{ t: 'CODICE', x: ml + 2, w: 34, bold: true }, { t: 'DESCRIZIONE', x: ml + 38, w: cw - 38 - 24 }, { t: 'Q.TÀ', x: pw - mr - 2, align: 'right' }],
+      ric.map(r => [_codRic(r) || '—', r.desc, num(r.qta || 1)]));
+    tabella('ALTRE VOCI', [{ t: 'DESCRIZIONE', x: ml + 2, w: cw - 32 }, { t: 'Q.TÀ', x: pw - mr - 2, align: 'right' }],
+      ext.map(r => [r.desc, num(r.qta || 1)]));
+    if (!mano.length && !ric.length && !ext.length) { T('Nessuna voce registrata.', ml, y, { size: 9, color: CHIARO }); y += 8; }
 
     // Note
-    if (cm.note) {
-      addLine(y); nextY(6);
-      addText('NOTE', ml, y, {size:8, style:'bold', color:[153,153,153]}); nextY(5);
-      const noteLines = doc.splitTextToSize(cm.note, cw);
-      for (const l of noteLines) { addText(l, ml, y, {size:10, color:[85,85,85]}); nextY(5); }
-    }
+    const blocco = (titolo, testo) => {
+      if (!testo) return;
+      const ls = split(testo, cw, 9.5);
+      spazio(10 + Math.min(ls.length, 6) * 4.5);
+      T(titolo, ml, y, { size: 8, style: 'bold', color: BLU }); y += 5;
+      ls.forEach(l => { spazio(5); T(l, ml, y, { size: 9.5, color: [60,60,60] }); y += 4.5; });
+      y += 5;
+    };
+    blocco('NOTE', cm.note);
+    blocco('NOTE MECCANICO', cm.notaMec || cm.nota_mec);
 
-    // Nota meccanico
-    const notaMec = cm.notaMec || cm.nota_mec;
-    if (notaMec) {
-      nextY(2); addLine(y); nextY(6);
-      addText('NOTE MECCANICO', ml, y, {size:8, style:'bold', color:[153,153,153]}); nextY(5);
-      const mecLines = doc.splitTextToSize(notaMec, cw);
-      for (const l of mecLines) { addText(l, ml, y, {size:10, color:[85,85,85]}); nextY(5); }
-    }
-
-    // Firma cliente (accettazione lavori)
+    // Firma cliente (accettazione lavori) — sempre presente
+    spazio(46);
+    L(y); y += 6;
+    T('ACCETTAZIONE LAVORI', ml, y, { size: 8, style: 'bold', color: BLU }); y += 4.5;
+    T('Il cliente autorizza l\'esecuzione dei lavori descritti in questa commessa.', ml, y, { size: 8, color: GRIGIO }); y += 3;
+    const fy = y;
     if (cm.firma) {
       try {
-        if (y > 235) { doc.addPage(); y = 20; }
-        nextY(4); addLine(y); nextY(6);
-        addText('FIRMA CLIENTE (ACCETTAZIONE LAVORI)', ml, y, {size:8, style:'bold', color:[153,153,153]}); nextY(3);
         const pr = doc.getImageProperties(cm.firma);
-        let fw = 70, fh = fw * pr.height / pr.width;
-        if (fh > 30) { fh = 30; fw = fh * pr.width / pr.height; }
-        doc.addImage(cm.firma, 'PNG', ml, y, fw, fh);
-        y += fh + 4;
-        if (cm.firmaData) { addText('Firmata il ' + new Date(cm.firmaData).toLocaleString('it-IT', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}), ml, y, {size:8, color:[136,136,136]}); nextY(5); }
+        let fh = 22, fw = fh * pr.width / pr.height;
+        if (fw > 80) { fw = 80; fh = fw * pr.height / pr.width; }
+        doc.addImage(cm.firma, 'PNG', ml, fy + 25 - fh, fw, fh);
       } catch(e) { console.warn('Firma non inseribile nel PDF:', e); }
+    }
+    doc.setDrawColor(60,60,60); doc.setLineWidth(0.3);
+    doc.line(ml, fy + 26, ml + 80, fy + 26);
+    T('Firma del cliente', ml, fy + 30, { size: 7.5, color: GRIGIO });
+    T(cm.firmaData ? 'Firmata il ' + new Date(cm.firmaData).toLocaleString('it-IT', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : 'NON FIRMATA',
+      ml + 80, fy + 30, { size: 7.5, color: cm.firmaData ? GRIGIO : [192,57,43], align: 'right', style: cm.firmaData ? 'normal' : 'bold' });
+    doc.line(pw - mr - 70, fy + 26, pw - mr, fy + 26);
+    T('Firma meccanico responsabile', pw - mr - 70, fy + 30, { size: 7.5, color: GRIGIO });
+    y = fy + 36;
+
+    // Piè di pagina
+    const np = doc.getNumberOfPages();
+    for (let i = 1; i <= np; i++) {
+      doc.setPage(i);
+      doc.setDrawColor(...LINEA); doc.setLineWidth(0.2); doc.line(ml, ph - 12, pw - mr, ph - 12);
+      T((off.ragione || '') + '  ·  Commessa ' + (cm.numero || '') + (v?.targa ? '  ·  ' + v.targa : ''), ml, ph - 8, { size: 7, color: CHIARO });
+      T('Pagina ' + i + ' di ' + np, pw - mr, ph - 8, { size: 7, color: CHIARO, align: 'right' });
     }
 
     const pdfBlob = doc.output('blob');
@@ -6645,7 +6933,7 @@ function renderVoci(tipo) {
     const prodAgganciato = isRic && v.prodId;
     const prodObj = prodAgganciato ? (prodotti).find(p=>p.id===v.prodId) : null;
     const giacBadge = prodObj
-      ? `<span title="Giacenza magazzino" style="font-size:10px;padding:1px 6px;border-radius:10px;background:${prodObj.giacenza<=0?'var(--danger-light)':prodObj.giacenza<=prodObj.scortaMin?'var(--warning-light)':'var(--success-light)'};color:${prodObj.giacenza<=0?'var(--danger)':prodObj.giacenza<=prodObj.scortaMin?'var(--warning)':'var(--success)'};font-family:'DM Mono',monospace;white-space:nowrap">▼ ${prodObj.giacenza} ${prodObj.um||'pz'}</span>`
+      ? `${(prodObj.codInt||prodObj.codForn)?`<span title="Codice" style="font-size:10px;padding:1px 6px;border-radius:10px;background:var(--surface2);font-family:'DM Mono',monospace;white-space:nowrap;margin-right:3px">${prodObj.codInt||prodObj.codForn}</span>`:''}<span title="Giacenza magazzino" style="font-size:10px;padding:1px 6px;border-radius:10px;background:${prodObj.giacenza<=0?'var(--danger-light)':prodObj.giacenza<=prodObj.scortaMin?'var(--warning-light)':'var(--success-light)'};color:${prodObj.giacenza<=0?'var(--danger)':prodObj.giacenza<=prodObj.scortaMin?'var(--warning)':'var(--success)'};font-family:'DM Mono',monospace;white-space:nowrap">▼ ${prodObj.giacenza} ${prodObj.um||'pz'}</span>`
       : '';
     const totRiga = (v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100);
     return `<div class="voce-row" style="grid-template-columns:${isMano?'120px ':''} 1fr${isRic?' auto':''} 80px 90px 60px 90px 28px">
@@ -6712,7 +7000,7 @@ function selezionaProdottoRic(idx, prodId) {
   const prods = prodotti;
   const p = prods.find(x=>x.id===prodId);
   if (!p) return;
-  comVociRic[idx] = { ...comVociRic[idx], prodId:p.id, desc:p.descrizione||p.desc+(p.codForn?' ('+p.codForn+')':''), prezzo:p.prezzoVend||0 };
+  comVociRic[idx] = { ...comVociRic[idx], prodId:p.id, cod:p.codInt||p.codForn||'', desc:p.descrizione||p.desc+(p.codForn?' ('+p.codForn+')':''), prezzo:p.prezzoVend||0 };
   chiudiDropdownRic(idx);
   renderVoci('ricambi');
 }
@@ -6860,7 +7148,7 @@ async function confermaScan() {
     if (!commesse[ci].vociRic) commesse[ci].vociRic = [];
     const voceEsistente = commesse[ci].vociRic.find(v=>v.prodId===p.id);
     if (voceEsistente) { voceEsistente.qta = (voceEsistente.qta||1)+qta; }
-    else { commesse[ci].vociRic.push({ prodId:p.id, desc:p.descrizione||p.desc+(p.codForn?' ('+p.codForn+')':''), qta, prezzo:p.prezzoVend||0 }); }
+    else { commesse[ci].vociRic.push({ prodId:p.id, cod:p.codInt||p.codForn||'', desc:p.descrizione||p.desc+(p.codForn?' ('+p.codForn+')':''), qta, prezzo:p.prezzoVend||0 }); }
     commesse[ci].totale = [...(commesse[ci].vociMano||[]),...(commesse[ci].vociRic||[]),...(commesse[ci].vociExtra||[])].reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100),0);
     await dbSaveCommessa(commesse[ci]);
   }
@@ -7132,7 +7420,7 @@ async function confermaScansioneRicambio() {
       if (!commesse[ci].vociRic) commesse[ci].vociRic=[];
       const voceEsistente = commesse[ci].vociRic.find(v=>v.prodId===p.id);
       if (voceEsistente) voceEsistente.qta=(voceEsistente.qta||1)+qta;
-      else commesse[ci].vociRic.push({ prodId:p.id, desc:(p.descrizione||p.desc)+(p.codForn?' ('+p.codForn+')':''), qta, prezzo:p.prezzoVend||0 });
+      else commesse[ci].vociRic.push({ prodId:p.id, cod:p.codInt||p.codForn||'', desc:(p.descrizione||p.desc)+(p.codForn?' ('+p.codForn+')':''), qta, prezzo:p.prezzoVend||0 });
       commesse[ci].totale=[...(commesse[ci].vociMano||[]),...(commesse[ci].vociRic||[]),...(commesse[ci].vociExtra||[])].reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100),0);
       await dbSaveCommessa(commesse[ci]);
     }
@@ -8942,7 +9230,7 @@ function emettiFatturaCommessa(comId) {
   if (!cl) { alert('La commessa non ha un cliente associato.'); return; }
   const righe = [
     ...(cm.vociMano||[]).filter(r=>r.desc).map(r=>({desc:r.desc+' (manodopera)',qta:r.qta||1,prezzo:r.prezzo||0})),
-    ...(cm.vociRic||[]).filter(r=>r.desc).map(r=>({desc:r.desc,qta:r.qta||1,prezzo:r.prezzo||0})),
+    ...(cm.vociRic||[]).filter(r=>r.desc).map(r=>({desc:_descRic(r),qta:r.qta||1,prezzo:r.prezzo||0})),
     ...(cm.vociExtra||[]).filter(r=>r.desc).map(r=>({desc:r.desc,qta:r.qta||1,prezzo:r.prezzo||0})),
   ];
   if (!righe.length) { alert('La commessa non ha voci da fatturare.'); return; }
@@ -9588,6 +9876,13 @@ async function salvaFattura() {
       await supa.from('ddt').update({stato:'fatturato', fattura_id:fatt.id}).eq('id', _fattDraft.origineId);
       const di = ddts.findIndex(d=>d.id===_fattDraft.origineId);
       if (di>=0) { ddts[di].stato='fatturato'; ddts[di].fatturaId=fatt.id; }
+    }
+    if (_fattDraft.origine==='garanzia' && _fattDraft.origineId) {
+      await supa.from('commesse').update({ gar_fattura_id: fatt.id, stato: 'fatturata' }).eq('id', _fattDraft.origineId);
+      const ci = commesse.findIndex(c=>c.id===_fattDraft.origineId);
+      if (ci>=0) { commesse[ci].garFatturaId = fatt.id; commesse[ci].stato = 'fatturata'; }
+      _garFatture[fatt.id] = fatt;
+      if (currentSection === 'garanzie') renderGaranzie();
     }
     closeModal('modal-fattura');
     showToast(`Fattura ${numero} emessa ✓`);
