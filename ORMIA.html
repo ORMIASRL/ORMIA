@@ -4232,6 +4232,7 @@ function openModalMeccanico(editId) {
     }
   } else {
     ['mec-nome','mec-tel','mec-email','mec-note','mec-pin','mec-badge'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('mec-ora-uscita').value = '17:00'; // orario predefinito, non quello del dipendente precedente
     setRuoliSelezionati([]);
   }
   togglePinBadge();
@@ -8803,9 +8804,18 @@ async function confermaSalvaCommessa() {
 // ╚═══════════════════════════════════════════════════╝
 
 // ── Nuovo cliente inline (vendita banco) ──────────────────────────────
+// Svuota tutti i campi di un contenitore (testo vuoto, select sulla prima voce)
+function _svuotaForm(id) {
+  const f = document.getElementById(id); if (!f) return;
+  f.querySelectorAll('input,textarea').forEach(e => { if (e.type==='checkbox'||e.type==='radio') e.checked = false; else e.value = ''; });
+  f.querySelectorAll('select').forEach(e => e.selectedIndex = 0);
+}
+
 function toggleNuovoClienteVb() {
   const f = document.getElementById('vb-nuovo-cliente-form');
   f.style.display = f.style.display==='none' ? '' : 'none';
+  // All'apertura il modulo nuovo cliente parte sempre vuoto
+  if (f.style.display === '') _svuotaForm('vb-nuovo-cliente-form');
 }
 
 async function salvaNuovoClienteVb() {
@@ -9678,6 +9688,9 @@ async function inviaEmailDDT(ddt, cl, off) {
 function initVendita() {
   // Reset ricerca cliente
   resetVbCliente();
+  // Svuota modulo nuovo cliente e note della vendita precedente
+  _svuotaForm('vb-nuovo-cliente-form');
+  const _vbNote = document.getElementById('vb-note'); if (_vbNote) _vbNote.value = '';
   document.getElementById('vb-cliente').innerHTML='<option value=""></option>'+clienti.map(c=>`<option value="${c.id}">${c.ragione}</option>`).join('');
   document.getElementById('vb-data').value=new Date().toISOString().split('T')[0];
   vbRighe=[{prodId:'',desc:'',qta:1,prezzo:0}];
