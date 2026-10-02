@@ -2689,6 +2689,11 @@ function init() {
       </button>
     </div>
     </div><!-- /dc-tim-input-area -->
+    <!-- Inserimenti a posteriori (timbrature dimenticate / manodopera) -->
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn btn-secondary btn-sm" style="flex:1" onclick="apriTimbraturaManuale(selectedCommessaId)">+ Timbratura manuale</button>
+      <button class="btn btn-secondary btn-sm" style="flex:1" onclick="apriManodopera(selectedCommessaId)">+ Manodopera</button>
+    </div>
 
     <!-- Timbrature attive su questa commessa -->
     <div id="dc-tim-live" style="margin-top:10px"></div>
@@ -2972,7 +2977,7 @@ const FIELD_MAP = {
   commesse:  { createdAt:'created_at', clienteId:'cliente_id', veicoloId:'veicolo_id', dataApertura:'data_apertura', vociMano:'voci_mano', vociRic:'voci_ric', vociExtra:'voci_extra', descrizione:'descrizione', fatturaId:'fattura_id', foto:'foto', notaMec:'nota_mec', consegnaPrevista:'consegna_prevista', firmaData:'firma_data', fotoInizio:'foto_inizio', fotoFine:'foto_fine', oreMotore:'ore_motore', dirittoChiamata:'diritto_chiamata', dirittoChiamataTipo:'diritto_chiamata_tipo', dirittoChiamataImporto:'diritto_chiamata_importo', smaltimentoPerc:'smaltimento_perc', materialeConsumoPerc:'materiale_consumo_perc' },
   movimenti: { createdAt:'created_at', prodId:'prod_id', comId:'com_id' },
   timbrature:{ createdAt:'created_at', mecId:'mec_id', comId:'com_id', costoInterno:'costo_interno', costoCliente:'costo_cliente' },
-  presenze:  { createdAt:'created_at', dipId:'dip_id', minutiRitardo:'minuti_ritardo', oreTotali:'ore_totali', orePermesso:'ore_permesso' },
+  presenze:  { createdAt:'created_at', dipId:'dip_id', mecId:'mec_id', minutiRitardo:'minuti_ritardo', oreTotali:'ore_totali', orePermesso:'ore_permesso' },
   fatture:   { createdAt:'created_at', clienteId:'cliente_id', origineId:'origine_id',
                ivaAmt:'iva_amt', dataPagamento:'data_pagamento', clEmail:'cl_email',
                offRagione:'off_ragione', offPiva:'off_piva', offIndirizzo:'off_indirizzo',
@@ -3193,6 +3198,8 @@ function fromDb(table, row) {
     const mapped = rev[k] || k.replace(/_([a-z])/g, (_,c) => c.toUpperCase());
     out[mapped] = v;
   }
+  // Presenze registrate da TIM/MEC hanno solo mec_id: allinea dipId così compaiono anche nel gestionale
+  if (table === 'presenze' && !out.dipId && out.mecId) out.dipId = out.mecId;
   return out;
 }
 
@@ -3396,6 +3403,8 @@ async function registraPresenzaAutomatica(mecId, ora) {
   await dbSavePresenza({
     id:               initId(),
     dipId:            mecId,
+    mecId:            mecId,                       // stesso campo usato da TIM/MEC
+    data:             oraEntrata.split('T')[0],    // giorno, usato dalla postazione TIM
     entrata:          oraEntrata,
     uscita:           null,
     tipo:             'normale',
@@ -3656,17 +3665,20 @@ async function salvaTimbraturaManualeForm() {
   if (!mecId)    { alert('Seleziona il meccanico.'); return; }
   if (!comId)    { alert('Seleziona la commessa.'); return; }
   if (!entrata)  { alert('Inserisci l\'orario di entrata.'); return; }
+  if (uscita && new Date(uscita) <= new Date(entrata)) { alert('L\'uscita deve essere dopo l\'entrata.'); return; }
   try {
-    await supa.from('timbrature').insert({
+    const { error: _tmErr } = await supa.from('timbrature').insert({
       id: crypto.randomUUID(),
       mec_id: mecId, com_id: comId,
       entrata: new Date(entrata).toISOString(),
       uscita:  uscita ? new Date(uscita).toISOString() : null,
       created_at: new Date().toISOString()
     });
+    if (_tmErr) throw _tmErr;
     timbrature = await DB.load('timbrature');
     closeModal('modal-timbratura-manuale');
-    renderLiveBoard();
+    try { renderLiveBoard(); } catch(_) {}
+    if (selectedCommessaId === comId && typeof showDetailCommessa === 'function') showDetailCommessa(comId);
     showToast('Timbratura inserita ✓');
   } catch(e) { alert('Errore: '+e.message); }
 }
@@ -7342,7 +7354,33 @@ function aggiornaManoPreview() {
   document.getElementById('mano-totale-preview').textContent = '€ ' + tot.toFixed(2).replace('.',',');
 }
 
-function salvaManodopera() {
+// Apre la finestra "Aggiungi manodopera" sulla commessa indicata (inserimento manuale dal computer)
+function apriManodopera(comId) {
+  const selC = document.getElementById('mano-commessa');
+  selC.innerHTML = '<option value="">Seleziona commessa...</option>' + commesse.filter(c => c.stato !== 'fatturata' || c.id === comId).map((c=>{const v=veicoli.find(x=>x.id===c.veicoloId); return `<option value="${c.id}">${c.numero||''}${v?' · '+v.targa:''}</option>`;})).join('');
+  selC.value = comId || '';
+  const selM = document.getElementById('mano-meccanico');
+  selM.innerHTML = '<option value="">Seleziona...</option>' + meccanici.filter(isOperativo).map(m => `<option value="${m.id}">${m.nome}</option>`).join('');
+  document.getElementById('mano-tipo').selectedIndex = 0;
+  ['mano-desc','mano-ore','mano-prezzo','mano-costo-int'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  onManoCommessaChange(); onManoTipoChange();
+  document.getElementById('modal-manodopera').style.display = 'flex';
+}
+
+// Apre la finestra "Timbratura manuale" (per timbrature dimenticate)
+function apriTimbraturaManuale(comId) {
+  const selM = document.getElementById('tm-meccanico');
+  selM.innerHTML = '<option value="">Seleziona meccanico...</option>' + meccanici.filter(isOperativo).map(m => `<option value="${m.id}">${m.nome}</option>`).join('');
+  const selC = document.getElementById('tm-commessa');
+  selC.innerHTML = '<option value="">Seleziona commessa...</option>' + commesse.filter(c => c.stato !== 'fatturata' || c.id === comId).map((c=>{const v=veicoli.find(x=>x.id===c.veicoloId); return `<option value="${c.id}">${c.numero||''}${v?' · '+v.targa:''}</option>`;})).join('');
+  selC.value = comId || '';
+  const p = x => String(x).padStart(2,'0'); const d = new Date();
+  document.getElementById('tm-entrata').value = `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T08:30`;
+  document.getElementById('tm-uscita').value = '';
+  document.getElementById('modal-timbratura-manuale').style.display = 'flex';
+}
+
+async function salvaManodopera() {
   const comId  = document.getElementById('mano-commessa').value;
   const desc   = document.getElementById('mano-desc').value.trim();
   const ore    = parseFloat(document.getElementById('mano-ore').value)||0;
@@ -7378,8 +7416,9 @@ function salvaManodopera() {
     ...(commesse[ci].vociExtra||[])
   ].reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0), 0);
 
-  
-  saveAll();
+  // Salva davvero la commessa nel database (prima restava solo in memoria)
+  try { await dbSaveCommessa({ ...commesse[ci] }); }
+  catch(e) { alert('Errore salvataggio manodopera: ' + e.message); return; }
   closeModal('modal-manodopera');
   showToast(`${descFinal} — ${ore}h → commessa ${commesse[ci].numero} ✓`);
   if (selectedCommessaId===comId) showDetailCommessa(comId);
