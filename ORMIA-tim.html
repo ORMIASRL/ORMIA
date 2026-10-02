@@ -106,6 +106,17 @@ html, body { height:100%; background:var(--bg); font-family:'DM Sans',sans-serif
         <button id="btn-deseleziona" onclick="deselezionaCommessa()" style="display:none;margin-left:auto;padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:var(--bg);font-size:12px;cursor:pointer;color:var(--text3)">✕ Annulla</button>
       </div>
 
+      <!-- PRESENZE: entrata / pausa / uscita con il codice personale -->
+      <div style="padding:16px 24px 14px;border-bottom:1px solid var(--border);flex-shrink:0">
+        <div class="panel-title" style="margin-bottom:10px">Presenze</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <button onclick="apriPadPresenza('entrata')" style="padding:18px 8px;font-size:17px;font-weight:800;border-radius:12px;border:2px solid #68D391;background:#F0FFF4;color:#276749;cursor:pointer">🟢 ENTRATA</button>
+          <button onclick="apriPadPresenza('uscita')" style="padding:18px 8px;font-size:17px;font-weight:800;border-radius:12px;border:2px solid #FC8181;background:#FFF5F5;color:#C53030;cursor:pointer">🔴 USCITA</button>
+          <button onclick="apriPadPresenza('pausa_inizio')" style="padding:18px 8px;font-size:17px;font-weight:800;border-radius:12px;border:2px solid #F6E05E;background:#FFFBEB;color:#92400E;cursor:pointer">☕ INIZIO PAUSA</button>
+          <button onclick="apriPadPresenza('pausa_fine')" style="padding:18px 8px;font-size:17px;font-weight:800;border-radius:12px;border:2px solid #90CDF4;background:#EBF4FF;color:#1B4FD8;cursor:pointer">▶️ FINE PAUSA</button>
+        </div>
+      </div>
+
       <!-- Commesse aperte -->
       <div style="padding:16px 24px 8px;flex-shrink:0">
         <div class="panel-title">Commesse aperte</div>
@@ -210,6 +221,9 @@ let timbrature   = [];
 let presenze     = [];
 let appuntamenti = [];
 let comSelezionata = null; // commessa selezionata (null = solo presenza)
+// Impostazioni orari (inizio turno, soglia ritardo, fine turno, pausa pranzo) dal gestionale
+let _impTim = {};
+supa.from('impostazioni').select('*').limit(1).then(({ data }) => { if (data && data[0]) _impTim = data[0]; });
 
 // ── LOAD ─────────────────────────────────────────────
 async function loadAll() {
@@ -308,6 +322,7 @@ function selezionaCommessa(id) {
 
 // ── TASTIERINO TIMBRATURA (codice meccanico) ──────────
 function apriPadTimbra(cm) {
+  _padAzione = null;
   let ov = document.getElementById('pad-timbra');
   if (!ov) {
     ov = document.createElement('div');
@@ -359,6 +374,12 @@ function confermaPadTimbra() {
     setTimeout(()=>{ i.style.borderColor=''; i.placeholder='••••'; }, 1200);
     return;
   }
+  if (_padAzione) {   // tastierino aperto da un pulsante PRESENZE
+    const az = _padAzione; _padAzione = null;
+    chiudiPadTimbra(true);
+    registraPresenza(mec, az);
+    return;
+  }
   const cm = comSelezionata;
   chiudiPadTimbra(true);
   if (cm) timbra(mec, cm);
@@ -367,7 +388,7 @@ function confermaPadTimbra() {
 function chiudiPadTimbra(mantieniSelezione) {
   const ov = document.getElementById('pad-timbra');
   if (ov) ov.style.display = 'none';
-  if (!mantieniSelezione) { comSelezionata = null; aggiornaBanner(); renderCommessaList(); }
+  if (!mantieniSelezione) { _padAzione = null; comSelezionata = null; aggiornaBanner(); renderCommessaList(); }
 }
 
 function deselezionaCommessa() {
@@ -439,8 +460,9 @@ function elaboraBadge() {
     // Commessa selezionata → timbratura commessa + presenza implicita
     timbra(mec, comSelezionata);
   } else {
-    // Nessuna commessa → solo presenza
-    timbraPresenza(mec);
+    // Nessuna commessa: le presenze si timbrano con i pulsanti ENTRATA / PAUSA / USCITA
+    mostraOverlay('👆', mec.nome, 'Premi prima ENTRATA, PAUSA o USCITA, oppure tocca una commessa', 'info');
+    setTimeout(chiudiOverlay, 3000);
   }
 }
 
@@ -460,11 +482,7 @@ async function timbra(mec, cm) {
   const oggi = new Date().toISOString().split('T')[0];
   const oraStr = new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
   try {
-    // 1. Presenza implicita se non ancora timbrata oggi
-    const presenzaOggi = presenze.find(p=>p.mec_id===mec.id&&(p.data||'').startsWith(oggi));
-    if (!presenzaOggi) {
-      await supa.from('presenze').insert({ id:crypto.randomUUID(), mec_id:mec.id, data:oggi, entrata:ora, uscita:null, created_at:ora });
-    }
+    // (le presenze si registrano solo con i pulsanti PRESENZE: entrata / pausa / uscita)
 
     // 2. Timbratura commessa
     const tAperta = timbrature.find(t=>t.mec_id===mec.id&&t.com_id===cm.id&&!t.uscita);
@@ -665,6 +683,129 @@ async function eliminaAppuntamento(id){
 
 // ── TOAST + AUDIO ─────────────────────────────────────
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+// ── PRESENZE: ENTRATA / PAUSA / USCITA ─────────────────
+let _padAzione = null;
+const _AZIONI_PRES = { entrata:'🟢 ENTRATA', uscita:'🔴 USCITA', pausa_inizio:'☕ INIZIO PAUSA', pausa_fine:'▶️ FINE PAUSA' };
+
+function apriPadPresenza(azione) {
+  comSelezionata = null; aggiornaBanner(); renderCommessaList();
+  apriPadTimbra({ numero: _AZIONI_PRES[azione] || azione, veicolo_id: null, foto_inizio: {} });
+  _padAzione = azione;
+  const ov = document.getElementById('pad-timbra');
+  const lab = ov && ov.querySelector('div > div');
+  if (lab) lab.textContent = 'Presenza';
+}
+
+function _oggiLocale() {
+  const d = new Date(); const p = x => String(x).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+
+// Chiude il lavoro su commessa ancora aperto (pausa o uscita) e mette la commessa in standby se non lavora nessun altro
+async function _chiudiLavoriAperti(mec, ora) {
+  const aperte = timbrature.filter(t => t.mec_id === mec.id && !t.uscita);
+  for (const t of aperte) {
+    await supa.from('timbrature').update({ uscita: ora }).eq('id', t.id);
+    const altre = timbrature.filter(x => x.com_id === t.com_id && !x.uscita && x.id !== t.id);
+    const cm = commesse.find(c => c.id === t.com_id);
+    if (!altre.length && cm && (cm.stato === 'wip' || cm.stato === 'aperta')) await supa.from('commesse').update({ stato: 'standby' }).eq('id', cm.id);
+  }
+}
+
+// Domanda sulla pausa pranzo non timbrata (Sì = scala la pausa)
+function _chiediPausaPranzo(mec, da, a) {
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;display:flex;align-items:center;justify-content:center';
+    const bs = 'flex:1;padding:16px 8px;border-radius:12px;font-size:16px;font-weight:800;cursor:pointer;';
+    ov.innerHTML = `<div style="background:var(--surface);border-radius:16px;padding:24px;width:380px;max-width:92vw;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+      <div style="font-size:34px">⚠️</div>
+      <div style="font-size:19px;font-weight:800;margin:6px 0">Pausa pranzo non timbrata</div>
+      <div style="font-size:14px;color:var(--text2);margin-bottom:18px">${mec.nome}, tra le ${da} e le ${a} eri in pausa o hai lavorato?</div>
+      <div style="display:flex;gap:10px">
+        <button data-v="1" style="${bs}border:2px solid #F6E05E;background:#FFFBEB;color:#92400E">☕ Ero in pausa</button>
+        <button data-v="0" style="${bs}border:2px solid #68D391;background:#F0FFF4;color:#276749">🔧 Ho lavorato</button>
+      </div></div>`;
+    ov.querySelectorAll('button').forEach(b => b.onclick = () => { ov.remove(); resolve(b.dataset.v === '1'); });
+    document.body.appendChild(ov);
+  });
+}
+
+async function registraPresenza(mec, azione) {
+  const now = new Date(); const ora = now.toISOString(); const oggi = _oggiLocale();
+  const oraStr = now.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  const hm = s => String(s||'').slice(0,5);
+  const imp = _impTim || {};
+  const msg = (icon, sub, tipo) => { mostraOverlay(icon, mec.nome, sub, tipo || 'success'); suonaSegnale(azione === 'uscita' ? 'uscita' : 'entrata'); setTimeout(chiudiOverlay, 3500); };
+  try {
+    const { data: lista, error: e0 } = await supa.from('presenze').select('*')
+      .or(`mec_id.eq.${mec.id},dip_id.eq.${mec.id}`).eq('data', oggi)
+      .order('entrata', { ascending: false }).limit(1);
+    if (e0) throw e0;
+    const p = (lista || [])[0];
+    const hhmm = iso => new Date(iso).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+
+    if (azione === 'entrata') {
+      if (p && !p.uscita) { msg('ℹ️', `Sei già entrato alle ${hhmm(p.entrata)}`, 'info'); return; }
+      if (p && p.uscita)  { msg('ℹ️', 'Uscita già registrata oggi — per correzioni rivolgiti all\'ufficio', 'info'); return; }
+      const inizio = new Date(`${oggi}T${hm(imp.orario_inizio) || '08:30'}:00`);
+      const soglia = new Date(`${oggi}T${hm(imp.soglia_ritardo) || '09:00'}:00`);
+      const ritardo = now > soglia;
+      const minRit  = ritardo ? Math.round((now - inizio) / 60000) : 0;
+      const { error } = await supa.from('presenze').insert({ id: crypto.randomUUID(), mec_id: mec.id, dip_id: mec.id, data: oggi, entrata: ora, uscita: null, tipo: 'normale', ritardo, minuti_ritardo: minRit, created_at: ora });
+      if (error) throw error;
+      msg('✅', `ENTRATA — ${oraStr}` + (ritardo ? ` (ritardo ${minRit} min)` : ''));
+
+    } else if (azione === 'pausa_inizio') {
+      if (!p || p.uscita) { msg('⚠️', 'Prima timbra l\'ENTRATA', 'danger'); return; }
+      if (p.pausa_inizio && !p.pausa_fine) { msg('ℹ️', `Sei già in pausa dalle ${hhmm(p.pausa_inizio)}`, 'info'); return; }
+      if (p.pausa_fine) { msg('ℹ️', 'Pausa già registrata oggi', 'info'); return; }
+      const { error } = await supa.from('presenze').update({ pausa_inizio: ora }).eq('id', p.id);
+      if (error) throw error;
+      await _chiudiLavoriAperti(mec, ora);
+      msg('☕', `INIZIO PAUSA — ${oraStr}`, 'info');
+
+    } else if (azione === 'pausa_fine') {
+      if (!p || p.uscita || !p.pausa_inizio || p.pausa_fine) { msg('⚠️', 'Nessuna pausa in corso', 'danger'); return; }
+      const { error } = await supa.from('presenze').update({ pausa_fine: ora }).eq('id', p.id);
+      if (error) throw error;
+      msg('▶️', `FINE PAUSA — ${oraStr}`);
+
+    } else if (azione === 'uscita') {
+      if (!p) { msg('⚠️', 'Nessuna entrata registrata oggi', 'danger'); return; }
+      if (p.uscita) { msg('ℹ️', `Uscita già registrata alle ${hhmm(p.uscita)}`, 'info'); return; }
+      const upd = { uscita: ora };
+      const ent = new Date(p.entrata);
+      let minPausa = 0;
+      if (p.pausa_inizio) {
+        const pf = p.pausa_fine ? new Date(p.pausa_fine) : now;
+        if (!p.pausa_fine) upd.pausa_fine = ora;
+        minPausa = Math.max(0, Math.round((pf - new Date(p.pausa_inizio)) / 60000));
+      } else {
+        // Pausa pranzo non timbrata: domanda (come prima nel gestionale)
+        const da = hm(imp.pausa_inizio) || '13:00', a = hm(imp.pausa_fine) || '14:00';
+        const pp1 = new Date(`${oggi}T${da}:00`), pp2 = new Date(`${oggi}T${a}:00`);
+        if (ent < pp1 && now > pp2) {
+          const eraInPausa = await _chiediPausaPranzo(mec, da, a);
+          if (eraInPausa) { minPausa = Math.round((pp2 - pp1) / 60000); upd.pausa_inizio = pp1.toISOString(); upd.pausa_fine = pp2.toISOString(); }
+        }
+      }
+      const minLav = Math.max(0, Math.round((now - ent) / 60000) - minPausa);
+      upd.ore_totali = +(minLav / 60).toFixed(2);
+      const fineTurno = new Date(`${oggi}T${hm(mec.ora_uscita_automatica) || hm(imp.fine_turno) || '17:30'}:00`);
+      const strao = now > fineTurno ? +(((now - fineTurno) / 60000) / 60).toFixed(2) : 0;
+      upd.straordinario = strao > 0 ? strao : null;
+      const { error } = await supa.from('presenze').update(upd).eq('id', p.id);
+      if (error) throw error;
+      await _chiudiLavoriAperti(mec, ora);
+      msg('👋', `USCITA — ${oraStr} · ${Math.floor(minLav/60)}h${String(minLav%60).padStart(2,'0')} lavorate`, 'info');
+    }
+    await loadAll();
+  } catch(e) {
+    mostraOverlay('❌', 'Errore', e.message, 'danger'); setTimeout(chiudiOverlay, 4000);
+  }
+}
+
 function suonaSegnale(tipo){try{const ctx=new AudioContext();const osc=ctx.createOscillator();const gain=ctx.createGain();osc.connect(gain);gain.connect(ctx.destination);osc.frequency.value=tipo==='entrata'?880:440;gain.gain.setValueAtTime(0.3,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.4);osc.start();osc.stop(ctx.currentTime+0.4);}catch(e){}}
 
 // ── REFRESH ───────────────────────────────────────────
