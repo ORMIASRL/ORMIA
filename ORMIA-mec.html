@@ -1012,6 +1012,13 @@ async function timbra(verso) {
   const ora = new Date().toISOString();
   try {
     if (verso === 'entrata') {
+      // Blocco garanzia: senza foto iniziali (targa, telaio, km) non si può iniziare il lavoro
+      const _cmG = getCommesse().find(c=>c.id===comSelected.id) || comSelected;
+      const _vG  = getVeicoli().find(x=>x.id===_cmG.veicoloId);
+      if (isVeicoloInGaranzia(_vG) && !fotoInizioCompleto(_cmG.fotoInizio)) {
+        alert('⚠️ Commessa in garanzia\n\nPrima di iniziare il lavoro scatta le foto iniziali obbligatorie (targa, telaio e km).\nLe trovi nella sezione "Foto iniziali" qui sotto.');
+        return;
+      }
       const aperte = _timbrature.filter(t=>t.mec_id===mecLogged.id&&!t.uscita&&t.com_id!==comSelected.id);
       for (const t of aperte) await supa.from('timbrature').update({uscita:ora}).eq('id',t.id);
       await supa.from('timbrature').insert({id:genId(),mec_id:mecLogged.id,com_id:comSelected.id,entrata:ora,uscita:null,created_at:ora});
