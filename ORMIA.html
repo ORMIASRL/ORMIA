@@ -4786,6 +4786,8 @@ async function saveCommessa(firmaDataUrl=null) {
       }
     }
 
+    // Se la commessa modificata era quella aperta nel dettaglio, riapri il dettaglio con i dati aggiornati
+    if (editingCommessaId && selectedCommessaId === comId && typeof showDetailCommessa === 'function') showDetailCommessa(comId);
     showToast('Commessa salvata — magazzino aggiornato ✓');
   } catch(e) { alert('Errore salvataggio: '+e.message); }
 }
