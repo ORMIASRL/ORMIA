@@ -2259,6 +2259,8 @@ function openModal(type, preselectClienteId, editId) {
         document.getElementById('v-note').value = v.note||'';
       }
     } else {
+      // Nuovo veicolo: svuota tutti i campi (evita di ritrovare i dati del veicolo precedente)
+      ['v-targa','v-marca','v-modello','v-anno','v-km','v-ore-motore','v-vin','v-revisione','v-tachigrafo','v-tagliando-km','v-tagliando-data','v-note'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
       document.getElementById('v-garanzia').checked = false;
       document.getElementById('v-garanzia-scadenza').value = '';
       document.getElementById('v-garanzia-scadenza-wrap').style.display = 'none';
@@ -4584,6 +4586,11 @@ function openModalCommessa(editId) {
   document.getElementById('com-data-apertura').value = new Date().toISOString().split('T')[0];
   document.getElementById('com-stato').value = 'aperta';
   document.getElementById('com-note').value = '';
+  // Nuova commessa: svuota descrizione, consegna e diritto di chiamata (in modifica vengono ricaricati sotto)
+  document.getElementById('com-desc').value = '';
+  const _consEl = document.getElementById('com-consegna'); if (_consEl) _consEl.value = '';
+  const _dtEl = document.getElementById('com-diritto-tipo'); if (_dtEl) _dtEl.selectedIndex = 0;
+  const _diEl = document.getElementById('com-diritto-importo'); if (_diEl) _diEl.value = _diEl.defaultValue;
   document.getElementById('com-km').value = '';
   document.getElementById('com-km-hint').textContent = '';
   const dcCheck = document.getElementById('com-diritto-chiamata');
@@ -4609,6 +4616,11 @@ function openModalCommessa(editId) {
       document.getElementById('com-data-apertura').value = cm.dataApertura || '';
       document.getElementById('com-stato').value = cm.stato || 'aperta';
       document.getElementById('com-note').value = cm.note || '';
+      // Ricarica la consegna prevista (campo datetime-local, ora locale)
+      if (cm.consegnaPrevista) {
+        const _d = new Date(cm.consegnaPrevista);
+        if (!isNaN(_d)) { const _p = x => String(x).padStart(2,'0'); document.getElementById('com-consegna').value = `${_d.getFullYear()}-${_p(_d.getMonth()+1)}-${_p(_d.getDate())}T${_p(_d.getHours())}:${_p(_d.getMinutes())}`; }
+      }
       // Diritto di chiamata
       const dcChk = document.getElementById('com-diritto-chiamata');
       if (dcChk) {
