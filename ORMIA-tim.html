@@ -213,6 +213,11 @@ let comSelezionata = null; // commessa selezionata (null = solo presenza)
 
 // ── LOAD ─────────────────────────────────────────────
 async function loadAll() {
+  // Sessione (anche anonima): serve per leggere le timbrature aperte e riconoscere l'USCITA
+  try {
+    const { data: { session } } = await supa.auth.getSession();
+    if (!session) await supa.auth.signInAnonymously();
+  } catch(e) { console.warn('Sessione anonima non disponibile', e); }
   const oggi = new Date().toISOString().split('T')[0];
   const mesePrima = new Date(); mesePrima.setDate(1); mesePrima.setHours(0,0,0,0);
   const [m, co, cl, v, t, p, a] = await Promise.all([
@@ -295,10 +300,74 @@ function renderCommessaList() {
 function selezionaCommessa(id) {
   const cm = commesse.find(c=>c.id===id);
   if (!cm) return;
-  comSelezionata = (comSelezionata && comSelezionata.id===id) ? null : cm;
+  comSelezionata = cm;
   aggiornaBanner();
   renderCommessaList();
-  document.getElementById('input-badge').focus();
+  apriPadTimbra(cm);   // si apre subito il tastierino per il codice del meccanico
+}
+
+// ── TASTIERINO TIMBRATURA (codice meccanico) ──────────
+function apriPadTimbra(cm) {
+  let ov = document.getElementById('pad-timbra');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'pad-timbra';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:900;display:none;align-items:center;justify-content:center';
+    document.body.appendChild(ov);
+  }
+  const v = veicoli.find(x=>x.id===cm.veicolo_id);
+  const fi = cm.foto_inizio || {};
+  const garSenzaFoto = isVeicoloInGaranzia(cm.veicolo_id) && !(fi.targa && fi.telaio && fi.km);
+  const tasti = ['1','2','3','4','5','6','7','8','9','C','0','⌫'];
+  ov.innerHTML = `<div style="background:var(--surface);border-radius:16px;padding:22px;width:330px;max-width:92vw;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Timbra su</div>
+    <div style="font-size:22px;font-weight:800;margin:2px 0">${cm.numero}${v?' — '+v.targa:''}</div>
+    ${garSenzaFoto?'<div style="font-size:12px;font-weight:700;color:#92400E;background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:6px 8px;margin:8px 0">🔒 Garanzia: per INIZIARE servono le foto iniziali dall\'app MEC</div>':''}
+    <div style="font-size:13px;color:var(--text2);margin:8px 0 12px">Inserisci il tuo codice</div>
+    <input id="pad-input" type="password" inputmode="numeric" autocomplete="off" placeholder="••••"
+      style="width:100%;box-sizing:border-box;font-size:28px;letter-spacing:10px;text-align:center;padding:10px;border:2px solid var(--border);border-radius:10px;margin-bottom:12px;background:var(--bg);color:var(--text)"
+      onkeydown="if(event.key==='Enter'){event.preventDefault();confermaPadTimbra();} if(event.key==='Escape'){chiudiPadTimbra();}">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+      ${tasti.map(k=>`<button type="button" onclick="padTasto('${k}')" style="padding:14px 0;font-size:22px;font-weight:700;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);cursor:pointer">${k}</button>`).join('')}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button type="button" onclick="chiudiPadTimbra()" style="flex:1;padding:13px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text2);font-weight:600;cursor:pointer">Annulla</button>
+      <button type="button" onclick="confermaPadTimbra()" style="flex:1;padding:13px;border:none;border-radius:10px;background:var(--accent);color:white;font-weight:700;cursor:pointer">Timbra</button>
+    </div>
+  </div>`;
+  ov.style.display = 'flex';
+  setTimeout(()=>document.getElementById('pad-input')?.focus(), 50);
+}
+
+function padTasto(k) {
+  const i = document.getElementById('pad-input'); if (!i) return;
+  if (k==='C') i.value = '';
+  else if (k==='⌫') i.value = i.value.slice(0,-1);
+  else i.value += k;
+  i.focus();
+  if (/^\d{4}$/.test(i.value)) confermaPadTimbra();   // PIN a 4 cifre: timbra da solo
+}
+
+function confermaPadTimbra() {
+  const i = document.getElementById('pad-input'); if (!i) return;
+  const val = (i.value||'').trim().toUpperCase();
+  if (!val) return;
+  const mec = meccanici.find(m => (m.pin||'') === val || (m.badge||'').toUpperCase() === val);
+  if (!mec) {
+    i.value = ''; i.style.borderColor = '#ef4444';
+    i.placeholder = 'Codice errato';
+    setTimeout(()=>{ i.style.borderColor=''; i.placeholder='••••'; }, 1200);
+    return;
+  }
+  const cm = comSelezionata;
+  chiudiPadTimbra(true);
+  if (cm) timbra(mec, cm);
+}
+
+function chiudiPadTimbra(mantieniSelezione) {
+  const ov = document.getElementById('pad-timbra');
+  if (ov) ov.style.display = 'none';
+  if (!mantieniSelezione) { comSelezionata = null; aggiornaBanner(); renderCommessaList(); }
 }
 
 function deselezionaCommessa() {
@@ -334,7 +403,8 @@ function aggiornaBanner() {
 document.addEventListener('keydown', e => {
   const modal = document.getElementById('modal-appuntamento');
   const pin   = document.getElementById('daily-pin-screen');
-  if (modal.style.display==='flex' || pin.style.display==='flex') return;
+  const pad   = document.getElementById('pad-timbra');
+  if (modal.style.display==='flex' || pin.style.display==='flex' || (pad && pad.style.display==='flex')) return;
   if (e.key==='Enter') { elaboraBadge(); return; }
   if (e.key.length===1 && !e.ctrlKey && !e.metaKey) {
     const inp = document.getElementById('input-badge');
