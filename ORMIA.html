@@ -3182,7 +3182,8 @@ function toDb(table, obj) {
   const map = FIELD_MAP[table] || {};
   const out = {};
   for (const [k, v] of Object.entries(obj)) {
-    out[map[k] || k] = v;
+    // Mapping esplicito, altrimenti camelCase → snake_case (speculare a fromDb)
+    out[map[k] || k.replace(/[A-Z]/g, c => '_' + c.toLowerCase())] = v;
   }
   return out;
 }
