@@ -4598,6 +4598,17 @@ function openModalCommessa(editId) {
     selM.innerHTML += '<option disabled>— Aggiungi prima i meccanici in Impostazioni —</option>';
 
   document.getElementById('modal-commessa-title').textContent = editId ? 'Modifica commessa' : 'Nuova commessa';
+  // In modifica si salva direttamente (niente nuova firma); in creazione si passa alla firma del cliente
+  const _btnCom = document.querySelector('#modal-commessa .modal-footer .btn-primary');
+  if (_btnCom) {
+    if (editId) {
+      _btnCom.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px"><polyline points="20 6 9 17 4 12"/></svg> Salva modifiche';
+      _btnCom.onclick = () => saveCommessa(null);
+    } else {
+      _btnCom.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px"><polyline points="9 18 15 12 9 6"/></svg> Avanti — Firma cliente';
+      _btnCom.onclick = () => avantiFirmaCommessa();
+    }
+  }
   document.getElementById('com-data-apertura').value = new Date().toISOString().split('T')[0];
   document.getElementById('com-stato').value = 'aperta';
   document.getElementById('com-note').value = '';
@@ -4669,11 +4680,11 @@ async function saveCommessa(firmaDataUrl=null) {
   const oreMotore = document.getElementById('com-ore-motore').value.trim();
   if (!desc) { alert('Inserisci una descrizione del lavoro.'); return; }
   if (!vId)  { alert('Cerca e seleziona un veicolo per targa.'); return; }
-  if (!km && veicoli.find(x=>x.id===vId)?.tipo !== 'rimorchio')   { alert('I km attuali del veicolo sono obbligatori.'); document.getElementById('com-km').focus(); return; }
-  // Ore motore obbligatorie solo per Ford
+  if (!km && !editingCommessaId && veicoli.find(x=>x.id===vId)?.tipo !== 'rimorchio')   { alert('I km attuali del veicolo sono obbligatori.'); document.getElementById('com-km').focus(); return; }
+  // Ore motore obbligatorie solo per Ford (solo in creazione: in modifica restano quelle del veicolo)
   const veicoloSel = veicoli.find(x=>x.id===vId);
   const isFordCom  = (veicoloSel?.marca||'').toLowerCase().trim() === 'ford';
-  if (isFordCom && !oreMotore) { alert('Le ore motore sono obbligatorie per veicoli Ford.'); document.getElementById('com-ore-motore').focus(); return; }
+  if (isFordCom && !oreMotore && !editingCommessaId) { alert('Le ore motore sono obbligatorie per veicoli Ford.'); document.getElementById('com-ore-motore').focus(); return; }
   const clienteId = document.getElementById('com-cliente').value;
 
   const nuoveRic = comVociRic.filter(v=>v.desc||v.prezzo);
@@ -4700,6 +4711,8 @@ async function saveCommessa(firmaDataUrl=null) {
     vociExtra: comVociExtra.filter(v=>v.desc||v.prezzo),
     totale: calcTotale(),
   };
+  // In modifica, se non c'è una nuova firma, conserva quella già presente
+  if (editingCommessaId && !firmaDataUrl) { delete data.firma; delete data.firmaData; }
 
   let comId;
 
