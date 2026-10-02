@@ -3240,11 +3240,16 @@ async function showApp() {
   applicaPermessiRuolo();
   // Timer fine turno automatico
   _avviaTimerFineTurno();
+  // Presenze: si registrano dalla TIM → aggiorna l'elenco ogni 30 secondi
+  setInterval(async () => {
+    try { presenze = await DB.load('presenze'); renderLivePresenze(); updateBadgePresenze(); if (currentSection === 'presenze') renderPresenze(); } catch(e) {}
+  }, 30000);
   // Timbratura automatica entrata per amministrazione
   setTimeout(() => registraEntrataAmministrazione(), 500);
 }
 
 async function registraEntrataAmministrazione() {
+  return; // Presenze ora registrate SOLO dalla postazione TIM (entrata / pausa / uscita)
   if (!currentUser) return;
   // Trova il dipendente corrispondente all'utente loggato (per email)
   const dip = meccanici.find(m => (m.email||'').toLowerCase() === (currentUser.email||'').toLowerCase()
@@ -3385,6 +3390,7 @@ function getOra(inputId) {
 
 // ===== PRESENZA AUTOMATICA DA TIMBRATURA =====
 async function registraPresenzaAutomatica(mecId, ora) {
+  return; // Presenze ora registrate SOLO dalla postazione TIM (entrata / pausa / uscita)
   const giàAperta = presenze.find(p=>p.dipId===mecId&&!p.uscita);
   if (giàAperta) return;
 
@@ -3418,6 +3424,7 @@ async function registraPresenzaAutomatica(mecId, ora) {
 }
 
 async function chiudiPresenzaAutomatica(mecId, ora) {
+  return; // Presenze ora registrate SOLO dalla postazione TIM (entrata / pausa / uscita)
   const altreAperte = timbrature.filter(t=>t.mecId===mecId&&!t.uscita);
   if (altreAperte.length > 0) return;
   const pAperta = presenze.find(p=>p.dipId===mecId&&!p.uscita);
@@ -3694,7 +3701,9 @@ function renderDipendenti() {
     const pAperta  = presenze.find(p=>p.dipId===d.id&&!p.uscita);
     const pOggi    = presenze.find(p=>p.dipId===d.id&&p.entrata&&p.entrata.startsWith(oggi));
     let statoOggi;
-    if (pAperta) {
+    if (pAperta && pAperta.pausaInizio && !pAperta.pausaFine) {
+      statoOggi = `<span class="badge badge-yellow">☕ In pausa</span>`;
+    } else if (pAperta) {
       const mins = Math.floor((new Date()-new Date(pAperta.entrata))/60000);
       const dur = mins>=60?`${Math.floor(mins/60)}h${String(mins%60).padStart(2,'0')}`:`${mins}m`;
       statoOggi = `<span class="badge badge-green"><span class="badge-dot"></span>In sede · ${dur}</span>`;
@@ -3806,7 +3815,7 @@ function renderLivePresenze() {
     const d = meccanici.find(x=>x.id===p.dipId);
     const mins = Math.floor((new Date()-new Date(p.entrata))/60000);
     const dur = mins>=60?`${Math.floor(mins/60)}h${String(mins%60).padStart(2,'0')}`:`${mins}m`;
-    return `<div class="t-live-chip"><span class="dot"></span><strong>${d?d.nome:'—'}</strong><span style="opacity:.7">· ${dur}</span><span onclick="chiudiPresenza('${p.id}')" style="cursor:pointer;margin-left:4px;opacity:.6;font-size:14px">×</span></div>`;
+    return `<div class="t-live-chip"><span class="dot"></span><strong>${d?d.nome:'—'}</strong><span style="opacity:.7">· ${dur}</span>${p.pausaInizio&&!p.pausaFine?' <span style="color:#92400E;font-weight:600">☕ in pausa</span>':''}<span onclick="chiudiPresenza('${p.id}')" style="cursor:pointer;margin-left:4px;opacity:.6;font-size:14px">×</span></div>`;
   }).join('');
 }
 
@@ -3994,6 +4003,7 @@ function esportaPresenzeExcel() {
 }
 
 function _avviaTimerFineTurno() {
+  return; // Chiusura automatica uscite ora gestita da Supabase (funziona anche a gestionale chiuso)
   setInterval(async () => {
     const imp       = _impostazioni || {};
     const fineTurno = imp.fine_turno || imp.fineTurno || '17:30';
@@ -4104,6 +4114,7 @@ async function confermaTimbraturaCommessa(verso) {
 }
 
 async function chiudiPresenzeAutomatiche() {
+  return; // Presenze ora registrate SOLO dalla postazione TIM (entrata / pausa / uscita)
   const oggi = new Date().toISOString().split('T')[0];
   const ore17 = new Date(); ore17.setHours(17,30,0,0);
   // Cerca timbrature aperte di oggi
@@ -4225,7 +4236,8 @@ function togglePinBadge() {
   const pinWrap = document.getElementById('mec-pin-wrap');
   const badgeWrap = document.getElementById('mec-badge-wrap');
   const uscWrap = document.getElementById('mec-ora-uscita-wrap');
-  [pinSec, pinWrap, badgeWrap, uscWrap].forEach(el => { if (el) el.style.display = operativo ? '' : 'none'; });
+  // PIN, badge e orario di uscita per TUTTI i dipendenti (tutti timbrano le presenze alla TIM)
+  [pinSec, pinWrap, badgeWrap, uscWrap].forEach(el => { if (el) el.style.display = ''; });
 }
 
 function openModalMeccanico(editId) {
@@ -4259,8 +4271,8 @@ async function saveMeccanico() {
   if (!ruoli.length) { alert('Seleziona almeno un ruolo.'); return; }
   const operativo = ruoli.some(r => RUOLI_OPERATIVI.includes(r.toLowerCase()));
   const pin = document.getElementById('mec-pin').value.trim();
-  if (operativo) {
-    if (!pin || pin.length !== 4) { alert('Il PIN deve essere di 4 cifre.'); document.getElementById('mec-pin').focus(); return; }
+  if (operativo || pin) {
+    if (!pin || !/^\d{4}$/.test(pin)) { alert('Il PIN deve essere di 4 cifre.'); document.getElementById('mec-pin').focus(); return; }
     const dup = meccanici.find(m => m.pin === pin && m.id !== editingMeccanicoId);
     if (dup) { alert(`Il PIN ${pin} è già usato da ${dup.nome}.`); return; }
   }
@@ -4272,8 +4284,8 @@ async function saveMeccanico() {
     telefono: document.getElementById('mec-tel').value.trim(),
     email:  document.getElementById('mec-email').value.trim(),
     note:   document.getElementById('mec-note').value.trim(),
-    pin:    operativo ? pin : null,
-    badge:  operativo ? (document.getElementById('mec-badge').value.trim().toUpperCase() || null) : null,
+    pin:    pin || null,
+    badge:  (document.getElementById('mec-badge').value.trim().toUpperCase() || null),
     ora_uscita_automatica: document.getElementById('mec-ora-uscita').value || '17:00',
     attivo: true,
   };
