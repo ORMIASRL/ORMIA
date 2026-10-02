@@ -377,6 +377,16 @@ function elaboraBadge() {
 // ── TIMBRATURA COMMESSA ───────────────────────────────
 async function timbra(mec, cm) {
   const ora  = new Date().toISOString();
+  // Blocco garanzia: per iniziare il lavoro servono le foto iniziali (targa, telaio, km) scattate dall'app MEC
+  const _tApG = timbrature.find(t=>t.mec_id===mec.id&&t.com_id===cm.id&&!t.uscita);
+  const _fiG  = cm.foto_inizio || {};
+  if (!_tApG && isVeicoloInGaranzia(cm.veicolo_id) && !(_fiG.targa && _fiG.telaio && _fiG.km)) {
+    mostraOverlay('📷', 'Commessa in garanzia', 'Prima di iniziare servono le foto iniziali (targa, telaio, km) dall\'app MEC', 'danger');
+    setTimeout(chiudiOverlay, 4000);
+    comSelezionata = null;
+    aggiornaBanner();
+    return;
+  }
   const oggi = new Date().toISOString().split('T')[0];
   const oraStr = new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
   try {
