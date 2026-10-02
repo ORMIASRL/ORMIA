@@ -417,6 +417,19 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
         </label>
       </div>
 
+      <!-- ALLEGATI (diagnosi PDF, foto, altri file) -->
+      <div>
+        <div class="det-section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span>📎 Allegati</span>
+          <span id="det-allegati-count" style="font-size:12px;color:var(--text3);font-weight:400">0 file</span>
+        </div>
+        <div id="det-allegati-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+        <label style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:2px dashed var(--border2);border-radius:var(--radius-lg);cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);background:var(--accent-light);-webkit-tap-highlight-color:transparent">
+          📎 Allega file
+          <input type="file" multiple style="display:none" onchange="caricaAllegati(this)">
+        </label>
+      </div>
+
     </div>
 
     <!-- FOTO ACCETTAZIONE (magazziniere, mezzi non in garanzia) -->
@@ -620,7 +633,7 @@ function isMeccanicoOperativo(m) {
   return (m.ruoli||[]).some(r => operativi.includes(r.toLowerCase()));
 }
 function fixProd(p) { return p ? {...p, descrizione:p.descrizione||p.desc, codInt:p.cod_int, codForn:p.cod_forn, giacenza:p.giacenza, scortaMin:p.scorta_min, qtaRiordino:p.qta_riordino, prezzoAcq:p.prezzo_acq, prezzoVend:p.prezzo_vend, fornitoreId:p.fornitore_id} : null; }
-function fixCom(c)  { return c ? {...c, clienteId:c.cliente_id, veicoloId:c.veicolo_id, dataApertura:c.data_apertura, vociMano:c.voci_mano||[], vociRic:c.voci_ric||[], vociExtra:c.voci_extra||[], desc:c.descrizione, foto:c.foto||[], fotoInizio:c.foto_inizio||{}, fotoFine:c.foto_fine||[], nota_mec:c.nota_mec||'' } : null; }
+function fixCom(c)  { return c ? {...c, clienteId:c.cliente_id, veicoloId:c.veicolo_id, dataApertura:c.data_apertura, vociMano:c.voci_mano||[], vociRic:c.voci_ric||[], vociExtra:c.voci_extra||[], desc:c.descrizione, foto:c.foto||[], fotoInizio:c.foto_inizio||{}, fotoFine:c.foto_fine||[], allegati:c.allegati||[], nota_mec:c.nota_mec||'' } : null; }
 function fixTim(t)  { return t ? {...t, mecId:t.mec_id, comId:t.com_id} : null; }
 function fixVei(v)  { return v ? {...v, clienteId:v.cliente_id, garanziaScadenza:v.garanzia_scadenza} : null; }
 
@@ -920,6 +933,7 @@ function renderDetail() {
     if (fotoAccWrap) fotoAccWrap.style.display = 'none';
     renderFotoInizio(cm.fotoInizio);
     renderFotoFine(cm.fotoFine);
+    renderAllegati(cm.allegati);
   } else if (isMagazziniere()) {
     fotoWrap.style.display = 'none';
     if (fotoAccWrap) {
@@ -1159,6 +1173,65 @@ function renderFotoAccettazione(foto) {
       <img src="${url}" style="width:100%;height:72px;object-fit:cover;display:block" onclick="apriLightbox('${url}')">
       <button onclick="eliminaFotoAccettazione(${i})" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);border:none;color:white;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;padding:0">&#x2715;</button>
     </div>`).join('');
+}
+
+function _escAll(t){return String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+function renderAllegati(allegati) {
+  const aa = allegati || [];
+  const count = document.getElementById('det-allegati-count');
+  if (count) count.textContent = aa.length + ' file';
+  const list = document.getElementById('det-allegati-list');
+  if (!list) return;
+  list.innerHTML = aa.map((a, i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--border2);border-radius:10px;background:var(--surface,#fff)">
+      <a href="${a.url}" target="_blank" rel="noopener" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:600;color:var(--accent);text-decoration:none">📄 ${_escAll(a.nome)}</a>
+      <span style="font-size:11px;color:var(--text3);white-space:nowrap">${a.data ? new Date(a.data).toLocaleDateString('it-IT') : ''}</span>
+      <button onclick="eliminaAllegato(${i})" style="background:none;border:none;color:#c0392b;font-size:16px;cursor:pointer;padding:0 4px">&#x2715;</button>
+    </div>`).join('');
+}
+
+async function caricaAllegati(input) {
+  if (!comSelected) return;
+  const files = Array.from(input.files || []);
+  if (!files.length) return;
+  showToast('Caricamento file…');
+  try {
+    const { data: { session } } = await supa.auth.getSession();
+    if (!session) await supa.auth.signInAnonymously();
+    const { data: row } = await supa.from('commesse').select('allegati').eq('id', comSelected.id).single();
+    const allegati = [...((row && row.allegati) || [])];
+    for (const file of files) {
+      const ext  = (file.name.includes('.') ? file.name.split('.').pop() : 'bin').toLowerCase();
+      const path = `${comSelected.id}/allegato_${Date.now()}_${Math.random().toString(36).substr(2,6)}.${ext}`;
+      const { error: upErr } = await supa.storage.from('commesse-foto').upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: true });
+      if (upErr) { showToast('Errore upload: ' + upErr.message); continue; }
+      const { data: { publicUrl } } = supa.storage.from('commesse-foto').getPublicUrl(path);
+      allegati.push({ nome: file.name, url: publicUrl, path, data: new Date().toISOString(), mec: (mecLogged && mecLogged.nome) || '' });
+    }
+    const { error } = await supa.from('commesse').update({ allegati }).eq('id', comSelected.id);
+    if (error) { showToast('Errore: ' + error.message); return; }
+    comSelected.allegati = allegati;
+    renderAllegati(allegati);
+    showToast('File allegati ✓');
+  } catch(e) { showToast('Errore: ' + e.message); }
+  input.value = '';
+}
+
+async function eliminaAllegato(idx) {
+  if (!comSelected) return;
+  const a = (comSelected.allegati || [])[idx];
+  if (!a || !confirm('Eliminare il file "' + a.nome + '"?')) return;
+  try {
+    const { data: row } = await supa.from('commesse').select('allegati').eq('id', comSelected.id).single();
+    const allegati = ((row && row.allegati) || []).filter(x => x.url !== a.url);
+    const { error } = await supa.from('commesse').update({ allegati }).eq('id', comSelected.id);
+    if (error) { showToast('Errore: ' + error.message); return; }
+    if (a.path) supa.storage.from('commesse-foto').remove([a.path]).catch(()=>{});
+    comSelected.allegati = allegati;
+    renderAllegati(allegati);
+    showToast('File eliminato');
+  } catch(e) { showToast('Errore: ' + e.message); }
 }
 
 async function caricaFotoAccettazione(input) {
