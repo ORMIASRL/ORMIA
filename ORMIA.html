@@ -5763,13 +5763,14 @@ function selezionaVeicoloCommessa(vId) {
   const v = veicoli.find(x=>x.id===vId);
   if (!v) return;
   const cl = clienti.find(c=>c.id===v.clienteId);
+  // Se manca il cliente, seleziona prima il proprietario: selezionaClienteCommessa azzera il veicolo, quindi va fatto PRIMA
+  if (cl && !document.getElementById('com-cliente').value) selezionaClienteCommessa(cl.id);
   document.getElementById('com-veicolo').value = vId;
   document.getElementById('com-veicolo-targa').textContent = v.targa||'—';
   document.getElementById('com-veicolo-info').textContent = [v.marca,v.modello,v.anno].filter(Boolean).join(' ');
   document.getElementById('com-veicolo-cliente').textContent = cl?cl.ragione:'';
   document.getElementById('com-veicolo-card').style.display = 'flex';
   document.getElementById('com-btn-sel-veicolo').style.display = 'none';
-  if (cl && !document.getElementById('com-cliente').value) selezionaClienteCommessa(cl.id);
   closeModal('modal-sel-veicolo');
   onVeicoloChange();
   setTimeout(() => { const km = document.getElementById('com-km'); if(km) km.focus(); }, 100);
