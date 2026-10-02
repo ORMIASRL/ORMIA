@@ -2924,6 +2924,7 @@ function init() {
     </div>
     <div id="dc-foto-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px"></div>
     <div id="dc-foto-empty" style="font-size:12px;color:var(--text3);padding:8px 0;display:none">Nessuna foto caricata ancora dal meccanico.</div>
+    <div id="dc-allegati" style="margin-top:12px"></div>
   </div>
 
   <div style="padding:16px 24px;display:flex;gap:8px;flex-wrap:wrap">
@@ -5173,6 +5174,7 @@ function showDetailCommessa(id) {
       fotoGrid.innerHTML = '';
       fotoEmpty.style.display = '';
     }
+    _renderAllegatiGest(cm);
   } else {
     fotoSection.style.display = 'none';
   }
@@ -6013,6 +6015,24 @@ function onVeicoloChange() {
   }
 }
 
+function _escAllG(t){return String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function _disegnaAllegatiGest(allegati) {
+  const box = document.getElementById('dc-allegati');
+  if (!box) return;
+  const aa = allegati || [];
+  box.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">📎 Allegati (' + aa.length + ')</div>' +
+    (aa.length ? aa.map(a => '<a href="' + a.url + '" target="_blank" rel="noopener" style="display:flex;justify-content:space-between;gap:8px;padding:7px 10px;margin-bottom:4px;border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--accent);text-decoration:none"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📄 ' + _escAllG(a.nome) + '</span><span style="color:var(--text3);white-space:nowrap">' + _escAllG(a.mec || '') + (a.data ? ' · ' + new Date(a.data).toLocaleDateString('it-IT') : '') + '</span></a>').join('')
+      : '<div style="font-size:12px;color:var(--text3)">Nessun file allegato dal meccanico.</div>');
+}
+function _renderAllegatiGest(cm) {
+  _disegnaAllegatiGest(cm.allegati);
+  supa.from('commesse').select('allegati').eq('id', cm.id).single().then(({ data }) => {
+    if (!data || selectedCommessaId !== cm.id) return;
+    cm.allegati = data.allegati || [];
+    _disegnaAllegatiGest(cm.allegati);
+  });
+}
+
 async function scaricaZipGaranzia(comId) {
   const cm  = commesse.find(c=>c.id===comId);
   if (!cm) return;
@@ -6187,6 +6207,26 @@ async function scaricaZipGaranzia(comId) {
       folder.file(`foto_fine_${i+1}.${ext}`, blob);
     } catch(e) { console.warn('Foto fine non scaricabile:', url, e); }
   }
+
+  // ── Allegati (diagnosi PDF, foto, altri file caricati dall'app MEC) ──
+  try {
+    const { data: rowAll } = await supa.from('commesse').select('allegati').eq('id', comId).single();
+    const allegati = (rowAll && rowAll.allegati) || cm.allegati || [];
+    const usati = {};
+    for (const a of allegati) {
+      if (!a || !a.url) continue;
+      try {
+        const resp = await fetch(a.url);
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const blob = await resp.blob();
+        const base = String(a.nome || 'allegato').replace(/[\\/:*?"<>|]/g, '_');
+        usati[base] = (usati[base] || 0) + 1;
+        let nome = base;
+        if (usati[base] > 1) { const p = base.lastIndexOf('.'); nome = p > 0 ? base.slice(0,p) + '_' + usati[base] + base.slice(p) : base + '_' + usati[base]; }
+        folder.file('allegati/' + nome, blob);
+      } catch(e) { console.warn('Allegato non scaricabile:', a.url, e); }
+    }
+  } catch(e) { console.warn('Errore lettura allegati:', e); }
 
   // ── Genera e scarica ZIP ────────────────────────────
   try {
