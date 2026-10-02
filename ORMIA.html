@@ -2624,6 +2624,7 @@ function init() {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
         Stampa
       </button>
+      <button class="btn btn-secondary btn-sm" id="dc-btn-firma" onclick="faiFirmareCommessa(selectedCommessaId)" style="display:none">✍️ Fai firmare</button>
       <button class="btn btn-secondary btn-sm" id="dc-btn-zip" onclick="scaricaZipGaranzia(selectedCommessaId)" style="display:none">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         ZIP
@@ -3004,6 +3005,8 @@ const DB = {
   },
   async update(table, id, obj) {
     const row = toDb(table, obj);
+    // Commesse: firma, foto e allegati si scrivono solo con salvataggi dedicati (mai sovrascritti da modifiche)
+    if (table === 'commesse') { delete row.firma; delete row.firma_data; delete row.foto_inizio; delete row.foto_fine; delete row.allegati; }
     const { data, error } = await supa.from(TABLE[table]).update(row).eq('id', id).select().single();
     if (error) { console.error('DB.update', table, error); throw error; }
     return fromDb(table, data);
@@ -5097,6 +5100,8 @@ function showDetailCommessa(id) {
   // Mostra tasto ZIP solo se commessa chiusa o fatturata
   const btnZip = document.getElementById('dc-btn-zip');
   if (btnZip) btnZip.style.display = (cm.stato==='chiusa'||cm.stato==='fatturata') ? '' : 'none';
+  const btnFirma = document.getElementById('dc-btn-firma');
+  if (btnFirma) btnFirma.style.display = cm.firma ? 'none' : '';
 
   // Sezione timbratura: nascosta se chiusa
   const timSec = document.getElementById('dc-tim-section');
@@ -5636,8 +5641,9 @@ ${cm.note ? `
 <div class="footer">
   <div style="display:flex;gap:40px">
     <div class="firma-box">
+      ${cm.firma ? `<img src="${cm.firma}" style="display:block;max-width:180px;max-height:60px;margin:0 auto 2px" alt="Firma cliente">` : ''}
       <div class="firma-line"></div>
-      <div class="firma-label">Firma cliente (accettazione lavori)</div>
+      <div class="firma-label">Firma cliente (accettazione lavori)${cm.firmaData ? '<br>Firmata il ' + new Date(cm.firmaData).toLocaleString('it-IT', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : ''}</div>
     </div>
     <div class="firma-box">
       <div class="firma-line"></div>
@@ -6173,6 +6179,21 @@ async function scaricaZipGaranzia(comId) {
       addText('NOTE MECCANICO', ml, y, {size:8, style:'bold', color:[153,153,153]}); nextY(5);
       const mecLines = doc.splitTextToSize(notaMec, cw);
       for (const l of mecLines) { addText(l, ml, y, {size:10, color:[85,85,85]}); nextY(5); }
+    }
+
+    // Firma cliente (accettazione lavori)
+    if (cm.firma) {
+      try {
+        if (y > 235) { doc.addPage(); y = 20; }
+        nextY(4); addLine(y); nextY(6);
+        addText('FIRMA CLIENTE (ACCETTAZIONE LAVORI)', ml, y, {size:8, style:'bold', color:[153,153,153]}); nextY(3);
+        const pr = doc.getImageProperties(cm.firma);
+        let fw = 70, fh = fw * pr.height / pr.width;
+        if (fh > 30) { fh = 30; fw = fh * pr.width / pr.height; }
+        doc.addImage(cm.firma, 'PNG', ml, y, fw, fh);
+        y += fh + 4;
+        if (cm.firmaData) { addText('Firmata il ' + new Date(cm.firmaData).toLocaleString('it-IT', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}), ml, y, {size:8, color:[136,136,136]}); nextY(5); }
+      } catch(e) { console.warn('Firma non inseribile nel PDF:', e); }
     }
 
     const pdfBlob = doc.output('blob');
@@ -8891,6 +8912,7 @@ function avantiFirmaCommessa() {
 function chiudiFirma() {
   document.getElementById('modal-firma').style.display = 'none';
   _firmaDataUrl = null;
+  _firmaSoloComId = null;
 }
 
 function initFirmaCanvas() {
@@ -8947,14 +8969,44 @@ function getFirmaDataUrl() {
   return canvas.toDataURL('image/png');
 }
 
+let _firmaSoloComId = null;
+function faiFirmareCommessa(comId) {
+  const cm = commesse.find(c=>c.id===comId);
+  if (!cm) return;
+  if (cm.firma) { alert('Questa commessa è già firmata.'); return; }
+  const v  = veicoli.find(x=>x.id===cm.veicoloId);
+  const cl = clienti.find(c=>c.id===cm.clienteId);
+  document.getElementById('firma-commessa-info').textContent = [cm.numero, v?.targa, cl?.ragione].filter(Boolean).join(' · ');
+  document.getElementById('firma-riepilogo').innerHTML = `
+    <strong>${v?v.targa:''}</strong> ${[v?.marca,v?.modello].filter(Boolean).join(' ')}<br>
+    <span style="color:var(--text)">${cm.descrizione||cm.desc||''}</span>
+  `;
+  _firmaDataUrl = null;
+  document.getElementById('modal-firma').style.display = 'block';
+  _firmaSoloComId = comId;
+  requestAnimationFrame(() => initFirmaCanvas());
+}
+
 async function confermaSalvaCommessa() {
-  _firmaDataUrl = getFirmaDataUrl();
-  if (!_firmaDataUrl) {
+  // Copia locale: chiudiFirma() azzera _firmaDataUrl (prima la firma andava persa per questo)
+  const firma = getFirmaDataUrl();
+  if (!firma) {
     alert('Il cliente deve firmare prima di procedere.');
     return;
   }
+  const soloComId = _firmaSoloComId;
   chiudiFirma();
-  await saveCommessa(_firmaDataUrl);
+  if (soloComId) {
+    const quando = new Date().toISOString();
+    const { error } = await supa.from('commesse').update({ firma, firma_data: quando }).eq('id', soloComId);
+    if (error) { alert('Errore salvataggio firma: ' + error.message); return; }
+    const cm = commesse.find(c=>c.id===soloComId);
+    if (cm) { cm.firma = firma; cm.firmaData = quando; }
+    showToast('Firma salvata ✓');
+    if (selectedCommessaId === soloComId) showDetailCommessa(soloComId);
+    return;
+  }
+  await saveCommessa(firma);
 }
 
 // ╔═══════════════════════════════════════════════════╗
