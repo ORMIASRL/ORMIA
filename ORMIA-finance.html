@@ -1664,6 +1664,9 @@ async function sincronizzaFIC(silent = false) {
 }
 
 // ── inviaSuFIC ────────────────────────────────────
+// Aliquote IVA standard di Fatture in Cloud (id interni): 22% → 0, 10% → 3, 4% → 4
+function _vatFicFin(v) { const id = { 22:0, 10:3, 4:4 }[Number(v)]; return id != null ? { id } : { value: Number(v) }; }
+
 async function inviaSuFIC(fatturaId) {
   if (!_ficConfig.company_id) { alert('Configura prima Fatture in Cloud.'); return; }
   const f = _fatture.find(x => x.id === fatturaId);
@@ -1673,16 +1676,20 @@ async function inviaSuFIC(fatturaId) {
   try {
     const righe = (f.righe||[]).filter(r => r.desc||r.descrizione);
     const items = righe.length
-      ? righe.map(r => ({ name:r.desc||r.descrizione, qty:r.qta||1, net_price:r.prezzo||0, vat:{value:f.iva||22} }))
+      ? righe.map(r => ({ name:r.desc||r.descrizione, qty:r.qta||1, net_price:r.prezzo||0, vat:_vatFicFin(f.iva||22) }))
       : [{ name:f.descrizione||'Servizio officina', qty:1,
-           net_price: f.imponibile||(f.totale||0)/(1+(f.iva||22)/100), vat:{value:f.iva||22} }];
+           net_price: f.imponibile||(f.totale||0)/(1+(f.iva||22)/100), vat:_vatFicFin(f.iva||22) }];
+    const _num = String(f.numero||'').match(/(\d+)\s*$/);
     const res = await ficFetch(`/c/${_ficConfig.company_id}/issued_documents`, {
       method: 'POST',
       body: JSON.stringify({ data: {
-        type:'invoice', date:(f.data||new Date().toISOString()).split('T')[0], number:f.numero,
+        type:'invoice', date:(f.data||new Date().toISOString()).split('T')[0],
+        ...(_num ? { number: parseInt(_num[1], 10) } : {}),
         entity: { name:f.cl_ragione||cl?.ragione||'Cliente', vat_number:f.cl_piva||cl?.piva||'',
                   tax_code:f.cl_cf||cl?.cf||'', ei_code:f.cl_sdi||cl?.sdi||'',
-                  certified_email:f.cl_pec||cl?.pec||'' },
+                  certified_email:f.cl_pec||cl?.pec||'',
+                  address_street:[cl?.via, cl?.civico].filter(Boolean).join(' '), address_postal_code:cl?.cap||'',
+                  address_city:cl?.citta||'', address_province:cl?.provincia||'', country:'Italia' },
         items_list: items,
       }}),
     });
