@@ -402,8 +402,8 @@ function apriPadTimbra(cm) {
     <div style="font-size:22px;font-weight:800;margin:2px 0">${cm.numero}${v?' — '+v.targa:''}</div>
     ${garSenzaFoto?'<div style="font-size:12px;font-weight:700;color:#92400E;background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:6px 8px;margin:8px 0">🔒 Garanzia: per INIZIARE servono le foto iniziali dall\'app MEC</div>':''}
     <div style="font-size:13px;color:var(--text2);margin:8px 0 12px">Inserisci il tuo codice</div>
-    <input id="pad-input" type="password" inputmode="numeric" autocomplete="off" placeholder="••••••"
-      style="width:100%;box-sizing:border-box;font-size:28px;letter-spacing:10px;text-align:center;padding:10px;border:2px solid var(--border);border-radius:10px;margin-bottom:12px;background:var(--bg);color:var(--text)"
+    <input id="pad-input" type="text" name="ormia-codice-${Date.now()}" inputmode="numeric" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" readonly onfocus="this.removeAttribute('readonly')" placeholder="••••••"
+      style="-webkit-text-security:disc;width:100%;box-sizing:border-box;font-size:28px;letter-spacing:10px;text-align:center;padding:10px;border:2px solid var(--border);border-radius:10px;margin-bottom:12px;background:var(--bg);color:var(--text)"
       onkeydown="if(event.key==='Enter'){event.preventDefault();confermaPadTimbra();} if(event.key==='Escape'){chiudiPadTimbra();}">
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
       ${tasti.map(k=>`<button type="button" onclick="padTasto('${k}')" style="padding:14px 0;font-size:22px;font-weight:700;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);cursor:pointer">${k}</button>`).join('')}
@@ -414,11 +414,15 @@ function apriPadTimbra(cm) {
     </div>
   </div>`;
   ov.style.display = 'flex';
-  setTimeout(()=>document.getElementById('pad-input')?.focus(), 50);
+  // il campo parte SEMPRE vuoto (niente codice del collega precedente / riempimento automatico del browser)
+  const _pi = document.getElementById('pad-input'); if (_pi) _pi.value = '';
+  setTimeout(()=>{ const el = document.getElementById('pad-input'); if (el) { el.value = ''; el.focus(); } }, 50);
+  setTimeout(()=>{ const el = document.getElementById('pad-input'); if (el && !el.dataset.digitato) el.value = ''; }, 400);
 }
 
 function padTasto(k) {
   const i = document.getElementById('pad-input'); if (!i) return;
+  i.dataset.digitato = '1';
   if (k==='C') i.value = '';
   else if (k==='⌫') i.value = i.value.slice(0,-1);
   else i.value += k;
@@ -464,6 +468,7 @@ async function confermaPadTimbra() {
 
 function chiudiPadTimbra(mantieniSelezione) {
   const ov = document.getElementById('pad-timbra');
+  const _pi = document.getElementById('pad-input'); if (_pi) _pi.value = '';
   if (ov) ov.style.display = 'none';
   if (!mantieniSelezione) { _padAzione = null; comSelezionata = null; aggiornaBanner(); renderCommessaList(); }
 }
