@@ -159,18 +159,15 @@ html, body { height:100%; background:var(--bg); font-family:'DM Sans',sans-serif
       </div>
 
       <!-- PRESENZE: entrata / pausa / uscita con il codice personale -->
-      <div style="padding:16px 24px 14px;border-bottom:1px solid var(--border);flex-shrink:0">
-        <div class="panel-title" style="margin-bottom:10px">Presenze</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <button onclick="apriPadPresenza('entrata')" style="padding:18px 8px;font-size:17px;font-weight:800;border-radius:12px;border:2px solid #68D391;background:#F0FFF4;color:#276749;cursor:pointer">🟢 ENTRATA</button>
-          <button onclick="apriPadPresenza('uscita')" style="padding:18px 8px;font-size:17px;font-weight:800;border-radius:12px;border:2px solid #FC8181;background:#FFF5F5;color:#C53030;cursor:pointer">🔴 USCITA</button>
-          <button onclick="apriPadPresenza('pausa_inizio')" style="padding:18px 8px;font-size:17px;font-weight:800;border-radius:12px;border:2px solid #F6E05E;background:#FFFBEB;color:#92400E;cursor:pointer">☕ INIZIO PAUSA</button>
-          <button onclick="apriPadPresenza('pausa_fine')" style="padding:18px 8px;font-size:17px;font-weight:800;border-radius:12px;border:2px solid #90CDF4;background:#EBF4FF;color:#1B4FD8;cursor:pointer">▶️ FINE PAUSA</button>
+      <div style="padding:10px 24px;border-bottom:1px solid var(--border);flex-shrink:0">
+        <div class="panel-title" style="margin-bottom:6px">Presenze</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+          <button onclick="apriPadPresenza('entrata')" style="padding:9px 2px;font-size:12px;line-height:1.25;font-weight:800;border-radius:10px;border:2px solid #68D391;background:#F0FFF4;color:#276749;cursor:pointer">🟢 ENTRATA</button>
+          <button onclick="apriPadPresenza('uscita')" style="padding:9px 2px;font-size:12px;line-height:1.25;font-weight:800;border-radius:10px;border:2px solid #FC8181;background:#FFF5F5;color:#C53030;cursor:pointer">🔴 USCITA</button>
+          <button onclick="apriPadPresenza('pausa_inizio')" style="padding:9px 2px;font-size:12px;line-height:1.25;font-weight:800;border-radius:10px;border:2px solid #F6E05E;background:#FFFBEB;color:#92400E;cursor:pointer">☕ INIZIO<br>PAUSA</button>
+          <button onclick="apriPadPresenza('pausa_fine')" style="padding:9px 2px;font-size:12px;line-height:1.25;font-weight:800;border-radius:10px;border:2px solid #90CDF4;background:#EBF4FF;color:#1B4FD8;cursor:pointer">▶️ FINE<br>PAUSA</button>
         </div>
       </div>
-
-      <!-- Assenti: ferie / permessi / malattia (solo approvati) -->
-      <div id="tim-assenti" style="display:none;padding:10px 24px;border-bottom:1px solid var(--border);flex-shrink:0"></div>
 
       <!-- Commesse aperte -->
       <div style="padding:16px 24px 8px;flex-shrink:0">
@@ -179,7 +176,7 @@ html, body { height:100%; background:var(--bg); font-family:'DM Sans',sans-serif
       <div id="commessa-list" style="flex:1;overflow-y:auto;padding:0 24px 16px;display:flex;flex-direction:column;gap:8px"></div>
 
       <!-- Live in lavorazione -->
-      <div style="border-top:1px solid var(--border);padding:14px 24px;flex-shrink:0;max-height:200px;overflow-y:auto">
+      <div style="display:none">
         <div class="panel-title" style="margin-bottom:8px">In lavorazione ora</div>
         <div id="live-list" style="display:flex;flex-direction:column;gap:6px">
           <div style="font-size:12px;color:var(--text3);padding:4px 0">Nessuno in lavorazione</div>
@@ -224,6 +221,9 @@ html, body { height:100%; background:var(--bg); font-family:'DM Sans',sans-serif
           <div id="cal-lista-eventi"></div>
         </div>
       </div>
+
+      <!-- Assenti: ferie / permessi / malattia (solo approvati) -->
+      <div id="tim-assenti" style="display:none;margin-top:22px;padding:16px 18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg)"></div>
 
     </div>
   </div>
@@ -688,7 +688,7 @@ async function caricaAssenzeTim() {
 }
 function renderAssentiTim() {
   const box = document.getElementById('tim-assenti'); if (!box) return;
-  const oggi = _assIso(new Date()), fra7 = _assIso(new Date(Date.now() + 7*86400000));
+  const oggi = _assIso(new Date()), fra7 = _assIso(new Date(Date.now() + 30*86400000));
   const fmt = d => new Date(d + 'T12:00:00').toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit' });
   const oggiA = assenzeTim.filter(a => a.dal <= oggi && a.al >= oggi);
   const prossimi = assenzeTim.filter(a => a.dal > oggi && a.dal <= fra7);
@@ -697,7 +697,7 @@ function renderAssentiTim() {
   box.style.display = '';
   box.innerHTML = '<div class="panel-title" style="margin-bottom:8px">Assenti</div>' +
     (oggiA.length ? '<div style="font-size:11px;color:var(--text3);margin-bottom:4px">Oggi</div>' + oggiA.map(a => chip(a, _assLabel(a) + (a.tipo==='permesso' && a.ora_dalle ? ' ' + a.ora_dalle.slice(0,5) + '–' + (a.ora_alle||'').slice(0,5) : (a.al !== oggi ? ' fino al ' + fmt(a.al) : '')))).join('') : '') +
-    (prossimi.length ? '<div style="font-size:11px;color:var(--text3);margin:4px 0">Prossimi 7 giorni</div>' + prossimi.map(a => chip(a, _assLabel(a) + ' dal ' + fmt(a.dal))).join('') : '');
+    (prossimi.length ? '<div style="font-size:11px;color:var(--text3);margin:4px 0">Prossimi 30 giorni</div>' + prossimi.map(a => chip(a, _assLabel(a) + ' dal ' + fmt(a.dal))).join('') : '');
 }
 setInterval(() => { caricaAssenzeTim().then(() => { try { renderCalendario(); } catch(e) {} }); }, 5 * 60 * 1000);
 
