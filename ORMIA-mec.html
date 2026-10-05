@@ -322,10 +322,6 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
         <div class="user-name" id="home-name">Mario Rossi</div>
         <div class="user-role" id="home-role">Meccanico</div>
       </div>
-      <a href="ORMIA.html" style="padding:6px 10px;border-radius:8px;background:rgba(255,255,255,.15);color:white;font-size:12px;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:4px">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px"><polyline points="15 18 9 12 15 6"/></svg>
-        Gestionale
-      </a>
       <button class="logout-btn" onclick="logout()">Esci</button>
     </div>
     <div class="mec-status" id="home-status">
@@ -338,6 +334,11 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
   </div>
 
   <div class="scroll-body">
+    <button onclick="apriAssenze()" style="width:100%;display:flex;align-items:center;gap:12px;padding:16px;margin-bottom:16px;border:none;border-radius:14px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(37,99,235,.3);text-align:left;-webkit-tap-highlight-color:transparent">
+      <span style="font-size:28px;line-height:1">🏖</span>
+      <span style="flex:1">Ferie · Permessi · Malattia<span id="ass-sub-mec" style="display:block;font-size:12px;font-weight:500;opacity:.9;margin-top:2px">Richiedi o comunica un'assenza</span></span>
+      <span style="font-size:22px">›</span>
+    </button>
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:10px">
       Commesse aperte / in lavorazione
     </div>
@@ -879,6 +880,161 @@ function renderHome() {
   }).join('');
 }
 
+
+// ══════════════════════════════════════════════════
+// FERIE · PERMESSI · MALATTIA
+// ══════════════════════════════════════════════════
+let _assTipo = 'ferie';
+const _assOggi = () => { const d = new Date(), z = n => String(n).padStart(2,'0'); return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate()); };
+const _assFmt  = d => d ? new Date(d + 'T12:00:00').toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'2-digit' }) : '';
+const _assEsc  = t => String(t||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ASS_TIPI = { ferie:{i:'🏖',l:'Ferie'}, permesso:{i:'⏰',l:'Permesso'}, malattia:{i:'🤒',l:'Malattia'} };
+const ASS_STATI = { richiesta:{l:'In attesa',bg:'#FEF3C7',c:'#92400E'}, approvata:{l:'Approvata',bg:'#DCFCE7',c:'#166534'}, rifiutata:{l:'Rifiutata',bg:'#FEE2E2',c:'#991B1B'} };
+
+function apriAssenze() {
+  if (!mecLogged) return;
+  document.getElementById('ass-panel')?.remove();
+  const p = document.createElement('div');
+  p.id = 'ass-panel';
+  p.style.cssText = 'position:fixed;inset:0;z-index:3000;background:var(--bg,#f5f4f1);display:flex;flex-direction:column;overflow:hidden';
+  p.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;flex-shrink:0">
+      <button onclick="document.getElementById('ass-panel').remove()" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:10px;width:38px;height:38px;font-size:20px;cursor:pointer">‹</button>
+      <div><div style="font-size:17px;font-weight:800">Ferie · Permessi · Malattia</div><div style="font-size:12px;opacity:.9">${_assEsc(mecLogged.nome||'')}</div></div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px">
+      <div id="ass-tabs" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px"></div>
+      <div id="ass-form" style="background:#fff;border-radius:14px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:18px"></div>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888;margin-bottom:8px">Le mie richieste</div>
+      <div id="ass-mie" style="margin-bottom:18px"></div>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888;margin-bottom:8px">Colleghi assenti nei prossimi 30 giorni</div>
+      <div id="ass-altri"></div>
+    </div>`;
+  document.body.appendChild(p);
+  _assTipo = 'ferie';
+  _assRenderTabs(); _assRenderForm(); _assCaricaListe();
+}
+
+function _assRenderTabs() {
+  document.getElementById('ass-tabs').innerHTML = Object.entries(ASS_TIPI).map(([k,t]) =>
+    `<button onclick="_assTipo='${k}';_assRenderTabs();_assRenderForm()" style="padding:12px 4px;border-radius:12px;border:2px solid ${_assTipo===k?'#2563eb':'#e5e5e5'};background:${_assTipo===k?'#EFF6FF':'#fff'};font-size:14px;font-weight:700;color:${_assTipo===k?'#1d4ed8':'#555'};cursor:pointer">${t.i}<br>${t.l}</button>`).join('');
+}
+
+function _assRenderForm() {
+  const oggi = _assOggi();
+  const inp = 'width:100%;padding:12px;border:1px solid #ddd;border-radius:10px;font-size:16px;box-sizing:border-box;background:#fff';
+  const lab = (t, html) => `<label style="display:block;font-size:12px;font-weight:700;color:#666;margin-bottom:10px">${t}<div style="margin-top:4px">${html}</div></label>`;
+  let html = '';
+  if (_assTipo === 'permesso') {
+    html = lab('Giorno', `<input type="date" id="ass-dal" value="${oggi}" min="${oggi}" style="${inp}" onchange="_assControllo()">`) +
+      `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${lab('Dalle', `<input type="time" id="ass-dalle" value="14:00" style="${inp}">`)}${lab('Alle', `<input type="time" id="ass-alle" value="18:00" style="${inp}">`)}</div>`;
+  } else {
+    html = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${lab('Dal', `<input type="date" id="ass-dal" value="${oggi}" style="${inp}" onchange="_assControllo()">`)}${lab('Al', `<input type="date" id="ass-al" value="${oggi}" style="${inp}" onchange="_assControllo()">`)}</div>`;
+  }
+  if (_assTipo === 'malattia') {
+    html += lab('Numero di protocollo del certificato *', `<input type="text" id="ass-prot" inputmode="numeric" placeholder="Es. 123456789" style="${inp};font-family:monospace">`) +
+      lab('Foto o PDF del certificato (facoltativo)', `<input type="file" id="ass-file" accept="image/*,application/pdf" style="${inp};padding:9px">`) +
+      `<div style="font-size:12px;color:#666;background:#F0F9FF;border-radius:8px;padding:8px 10px;margin-bottom:10px">🔒 Protocollo e certificato li vede solo l'amministrazione. I colleghi vedono solo "Assente".</div>`;
+  } else {
+    html += lab('Nota (facoltativa)', `<input type="text" id="ass-nota" placeholder="Es. visita medica, matrimonio…" style="${inp}">`);
+  }
+  html += `<div id="ass-avviso" style="display:none;font-size:13px;color:#92400E;background:#FEF3C7;border-radius:8px;padding:8px 10px;margin-bottom:10px"></div>
+    <button id="ass-invia" onclick="inviaAssenza()" style="width:100%;padding:15px;border:none;border-radius:12px;background:#2563eb;color:#fff;font-size:16px;font-weight:800;cursor:pointer">
+      ${_assTipo === 'malattia' ? 'Comunica malattia' : 'Invia richiesta'}</button>`;
+  document.getElementById('ass-form').innerHTML = html;
+  _assControllo();
+}
+
+let _assTutte = [];
+async function _assCaricaListe() {
+  const oggi = _assOggi();
+  const { data } = await supa.from('assenze').select('*').gte('al', new Date(Date.now() - 60*86400000).toISOString().slice(0,10)).order('dal');
+  _assTutte = data || [];
+  const nomi = id => (_meccanici.find(m => m.id === id)?.nome) || '—';
+  const mie = _assTutte.filter(a => a.dip_id === mecLogged.id).sort((a,b) => b.dal.localeCompare(a.dal));
+  document.getElementById('ass-mie').innerHTML = mie.length ? mie.map(a => {
+    const st = ASS_STATI[a.stato] || ASS_STATI.richiesta, t = ASS_TIPI[a.tipo];
+    const periodo = a.dal === a.al ? _assFmt(a.dal) : _assFmt(a.dal) + ' → ' + _assFmt(a.al);
+    const ore = a.ora_dalle ? ' · ' + a.ora_dalle.slice(0,5) + '–' + (a.ora_alle||'').slice(0,5) : '';
+    return `<div style="background:#fff;border-radius:12px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:22px">${t.i}</span>
+      <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px">${t.l} · ${periodo}${ore}</div>
+        ${a.nota_risposta ? `<div style="font-size:12px;color:#666">Ufficio: ${_assEsc(a.nota_risposta)}</div>` : ''}</div>
+      <span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;background:${st.bg};color:${st.c}">${a.tipo==='malattia'?'Comunicata':st.l}</span>
+      ${a.stato==='richiesta' && a.tipo!=='malattia' ? `<button onclick="annullaAssenza('${a.id}')" style="background:none;border:none;color:#c0392b;font-size:18px;cursor:pointer" title="Annulla richiesta">✕</button>` : ''}
+    </div>`;
+  }).join('') : '<div style="font-size:13px;color:#999;padding:4px 0">Nessuna richiesta.</div>';
+  const fra30 = new Date(Date.now() + 30*86400000).toISOString().slice(0,10);
+  const altri = _assTutte.filter(a => a.dip_id !== mecLogged.id && a.stato === 'approvata' && a.al >= oggi && a.dal <= fra30);
+  document.getElementById('ass-altri').innerHTML = altri.length ? altri.map(a => {
+    const lab = a.tipo === 'malattia' ? 'Assente' : ASS_TIPI[a.tipo].l;
+    const periodo = a.dal === a.al ? _assFmt(a.dal) : _assFmt(a.dal) + ' → ' + _assFmt(a.al);
+    return `<div style="background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:6px;font-size:13px"><b>${_assEsc(nomi(a.dip_id))}</b> · ${lab} · ${periodo}</div>`;
+  }).join('') : '<div style="font-size:13px;color:#999;padding:4px 0">Nessun collega assente.</div>';
+  _assControllo();
+}
+
+function _assControllo() {
+  const av = document.getElementById('ass-avviso'); if (!av) return;
+  const dal = document.getElementById('ass-dal')?.value, al = document.getElementById('ass-al')?.value || dal;
+  if (!dal || _assTipo === 'malattia') { av.style.display = 'none'; return; }
+  const nomi = id => (_meccanici.find(m => m.id === id)?.nome) || '—';
+  const sovr = _assTutte.filter(a => a.dip_id !== mecLogged.id && a.stato !== 'rifiutata' && a.dal <= al && a.al >= dal);
+  if (!sovr.length) { av.style.display = 'none'; return; }
+  av.style.display = '';
+  av.innerHTML = '⚠️ In quel periodo: ' + sovr.map(a => '<b>' + _assEsc(nomi(a.dip_id)) + '</b> (' + (a.tipo==='malattia'?'assente':ASS_TIPI[a.tipo].l.toLowerCase()) + (a.stato==='richiesta'?', in attesa':'') + ' ' + _assFmt(a.dal) + (a.al!==a.dal?'→'+_assFmt(a.al):'') + ')').join(', ');
+}
+
+async function inviaAssenza() {
+  const btn = document.getElementById('ass-invia');
+  const dal = document.getElementById('ass-dal')?.value;
+  const al  = _assTipo === 'permesso' ? dal : (document.getElementById('ass-al')?.value || dal);
+  if (!dal) { alert('Indica la data.'); return; }
+  if (al < dal) { alert('La data di fine è prima di quella di inizio.'); return; }
+  const row = { id: (crypto.randomUUID ? crypto.randomUUID() : genId()), dip_id: mecLogged.id, tipo: _assTipo, dal, al,
+    stato: _assTipo === 'malattia' ? 'approvata' : 'richiesta', creato_da: 'dipendente' };
+  if (_assTipo === 'permesso') {
+    row.ora_dalle = document.getElementById('ass-dalle').value || null;
+    row.ora_alle  = document.getElementById('ass-alle').value || null;
+    if (!row.ora_dalle || !row.ora_alle || row.ora_alle <= row.ora_dalle) { alert('Controlla gli orari del permesso.'); return; }
+  }
+  let prot = '', file = null;
+  if (_assTipo === 'malattia') {
+    prot = (document.getElementById('ass-prot').value || '').trim();
+    file = document.getElementById('ass-file').files[0] || null;
+    if (!prot) { alert('Inserisci il numero di protocollo del certificato.'); return; }
+  } else {
+    row.nota = (document.getElementById('ass-nota')?.value || '').trim() || null;
+  }
+  btn.disabled = true; btn.textContent = 'Invio in corso…';
+  try {
+    const { data: { session } } = await supa.auth.getSession();
+    if (!session) await supa.auth.signInAnonymously();
+    const { error } = await supa.from('assenze').insert(row);
+    if (error) throw error;
+    if (_assTipo === 'malattia') {
+      let path = null;
+      if (file) {
+        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+        path = mecLogged.id + '/' + row.id + '_' + Date.now() + '.' + ext;
+        const up = await supa.storage.from('certificati').upload(path, file, { contentType: file.type || 'application/octet-stream' });
+        if (up.error) { path = null; alert('Malattia registrata, ma il certificato non è stato caricato: ' + up.error.message); }
+      }
+      const r2 = await supa.from('assenze_riservate').insert({ assenza_id: row.id, protocollo: prot, certificato_path: path });
+      if (r2.error) throw r2.error;
+    }
+    showToast(_assTipo === 'malattia' ? 'Malattia comunicata ✓ — guarisci presto!' : 'Richiesta inviata ✓ — riceverai l\'esito qui');
+    _assRenderForm(); await _assCaricaListe();
+  } catch(e) { alert('Errore: ' + e.message); btn.disabled = false; btn.textContent = 'Riprova'; }
+}
+
+async function annullaAssenza(id) {
+  if (!confirm('Annullare questa richiesta?')) return;
+  const { error } = await supa.from('assenze').delete().eq('id', id);
+  if (error) { alert('Errore: ' + error.message); return; }
+  showToast('Richiesta annullata');
+  _assCaricaListe();
+}
 
 function isMagazziniere() {
   if (!mecLogged) return false;
