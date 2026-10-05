@@ -1560,7 +1560,7 @@ async function ficFetch(path, opts = {}) {
       throw new Error('Token FiC non valido. Autorizza nuovamente in Integrazioni → Fatture in Cloud.');
     }
     let msg = `Errore ${res.status}`;
-    try { const j = await res.json(); msg = j.error?.message || j.message || msg; } catch(_) {}
+    try { const j = await res.json(); msg = j.error?.message || j.message || msg; const v = j.error?.validation_result; if (v) msg += ' — ' + (typeof v === 'string' ? v : JSON.stringify(v)); } catch(_) {}
     throw new Error(msg);
   }
   if (res.status === 204) return null;
