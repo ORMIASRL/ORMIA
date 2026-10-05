@@ -4753,6 +4753,45 @@ function openModalMeccanico(editId) {
   }
   togglePinBadge();
   document.getElementById('modal-meccanico').style.display='flex';
+  renderPin6Box(editId || null);
+}
+
+// ── PIN personale a 6 cifre: invito via email (il PIN lo sceglie il dipendente, cifrato sul server) ──
+async function renderPin6Box(dipId) {
+  const host = document.getElementById('mec-pin')?.closest('.form-group');
+  if (!host) return;
+  let box = document.getElementById('mec-pin6-box');
+  if (!box) { box = document.createElement('div'); box.id = 'mec-pin6-box'; box.className = 'form-group span-2'; host.parentNode.insertBefore(box, host); }
+  if (!dipId) { box.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 10px;background:var(--surface2);border-radius:var(--radius)">🔐 Dopo aver salvato il dipendente (con la sua email) potrai inviargli l\'invito per scegliere il PIN di 6 cifre.</div>'; return; }
+  box.innerHTML = '<div style="font-size:12px;color:var(--text3)">🔐 Verifica PIN…</div>';
+  let stato = null;
+  try { const { data } = await supa.rpc('ormia_stato_pin'); stato = (data || []).find(r => r.dip_id === dipId) || null; } catch(e) {}
+  const m = meccanici.find(x => x.id === dipId) || {};
+  const email = (m.email || '').trim();
+  box.innerHTML = `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2)">
+      <div style="flex:1;min-width:180px;font-size:13px"><b>🔐 PIN personale (6 cifre)</b><br>
+        <span style="font-size:12px;color:${stato ? 'var(--success)' : 'var(--text3)'}">${stato ? 'Impostato il ' + new Date(stato.impostato_il).toLocaleDateString('it-IT') : 'Non ancora impostato'}</span>
+        ${email ? `<span style="font-size:12px;color:var(--text3)"> · ${_escAllG(email.toLowerCase())}</span>` : '<span style="font-size:12px;color:var(--danger)"> · manca l\'email</span>'}</div>
+      <button type="button" class="btn btn-primary btn-sm" ${email ? '' : 'disabled'} onclick="inviaInvitoPin('${dipId}', ${stato ? 'true' : 'false'})">✉️ ${stato ? 'Reimposta PIN' : 'Invia invito'}</button>
+    </div>`;
+}
+
+async function inviaInvitoPin(dipId, reimposta) {
+  const m = meccanici.find(x => x.id === dipId); if (!m) return;
+  const email = (m.email || '').trim().toLowerCase();
+  if (!email) { alert('Inserisci l\'email del dipendente e salva la scheda.'); return; }
+  if ((document.getElementById('mec-email')?.value || '').trim().toLowerCase() !== email) { alert('Hai modificato l\'email: salva prima la scheda.'); return; }
+  if (!confirm((reimposta ? 'Il PIN attuale di ' + m.nome + ' smetterà di funzionare.\n\n' : '') + 'Inviare a ' + email + ' il link per scegliere il PIN?')) return;
+  try {
+    if (reimposta) { const r = await supa.rpc('ormia_reset_pin', { dip: dipId }); if (r.error) throw r.error; }
+    const c = supabase.createClient(SUPA_URL, SUPA_KEY, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, flowType: 'implicit', storageKey: 'ormia-invito-pin' } });
+    const { error } = await c.auth.signInWithOtp({ email, options: { emailRedirectTo: 'https://ormiaofficinapro.netlify.app/pin', shouldCreateUser: true } });
+    if (error) throw error;
+    showToast('Invito inviato a ' + email + ' ✓');
+    renderPin6Box(dipId);
+  } catch(e) {
+    alert('Invio non riuscito: ' + e.message + (/rate|seconds/i.test(e.message) ? '\n\nAspetta un minuto e riprova.' : ''));
+  }
 }
 
 async function saveMeccanico() {
@@ -4762,8 +4801,9 @@ async function saveMeccanico() {
   if (!ruoli.length) { alert('Seleziona almeno un ruolo.'); return; }
   const operativo = ruoli.some(r => RUOLI_OPERATIVI.includes(r.toLowerCase()));
   const pin = document.getElementById('mec-pin').value.trim();
-  if (operativo || pin) {
-    if (!pin || !/^\d{4}$/.test(pin)) { alert('Il PIN deve essere di 4 cifre.'); document.getElementById('mec-pin').focus(); return; }
+  // PIN a 4 cifre: vecchio sistema, facoltativo (il nuovo PIN a 6 cifre lo sceglie il dipendente via email)
+  if (pin) {
+    if (!/^\d{4}$/.test(pin)) { alert('Il vecchio PIN deve essere di 4 cifre (oppure lascialo vuoto).'); document.getElementById('mec-pin').focus(); return; }
     const dup = meccanici.find(m => m.pin === pin && m.id !== editingMeccanicoId);
     if (dup) { alert(`Il PIN ${pin} è già usato da ${dup.nome}.`); return; }
   }
