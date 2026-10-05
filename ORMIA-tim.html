@@ -402,7 +402,7 @@ function apriPadTimbra(cm) {
     <div style="font-size:22px;font-weight:800;margin:2px 0">${cm.numero}${v?' — '+v.targa:''}</div>
     ${garSenzaFoto?'<div style="font-size:12px;font-weight:700;color:#92400E;background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:6px 8px;margin:8px 0">🔒 Garanzia: per INIZIARE servono le foto iniziali dall\'app MEC</div>':''}
     <div style="font-size:13px;color:var(--text2);margin:8px 0 12px">Inserisci il tuo codice</div>
-    <input id="pad-input" type="password" inputmode="numeric" autocomplete="off" placeholder="••••"
+    <input id="pad-input" type="password" inputmode="numeric" autocomplete="off" placeholder="••••••"
       style="width:100%;box-sizing:border-box;font-size:28px;letter-spacing:10px;text-align:center;padding:10px;border:2px solid var(--border);border-radius:10px;margin-bottom:12px;background:var(--bg);color:var(--text)"
       onkeydown="if(event.key==='Enter'){event.preventDefault();confermaPadTimbra();} if(event.key==='Escape'){chiudiPadTimbra();}">
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
@@ -423,18 +423,32 @@ function padTasto(k) {
   else if (k==='⌫') i.value = i.value.slice(0,-1);
   else i.value += k;
   i.focus();
-  if (/^\d{4}$/.test(i.value)) confermaPadTimbra();   // PIN a 4 cifre: timbra da solo
+  if (/^\d{6}$/.test(i.value)) confermaPadTimbra();   // PIN personale a 6 cifre: timbra da solo (4 cifre: premi Timbra)
 }
 
-function confermaPadTimbra() {
+let _padBusy = false;
+async function confermaPadTimbra() {
   const i = document.getElementById('pad-input'); if (!i) return;
   const val = (i.value||'').trim().toUpperCase();
-  if (!val) return;
-  const mec = meccanici.find(m => (m.pin||'') === val || (m.badge||'').toUpperCase() === val);
+  if (!val || _padBusy) return;
+  let mec = null, errMsg = 'Codice errato';
+  if (/^\d{6}$/.test(val)) {
+    // PIN personale a 6 cifre: verificato sul server (cifrato, blocco dopo troppi errori)
+    _padBusy = true;
+    try {
+      const { data, error } = await supa.rpc('ormia_verifica_pin', { pin: val });
+      if (error) errMsg = /troppi/i.test(error.message) ? 'Troppi errori: attendi' : 'Errore connessione';
+      else if (data && data[0]) mec = meccanici.find(m => m.id === data[0].id) || { id: data[0].id, nome: data[0].nome };
+    } catch(e) { errMsg = 'Errore connessione'; }
+    _padBusy = false;
+  } else {
+    // periodo di passaggio: vecchio PIN a 4 cifre o badge
+    mec = meccanici.find(m => (m.pin && m.pin === val) || (m.badge && m.badge.toUpperCase() === val)) || null;
+  }
   if (!mec) {
     i.value = ''; i.style.borderColor = '#ef4444';
-    i.placeholder = 'Codice errato';
-    setTimeout(()=>{ i.style.borderColor=''; i.placeholder='••••'; }, 1200);
+    i.placeholder = errMsg;
+    setTimeout(()=>{ i.style.borderColor=''; i.placeholder='••••••'; }, 1500);
     return;
   }
   if (_padAzione) {   // tastierino aperto da un pulsante PRESENZE
