@@ -3331,24 +3331,46 @@ function renderAssenze() {
       : '<div style="font-size:12px;color:var(--text3);padding:6px 0">Nessuna assenza in programma.</div>');
 }
 
+// Finestra di conferma dentro la pagina (non dipende dai popup del browser, che possono essere bloccati)
+function _dialogoOrmia(testo, opz = {}) {
+  return new Promise(resolve => {
+    document.getElementById('dlg-ormia')?.remove();
+    const ov = document.createElement('div'); ov.id = 'dlg-ormia';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.innerHTML = `<div style="background:var(--surface);border-radius:var(--radius-lg);padding:20px;width:380px;max-width:100%;box-shadow:var(--shadow-lg)">
+      <div style="font-size:14px;line-height:1.5;white-space:pre-line;margin-bottom:14px">${_escAllG(testo)}</div>
+      ${opz.input ? '<input id="dlg-ormia-in" placeholder="' + _escAllG(opz.placeholder || '') + '" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;margin-bottom:14px">' : ''}
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-secondary btn-sm" id="dlg-ormia-no">Annulla</button>
+        <button class="btn ${opz.pericolo ? 'btn-danger' : 'btn-primary'} btn-sm" id="dlg-ormia-si">${_escAllG(opz.ok || 'Conferma')}</button>
+      </div></div>`;
+    document.body.appendChild(ov);
+    const fine = val => { ov.remove(); resolve(val); };
+    ov.querySelector('#dlg-ormia-no').onclick = () => fine(null);
+    ov.querySelector('#dlg-ormia-si').onclick = () => fine(opz.input ? (ov.querySelector('#dlg-ormia-in').value || '') : true);
+    ov.addEventListener('click', e => { if (e.target === ov) fine(null); });
+    setTimeout(() => (ov.querySelector('#dlg-ormia-in') || ov.querySelector('#dlg-ormia-si')).focus(), 50);
+  });
+}
+
 async function decidiAssenza(id, ok) {
+  const a = assenze.find(x => x.id === id); if (!a) return;
   let nota = null;
-  if (!ok) { nota = prompt('Motivo del rifiuto (facoltativo, lo vedrà il dipendente):', ''); if (nota === null) return; }
-  const { error } = await supa.from('assenze').update({ stato: ok ? 'approvata' : 'rifiutata', deciso_il: new Date().toISOString(), nota_risposta: nota || null }).eq('id', id);
-  if (error) { alert('Errore: ' + error.message); return; }
+  if (!ok) {
+    nota = await _dialogoOrmia('Rifiutare la richiesta di ' + _nomeDip(a.dip_id) + ' (' + _periodoAss(a) + ')?', { input: true, placeholder: 'Motivo (facoltativo, lo vedrà il dipendente)', ok: 'Rifiuta', pericolo: true });
+    if (nota === null) return;
+  }
+  const { data, error } = await supa.from('assenze').update({ stato: ok ? 'approvata' : 'rifiutata', deciso_il: new Date().toISOString(), nota_risposta: nota || null }).eq('id', id).select();
+  if (error || !data || !data.length) { await _dialogoOrmia('Operazione non riuscita: ' + (error ? error.message : 'permesso negato (serve un utente amministratore).'), { ok: 'OK' }); return; }
   showToast(ok ? 'Richiesta approvata ✓' : 'Richiesta rifiutata');
   caricaAssenze();
 }
 
 async function eliminaAssenza(id) {
   const a = assenze.find(x => x.id === id); if (!a) return;
-  if (!confirm('Eliminare l\'assenza di ' + _nomeDip(a.dip_id) + ' (' + _periodoAss(a) + ')?')) return;
-  if (a.tipo === 'malattia') {
-    try { const { data } = await supa.from('assenze_riservate').select('certificato_path').eq('assenza_id', id).maybeSingle();
-      if (data?.certificato_path) await supa.storage.from('certificati').remove([data.certificato_path]); } catch(e) {}
-  }
-  const { error } = await supa.from('assenze').delete().eq('id', id);
-  if (error) { alert('Errore: ' + error.message); return; }
+  if (!(await _dialogoOrmia('Eliminare l\'assenza di ' + _nomeDip(a.dip_id) + ' (' + _periodoAss(a) + ')?', { ok: 'Elimina', pericolo: true }))) return;
+  const { data, error } = await supa.from('assenze').delete().eq('id', id).select();
+  if (error || !data || !data.length) { await _dialogoOrmia('Eliminazione non riuscita: ' + (error ? error.message : 'permesso negato (serve un utente amministratore).'), { ok: 'OK' }); return; }
   showToast('Assenza eliminata'); caricaAssenze();
 }
 
