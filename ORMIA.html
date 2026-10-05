@@ -2170,6 +2170,27 @@ async function saveVeicolo() {
 }
 
 // Controlla se il veicolo è attualmente in garanzia (garanzia attiva e non scaduta)
+// Garanzia decisa sulla COMMESSA: true/false scelto nel form; vuoto = segue il veicolo
+function _comInGaranzia(cm) {
+  if (!cm) return false;
+  if (cm.inGaranzia === true)  return true;
+  if (cm.inGaranzia === false) return false;
+  return isVeicoloInGaranzia(cm.veicoloId);
+}
+function _aggGaranziaCommessa(val) {
+  const row = document.getElementById('com-garanzia-row'), chk = document.getElementById('com-in-garanzia');
+  if (!row || !chk) return;
+  const vId = document.getElementById('com-veicolo')?.value;
+  const vg = !!vId && isVeicoloInGaranzia(vId);
+  row.style.display = vg ? '' : 'none';
+  chk.checked = vg && val !== false;
+}
+function _valGaranziaCommessa() {
+  const row = document.getElementById('com-garanzia-row'), chk = document.getElementById('com-in-garanzia');
+  if (!row || !chk || row.style.display === 'none') return null;   // veicolo non in garanzia
+  return !!chk.checked;
+}
+
 function isVeicoloInGaranzia(veicoloId) {
   if (!veicoloId) return false;
   const v = veicoli.find(x=>x.id===veicoloId);
@@ -2551,6 +2572,12 @@ function init() {
         <!-- Campi hidden -->
         <input type="hidden" id="com-cliente">
         <input type="hidden" id="com-veicolo">
+        <div class="form-group span-2" id="com-garanzia-row" style="display:none">
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#FEF3C7;border:1px solid #FDE68A;border-radius:var(--radius);cursor:pointer;font-weight:600;color:#92400E;margin:0">
+            <input type="checkbox" id="com-in-garanzia" style="width:18px;height:18px;margin:0;flex-shrink:0">
+            <span>🔧 Lavoro in garanzia <span style="font-weight:400;font-size:12px;opacity:.85">— veicolo in garanzia: togli la spunta se questo lavoro è a pagamento</span></span>
+          </label>
+        </div>
         <div class="form-group span-2">
           <label>Descrizione lavoro *</label>
           <textarea id="com-desc" placeholder="Es. Tagliando + sostituzione freni anteriori" style="min-height:80px"></textarea>
@@ -5006,7 +5033,7 @@ function openModalCommessa(editId) {
       // Ripristina cliente
       if (cm.clienteId) selezionaClienteCommessa(cm.clienteId);
       // Ripristina veicolo
-      if (cm.veicoloId) setTimeout(() => selezionaVeicoloCommessa(cm.veicoloId), 20);
+      if (cm.veicoloId) setTimeout(() => { selezionaVeicoloCommessa(cm.veicoloId); _aggGaranziaCommessa(cm.inGaranzia); }, 20);
       document.getElementById('com-desc').value = cm.descrizione||cm.desc || '';
       document.getElementById('com-data-apertura').value = cm.dataApertura || '';
       document.getElementById('com-stato').value = cm.stato || 'aperta';
@@ -5068,6 +5095,7 @@ async function saveCommessa(firmaDataUrl=null) {
     consegnaPrevista: document.getElementById('com-consegna').value ? new Date(document.getElementById('com-consegna').value).toISOString() : null,
     firma: firmaDataUrl || null,
     firmaData: firmaDataUrl ? new Date().toISOString() : null,
+    inGaranzia: _valGaranziaCommessa(),
     stato: document.getElementById('com-stato').value,
     note: document.getElementById('com-note').value.trim(),
     dirittoChiamata:        document.getElementById('com-diritto-chiamata')?.checked || false,
@@ -5208,10 +5236,10 @@ function renderCommesse() {
   const nSby = commesse.filter(c=>c.stato==='standby').length;
   const nCh  = commesse.filter(c=>c.stato==='chiusa' && !_isPraticaGar(c)).length;
   const nFat = commesse.filter(c=>c.stato==='fatturata').length;
-  const nGarAp  = commesse.filter(c=>c.stato==='aperta'   && isVeicoloInGaranzia(c.veicoloId)).length;
-  const nGarWip = commesse.filter(c=>c.stato==='wip'      && isVeicoloInGaranzia(c.veicoloId)).length;
+  const nGarAp  = commesse.filter(c=>c.stato==='aperta'   && _comInGaranzia(c)).length;
+  const nGarWip = commesse.filter(c=>c.stato==='wip'      && _comInGaranzia(c)).length;
   const nGarCh  = 0; // le garanzie chiuse sono in Pratiche garanzia
-  const nGarFat = commesse.filter(c=>c.stato==='fatturata'&& isVeicoloInGaranzia(c.veicoloId)).length;
+  const nGarFat = commesse.filter(c=>c.stato==='fatturata'&& _comInGaranzia(c)).length;
   const totAttivo = commesse.filter(c=>c.stato==='aperta'||c.stato==='wip'||c.stato==='standby')
     .reduce((s,c)=>s+(c.totale||0),0);
   document.getElementById('dash-kpi').innerHTML = `
@@ -5300,7 +5328,7 @@ function renderCommesse() {
           .map(mid=>{ const m=meccanici.find(x=>x.id===mid); return m?m.nome:null; }).filter(Boolean);
         const totFmt = cm.totale ? '€ '+cm.totale.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,'.') : '—';
         return `<div class="k-card k-${cm.stato}" onclick="showDetailCommessa('${cm.id}')">
-          <div class="k-num">${cm.numero||''} <span style="opacity:.5">·</span> ${formatDate(cm.dataApertura)||'—'}${isVeicoloInGaranzia(cm.veicoloId)?' <span style="color:var(--warning);font-size:10px;font-weight:700">🔧 GAR.</span>':''}</div>
+          <div class="k-num">${cm.numero||''} <span style="opacity:.5">·</span> ${formatDate(cm.dataApertura)||'—'}${_comInGaranzia(cm)?' <span style="color:var(--warning);font-size:10px;font-weight:700">🔧 GAR.</span>':''}</div>
           <div class="k-desc">${cm.descrizione||cm.desc}</div>
           <div class="k-cli">
             ${cl?`<span>${cl.ragione}</span>`:''}
@@ -5345,7 +5373,7 @@ function renderCommesse() {
         <div class="commessa-card-body">
           <div class="commessa-card-top">
             <div style="flex:1;min-width:0">
-              <div class="commessa-num">${cm.numero||''} <span style="color:var(--border2)">·</span> <span style="color:var(--text3);font-weight:400;font-size:11px">${formatDate(cm.dataApertura)||'—'}</span>${isVeicoloInGaranzia(cm.veicoloId)?` <span style="background:var(--warning-light);color:var(--warning);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;border:1px solid #FDE68A">🔧 GAR.</span>`:''}</div>
+              <div class="commessa-num">${cm.numero||''} <span style="color:var(--border2)">·</span> <span style="color:var(--text3);font-weight:400;font-size:11px">${formatDate(cm.dataApertura)||'—'}</span>${_comInGaranzia(cm)?` <span style="background:var(--warning-light);color:var(--warning);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;border:1px solid #FDE68A">🔧 GAR.</span>`:''}</div>
               <div class="commessa-desc">${cm.descrizione||cm.desc}</div>
               <div class="commessa-cliente" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                 ${cl?`<span>${cl.ragione}</span>`:''}
@@ -5411,7 +5439,7 @@ function showDetailCommessa(id) {
     }
   }
   document.getElementById('dc-stato').innerHTML = statoLabel(cm.stato) +
-    (isVeicoloInGaranzia(cm.veicoloId) ? ' <span style="background:var(--warning-light);color:var(--warning);font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;border:1px solid #FDE68A;white-space:nowrap;display:inline-block">🔧 In garanzia</span>' : '');
+    (_comInGaranzia(cm) ? ' <span style="background:var(--warning-light);color:var(--warning);font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;border:1px solid #FDE68A;white-space:nowrap;display:inline-block">🔧 In garanzia</span>' : '');
 
   // Alert cliente moroso
   const alertMoroso = document.getElementById('dc-alert-moroso');
@@ -5506,7 +5534,7 @@ function showDetailCommessa(id) {
   const fotoGrid    = document.getElementById('dc-foto-grid');
   const fotoEmpty   = document.getElementById('dc-foto-empty');
   const fotoCount   = document.getElementById('dc-foto-count');
-  if (isVeicoloInGaranzia(cm.veicoloId)) {
+  if (_comInGaranzia(cm)) {
     fotoSection.style.display = '';
     const urlsInizio = Object.values(cm.fotoInizio || {}).filter(Boolean);
     const urlsFine   = (cm.fotoFine || []).filter(Boolean);
@@ -5602,7 +5630,7 @@ async function cambiaStato() {
   const nuovo = stati[nuovoIdx];
 
   // Blocco: commessa in garanzia → non può essere chiusa senza foto
-  if ((nuovo === 'chiusa' || nuovo === 'fatturata') && isVeicoloInGaranzia(cm.veicoloId)) {
+  if ((nuovo === 'chiusa' || nuovo === 'fatturata') && _comInGaranzia(cm)) {
     const urlsInizio = Object.values(cm.fotoInizio || {}).filter(Boolean);
     const urlsFine   = (cm.fotoFine || []).filter(Boolean);
     if (!urlsInizio.length && !urlsFine.length) {
@@ -5822,7 +5850,7 @@ function stampaCommessa(comId) {
   const cl  = clienti.find(c=>c.id===cm.clienteId);
   const v   = veicoli.find(x=>x.id===cm.veicoloId);
   const off = getDatiOfficina();
-  const inGar = isVeicoloInGaranzia(cm.veicoloId);
+  const inGar = _comInGaranzia(cm);
   const garScad = v?.garanziaScadenza ? new Date(v.garanziaScadenza).toLocaleDateString('it-IT') : null;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(cm.numero||comId)}&margin=4`;
   apriAnteprima(generaHtmlCommessa(cm, cl, v, off, inGar, garScad, qrUrl), `Commessa ${cm.numero}`);
@@ -6176,11 +6204,13 @@ function selezionaVeicoloCommessa(vId) {
   document.getElementById('com-btn-sel-veicolo').style.display = 'none';
   closeModal('modal-sel-veicolo');
   onVeicoloChange();
+  _aggGaranziaCommessa();
   setTimeout(() => { const km = document.getElementById('com-km'); if(km) km.focus(); }, 100);
 }
 
 function resetVeicoloCommessa() {
   document.getElementById('com-veicolo').value = '';
+  _aggGaranziaCommessa();
   const card = document.getElementById('com-veicolo-card');
   if (card) card.style.display = 'none';
   const btn = document.getElementById('com-btn-sel-veicolo');
@@ -6418,7 +6448,7 @@ const GAR_STATI = {
   respinta:  { l:'Respinta',   c:'badge-red'    },
 };
 function _isPraticaGar(cm) {
-  return (cm.stato === 'chiusa' || cm.stato === 'fatturata') && (!!cm.garStato || isVeicoloInGaranzia(cm.veicoloId));
+  return (cm.stato === 'chiusa' || cm.stato === 'fatturata') && cm.inGaranzia !== false && (!!cm.garStato || _comInGaranzia(cm));
 }
 function _statoPratica(cm) {
   if (cm.garStato === 'respinta') return 'respinta';
@@ -6658,7 +6688,7 @@ async function scaricaZipGaranzia(comId) {
   const cl  = clienti.find(c=>c.id===cm.clienteId);
   const v   = veicoli.find(x=>x.id===cm.veicoloId);
   const off = getDatiOfficina();
-  const inGar = isVeicoloInGaranzia(cm.veicoloId);
+  const inGar = _comInGaranzia(cm);
   const garScad = v?.garanziaScadenza ? new Date(v.garanziaScadenza).toLocaleDateString('it-IT') : null;
 
   const targa   = (v?.targa || 'NESSUNA_TARGA').replace(/\s/g,'');
