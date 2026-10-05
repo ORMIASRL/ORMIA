@@ -532,7 +532,7 @@ tr:hover td { background:var(--surface2); }
               </div>
               <div class="form-group">
                 <label>Client Secret</label>
-                <input type="password" id="fic-client-secret" placeholder="Client Secret">
+                <div style="font-size:12px;color:var(--text2);padding:8px 10px;border-radius:6px;border:1px dashed var(--border)">🔒 Il Client Secret non si scrive qui: è salvato in modo protetto su Netlify (variabile FIC_CLIENT_SECRET).</div>
               </div>
             </div>
             <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:16px">
@@ -709,18 +709,19 @@ let _ficPolling  = null;
 // Carica config/token FIC da Supabase (sovrascrive localStorage se presente)
 async function loadFicFromSupabase() {
   try {
-    const { data } = await supa.from('impostazioni').select('fic_config,fic_token').eq('id','default').single();
+    const { data } = await supa.from('fic_auth').select('fic_config,fic_token').eq('id','default').single();
     if (data?.fic_config) { _ficConfig = data.fic_config; localStorage.setItem('ormia_fic_config', JSON.stringify(_ficConfig)); }
+    if (_ficConfig && _ficConfig.client_secret) { delete _ficConfig.client_secret; localStorage.setItem('ormia_fic_config', JSON.stringify(_ficConfig)); }
     if (data?.fic_token)  { _ficToken  = data.fic_token;  localStorage.setItem('ormia_fic_token',  JSON.stringify(_ficToken));  }
   } catch(_) {}
 }
 
 async function saveFicConfigToSupabase() {
-  try { await supa.from('impostazioni').upsert({id:'default', fic_config: _ficConfig}); } catch(_) {}
+  try { const c = {..._ficConfig}; delete c.client_secret; await supa.from('fic_auth').upsert({id:'default', fic_config: c}); } catch(_) {}
 }
 
 async function saveFicTokenToSupabase() {
-  try { await supa.from('impostazioni').upsert({id:'default', fic_token: _ficToken}); } catch(_) {}
+  try { await supa.from('fic_auth').upsert({id:'default', fic_token: _ficToken}); } catch(_) {}
 }
 
 // ══════════════════════════════════════════════════
@@ -1469,7 +1470,6 @@ async function _refreshFicToken() {
     body: JSON.stringify({
       grant_type:    'refresh_token',
       client_id:     _ficConfig.client_id,
-      client_secret: _ficConfig.client_secret,
       refresh_token: _ficToken.refresh_token,
     }),
   });
@@ -1815,13 +1815,12 @@ async function salvaFIC() {
   _ficConfig = {
     company_id:    document.getElementById('fic-company-id').value.trim(),
     client_id:     document.getElementById('fic-client-id').value.trim(),
-    client_secret: document.getElementById('fic-client-secret').value.trim(),
     redirect_uri:  FIC_REDIRECT_URI,
   };
   localStorage.setItem('ormia_fic_config', JSON.stringify(_ficConfig));
   saveFicConfigToSupabase();
   _ficToken = null; localStorage.removeItem('ormia_fic_token');
-  try { await supa.from('impostazioni').upsert({id:'default', fic_token: null}); } catch(_) {}
+  try { await supa.from('fic_auth').upsert({id:'default', fic_token: null}); } catch(_) {}
   checkIntegrazioni(); updateFicTokenStatus();
   const panel = document.getElementById('fic-auth-panel');
   if (panel) panel.style.display = _ficConfig.client_id ? '' : 'none';
