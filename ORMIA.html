@@ -11299,6 +11299,9 @@ function apriStampa(html) {
 }
 
 // ── Auto-invio su Fatture in Cloud (chiamato da salvaFattura) ─────────────────
+// Aliquote IVA standard di Fatture in Cloud (id interni): 22% → 0, 10% → 3, 4% → 4
+function _vatFic(v) { const id = { 22:0, 10:3, 4:4 }[Number(v)]; return id != null ? { id } : { value: Number(v) }; }
+
 async function autoInviaFIC(fatt) {
   // Config e token FiC aggiornati da Supabase (impostazioni), con fallback localStorage
   let ficCfg = {}, ficToken = {};
@@ -11308,8 +11311,8 @@ async function autoInviaFIC(fatt) {
   } catch(_) {}
   if (!ficCfg.company_id || !ficCfg.client_id) { try { ficCfg = JSON.parse(localStorage.getItem('ormia_fic_config') || '{}'); } catch(_) {} }
   if (!ficToken.access_token && !ficToken.refresh_token) { try { ficToken = JSON.parse(localStorage.getItem('ormia_fic_token') || '{}'); } catch(_) {} }
-  if (!ficCfg.company_id || !ficCfg.client_id) return;                       // FiC non configurato: nessun invio
-  if (!ficToken.access_token && !ficToken.refresh_token) return;
+  if (!ficCfg.company_id || !ficCfg.client_id) { showToast('⚠ Fatture in Cloud non configurato: fattura ' + fatt.numero + ' non inviata'); return; }                       // FiC non configurato: nessun invio
+  if (!ficToken.access_token && !ficToken.refresh_token) { showToast('⚠ Fatture in Cloud non autorizzato: fattura ' + fatt.numero + ' non inviata (ricollega da Finance)'); return; }
 
   // Token scaduto → rinnovo tramite funzione Netlify (le API FiC non accettano chiamate dal browser)
   let accessToken = ficToken.access_token;
@@ -11331,9 +11334,9 @@ async function autoInviaFIC(fatt) {
   const cl = clienti.find(x => x.id === fatt.clienteId);
   const righe = (fatt.righe||[]).filter(r => r.desc||r.descrizione);
   const items = righe.length
-    ? righe.map(r => ({ name:r.desc||r.descrizione, qty:r.qta||1, net_price:r.prezzo||0, vat:{value:fatt.iva||22} }))
+    ? righe.map(r => ({ name:r.desc||r.descrizione, qty:r.qta||1, net_price:r.prezzo||0, vat:_vatFic(fatt.iva||22) }))
     : [{ name:fatt.descrizione||'Servizio officina', qty:1,
-         net_price:fatt.imponibile||(fatt.totale||0)/(1+(fatt.iva||22)/100), vat:{value:fatt.iva||22} }];
+         net_price:fatt.imponibile||(fatt.totale||0)/(1+(fatt.iva||22)/100), vat:_vatFic(fatt.iva||22) }];
 
   const res = await fetch('/.netlify/functions/fic-token', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
