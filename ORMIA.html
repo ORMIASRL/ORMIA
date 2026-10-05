@@ -741,6 +741,11 @@
           Pratiche garanzia
           <span id="badge-garanzie" style="display:none;background:var(--warning);color:white;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span>
         </div>
+        <div class="nav-item" id="nav-presenze" onclick="setSection('presenze')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          Presenze e assenze
+          <span id="badge-assenze" style="display:none;background:var(--warning);color:white;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span>
+        </div>
       </div>
       <div class="nav-section">
         <div class="nav-label">Magazzino</div>
@@ -940,6 +945,9 @@
         <!-- KPI ROW -->
         <div id="dash-kpi" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px"></div>
 
+        <!-- ASSENTI OGGI -->
+        <div id="dash-assenti" style="display:none;margin-bottom:14px"></div>
+
         <!-- MECCANICI IN LAVORAZIONE (strip) -->
         <div id="dash-mec-strip" style="margin-bottom:18px"></div>
 
@@ -1034,6 +1042,9 @@
 
       <!-- SEZIONE PRESENZE -->
       <div id="section-presenze" style="display:none">
+
+        <!-- FERIE · PERMESSI · MALATTIE -->
+        <div id="ass-card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:16px;box-shadow:var(--shadow)"></div>
 
         <!-- TOOLBAR -->
         <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
@@ -3254,8 +3265,155 @@ async function doLogin() {
   showApp();
 }
 
+// ── RUOLI: amministratore (tutto) / magazzino (niente presenze, impostazioni, fatture, Finance) ──
+var _ruolo = 'amministratore';
+async function caricaRuolo() {
+  try { const { data, error } = await supa.rpc('ormia_ruolo'); if (!error && data) _ruolo = data; } catch(e) {}
+}
 function applicaPermessiRuolo() {
-  // Nessuna restrizione su v5 — tutti gli utenti autenticati vedono tutto
+  if (!document.getElementById('stile-ruoli')) {
+    const st = document.createElement('style'); st.id = 'stile-ruoli';
+    st.textContent = 'body.ruolo-magazzino .solo-admin{display:none!important}';
+    document.head.appendChild(st);
+  }
+  ['#nav-presenze','#nav-garanzie','#nav-documenti','a[href="/ormia-finance"]',"[onclick=\"setSection('impostazioni')\"]",
+   '#dc-checkout-section','#dc-btn-fattura','#dc-btn-fattura-checkout'].forEach(sel => document.querySelectorAll(sel).forEach(el => el.classList.add('solo-admin')));
+  document.body.classList.toggle('ruolo-magazzino', _ruolo === 'magazzino');
+}
+
+// ── FERIE · PERMESSI · MALATTIE ──
+var assenze = [];
+const ASS_TIPI_G = { ferie:{i:'🏖',l:'Ferie'}, permesso:{i:'⏰',l:'Permesso'}, malattia:{i:'🤒',l:'Malattia'} };
+const _isoG = d => { const z = n => String(n).padStart(2,'0'); return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate()); };
+const _fmtG = d => d ? new Date(d + 'T12:00:00').toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'2-digit' }) : '';
+const _nomeDip = id => meccanici.find(m => m.id === id)?.nome || '—';
+const _periodoAss = a => (a.dal === a.al ? _fmtG(a.dal) : _fmtG(a.dal) + ' → ' + _fmtG(a.al)) + (a.ora_dalle ? ' · ' + a.ora_dalle.slice(0,5) + '–' + (a.ora_alle||'').slice(0,5) : '');
+const _tipoVisibile = a => (a.tipo === 'malattia' && _ruolo !== 'amministratore') ? { i:'🚫', l:'Assente' } : ASS_TIPI_G[a.tipo];
+
+async function caricaAssenze() {
+  try {
+    const { data } = await supa.from('assenze').select('*').gte('al', _isoG(new Date(Date.now() - 62*86400000))).order('dal');
+    assenze = data || [];
+  } catch(e) { assenze = []; }
+  renderAssentiDash(); renderAssenze();
+  const n = assenze.filter(a => a.stato === 'richiesta').length;
+  const b = document.getElementById('badge-assenze'); if (b) { b.textContent = n; b.style.display = n ? '' : 'none'; }
+}
+
+function renderAssentiDash() {
+  const box = document.getElementById('dash-assenti'); if (!box) return;
+  const oggi = _isoG(new Date());
+  const lista = assenze.filter(a => a.stato === 'approvata' && a.dal <= oggi && a.al >= oggi);
+  if (!lista.length) { box.style.display = 'none'; return; }
+  box.style.display = '';
+  box.innerHTML = '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px"><span style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-right:4px">Assenti oggi</span>' +
+    lista.map(a => { const t = _tipoVisibile(a); return `<span style="padding:4px 10px;border-radius:20px;background:#E0F2FE;color:#075985;font-size:12px;font-weight:600">${t.i} ${_escAllG(_nomeDip(a.dip_id))} <span style="font-weight:400">· ${t.l.toLowerCase()}${a.al !== oggi ? ' fino al ' + _fmtG(a.al) : ''}${a.ora_dalle ? ' ' + a.ora_dalle.slice(0,5) + '–' + (a.ora_alle||'').slice(0,5) : ''}</span></span>`; }).join('') + '</div>';
+}
+
+function renderAssenze() {
+  const box = document.getElementById('ass-card'); if (!box) return;
+  const oggi = _isoG(new Date());
+  const rich = assenze.filter(a => a.stato === 'richiesta').sort((a,b) => a.dal.localeCompare(b.dal));
+  const prossime = assenze.filter(a => a.stato === 'approvata' && a.al >= oggi).sort((a,b) => a.dal.localeCompare(b.dal));
+  const riga = (a, azioni) => { const t = _tipoVisibile(a); return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border);font-size:13px">
+      <span style="font-size:18px">${t.i}</span>
+      <div style="flex:1;min-width:0"><strong>${_escAllG(_nomeDip(a.dip_id))}</strong> · ${t.l} · <span style="font-family:'DM Mono',monospace;font-size:12px">${_periodoAss(a)}</span>
+        ${a.nota ? `<div style="font-size:12px;color:var(--text3)">“${_escAllG(a.nota)}”</div>` : ''}</div>${azioni}</div>`; };
+  box.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div style="font-size:13px;font-weight:700">🏖 Ferie · Permessi · Malattie</div>
+      <button class="btn btn-primary btn-sm" onclick="apriNuovaAssenza()">+ Assenza</button></div>` +
+    (rich.length ? `<div style="font-size:11px;font-weight:700;color:var(--warning);text-transform:uppercase;letter-spacing:.5px;margin:10px 0 2px">Richieste da approvare (${rich.length})</div>` +
+      rich.map(a => riga(a, `<button class="btn btn-sm" style="background:var(--success);color:#fff" onclick="decidiAssenza('${a.id}',true)">✓ Approva</button>
+        <button class="btn btn-secondary btn-sm" onclick="decidiAssenza('${a.id}',false)">✕ Rifiuta</button>`)).join('') : '') +
+    `<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:12px 0 2px">In corso e prossime</div>` +
+    (prossime.length ? prossime.map(a => riga(a, `${a.tipo === 'malattia' ? `<button class="btn btn-secondary btn-sm" onclick="vediMalattia('${a.id}')">🔒 Protocollo</button>` : ''}
+        <button class="btn btn-secondary btn-sm" title="Elimina" onclick="eliminaAssenza('${a.id}')">🗑</button>`)).join('')
+      : '<div style="font-size:12px;color:var(--text3);padding:6px 0">Nessuna assenza in programma.</div>');
+}
+
+async function decidiAssenza(id, ok) {
+  let nota = null;
+  if (!ok) { nota = prompt('Motivo del rifiuto (facoltativo, lo vedrà il dipendente):', ''); if (nota === null) return; }
+  const { error } = await supa.from('assenze').update({ stato: ok ? 'approvata' : 'rifiutata', deciso_il: new Date().toISOString(), nota_risposta: nota || null }).eq('id', id);
+  if (error) { alert('Errore: ' + error.message); return; }
+  showToast(ok ? 'Richiesta approvata ✓' : 'Richiesta rifiutata');
+  caricaAssenze();
+}
+
+async function eliminaAssenza(id) {
+  const a = assenze.find(x => x.id === id); if (!a) return;
+  if (!confirm('Eliminare l\'assenza di ' + _nomeDip(a.dip_id) + ' (' + _periodoAss(a) + ')?')) return;
+  if (a.tipo === 'malattia') {
+    try { const { data } = await supa.from('assenze_riservate').select('certificato_path').eq('assenza_id', id).maybeSingle();
+      if (data?.certificato_path) await supa.storage.from('certificati').remove([data.certificato_path]); } catch(e) {}
+  }
+  const { error } = await supa.from('assenze').delete().eq('id', id);
+  if (error) { alert('Errore: ' + error.message); return; }
+  showToast('Assenza eliminata'); caricaAssenze();
+}
+
+async function vediMalattia(id) {
+  const { data, error } = await supa.from('assenze_riservate').select('*').eq('assenza_id', id).maybeSingle();
+  if (error) { alert('Errore: ' + error.message); return; }
+  if (!data) { alert('Dati riservati non disponibili (permesso mancante o non inseriti).'); return; }
+  let link = '';
+  if (data.certificato_path) {
+    const r = await supa.storage.from('certificati').createSignedUrl(data.certificato_path, 300);
+    if (r.data?.signedUrl) link = r.data.signedUrl;
+  }
+  if (link) { if (confirm('Protocollo: ' + (data.protocollo || '—') + '\n\nAprire il certificato? (link valido 5 minuti)')) window.open(link, '_blank', 'noopener'); }
+  else alert('Protocollo: ' + (data.protocollo || '—') + '\n\nNessun certificato allegato.');
+}
+
+function apriNuovaAssenza() {
+  document.getElementById('modal-ass')?.remove();
+  const oggi = _isoG(new Date());
+  const st = 'padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--surface);width:100%;box-sizing:border-box';
+  const L = (t, h) => `<label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--text2)">${t}${h}</label>`;
+  const ov = document.createElement('div'); ov.id = 'modal-ass';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML = `<div style="background:var(--surface);border-radius:var(--radius-lg);padding:22px;width:420px;max-width:100%;box-shadow:var(--shadow-lg)">
+    <div style="font-size:16px;font-weight:800;margin-bottom:14px">Nuova assenza</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      ${L('Dipendente', `<select id="na-dip" style="${st}">${[...meccanici].sort((a,b)=>(a.nome||'').localeCompare(b.nome||'')).map(m=>`<option value="${m.id}">${_escAllG(m.nome)}</option>`).join('')}</select>`)}
+      ${L('Tipo', `<select id="na-tipo" style="${st}" onchange="_naTipo()"><option value="ferie">🏖 Ferie</option><option value="permesso">⏰ Permesso</option><option value="malattia">🤒 Malattia</option></select>`)}
+      ${L('Dal', `<input type="date" id="na-dal" value="${oggi}" style="${st}">`)}
+      <span id="na-al-wrap">${L('Al', `<input type="date" id="na-al" value="${oggi}" style="${st}">`)}</span>
+      <span id="na-ore" style="display:none;grid-column:span 2"><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${L('Dalle', `<input type="time" id="na-dalle" value="14:00" style="${st}">`)}${L('Alle', `<input type="time" id="na-alle" value="18:00" style="${st}">`)}</div></span>
+      <span id="na-prot-wrap" style="display:none;grid-column:span 2">${L('Protocollo certificato', `<input type="text" id="na-prot" style="${st};font-family:'DM Mono',monospace">`)}</span>
+      <span style="grid-column:span 2">${L('Nota (facoltativa)', `<input type="text" id="na-nota" style="${st}">`)}</span>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('modal-ass').remove()">Annulla</button>
+      <button class="btn btn-primary btn-sm" onclick="salvaNuovaAssenza()">Salva</button></div></div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+function _naTipo() {
+  const t = document.getElementById('na-tipo').value;
+  document.getElementById('na-ore').style.display = t === 'permesso' ? '' : 'none';
+  document.getElementById('na-al-wrap').style.display = t === 'permesso' ? 'none' : '';
+  document.getElementById('na-prot-wrap').style.display = t === 'malattia' ? '' : 'none';
+}
+async function salvaNuovaAssenza() {
+  const tipo = document.getElementById('na-tipo').value;
+  const dal = document.getElementById('na-dal').value;
+  const al = tipo === 'permesso' ? dal : (document.getElementById('na-al').value || dal);
+  if (!dal || al < dal) { alert('Controlla le date.'); return; }
+  const row = { id: crypto.randomUUID(), dip_id: document.getElementById('na-dip').value, tipo, dal, al, stato: 'approvata', creato_da: 'ufficio',
+    deciso_il: new Date().toISOString(), nota: (document.getElementById('na-nota').value || '').trim() || null };
+  if (tipo === 'permesso') {
+    row.ora_dalle = document.getElementById('na-dalle').value || null; row.ora_alle = document.getElementById('na-alle').value || null;
+    if (!row.ora_dalle || !row.ora_alle || row.ora_alle <= row.ora_dalle) { alert('Controlla gli orari.'); return; }
+  }
+  const { error } = await supa.from('assenze').insert(row);
+  if (error) { alert('Errore: ' + error.message); return; }
+  if (tipo === 'malattia') {
+    const prot = (document.getElementById('na-prot').value || '').trim();
+    if (prot) await supa.from('assenze_riservate').insert({ assenza_id: row.id, protocollo: prot });
+  }
+  document.getElementById('modal-ass').remove();
+  showToast('Assenza registrata ✓'); caricaAssenze();
 }
 
 async function doLogout() {
@@ -3353,7 +3511,10 @@ async function showApp() {
   document.getElementById('app-loading').style.display='none';
   document.querySelector('.app').style.display='block';
   init();
+  await caricaRuolo();
   applicaPermessiRuolo();
+  caricaAssenze();
+  setInterval(caricaAssenze, 60000);
   // Timer fine turno automatico
   _avviaTimerFineTurno();
   // Presenze: si registrano dalla TIM → aggiorna l'elenco ogni 30 secondi
@@ -5675,6 +5836,7 @@ function showSection(sec) {
 }
 
 function setSection(sec) {
+  if (_ruolo === 'magazzino' && ['presenze','impostazioni','garanzie'].includes(sec)) { showToast('Sezione riservata all\'amministrazione'); return; }
   currentSection = sec;
   showSection(sec);
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -5743,6 +5905,7 @@ function setSection(sec) {
     btn.onclick = () => openModalDipendente();
     closeDetail('detail-cliente'); closeDetail('detail-veicolo'); closeDetail('detail-commessa');
     initPresenze();
+    caricaAssenze();
   }
   // sec === 'anagrafiche' gestito da setTab
 }
