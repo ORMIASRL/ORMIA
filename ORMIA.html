@@ -3035,9 +3035,11 @@ function init() {
   </div>
   <div class="detail-section"><div class="detail-section-title">Note</div><div id="dc-note" style="font-size:13px;color:var(--text2);line-height:1.6">—</div></div>
   <!-- NOTE MECCANICO -->
-  <div class="detail-section" id="dc-nota-mec-section" style="display:none">
+  <div class="detail-section" id="dc-nota-mec-section">
     <div class="detail-section-title">✏️ Note meccanico</div>
-    <div id="dc-nota-mec" style="font-size:13px;color:var(--text2);line-height:1.6;background:var(--surface2);border-radius:var(--radius);padding:10px 12px;border-left:3px solid var(--accent)"></div>
+    <textarea id="dc-nota-mec" rows="3" placeholder="Scrivi una nota sulla commessa…" oninput="document.getElementById('dc-nota-mec-salva').style.display=''"
+      style="width:100%;font-size:13px;color:var(--text);line-height:1.5;background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--radius);padding:10px 12px;font-family:'DM Sans',sans-serif;resize:vertical"></textarea>
+    <button class="btn btn-primary btn-sm" id="dc-nota-mec-salva" style="display:none;margin-top:6px" onclick="salvaNotaMecGest()">Salva nota</button>
   </div>
 
   <!-- FOTO GARANZIA -->
@@ -5745,12 +5747,9 @@ function showDetailCommessa(id) {
   const notaMecSection = document.getElementById('dc-nota-mec-section');
   const notaMecEl = document.getElementById('dc-nota-mec');
   const notaMecVal = cm.notaMec || cm.nota_mec || '';
-  if (notaMecVal) {
-    notaMecSection.style.display = '';
-    notaMecEl.textContent = notaMecVal;
-  } else {
-    notaMecSection.style.display = 'none';
-  }
+  notaMecSection.style.display = '';
+  notaMecEl.value = notaMecVal;
+  const _btnNota = document.getElementById('dc-nota-mec-salva'); if (_btnNota) _btnNota.style.display = 'none';
 
   // Foto garanzia — ORMIA-mec salva su fotoInizio (oggetto) e fotoFine (array)
   const fotoSection = document.getElementById('dc-foto-section');
@@ -5827,6 +5826,18 @@ function showDetailCommessa(id) {
   }
 
   document.getElementById('detail-commessa').style.display='flex';
+}
+
+async function salvaNotaMecGest() {
+  const id = selectedCommessaId; const cm = commesse.find(x=>x.id===id); if (!cm) return;
+  const nota = (document.getElementById('dc-nota-mec').value || '').trim();
+  try {
+    const { error } = await supa.from('commesse').update({ nota_mec: nota || null }).eq('id', id);
+    if (error) throw error;
+    cm.notaMec = nota || null; cm.nota_mec = nota || null;
+    document.getElementById('dc-nota-mec-salva').style.display = 'none';
+    showToast('Nota salvata ✓');
+  } catch(e) { alert('Errore salvataggio nota: ' + (e.message||e)); }
 }
 
 function editCommessa() { openModalCommessa(selectedCommessaId); closeDetail('detail-commessa'); }
