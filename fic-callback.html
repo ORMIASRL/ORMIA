@@ -76,7 +76,7 @@
   var cfg = null;
   try { cfg = JSON.parse(localStorage.getItem('ormia_fic_config') || 'null'); } catch(e) {}
 
-  if (!cfg || !cfg.client_id || !cfg.client_secret) {
+  if (!cfg || !cfg.client_id) {
     showErr('Configurazione FiC non trovata. Torna su ORMIA Finance → Fatture in Cloud e salva le credenziali prima di autorizzare.');
     return;
   }
@@ -91,7 +91,6 @@
         grant_type:    'authorization_code',
         code:          code,
         client_id:     cfg.client_id,
-        client_secret: cfg.client_secret,
         redirect_uri:  REDIRECT_URI,
       }),
     });
