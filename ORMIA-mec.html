@@ -380,7 +380,7 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
     <div class="det-section">
       <div class="det-section-title">Commessa</div>
       <div class="det-row"><span class="det-key">Descrizione</span><span class="det-val" id="det-desc">—</span></div>
-      <div class="det-row"><span class="det-key">Data apertura</span><span class="det-val" id="det-data">—</span></div>
+      <div class="det-row"><span class="det-key">Data consegna</span><span class="det-val" id="det-data">—</span></div>
       <div class="det-row"><span class="det-key">Veicolo</span><span class="det-val" id="det-veicolo">—</span></div>
       <div class="det-row"><span class="det-key">In lavorazione</span><span class="det-val" id="det-mec">—</span></div>
     </div>
@@ -1131,7 +1131,7 @@ function renderDetail() {
   applicaPermessiDettaglio();
 
   document.getElementById('det-desc').textContent = cm.desc||'—';
-  document.getElementById('det-data').textContent = cm.dataApertura ? new Date(cm.dataApertura).toLocaleDateString('it-IT') : '—';
+  document.getElementById('det-data').textContent = cm.consegna_prevista ? new Date(cm.consegna_prevista).toLocaleDateString('it-IT') : '—';
   document.getElementById('det-veicolo').innerHTML = v
     ? `<span class="com-targa" style="font-size:15px;padding:3px 10px;letter-spacing:1.5px">${v.targa}</span>
        <span style="margin-left:6px;font-weight:600">${[v.marca,v.modello].filter(Boolean).join(' ')}</span>
