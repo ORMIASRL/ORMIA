@@ -911,7 +911,11 @@ function residuoFattura(fatturaId) {
   const giaPagato = _incassi
     .filter(i=>(i.fattura_id||i.fatturaId)===fatturaId)
     .reduce((s,i)=>s+(i.importo||0),0);
-  return Math.max(0, (fatt.totale||0) - giaPagato);
+  // Le note di credito collegate alla fattura riducono quanto resta da incassare
+  const stornato = (_noteCredito||[])
+    .filter(n=>(n.fatturaId||n.fattura_id)===fatturaId)
+    .reduce((s,n)=>s+(n.importo||0),0);
+  return Math.max(0, Math.round(((fatt.totale||0) - giaPagato - stornato)*100)/100);
 }
 
 /** Quanto di un incasso è già stato allocato su fatture */
@@ -962,7 +966,7 @@ function renderDashboard() {
 
   // Fatture in scadenza (prossimi 30 giorni)
   const tra30 = new Date(); tra30.setDate(tra30.getDate()+30);
-  const inScadenza = _fatture.filter(f=>f.stato==='emessa'&&f.scadenza&&new Date(f.scadenza)<=tra30&&new Date(f.scadenza)>=ora)
+  const inScadenza = _fatture.filter(f=>f.stato==='emessa'&&f.scadenza&&new Date(f.scadenza)<=tra30&&new Date(f.scadenza)>=ora&&residuoFattura(f.id)>0)
     .sort((a,b)=>new Date(a.scadenza)-new Date(b.scadenza)).slice(0,6);
   const tbody2 = document.getElementById('tb-scadenze-fatt');
   if (!inScadenza.length) { tbody2.innerHTML=''; document.getElementById('empty-scadenze-fatt').style.display=''; }
