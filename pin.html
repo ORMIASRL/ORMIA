@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="robots" content="noindex">
+<title>ORMIA — Scegli il tuo PIN</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #F5F4F1; color: #1A1917;
+         min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .card { background: #fff; border-radius: 18px; box-shadow: 0 8px 28px rgba(0,0,0,.10); padding: 26px 22px; width: 100%; max-width: 380px; text-align: center; }
+  .logo { width: 56px; height: 56px; border-radius: 16px; background: #1B4FD8; color: #fff; font-weight: 800; font-size: 22px;
+          display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .sub { font-size: 14px; color: #6B6A65; margin-bottom: 18px; line-height: 1.45; }
+  .dots { display: flex; gap: 12px; justify-content: center; margin: 6px 0 18px; }
+  .dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #D6D3CC; transition: all .12s; }
+  .dot.on { background: #1B4FD8; border-color: #1B4FD8; }
+  .dot.err { background: #C53030; border-color: #C53030; }
+  .pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .pad button { height: 60px; border-radius: 12px; border: 1px solid #E4E2DC; background: #F9F8F6; font-size: 24px; font-weight: 600; cursor: pointer; color: #1A1917; }
+  .pad button:active { background: #EEF2FF; transform: scale(.95); }
+  .pad .muted { font-size: 15px; color: #A09E99; }
+  .msg { min-height: 22px; font-size: 14px; margin-top: 14px; color: #C53030; font-weight: 600; }
+  .ok { color: #276749; }
+  .note { font-size: 12px; color: #A09E99; margin-top: 16px; line-height: 1.5; }
+  .big { font-size: 46px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <div class="logo">O</div>
+  <h1>Connessione…</h1>
+  <div class="sub">Sto verificando il tuo link.</div>
+</div>
+<script>
+const supa = supabase.createClient('https://crcfwmkemnwippplteqm.supabase.co', 'sb_publishable_bzZrugm5WWBaUKkO_mlrLw_dNXKPCM9', {
+  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: true, flowType: 'implicit' }
+});
+const card = document.getElementById('card');
+let fase = 1, primo = '', buf = '';
+
+function errore(titolo, testo) {
+  card.innerHTML = '<div class="big">⚠️</div><h1>' + titolo + '</h1><div class="sub">' + testo + '</div>' +
+    '<div class="note">Chiedi all\'ufficio di inviarti un nuovo invito.</div>';
+}
+
+function disegna(msg, cls) {
+  card.innerHTML =
+    '<div class="logo">O</div>' +
+    '<h1>' + (fase === 1 ? 'Scegli il tuo PIN' : 'Ripeti il PIN') + '</h1>' +
+    '<div class="sub">' + (fase === 1 ? 'Ciao <b>' + (window._nome || '') + '</b>, scegli <b>6 cifre</b> che ricorderai.<br>Le userai al TIM e nell\'app.' : 'Inserisci di nuovo le stesse 6 cifre per conferma.') + '</div>' +
+    '<div class="dots">' + [0,1,2,3,4,5].map(i => '<div class="dot' + (i < buf.length ? (cls === 'err' ? ' err' : ' on') : '') + '"></div>').join('') + '</div>' +
+    '<div class="pad">' + ['1','2','3','4','5','6','7','8','9','C','0','⌫'].map(k =>
+      '<button type="button" class="' + (k === 'C' || k === '⌫' ? 'muted' : '') + '" onclick="tasto(\'' + k + '\')">' + k + '</button>').join('') + '</div>' +
+    '<div class="msg ' + (cls === 'ok' ? 'ok' : '') + '">' + (msg || '') + '</div>' +
+    '<div class="note">Evita date di nascita e sequenze come 123456.<br>Nessuno, nemmeno l\'ufficio, potrà vedere il tuo PIN.</div>';
+}
+
+async function tasto(k) {
+  if (k === 'C') buf = '';
+  else if (k === '⌫') buf = buf.slice(0, -1);
+  else if (buf.length < 6) buf += k;
+  disegna();
+  if (buf.length < 6) return;
+  if (fase === 1) { primo = buf; buf = ''; fase = 2; setTimeout(() => disegna(), 150); return; }
+  if (buf !== primo) { disegna('I due PIN non coincidono, ricomincia.', 'err'); primo = ''; buf = ''; fase = 1; setTimeout(() => disegna('I due PIN non coincidono, ricomincia.'), 900); return; }
+  card.querySelector('h1').textContent = 'Salvataggio…';
+  const { data, error } = await supa.rpc('ormia_imposta_pin', { nuovo: buf });
+  if (error) { primo = ''; buf = ''; fase = 1; disegna(error.message.replace(/^.*?: /, ''), 'err'); return; }
+  try { await supa.auth.signOut(); } catch (e) {}
+  card.innerHTML = '<div class="big">✅</div><h1>PIN salvato!</h1><div class="sub">Ciao <b>' + (data || '') +
+    '</b>, da ora entri al TIM e nell\'app ORMIA con il tuo nuovo PIN di 6 cifre.<br><br>Puoi chiudere questa pagina.</div>';
+  history.replaceState(null, '', location.pathname);
+}
+
+document.addEventListener('keydown', e => {
+  if (/^[0-9]$/.test(e.key)) tasto(e.key);
+  else if (e.key === 'Backspace') tasto('⌫');
+});
+
+(async () => {
+  const h = new URLSearchParams(location.hash.slice(1)), q = new URLSearchParams(location.search);
+  const errDesc = h.get('error_description') || q.get('error_description');
+  if (errDesc) { errore('Link non valido', 'Il link è scaduto o è già stato usato.'); return; }
+  await new Promise(r => setTimeout(r, 400));
+  const { data: { session } } = await supa.auth.getSession();
+  if (!session) { errore('Link non valido', 'Apri questa pagina dal pulsante contenuto nell\'email di invito.'); return; }
+  window._nome = (session.user.email || '').split('@')[0];
+  history.replaceState(null, '', location.pathname);
+  disegna();
+})();
+</script>
+</body>
+</html>
