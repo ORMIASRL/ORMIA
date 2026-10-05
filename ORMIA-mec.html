@@ -1252,6 +1252,71 @@ function renderDetail() {
 // ══════════════════════════════════════════════════
 // TIMBRATURA
 // ══════════════════════════════════════════════════
+// ── Pausa pranzo non timbrata / entrata dimenticata (come TIM) ──
+function _oggiLocM() { const d = new Date(); const p = x => String(x).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; }
+let _impMec = null;
+async function _getImpM() { if (!_impMec) { const { data } = await supa.from('impostazioni').select('*').limit(1); _impMec = (data && data[0]) || {}; } return _impMec; }
+const _hmM = s => String(s||'').slice(0,5);
+async function _fasciaPausaM() {
+  const imp = await _getImpM(); const oggi = _oggiLocM();
+  const da = _hmM(imp.pausa_inizio) || '13:00', a = _hmM(imp.pausa_fine) || '14:00';
+  return { da, a, pp1: new Date(`${oggi}T${da}:00`), pp2: new Date(`${oggi}T${a}:00`) };
+}
+function _kNoPausaM(mec) { return 'ormia-nopausa-' + mec.id + '-' + _oggiLocM(); }
+async function _presenzaOggiM(mec) {
+  const { data } = await supa.from('presenze').select('*').or(`mec_id.eq.${mec.id},dip_id.eq.${mec.id}`).eq('data', _oggiLocM()).order('entrata', { ascending: false }).limit(1);
+  return (data || [])[0] || null;
+}
+function _chiediM(icona, titolo, testo, si, no) {
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px';
+    const bs = 'flex:1;padding:15px 8px;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;';
+    ov.innerHTML = `<div style="background:#fff;color:#1A1917;border-radius:16px;padding:22px;width:380px;max-width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+      <div style="font-size:32px">${icona}</div>
+      <div style="font-size:18px;font-weight:800;margin:6px 0">${titolo}</div>
+      <div style="font-size:14px;color:#6B6A65;margin-bottom:16px">${testo}</div>
+      <div style="display:flex;gap:10px">
+        <button data-v="1" style="${bs}border:2px solid #F6E05E;background:#FFFBEB;color:#92400E">${si}</button>
+        <button data-v="0" style="${bs}border:2px solid #68D391;background:#F0FFF4;color:#276749">${no}</button>
+      </div></div>`;
+    ov.querySelectorAll('button').forEach(b => b.onclick = () => { ov.remove(); resolve(b.dataset.v === '1'); });
+    document.body.appendChild(ov);
+  });
+}
+async function _verificaPausaM(mec, entrataIso, ora) {
+  const f = await _fasciaPausaM();
+  if (!(new Date(entrataIso) < f.pp1 && new Date(ora) > f.pp2)) return null;
+  try { if (localStorage.getItem(_kNoPausaM(mec))) return null; } catch(e) {}
+  const p = await _presenzaOggiM(mec);
+  if (p && p.pausa_inizio) return null;
+  const inPausa = await _chiediM('⚠️', 'Pausa pranzo non timbrata', `${mec.nome||''}, tra le ${f.da} e le ${f.a} eri in pausa o hai lavorato?`, '☕ Ero in pausa', '🔧 Ho lavorato');
+  if (!inPausa) { try { localStorage.setItem(_kNoPausaM(mec), '1'); } catch(e) {} return null; }
+  if (p && !p.uscita && new Date(p.entrata) < f.pp1) await supa.from('presenze').update({ pausa_inizio: f.pp1.toISOString(), pausa_fine: f.pp2.toISOString() }).eq('id', p.id);
+  return { pp1: f.pp1.toISOString(), pp2: f.pp2.toISOString() };
+}
+async function _chiudiTimM(t, ora, pausa, riprende) {
+  if (pausa && new Date(t.entrata) < new Date(pausa.pp1)) {
+    await supa.from('timbrature').update({ uscita: pausa.pp1 }).eq('id', t.id);
+    if (riprende && new Date(ora) > new Date(pausa.pp2)) await supa.from('timbrature').insert({ id: genId(), mec_id: t.mec_id, com_id: t.com_id, entrata: pausa.pp2, uscita: ora, created_at: ora });
+  } else {
+    await supa.from('timbrature').update({ uscita: ora }).eq('id', t.id);
+  }
+}
+async function _standbySeVuotaM(comId, esclusoId) {
+  const altre = _timbrature.filter(x => x.com_id === comId && !x.uscita && x.id !== esclusoId);
+  const cm = _commesse.find(c => c.id === comId);
+  if (!altre.length && cm && (cm.stato === 'wip' || cm.stato === 'aperta')) await supa.from('commesse').update({ stato: 'standby' }).eq('id', comId);
+}
+async function _registraEntrataM(mec) {
+  const imp = await _getImpM(); const now = new Date(); const ora = now.toISOString(); const oggi = _oggiLocM();
+  const inizio = new Date(`${oggi}T${_hmM(imp.orario_inizio) || '08:30'}:00`);
+  const soglia = new Date(`${oggi}T${_hmM(imp.soglia_ritardo) || '09:00'}:00`);
+  const ritardo = now > soglia; const minRit = ritardo ? Math.round((now - inizio) / 60000) : 0;
+  const { error } = await supa.from('presenze').insert({ id: genId(), mec_id: mec.id, dip_id: mec.id, data: oggi, entrata: ora, uscita: null, tipo: 'normale', ritardo, minuti_ritardo: minRit, created_at: ora });
+  if (error) throw error;
+}
+
 async function timbra(verso) {
   if (!comSelected || !mecLogged) return;
   const ora = new Date().toISOString();
@@ -1264,8 +1329,9 @@ async function timbra(verso) {
         alert('⚠️ Commessa in garanzia\n\nPrima di iniziare il lavoro scatta le foto iniziali obbligatorie (targa, telaio e km).\nLe trovi nella sezione "Foto iniziali" qui sotto.');
         return;
       }
+      if (!(await _presenzaOggiM(mecLogged)) && await _chiediM('⚠️', 'Entrata non timbrata', `${mecLogged.nome||''}, oggi non hai timbrato l'ENTRATA nelle presenze. La registro adesso?`, '✅ Sì, registra', 'No')) await _registraEntrataM(mecLogged);
       const aperte = _timbrature.filter(t=>t.mec_id===mecLogged.id&&!t.uscita&&t.com_id!==comSelected.id);
-      for (const t of aperte) await supa.from('timbrature').update({uscita:ora}).eq('id',t.id);
+      for (const t of aperte) { await _chiudiTimM(t, ora, await _verificaPausaM(mecLogged, t.entrata, ora), false); await _standbySeVuotaM(t.com_id, t.id); }
       await supa.from('timbrature').insert({id:genId(),mec_id:mecLogged.id,com_id:comSelected.id,entrata:ora,uscita:null,created_at:ora});
       const cm = _commesse.find(c=>c.id===comSelected.id);
       if (cm && (cm.stato==='aperta'||cm.stato==='standby')) await supa.from('commesse').update({stato:'wip'}).eq('id',comSelected.id);
@@ -1273,7 +1339,7 @@ async function timbra(verso) {
     } else {
       const t = _timbrature.find(x=>x.mec_id===mecLogged.id&&x.com_id===comSelected.id&&!x.uscita);
       if (!t) { showToast('Nessuna timbratura aperta su questa commessa'); return; }
-      await supa.from('timbrature').update({uscita:ora}).eq('id',t.id);
+      await _chiudiTimM(t, ora, await _verificaPausaM(mecLogged, t.entrata, ora), true);
       // Se nessun altro meccanico è ancora attivo → standby
       const altreAperte = _timbrature.filter(x=>x.com_id===comSelected.id&&!x.uscita&&x.id!==t.id);
       if (!altreAperte.length) {
