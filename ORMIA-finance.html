@@ -771,8 +771,23 @@ async function showApp() {
   if (urlParams.get('fic') === 'ok') {
     history.replaceState(null, '', window.location.pathname);
     _ficToken = JSON.parse(localStorage.getItem('ormia_fic_token') || 'null');
+    if (_ficToken) await saveFicTokenToSupabase();
+    // Company ID automatico, se non inserito a mano
+    if (_ficToken && !_ficConfig.company_id) {
+      try {
+        const r = await ficFetch('/user/companies');
+        const az = r?.data?.companies || [];
+        if (az.length) {
+          _ficConfig.company_id = String(az[0].id);
+          localStorage.setItem('ormia_fic_config', JSON.stringify(_ficConfig));
+          await saveFicConfigToSupabase();
+          const el = document.getElementById('fic-company-id'); if (el) el.value = _ficConfig.company_id;
+        }
+      } catch(e) { console.warn('[FiC] company id', e.message); }
+    }
     setSection('fic');
-    setTimeout(() => showToastFin('✓ FiC collegato correttamente!'), 300);
+    checkIntegrazioni(); updateFicTokenStatus();
+    setTimeout(() => showToastFin('✓ FiC collegato correttamente!' + (_ficConfig.company_id ? ' (azienda ' + _ficConfig.company_id + ')' : '')), 300);
   } else if (urlParams.get('sumup') === 'ok') {
     history.replaceState(null, '', window.location.pathname);
     _sumupToken = JSON.parse(localStorage.getItem('ormia_sumup_token') || 'null');
@@ -1526,10 +1541,13 @@ function caricaFormFIC() {
 // ── ficFetch con auto-refresh ─────────────────────
 async function ficFetch(path, opts = {}) {
   const token = await getFicAccessToken();
-  const url = 'https://api.fattureincloud.it/v2' + path;
-  const doReq = async (tok) => fetch(url, {
-    ...opts,
-    headers: { 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json', ...(opts.headers||{}) },
+  // Le API FiC non accettano chiamate dal browser (CORS): passano dalla funzione Netlify fic-token
+  let apiBody;
+  if (opts.body != null) { try { apiBody = typeof opts.body === 'string' ? JSON.parse(opts.body) : opts.body; } catch(_) { apiBody = opts.body; } }
+  const doReq = async (tok) => fetch('/.netlify/functions/fic-token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ api_path: path, api_method: opts.method || 'GET', api_body: apiBody, access_token: tok }),
   });
   let res = await doReq(token);
   if (res.status === 401 && _ficToken?.refresh_token) {
@@ -1803,7 +1821,7 @@ async function salvaFIC() {
   localStorage.setItem('ormia_fic_config', JSON.stringify(_ficConfig));
   saveFicConfigToSupabase();
   _ficToken = null; localStorage.removeItem('ormia_fic_token');
-  await supa.from('impostazioni').upsert({id:'default', fic_token: null}).catch(()=>{});
+  try { await supa.from('impostazioni').upsert({id:'default', fic_token: null}); } catch(_) {}
   checkIntegrazioni(); updateFicTokenStatus();
   const panel = document.getElementById('fic-auth-panel');
   if (panel) panel.style.display = _ficConfig.client_id ? '' : 'none';
