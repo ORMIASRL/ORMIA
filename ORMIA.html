@@ -11282,7 +11282,7 @@ async function autoInviaFIC(fatt) {
   // Config e token FiC aggiornati da Supabase (impostazioni), con fallback localStorage
   let ficCfg = {}, ficToken = {};
   try {
-    const { data } = await supa.from('impostazioni').select('fic_config,fic_token').eq('id','default').single();
+    const { data } = await supa.from('fic_auth').select('fic_config,fic_token').eq('id','default').single();
     ficCfg = data?.fic_config || {}; ficToken = data?.fic_token || {};
   } catch(_) {}
   if (!ficCfg.company_id || !ficCfg.client_id) { try { ficCfg = JSON.parse(localStorage.getItem('ormia_fic_config') || '{}'); } catch(_) {} }
@@ -11296,7 +11296,7 @@ async function autoInviaFIC(fatt) {
     if (!ficToken.refresh_token) throw new Error('autorizzazione FiC scaduta: ricollega da Finance');
     const res = await fetch('/.netlify/functions/fic-token', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ grant_type:'refresh_token', client_id: ficCfg.client_id, client_secret: ficCfg.client_secret, refresh_token: ficToken.refresh_token }),
+      body: JSON.stringify({ grant_type:'refresh_token', client_id: ficCfg.client_id, refresh_token: ficToken.refresh_token }),
     });
     if (!res.ok) throw new Error('autorizzazione FiC scaduta: ricollega da Finance');
     const d = await res.json();
@@ -11304,7 +11304,7 @@ async function autoInviaFIC(fatt) {
     const nuovoToken = { access_token: d.access_token, refresh_token: d.refresh_token || ficToken.refresh_token, expires_at: Date.now() + (d.expires_in || 3600) * 1000 };
     try { localStorage.setItem('ormia_fic_token', JSON.stringify(nuovoToken)); } catch(_) {}
     if (_impostazioni) _impostazioni.fic_token = nuovoToken;
-    try { await supa.from('impostazioni').upsert({ id:'default', fic_token: nuovoToken }); } catch(_) {}
+    try { await supa.from('fic_auth').upsert({ id:'default', fic_token: nuovoToken }); } catch(_) {}
   }
 
   const cl = clienti.find(x => x.id === fatt.clienteId);
