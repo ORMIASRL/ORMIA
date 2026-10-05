@@ -4830,6 +4830,7 @@ function _stepperRic(i, qta) {
     <button style="${b}" title="Togli 1" onclick="cambiaQtaRic(${i},-1)">−</button>
     <span style="font-family:'DM Mono',monospace;font-weight:700;min-width:18px;text-align:center">${String(qta).replace('.',',')}</span>
     <button style="${b}" title="Aggiungi 1" onclick="cambiaQtaRic(${i},1)">+</button>
+    <button style="${b};border-color:#F5C2C0;color:#c0392b;margin-left:4px" title="Elimina ricambio dalla commessa" onclick="cambiaQtaRic(${i},-(${qta}))">🗑</button>
   </span>`;
 }
 let _qtaRicBusy = false;
