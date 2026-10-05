@@ -1,101 +1,78 @@
 // Netlify Function: fic-token
-// Proxy per scambio codice OAuth2 con Fatture in Cloud
-// Evita CORS — il browser non può chiamare il token endpoint FiC direttamente
+// 1) Scambio/rinnovo token OAuth2 con Fatture in Cloud
+// 2) Proxy per le chiamate API FiC (le API FiC non accettano chiamate dirette dal browser - CORS)
+// Handler async: richiesto dal runtime Node 24 di Netlify/AWS Lambda
 
-var https = require('https');
+const FIC_TOKEN_URL = 'https://api-v2.fattureincloud.it/oauth/token';
+const FIC_API_BASE  = 'https://api-v2.fattureincloud.it';
 
-var ORIGIN    = 'https://ormiaofficina.netlify.app';
-var FIC_TOKEN = 'api-v2.fattureincloud.it';
-var FIC_PATH  = '/oauth/token';
+const CORS = {
+  'Access-Control-Allow-Origin':  'https://ormiaofficinapro.netlify.app',
+  'Access-Control-Allow-Methods': 'POST,OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+const risposta = (statusCode, obj) => ({
+  statusCode,
+  headers: { 'Content-Type': 'application/json', ...CORS },
+  body: JSON.stringify(obj),
+});
+const leggi = async (res) => {
+  const text = await res.text();
+  try { return JSON.parse(text); } catch (e) { return { raw: text }; }
+};
 
-exports.handler = function(event, context, callback) {
-  var headers = {
-    'Access-Control-Allow-Origin':  ORIGIN,
-    'Access-Control-Allow-Methods': 'POST,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  };
+exports.handler = async (event) => {
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' };
+  if (event.httpMethod !== 'POST') return risposta(405, { error: 'Method not allowed' });
 
-  if (event.httpMethod === 'OPTIONS') {
-    return callback(null, { statusCode: 200, headers: headers, body: '' });
-  }
+  let body = {};
+  try { body = JSON.parse(event.body || '{}'); } catch (e) {}
 
-  if (event.httpMethod !== 'POST') {
-    return callback(null, { statusCode: 405, headers: headers, body: JSON.stringify({ error: 'Method not allowed' }) });
-  }
-
-  var body = {};
-  try { body = JSON.parse(event.body || '{}'); } catch(e) {}
-
-  var code         = body.code;
-  var client_id    = body.client_id;
-  var client_secret = body.client_secret;
-  var redirect_uri = body.redirect_uri;
-  var grant_type   = body.grant_type || 'authorization_code';
-
-  // Supporta anche refresh_token
-  var refresh_token = body.refresh_token;
-
-  var payload;
-  if (grant_type === 'refresh_token') {
-    if (!client_id || !client_secret || !refresh_token) {
-      return callback(null, { statusCode: 400, headers: headers,
-        body: JSON.stringify({ error: 'client_id, client_secret e refresh_token obbligatori' }) });
-    }
-    payload = new URLSearchParams({
-      grant_type:    'refresh_token',
-      client_id:     client_id,
-      client_secret: client_secret,
-      refresh_token: refresh_token,
-    }).toString();
-  } else {
-    if (!code || !client_id || !client_secret || !redirect_uri) {
-      return callback(null, { statusCode: 400, headers: headers,
-        body: JSON.stringify({ error: 'code, client_id, client_secret e redirect_uri obbligatori' }) });
-    }
-    payload = new URLSearchParams({
-      grant_type:    'authorization_code',
-      client_id:     client_id,
-      client_secret: client_secret,
-      redirect_uri:  redirect_uri,
-      code:          code,
-    }).toString();
-  }
-
-  var reqHeaders = {
-    'Content-Type':   'application/x-www-form-urlencoded',
-    'Content-Length': Buffer.byteLength(payload),
-    'Accept':         'application/json',
-  };
-
-  var options = {
-    hostname: FIC_TOKEN,
-    path:     FIC_PATH,
-    method:   'POST',
-    headers:  reqHeaders,
-  };
-
-  var req = https.request(options, function(res) {
-    var data = '';
-    res.on('data', function(chunk) { data += chunk; });
-    res.on('end', function() {
-      var parsed;
-      try { parsed = JSON.parse(data); } catch(e) { parsed = { raw: data }; }
-      callback(null, {
-        statusCode: res.statusCode,
-        headers: Object.assign({ 'Content-Type': 'application/json' }, headers),
-        body: JSON.stringify(parsed),
+  // ── Modalità proxy API: { api_path, api_method, api_body, access_token } ──
+  if (body.api_path) {
+    const path = String(body.api_path);
+    if (!path.startsWith('/') || path.includes('://') || path.includes('..'))
+      return risposta(400, { error: 'api_path non valido' });
+    if (!body.access_token) return risposta(401, { error: 'access_token mancante' });
+    const method = String(body.api_method || 'GET').toUpperCase();
+    if (!['GET', 'POST', 'PUT', 'DELETE'].includes(method)) return risposta(400, { error: 'metodo non valido' });
+    try {
+      const res = await fetch(FIC_API_BASE + path, {
+        method,
+        headers: {
+          'Authorization': 'Bearer ' + body.access_token,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: method === 'GET' || method === 'DELETE' || body.api_body == null ? undefined : JSON.stringify(body.api_body),
       });
-    });
-  });
+      return risposta(res.status, await leggi(res));
+    } catch (e) {
+      return risposta(502, { error: 'proxy_error', message: e.message });
+    }
+  }
 
-  req.on('error', function(e) {
-    callback(null, {
-      statusCode: 500,
-      headers: headers,
-      body: JSON.stringify({ error: 'proxy_error', message: e.message }),
+  // ── Modalità token OAuth2 ──
+  const { client_id, client_secret, redirect_uri, code, refresh_token } = body;
+  const grant_type = body.grant_type || 'authorization_code';
+  let params;
+  if (grant_type === 'refresh_token') {
+    if (!client_id || !client_secret || !refresh_token)
+      return risposta(400, { error: 'client_id, client_secret e refresh_token obbligatori' });
+    params = { grant_type, client_id, client_secret, refresh_token };
+  } else {
+    if (!code || !client_id || !client_secret || !redirect_uri)
+      return risposta(400, { error: 'code, client_id, client_secret e redirect_uri obbligatori' });
+    params = { grant_type: 'authorization_code', client_id, client_secret, redirect_uri, code };
+  }
+  try {
+    const res = await fetch(FIC_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
+      body: new URLSearchParams(params).toString(),
     });
-  });
-
-  req.write(payload);
-  req.end();
+    return risposta(res.status, await leggi(res));
+  } catch (e) {
+    return risposta(500, { error: 'proxy_error', message: e.message });
+  }
 };
