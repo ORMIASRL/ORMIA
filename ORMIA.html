@@ -1603,10 +1603,9 @@
           <label>PEC <span style="font-size:10px;color:var(--text3);font-weight:400">* (o SDI)</span></label>
           <input type="email" id="c-pec" placeholder="fatture@pec.azienda.it">
         </div>
-        <div class="form-group span-2" style="position:relative">
-          <label>Via e numero civico *</label>
-          <input type="text" id="c-indirizzo" placeholder="Via Roma 1 — scrivi e scegli dai suggerimenti" autocomplete="off" oninput="_cercaIndirizzo(this.value,'c-indirizzo-dd')">
-          <div id="c-indirizzo-dd" style="display:none;position:absolute;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);z-index:500;max-height:200px;overflow-y:auto"></div>
+        <div class="form-group span-2" style="display:grid;grid-template-columns:1fr 110px;gap:12px">
+          <div><label>Via / Piazza *</label><input type="text" id="c-indirizzo" placeholder="Via Roma" autocomplete="off"></div>
+          <div><label>N. civico</label><input type="text" id="c-civico" placeholder="12/A" autocomplete="off"></div>
         </div>
         <div class="form-group span-2" style="display:grid;grid-template-columns:110px 1fr 80px;gap:12px">
           <div><label>CAP *</label><input type="text" id="c-cap" maxlength="5" inputmode="numeric" placeholder="00100"></div>
@@ -1903,10 +1902,11 @@ async function saveCliente() {
   const piva      = document.getElementById('c-piva').value.trim();
   const cf        = document.getElementById('c-cf').value.trim();
   const via       = document.getElementById('c-indirizzo').value.trim();
+  const civico    = document.getElementById('c-civico').value.trim().toUpperCase();
   const cap       = document.getElementById('c-cap').value.trim();
   const citta     = document.getElementById('c-citta').value.trim();
   const provincia = document.getElementById('c-prov').value.trim().toUpperCase();
-  const indirizzo = via + ', ' + cap + ' ' + citta + (provincia ? ' (' + provincia + ')' : '');
+  const indirizzo = via + (civico ? ' ' + civico : '') + ', ' + cap + ' ' + citta + (provincia ? ' (' + provincia + ')' : '');
   const tel       = document.getElementById('c-tel').value.trim();
   const sdi       = document.getElementById('c-sdi').value.trim().toUpperCase();
   const pec       = document.getElementById('c-pec').value.trim();
@@ -1917,7 +1917,7 @@ async function saveCliente() {
   const errs = [];
   if (!ragione)   errs.push('• Intestazione (ragione sociale o nome)');
   if (!piva && !cf) errs.push('• P.IVA oppure Codice fiscale (almeno uno)');
-  if (!via)       errs.push('• Via e numero civico');
+  if (!via)       errs.push('• Via / Piazza');
   if (!/^\d{5}$/.test(cap)) errs.push('• CAP (5 cifre)');
   if (!citta)     errs.push('• Città');
   if (!tel)       errs.push('• Contatto telefonico');
@@ -1936,7 +1936,7 @@ async function saveCliente() {
     ragione, tipo: document.getElementById('c-tipo').value,
     piva, cf, sdi, pec, tel,
     email:    document.getElementById('c-email').value.trim(),
-    indirizzo, via, cap, citta, provincia,
+    indirizzo, via, civico, cap, citta, provincia,
     note:     document.getElementById('c-note').value.trim(),
     pagamento,
     iva: parseFloat(document.getElementById('c-iva').value) || 22,
@@ -2357,6 +2357,7 @@ function openModal(type, preselectClienteId, editId, tipoNuovo) {
         document.getElementById('c-tel').value = c.tel||'';
         document.getElementById('c-email').value = c.email||'';
         document.getElementById('c-indirizzo').value = c.via || c.indirizzo || '';
+        document.getElementById('c-civico').value = c.civico || '';
         document.getElementById('c-cap').value = c.cap || '';
         document.getElementById('c-citta').value = c.citta || '';
         document.getElementById('c-prov').value = c.provincia || '';
@@ -2366,7 +2367,7 @@ function openModal(type, preselectClienteId, editId, tipoNuovo) {
         document.getElementById('c-soglia-moroso').value = c.soglia_moroso || c.sogliamoroso || '';
       }
     } else {
-      ['c-ragione','c-piva','c-cf','c-sdi','c-pec','c-tel','c-email','c-indirizzo','c-cap','c-citta','c-prov','c-note','c-soglia-moroso'].forEach(id=>document.getElementById(id).value='');
+      ['c-ragione','c-piva','c-cf','c-sdi','c-pec','c-tel','c-email','c-indirizzo','c-civico','c-cap','c-citta','c-prov','c-note','c-soglia-moroso'].forEach(id=>document.getElementById(id).value='');
       document.getElementById('c-tipo').value = 'Azienda';
       document.getElementById('c-iva').value = 22;
       document.getElementById('c-pagamento').value = '';
@@ -6529,6 +6530,7 @@ function _fmtIndirizzoOSM(r, q) {
 
 const _indirizziTrovati = {};
 async function _cercaIndirizzo(q, ddId) {
+  return; // OpenStreetMap disattivato: l'indirizzo si scrive a mano (via, civico, CAP, città, provincia)
   const dd = document.getElementById(ddId);
   if (!dd) return;
   if (!q || q.length < 4) { dd.style.display = 'none'; return; }
@@ -11343,7 +11345,7 @@ async function autoInviaFIC(fatt) {
         entity:{ name:fatt.clRagione||cl?.ragione||'Cliente', vat_number:fatt.clPiva||cl?.piva||'',
                  tax_code:fatt.clCf||cl?.cf||'', ei_code:fatt.clSdi||cl?.sdi||'',
                  certified_email:fatt.clPec||cl?.pec||'',
-                 address_street:cl?.via||'', address_postal_code:cl?.cap||'', address_city:cl?.citta||'',
+                 address_street:[cl?.via, cl?.civico].filter(Boolean).join(' '), address_postal_code:cl?.cap||'', address_city:cl?.citta||'',
                  address_province:cl?.provincia||'', country:'Italia' },
         items_list: items,
       }},
