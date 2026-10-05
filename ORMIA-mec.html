@@ -831,9 +831,9 @@ function renderHome() {
   }
 
   // Lista commesse
-  const attive = commesse.filter(c=>c.stato==='aperta'||c.stato==='wip');
+  const attive = commesse.filter(c=>c.stato==='aperta'||c.stato==='wip'||c.stato==='standby');
   attive.sort((a,b)=>{
-    const ord={aperta:0,wip:1}; return (ord[a.stato]||2)-(ord[b.stato]||2) || new Date(b.createdAt)-new Date(a.createdAt);
+    const ord={wip:0,standby:1,aperta:2}; return (ord[a.stato]??3)-(ord[b.stato]??3) || new Date(b.createdAt)-new Date(a.createdAt);
   });
   const list  = document.getElementById('home-list');
   const empty = document.getElementById('home-empty');
@@ -1058,7 +1058,7 @@ function renderDetail() {
       <span class="action-btn-label">Inizia</span>
       <span class="action-btn-sub">→ In lavorazione</span>
     </button>`;
-  } else if (cm.stato === 'wip') {
+  } else if (cm.stato === 'wip' || cm.stato === 'standby') {
     btns += `<button class="action-btn danger" style="position:relative;overflow:hidden;user-select:none"
       onmousedown="startHold(this)" ontouchstart="startHold(this)"
       onmouseup="cancelHold()" ontouchend="cancelHold()"
