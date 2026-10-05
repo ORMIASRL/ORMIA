@@ -1604,9 +1604,14 @@
           <input type="email" id="c-pec" placeholder="fatture@pec.azienda.it">
         </div>
         <div class="form-group span-2" style="position:relative">
-          <label>Indirizzo *</label>
-          <input type="text" id="c-indirizzo" placeholder="Via Roma 1, 20100 Milano" autocomplete="off" oninput="_cercaIndirizzo(this.value,'c-indirizzo-dd')">
+          <label>Via e numero civico *</label>
+          <input type="text" id="c-indirizzo" placeholder="Via Roma 1 — scrivi e scegli dai suggerimenti" autocomplete="off" oninput="_cercaIndirizzo(this.value,'c-indirizzo-dd')">
           <div id="c-indirizzo-dd" style="display:none;position:absolute;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);z-index:500;max-height:200px;overflow-y:auto"></div>
+        </div>
+        <div class="form-group span-2" style="display:grid;grid-template-columns:110px 1fr 80px;gap:12px">
+          <div><label>CAP *</label><input type="text" id="c-cap" maxlength="5" inputmode="numeric" placeholder="00100"></div>
+          <div><label>Città *</label><input type="text" id="c-citta" placeholder="Roma"></div>
+          <div><label>Prov.</label><input type="text" id="c-prov" maxlength="2" placeholder="RM" style="text-transform:uppercase"></div>
         </div>
         <div class="form-group span-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div>
@@ -1897,7 +1902,11 @@ async function saveCliente() {
   const ragione   = document.getElementById('c-ragione').value.trim();
   const piva      = document.getElementById('c-piva').value.trim();
   const cf        = document.getElementById('c-cf').value.trim();
-  const indirizzo = document.getElementById('c-indirizzo').value.trim();
+  const via       = document.getElementById('c-indirizzo').value.trim();
+  const cap       = document.getElementById('c-cap').value.trim();
+  const citta     = document.getElementById('c-citta').value.trim();
+  const provincia = document.getElementById('c-prov').value.trim().toUpperCase();
+  const indirizzo = via + ', ' + cap + ' ' + citta + (provincia ? ' (' + provincia + ')' : '');
   const tel       = document.getElementById('c-tel').value.trim();
   const sdi       = document.getElementById('c-sdi').value.trim().toUpperCase();
   const pec       = document.getElementById('c-pec').value.trim();
@@ -1908,7 +1917,9 @@ async function saveCliente() {
   const errs = [];
   if (!ragione)   errs.push('• Intestazione (ragione sociale o nome)');
   if (!piva && !cf) errs.push('• P.IVA oppure Codice fiscale (almeno uno)');
-  if (!indirizzo) errs.push('• Indirizzo');
+  if (!via)       errs.push('• Via e numero civico');
+  if (!/^\d{5}$/.test(cap)) errs.push('• CAP (5 cifre)');
+  if (!citta)     errs.push('• Città');
   if (!tel)       errs.push('• Contatto telefonico');
   if (!email)     errs.push('• Email');
   if (!sdi && !pec) errs.push('• Codice SDI oppure PEC (almeno uno)');
@@ -1925,7 +1936,7 @@ async function saveCliente() {
     ragione, tipo: document.getElementById('c-tipo').value,
     piva, cf, sdi, pec, tel,
     email:    document.getElementById('c-email').value.trim(),
-    indirizzo,
+    indirizzo, via, cap, citta, provincia,
     note:     document.getElementById('c-note').value.trim(),
     pagamento,
     iva: parseFloat(document.getElementById('c-iva').value) || 22,
@@ -2345,14 +2356,17 @@ function openModal(type, preselectClienteId, editId, tipoNuovo) {
         document.getElementById('c-pec').value = c.pec||'';
         document.getElementById('c-tel').value = c.tel||'';
         document.getElementById('c-email').value = c.email||'';
-        document.getElementById('c-indirizzo').value = c.indirizzo||'';
+        document.getElementById('c-indirizzo').value = c.via || c.indirizzo || '';
+        document.getElementById('c-cap').value = c.cap || '';
+        document.getElementById('c-citta').value = c.citta || '';
+        document.getElementById('c-prov').value = c.provincia || '';
         document.getElementById('c-note').value = c.note||'';
         document.getElementById('c-iva').value = c.iva ?? 22;
         document.getElementById('c-pagamento').value = c.pagamento||'';
         document.getElementById('c-soglia-moroso').value = c.soglia_moroso || c.sogliamoroso || '';
       }
     } else {
-      ['c-ragione','c-piva','c-cf','c-sdi','c-pec','c-tel','c-email','c-indirizzo','c-note','c-soglia-moroso'].forEach(id=>document.getElementById(id).value='');
+      ['c-ragione','c-piva','c-cf','c-sdi','c-pec','c-tel','c-email','c-indirizzo','c-cap','c-citta','c-prov','c-note','c-soglia-moroso'].forEach(id=>document.getElementById(id).value='');
       document.getElementById('c-tipo').value = 'Azienda';
       document.getElementById('c-iva').value = 22;
       document.getElementById('c-pagamento').value = '';
@@ -6543,6 +6557,11 @@ function _selezionaIndirizzo(ddId, valore) {
   const input = document.getElementById(inputId);
   if (typeof valore === 'number') valore = (_indirizziTrovati[ddId] || [])[valore] || '';
   if (input && valore) input.value = valore;
+  // Anagrafica cliente: divide il suggerimento in via / CAP / città / provincia
+  if (inputId === 'c-indirizzo' && valore) {
+    const m = valore.match(/^(.*?),\s*(\d{5})?\s*([^()]*?)\s*(?:\(([A-Za-z]{2})\))?\s*$/);
+    if (m) { input.value = m[1].trim(); ['c-cap','c-citta','c-prov'].forEach((id, k) => { const el = document.getElementById(id); if (el) el.value = (m[k+2] || '').trim(); }); }
+  }
   if (dd) dd.style.display = 'none';
 }
 
@@ -11319,10 +11338,13 @@ async function autoInviaFIC(fatt) {
     body: JSON.stringify({
       api_path: `/c/${ficCfg.company_id}/issued_documents`, api_method: 'POST', access_token: accessToken,
       api_body: { data: {
-        type:'invoice', date:(fatt.data||new Date().toISOString()).split('T')[0], number:fatt.numero,
+        type:'invoice', date:(fatt.data||new Date().toISOString()).split('T')[0],
+        ...(/(\d+)\s*$/.test(String(fatt.numero||'')) ? { number: parseInt(String(fatt.numero).match(/(\d+)\s*$/)[1], 10) } : {}),
         entity:{ name:fatt.clRagione||cl?.ragione||'Cliente', vat_number:fatt.clPiva||cl?.piva||'',
                  tax_code:fatt.clCf||cl?.cf||'', ei_code:fatt.clSdi||cl?.sdi||'',
-                 certified_email:fatt.clPec||cl?.pec||'' },
+                 certified_email:fatt.clPec||cl?.pec||'',
+                 address_street:cl?.via||'', address_postal_code:cl?.cap||'', address_city:cl?.citta||'',
+                 address_province:cl?.provincia||'', country:'Italia' },
         items_list: items,
       }},
     }),
