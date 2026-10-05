@@ -10349,9 +10349,10 @@ function apriFatturaModal(draft) {
 function calcolaFattTotali(righe) {
   const iva = parseFloat(document.getElementById('fatt-iva')?.value)||22;
   const r   = (righe||_fattDraft?.righe||[]);
-  const imponibile = r.reduce((s,x)=>s+(x.qta||1)*(x.prezzo||0),0);
-  const ivaAmt = imponibile*iva/100;
-  const totale = imponibile+ivaAmt;
+  const _r2 = n => Math.round((n + Number.EPSILON) * 100) / 100;   // arrotonda ai centesimi (come FiC/SDI)
+  const imponibile = _r2(r.reduce((s,x)=>s+_r2((x.qta||1)*(x.prezzo||0)),0));
+  const ivaAmt = _r2(imponibile*iva/100);
+  const totale = _r2(imponibile+ivaAmt);
   const fmt = n=>'€ '+n.toFixed(2).replace('.',',');
   const s=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
   s('fatt-imponibile',fmt(imponibile)); s('fatt-iva-amt',fmt(ivaAmt)); s('fatt-totale',fmt(totale));
