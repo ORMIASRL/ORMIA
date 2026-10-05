@@ -169,6 +169,9 @@ html, body { height:100%; background:var(--bg); font-family:'DM Sans',sans-serif
         </div>
       </div>
 
+      <!-- Assenti: ferie / permessi / malattia (solo approvati) -->
+      <div id="tim-assenti" style="display:none;padding:10px 24px;border-bottom:1px solid var(--border);flex-shrink:0"></div>
+
       <!-- Commesse aperte -->
       <div style="padding:16px 24px 8px;flex-shrink:0">
         <div class="panel-title">Commesse aperte</div>
@@ -304,6 +307,7 @@ async function loadAll() {
   appuntamenti = a.data  || [];
   renderCommessaList();
   renderLive();
+  await caricaAssenzeTim();
   renderCalendario();
 }
 
@@ -653,6 +657,36 @@ function cambiaMesseCalendario(delta) {
 }
 function tornaOggi() { _calMese=new Date().getMonth(); _calAnno=new Date().getFullYear(); renderCalendario(); }
 
+// ── Assenze (ferie / permessi / malattia): solo quelle approvate; la malattia appare come "Assente" ──
+let assenzeTim = [];
+const _assIso = d => { const z = n => String(n).padStart(2,'0'); return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate()); };
+const _assNome = a => { const m = meccanici.find(x => x.id === a.dip_id); return m ? m.nome.split(' ')[0] + (m.nome.split(' ')[1] ? ' ' + m.nome.split(' ')[1][0] + '.' : '') : '—'; };
+const _assIcona = a => a.tipo === 'ferie' ? '🏖' : a.tipo === 'permesso' ? '⏰' : '🚫';
+const _assLabel = a => a.tipo === 'ferie' ? 'ferie' : a.tipo === 'permesso' ? 'permesso' : 'assente';
+const _assenzeGiorno = ds => assenzeTim.filter(a => a.dal <= ds && a.al >= ds);
+async function caricaAssenzeTim() {
+  try {
+    const da = _assIso(new Date(Date.now() - 62*86400000));
+    const { data } = await supa.from('assenze').select('id,dip_id,tipo,dal,al,ora_dalle,ora_alle,stato').eq('stato','approvata').gte('al', da).order('dal');
+    assenzeTim = data || [];
+  } catch(e) { assenzeTim = []; }
+  renderAssentiTim();
+}
+function renderAssentiTim() {
+  const box = document.getElementById('tim-assenti'); if (!box) return;
+  const oggi = _assIso(new Date()), fra7 = _assIso(new Date(Date.now() + 7*86400000));
+  const fmt = d => new Date(d + 'T12:00:00').toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit' });
+  const oggiA = assenzeTim.filter(a => a.dal <= oggi && a.al >= oggi);
+  const prossimi = assenzeTim.filter(a => a.dal > oggi && a.dal <= fra7);
+  if (!oggiA.length && !prossimi.length) { box.style.display = 'none'; return; }
+  const chip = (a, testo) => `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;background:#E0F2FE;color:#075985;font-size:12px;font-weight:600;margin:0 6px 6px 0">${_assIcona(a)} ${_assNome(a)} <span style="font-weight:400">· ${testo}</span></span>`;
+  box.style.display = '';
+  box.innerHTML = '<div class="panel-title" style="margin-bottom:8px">Assenti</div>' +
+    (oggiA.length ? '<div style="font-size:11px;color:var(--text3);margin-bottom:4px">Oggi</div>' + oggiA.map(a => chip(a, _assLabel(a) + (a.tipo==='permesso' && a.ora_dalle ? ' ' + a.ora_dalle.slice(0,5) + '–' + (a.ora_alle||'').slice(0,5) : (a.al !== oggi ? ' fino al ' + fmt(a.al) : '')))).join('') : '') +
+    (prossimi.length ? '<div style="font-size:11px;color:var(--text3);margin:4px 0">Prossimi 7 giorni</div>' + prossimi.map(a => chip(a, _assLabel(a) + ' dal ' + fmt(a.dal))).join('') : '');
+}
+setInterval(() => { caricaAssenzeTim().then(() => { try { renderCalendario(); } catch(e) {} }); }, 5 * 60 * 1000);
+
 function renderCalendario() {
   const mesi=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
   const titoloEl=document.getElementById('cal-titolo-mese');
@@ -674,6 +708,7 @@ function renderCalendario() {
       onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='var(--surface)'"
       onclick="apriModalAppuntamento(null,'${ds}')">
       <div style="font-size:13px;font-weight:${isOggi?'800':'500'};color:${isOggi?'white':'inherit'};background:${isOggi?'var(--accent)':'transparent'};width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:4px">${g}</div>
+      ${_assenzeGiorno(ds).map(a=>`<div style="font-size:10px;padding:2px 5px;border-radius:4px;background:#E0F2FE;color:#075985;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_assIcona(a)} ${_assNome(a)}</div>`).join('')}
       ${evG.map(e=>`<div style="font-size:10px;padding:2px 5px;border-radius:4px;background:${e.tipo==='consegna'?'#FEF3C7':'#EDE9FE'};color:${e.tipo==='consegna'?'#92400E':'#6D28D9'};margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.ora} ${e.titolo}</div>`).join('')}
     </div>`;
   }
