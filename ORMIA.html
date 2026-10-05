@@ -967,8 +967,8 @@
             <div class="stato-pill" data-stato="standby" onclick="setStatoFilter(this,'standby')">Standby</div>
             <div class="stato-pill" data-stato="chiusa" onclick="setStatoFilter(this,'chiusa')">Chiuse</div>
           </div>
-          <!-- toggle vista -->
-          <div style="display:flex;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+          <!-- toggle vista (nascosto: si usa solo lista) -->
+          <div style="display:none;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
             <button id="btn-vista-kanban" onclick="setVistaCommesse('kanban')"
               style="padding:5px 11px;border:none;cursor:pointer;background:var(--accent);color:white;font-size:12px;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><rect x="3" y="3" width="5" height="18"/><rect x="10" y="3" width="5" height="12"/><rect x="17" y="3" width="5" height="15"/></svg>
@@ -3159,7 +3159,7 @@ let statoFiltro = '';
 
 let comVociMano = [], comVociRic = [], comVociExtra = [];
 
-let vistaCommesse = 'kanban';
+let vistaCommesse = 'lista';
 
 // ===== MECCANICI CRUD =====
 let editingMeccanicoId = null;
@@ -5596,11 +5596,11 @@ function renderCommesse() {
         <div class="commessa-card-body">
           <div class="commessa-card-top">
             <div style="flex:1;min-width:0">
-              <div class="commessa-num" style="font-size:19px;letter-spacing:1.5px">${v&&v.targa?v.targa:(cm.numero||'')} <span style="color:var(--border2)">·</span> <span style="color:var(--text3);font-weight:400;font-size:11px">${formatDate(cm.dataApertura)||'—'}</span>${_comInGaranzia(cm)?` <span style="background:var(--warning-light);color:var(--warning);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;border:1px solid #FDE68A">🔧 GAR.</span>`:''}</div>
+              <div class="commessa-num">${v&&v.targa?`<span class="commessa-targa" style="font-size:18px;padding:3px 11px;letter-spacing:1.5px">${v.targa}</span>`:(cm.numero||'')} <span style="color:var(--border2)">·</span> <span style="color:var(--text3);font-weight:400;font-size:11px">${formatDate(cm.dataApertura)||'—'}</span>${_comInGaranzia(cm)?` <span style="background:var(--warning-light);color:var(--warning);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;border:1px solid #FDE68A">🔧 GAR.</span>`:''}</div>
               <div class="commessa-desc">${cm.descrizione||cm.desc}</div>
               <div class="commessa-cliente" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                 ${cl?`<span>${cl.ragione}</span>`:''}
-                ${v&&v.targa?`<span class="commessa-targa">${cm.numero||''}</span>`:''}
+                ${v&&v.targa?`<span style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace">${cm.numero||''}</span>`:''}
                 ${v?`<span style="font-size:12px;color:var(--text3)">${[v.marca,v.modello].filter(Boolean).join(' ')}</span>`:''}
               </div>
             </div>
@@ -5713,7 +5713,7 @@ function showDetailCommessa(id) {
 
   const renderVociDetail = (arr, tipo) => arr.length
     ? arr.map((v,i)=>`<div class="detail-row" style="align-items:flex-start;gap:8px">
-        <span class="detail-key" style="flex:1">${_descRic(v)} ${tipo==='ric' && cm.stato!=='fatturata' ? _stepperRic(i, v.qta||1) : '× '+(v.qta||1)}</span>
+        <span class="detail-key" style="flex:1;color:var(--text);font-size:13px">${_descRic(v)} ${tipo==='ric' && cm.stato!=='fatturata' ? _stepperRic(i, v.qta||1) : '× '+(v.qta||1)}</span>
         <div style="display:flex;align-items:center;gap:6px">
           ${v.sconto ? `<span style="font-size:10px;background:var(--warning-light);color:var(--warning);padding:1px 5px;border-radius:4px">-${v.sconto}%</span>` : ''}
           <span style="font-family:'DM Mono',monospace;font-size:13px">€ ${((v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100)).toFixed(2)}</span>
