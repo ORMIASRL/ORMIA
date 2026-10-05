@@ -7802,6 +7802,9 @@ function prepopolaFormNuovoRicambio(testo) {
   const desc = document.getElementById('dc-new-desc');
   const cod  = document.getElementById('dc-new-cod');
   if (!desc || !cod) return;
+  // Nuovo ricambio: prezzi e quantità sempre vuoti (mai quelli del ricambio precedente)
+  ['dc-new-acq','dc-new-vend'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  { const q = document.getElementById('dc-new-qta'); if (q) q.value = 1; const um = document.getElementById('dc-new-um'); if (um) um.value = 'pz'; }
   // Se sembra un codice (niente spazi, corto) mettilo nel codice, altrimenti nella descrizione
   const sembraCodice = /^[A-Z0-9\-\.\/]+$/.test(testo.trim()) && testo.trim().length <= 30 && !testo.includes(' ');
   if (sembraCodice) {
@@ -7861,7 +7864,8 @@ async function creaESalvaNuovoRicambio() {
     await dbSaveCommessa(commesse[ci]);
 
     showToast(`"${desc}" creato e aggiunto ✓`);
-    ['dc-new-desc','dc-new-cod'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
+    ['dc-new-desc','dc-new-cod','dc-new-acq','dc-new-vend'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
+    { const um=document.getElementById('dc-new-um'); if(um) um.value='pz'; }
     document.getElementById('dc-new-qta').value=1;
     document.getElementById('dc-scan-notfound').style.display='none';
     document.getElementById('dc-scan-result').style.display='none';
