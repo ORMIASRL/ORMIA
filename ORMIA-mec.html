@@ -685,7 +685,7 @@ function isMeccanicoOperativo(m) {
   return (m.ruoli||[]).some(r => operativi.includes(r.toLowerCase()));
 }
 function fixProd(p) { return p ? {...p, descrizione:p.descrizione||p.desc, codInt:p.cod_int, codForn:p.cod_forn, giacenza:p.giacenza, scortaMin:p.scorta_min, qtaRiordino:p.qta_riordino, prezzoAcq:p.prezzo_acq, prezzoVend:p.prezzo_vend, fornitoreId:p.fornitore_id} : null; }
-function fixCom(c)  { return c ? {...c, clienteId:c.cliente_id, veicoloId:c.veicolo_id, dataApertura:c.data_apertura, vociMano:c.voci_mano||[], vociRic:c.voci_ric||[], vociExtra:c.voci_extra||[], desc:c.descrizione, foto:c.foto||[], fotoInizio:c.foto_inizio||{}, fotoFine:c.foto_fine||[], allegati:c.allegati||[], nota_mec:c.nota_mec||'' } : null; }
+function fixCom(c)  { return c ? {...c, clienteId:c.cliente_id, veicoloId:c.veicolo_id, dataApertura:c.data_apertura, vociMano:c.voci_mano||[], vociRic:c.voci_ric||[], vociExtra:c.voci_extra||[], desc:c.descrizione, foto:c.foto||[], fotoInizio:c.foto_inizio||{}, fotoFine:c.foto_fine||[], allegati:c.allegati||[], inGaranzia:c.in_garanzia, nota_mec:c.nota_mec||'' } : null; }
 function fixTim(t)  { return t ? {...t, mecId:t.mec_id, comId:t.com_id} : null; }
 function fixVei(v)  { return v ? {...v, clienteId:v.cliente_id, garanziaScadenza:v.garanzia_scadenza} : null; }
 
@@ -853,7 +853,7 @@ function renderHome() {
             <div class="com-num">${cm.numero||''}</div>
             <div class="com-desc">${cm.desc}</div>
           </div>
-          ${isVeicoloInGaranzia(v)?'<span style="flex-shrink:0;background:#FEF3C7;border:1px solid #FDE68A;color:#92400E;font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;white-space:nowrap">🔒 GARANZIA</span>':''}
+          ${_comInGar(cm, v)?'<span style="flex-shrink:0;background:#FEF3C7;border:1px solid #FDE68A;color:#92400E;font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;white-space:nowrap">🔒 GARANZIA</span>':''}
         </div>
         <div class="com-cli" style="margin-top:8px;display:flex;flex-direction:column;gap:5px">
           ${v ? `<div style="display:flex;align-items:center;gap:8px">
@@ -979,7 +979,7 @@ function renderDetail() {
   // Foto garanzia
   const fotoWrap = document.getElementById('det-foto-wrap');
   const fotoAccWrap = document.getElementById('det-foto-accettazione-wrap');
-  const inGaranzia = isVeicoloInGaranzia(v);
+  const inGaranzia = _comInGar(cm, v);
   if (inGaranzia) {
     fotoWrap.style.display = '';
     if (fotoAccWrap) fotoAccWrap.style.display = 'none';
@@ -1084,7 +1084,7 @@ async function timbra(verso) {
       // Blocco garanzia: senza foto iniziali (targa, telaio, km) non si può iniziare il lavoro
       const _cmG = getCommesse().find(c=>c.id===comSelected.id) || comSelected;
       const _vG  = getVeicoli().find(x=>x.id===_cmG.veicoloId);
-      if (isVeicoloInGaranzia(_vG) && !fotoInizioCompleto(_cmG.fotoInizio)) {
+      if (_comInGar(_cmG, _vG) && !fotoInizioCompleto(_cmG.fotoInizio)) {
         alert('⚠️ Commessa in garanzia\n\nPrima di iniziare il lavoro scatta le foto iniziali obbligatorie (targa, telaio e km).\nLe trovi nella sezione "Foto iniziali" qui sotto.');
         return;
       }
@@ -1124,6 +1124,13 @@ async function salvaNota() {
     document.getElementById('btn-salva-nota').style.display = 'none';
     showToast('Nota salvata ✓');
   } catch(e) { showToast('Errore: '+e.message); }
+}
+
+// Garanzia decisa sulla commessa (Sì/No dal gestionale); vuoto = segue il veicolo
+function _comInGar(cm, v) {
+  if (cm && cm.inGaranzia === true)  return true;
+  if (cm && cm.inGaranzia === false) return false;
+  return isVeicoloInGaranzia(v);
 }
 
 function isVeicoloInGaranzia(v) {
@@ -1418,14 +1425,14 @@ async function avanzaStato() {
   if (!comSelected) return;
   const cm = getCommesse().find(c=>c.id===comSelected.id);
   if (!cm) return;
-  const map    = {aperta:'wip', wip:'chiusa'};
+  const map    = {aperta:'wip', wip:'chiusa', standby:'chiusa'};
   const labels = {aperta:'In lavorazione', wip:'Chiusa'};
   const nuovo  = map[cm.stato];
   if (!nuovo) return;
 
   // Blocco garanzia: foto iniziali per iniziare, foto fine per chiudere
   const _vGar = getVeicoli().find(x=>x.id===cm.veicoloId);
-  if (isVeicoloInGaranzia(_vGar)) {
+  if (_comInGar(cm, _vGar)) {
     if (nuovo === 'wip') {
       if (!fotoInizioCompleto(cm.fotoInizio)) {
         alert('⚠️ Foto iniziali mancanti\n\nScatta targa, telaio e km prima di iniziare la lavorazione.\nLe trovi nella sezione "Foto iniziali" qui sotto.');
