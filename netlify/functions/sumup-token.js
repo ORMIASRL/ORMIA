@@ -1,99 +1,50 @@
 // Netlify Function: sumup-token
-// Proxy per scambio codice OAuth2 con SumUp
-// Evita CORS — il browser non può chiamare il token endpoint SumUp direttamente
+// Proxy per scambio codice OAuth2 con SumUp (evita CORS)
+// Handler async: richiesto dal runtime Node 24 di Netlify/AWS Lambda
 
-var https = require('https');
+const SUMUP_TOKEN_URL = 'https://api.sumup.com/token';
 
-var ORIGIN       = 'https://ormiaofficinapro.netlify.app';
-var SUMUP_HOST   = 'api.sumup.com';
-var SUMUP_PATH   = '/token';
+const CORS = {
+  'Access-Control-Allow-Origin':  'https://ormiaofficinapro.netlify.app',
+  'Access-Control-Allow-Methods': 'POST,OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+const risposta = (statusCode, obj) => ({
+  statusCode,
+  headers: { 'Content-Type': 'application/json', ...CORS },
+  body: JSON.stringify(obj),
+});
 
-exports.handler = function(event, context, callback) {
-  var headers = {
-    'Access-Control-Allow-Origin':  ORIGIN,
-    'Access-Control-Allow-Methods': 'POST,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  };
+exports.handler = async (event) => {
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' };
+  if (event.httpMethod !== 'POST') return risposta(405, { error: 'Method not allowed' });
 
-  if (event.httpMethod === 'OPTIONS') {
-    return callback(null, { statusCode: 200, headers: headers, body: '' });
-  }
+  let body = {};
+  try { body = JSON.parse(event.body || '{}'); } catch (e) {}
+  const { client_id, client_secret, redirect_uri, code, refresh_token } = body;
+  const grant_type = body.grant_type || 'authorization_code';
 
-  if (event.httpMethod !== 'POST') {
-    return callback(null, { statusCode: 405, headers: headers, body: JSON.stringify({ error: 'Method not allowed' }) });
-  }
-
-  var body = {};
-  try { body = JSON.parse(event.body || '{}'); } catch(e) {}
-
-  var grant_type    = body.grant_type || 'authorization_code';
-  var client_id     = body.client_id;
-  var client_secret = body.client_secret;
-  var redirect_uri  = body.redirect_uri;
-  var code          = body.code;
-  var refresh_token = body.refresh_token;
-
-  var payload;
+  let params;
   if (grant_type === 'refresh_token') {
-    if (!client_id || !client_secret || !refresh_token) {
-      return callback(null, { statusCode: 400, headers: headers,
-        body: JSON.stringify({ error: 'client_id, client_secret e refresh_token obbligatori' }) });
-    }
-    payload = new URLSearchParams({
-      grant_type:    'refresh_token',
-      client_id:     client_id,
-      client_secret: client_secret,
-      refresh_token: refresh_token,
-    }).toString();
+    if (!client_id || !client_secret || !refresh_token)
+      return risposta(400, { error: 'client_id, client_secret e refresh_token obbligatori' });
+    params = { grant_type, client_id, client_secret, refresh_token };
   } else {
-    if (!code || !client_id || !client_secret || !redirect_uri) {
-      return callback(null, { statusCode: 400, headers: headers,
-        body: JSON.stringify({ error: 'code, client_id, client_secret e redirect_uri obbligatori' }) });
-    }
-    payload = new URLSearchParams({
-      grant_type:    'authorization_code',
-      client_id:     client_id,
-      client_secret: client_secret,
-      redirect_uri:  redirect_uri,
-      code:          code,
-    }).toString();
+    if (!code || !client_id || !client_secret || !redirect_uri)
+      return risposta(400, { error: 'code, client_id, client_secret e redirect_uri obbligatori' });
+    params = { grant_type: 'authorization_code', client_id, client_secret, redirect_uri, code };
   }
 
-  var reqHeaders = {
-    'Content-Type':   'application/x-www-form-urlencoded',
-    'Content-Length': Buffer.byteLength(payload),
-    'Accept':         'application/json',
-  };
-
-  var options = {
-    hostname: SUMUP_HOST,
-    path:     SUMUP_PATH,
-    method:   'POST',
-    headers:  reqHeaders,
-  };
-
-  var req = https.request(options, function(res) {
-    var data = '';
-    res.on('data', function(chunk) { data += chunk; });
-    res.on('end', function() {
-      var parsed;
-      try { parsed = JSON.parse(data); } catch(e) { parsed = { raw: data }; }
-      callback(null, {
-        statusCode: res.statusCode,
-        headers: Object.assign({ 'Content-Type': 'application/json' }, headers),
-        body: JSON.stringify(parsed),
-      });
+  try {
+    const res = await fetch(SUMUP_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
+      body: new URLSearchParams(params).toString(),
     });
-  });
-
-  req.on('error', function(e) {
-    callback(null, {
-      statusCode: 500,
-      headers: headers,
-      body: JSON.stringify({ error: 'proxy_error', message: e.message }),
-    });
-  });
-
-  req.write(payload);
-  req.end();
+    const text = await res.text();
+    let parsed; try { parsed = JSON.parse(text); } catch (e) { parsed = { raw: text }; }
+    return risposta(res.status, parsed);
+  } catch (e) {
+    return risposta(500, { error: 'proxy_error', message: e.message });
+  }
 };
