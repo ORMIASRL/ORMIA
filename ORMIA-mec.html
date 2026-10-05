@@ -933,8 +933,7 @@ function _assRenderForm() {
   }
   if (_assTipo === 'malattia') {
     html += lab('Numero di protocollo del certificato *', `<input type="text" id="ass-prot" inputmode="numeric" placeholder="Es. 123456789" style="${inp};font-family:monospace">`) +
-      lab('Foto o PDF del certificato (facoltativo)', `<input type="file" id="ass-file" accept="image/*,application/pdf" style="${inp};padding:9px">`) +
-      `<div style="font-size:12px;color:#666;background:#F0F9FF;border-radius:8px;padding:8px 10px;margin-bottom:10px">🔒 Protocollo e certificato li vede solo l'amministrazione. I colleghi vedono solo "Assente".</div>`;
+      `<div style="font-size:12px;color:#666;background:#F0F9FF;border-radius:8px;padding:8px 10px;margin-bottom:10px">🔒 Serve solo il <b>numero di protocollo</b>: non fotografare né inviare il certificato con la diagnosi. Il protocollo lo vede solo l'amministrazione, i colleghi vedono solo "Assente".</div>`;
   } else {
     html += lab('Nota (facoltativa)', `<input type="text" id="ass-nota" placeholder="Es. visita medica, matrimonio…" style="${inp}">`);
   }
@@ -998,10 +997,9 @@ async function inviaAssenza() {
     row.ora_alle  = document.getElementById('ass-alle').value || null;
     if (!row.ora_dalle || !row.ora_alle || row.ora_alle <= row.ora_dalle) { alert('Controlla gli orari del permesso.'); return; }
   }
-  let prot = '', file = null;
+  let prot = '';
   if (_assTipo === 'malattia') {
     prot = (document.getElementById('ass-prot').value || '').trim();
-    file = document.getElementById('ass-file').files[0] || null;
     if (!prot) { alert('Inserisci il numero di protocollo del certificato.'); return; }
   } else {
     row.nota = (document.getElementById('ass-nota')?.value || '').trim() || null;
@@ -1013,14 +1011,7 @@ async function inviaAssenza() {
     const { error } = await supa.from('assenze').insert(row);
     if (error) throw error;
     if (_assTipo === 'malattia') {
-      let path = null;
-      if (file) {
-        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-        path = mecLogged.id + '/' + row.id + '_' + Date.now() + '.' + ext;
-        const up = await supa.storage.from('certificati').upload(path, file, { contentType: file.type || 'application/octet-stream' });
-        if (up.error) { path = null; alert('Malattia registrata, ma il certificato non è stato caricato: ' + up.error.message); }
-      }
-      const r2 = await supa.from('assenze_riservate').insert({ assenza_id: row.id, protocollo: prot, certificato_path: path });
+      const r2 = await supa.from('assenze_riservate').insert({ assenza_id: row.id, protocollo: prot });
       if (r2.error) throw r2.error;
     }
     showToast(_assTipo === 'malattia' ? 'Malattia comunicata ✓ — guarisci presto!' : 'Richiesta inviata ✓ — riceverai l\'esito qui');
