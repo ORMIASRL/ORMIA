@@ -1960,6 +1960,8 @@ async function salvaNC() {
     document.getElementById('modal-nc').style.display = 'none';
     renderNoteCredito();
     showToastFin(`Nota credito ${numero} emessa ✓`);
+    // Invio automatico a Fatture in Cloud (come le fatture)
+    if (_ficConfig.company_id && (_ficToken?.access_token || _ficToken?.refresh_token)) inviaNCFiC(nc.id);
     const cl = _clienti.find(c=>c.id===nc.clienteId);
     apriAnteprimaNc(generaHtmlNC(nc, fatt, cl));
   } catch(e) {
@@ -1979,11 +1981,16 @@ async function inviaNCFiC(id) {
       body: JSON.stringify({ data: {
         type: 'credit_note',
         date: (nc.data||new Date().toISOString()).split('T')[0],
-        number: nc.numero,
-        entity: { name: fatt?.cl_ragione||cl?.ragione||'Cliente', vat_number: cl?.piva||'', tax_code: cl?.cf||'', ei_code: cl?.sdi||'', certified_email: cl?.pec||'' },
-        items_list: [{ name: nc.motivo||'Nota di credito', qty:1, net_price: -(nc.importo||0), vat:{value:22} }],
+        ...(/(\d+)\s*$/.test(String(nc.numero||'')) ? { number: parseInt(String(nc.numero).match(/(\d+)\s*$/)[1], 10) } : {}),
+        entity: { name: fatt?.cl_ragione||cl?.ragione||'Cliente', vat_number: cl?.piva||'', tax_code: cl?.cf||'', ei_code: cl?.sdi||'', certified_email: cl?.pec||'',
+                  address_street: [cl?.via, cl?.civico].filter(Boolean).join(' '), address_postal_code: cl?.cap||'',
+                  address_city: cl?.citta||'', address_province: cl?.provincia||'', country: 'Italia' },
+        // L'importo della nota è IVA inclusa: su FiC va il netto (positivo) con l'aliquota della fattura
+        items_list: [{ name: nc.motivo||'Nota di credito', qty:1,
+                       net_price: Math.round((nc.importo||0) / (1 + (fatt?.iva||22)/100) * 100) / 100, vat: _vatFicFin(fatt?.iva||22) }],
+        payments_list: [{ amount: Math.round((nc.importo||0)*100)/100, due_date: (nc.data||new Date().toISOString()).split('T')[0], status: 'not_paid' }],
         ...(fatt?.ficId ? { original_document_id: parseInt(fatt.ficId) } : {}),
-      }}),
+      }, options: { fix_payments: true } }),
     });
     const ficId = String(res.data.id);
     await supa.from('note_credito').update({ fic_id:ficId, fic_stato:'confermata' }).eq('id', id);
