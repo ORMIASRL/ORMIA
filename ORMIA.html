@@ -11351,7 +11351,8 @@ async function autoInviaFIC(fatt) {
                  address_street:[cl?.via, cl?.civico].filter(Boolean).join(' '), address_postal_code:cl?.cap||'', address_city:cl?.citta||'',
                  address_province:cl?.provincia||'', country:'Italia' },
         items_list: items,
-      }},
+        payments_list: [{ amount: Math.round((fatt.totale||0)*100)/100, due_date: (fatt.scadenza||fatt.data||new Date().toISOString()).split('T')[0], status: 'not_paid' }],
+      }, options: { fix_payments: true } },
     }),
   });
   const d = await res.json().catch(() => ({}));
