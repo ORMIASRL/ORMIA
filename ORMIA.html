@@ -2733,13 +2733,21 @@ function init() {
   </div>
 
   <!-- TIMBRATURA COMMESSA -->
-  <div class="detail-section" id="dc-tim-section" style="background:var(--surface2)">
-    <div class="detail-section-title" style="display:flex;align-items:center;justify-content:space-between">
+  <div class="detail-section" id="dc-tim-section">
+    <div class="detail-section-title" onclick="toggleTimCommessa()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;margin-bottom:0">
       <span style="display:flex;align-items:center;gap:6px">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        Timbratura
+        Timbrature
+        <span id="dc-tim-chip" style="font-size:11px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--success)"></span>
+      </span>
+      <span style="display:flex;align-items:center;gap:10px">
+        <span id="dc-tim-ore" style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text3)">0h00</span>
+        <span id="dc-tim-eur" style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:var(--text)">€ 0,00</span>
+        <svg id="dc-chev-tim" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;transition:transform .2s;transform:rotate(-90deg)"><polyline points="6 9 12 15 18 9"/></svg>
       </span>
     </div>
+    <div id="dc-tim-body" style="display:none;margin-top:12px">
+    <div id="dc-tim-lista" style="margin-bottom:12px"></div>
 
     <!-- Scansione tesserino / selezione manuale -->
     <div id="dc-tim-chiusa-msg" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;font-size:12px;color:var(--text3);margin-bottom:10px">
@@ -2783,6 +2791,7 @@ function init() {
 
     <!-- Timbrature attive su questa commessa -->
     <div id="dc-tim-live" style="margin-top:10px"></div>
+    </div><!-- /dc-tim-body -->
   </div>
   <div class="detail-section" id="dc-sec-mano">
     <div class="detail-section-title" onclick="toggleDcSection('mano')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none">
@@ -4320,10 +4329,145 @@ async function chiudiPresenzeAutomatiche() {
   }
 }
 
+// ── Timbrature della commessa: riepilogo chiuso + dettaglio apribile ──
+function _timCommessa(comId) {
+  return timbrature.filter(t => t.comId === comId).sort((a,b) => new Date(a.entrata) - new Date(b.entrata));
+}
+function _minTim(t) {
+  if (!t.entrata || !t.uscita) return 0;
+  return Math.max(0, Math.round((new Date(t.uscita) - new Date(t.entrata)) / 60000));
+}
+function _oreTimbrate(comId) { return _timCommessa(comId).reduce((s,t) => s + _minTim(t), 0) / 60; }
+function _importoTimbrature(comId) {
+  const tar = (getTariffa('normale') || {}).cli || 0;
+  return +(_oreTimbrate(comId) * tar).toFixed(2);
+}
+function _valoreLavoro(cm) { return (cm.totale || 0) + _importoTimbrature(cm.id); }
+function _fmtHM(min) { min = Math.round(min); return Math.floor(min/60) + 'h' + String(min%60).padStart(2,'0'); }
+
+// Fattura: una sola riga "Manodopera" (ore timbrate + manodopera inserita a mano)
+function _rigaManodoperaFattura(cm) {
+  const man = (cm.vociMano || []).filter(r => r.desc || r.prezzo);
+  const impMan = man.reduce((s,v) => s + (v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100), 0);
+  const oreMan = man.reduce((s,v) => s + (+v.qta || 0), 0);
+  const ore = oreMan + _oreTimbrate(cm.id);
+  const imp = +(impMan + _importoTimbrature(cm.id)).toFixed(2);
+  if (!(imp > 0)) return [];
+  const oreTxt = (Math.round(ore * 100) / 100).toLocaleString('it-IT');
+  return [{ desc: 'Manodopera' + (ore > 0 ? ' (' + oreTxt + ' h)' : ''), qta: 1, prezzo: imp }];
+}
+
+let _timApertoId = null;
+function toggleTimCommessa() {
+  _timApertoId = _timApertoId === selectedCommessaId ? null : selectedCommessaId;
+  renderTimCommessaRiepilogo(selectedCommessaId);
+}
+function renderTimCommessaRiepilogo(comId) {
+  const lista = _timCommessa(comId);
+  const chiuse = lista.filter(t => t.uscita), aperte = lista.filter(t => !t.uscita);
+  const min = chiuse.reduce((s,t) => s + _minTim(t), 0);
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('dc-tim-ore', _fmtHM(min));
+  set('dc-tim-eur', '€ ' + _importoTimbrature(comId).toFixed(2).replace('.',','));
+  const chip = document.getElementById('dc-tim-chip');
+  if (chip) chip.textContent = aperte.length ? '● ' + aperte.map(t => (meccanici.find(m=>m.id===t.mecId)?.nome || '').split(' ')[0]).join(', ') : '';
+  const aperto = _timApertoId === comId;
+  const body = document.getElementById('dc-tim-body'); if (body) body.style.display = aperto ? '' : 'none';
+  const chev = document.getElementById('dc-chev-tim'); if (chev) chev.style.transform = aperto ? 'rotate(0deg)' : 'rotate(-90deg)';
+  const box = document.getElementById('dc-tim-lista');
+  if (!box || !aperto) return;
+  if (!lista.length) { box.innerHTML = '<div style="font-size:12px;color:var(--text3)">Nessuna timbratura su questa commessa.</div>'; return; }
+  const hh = d => new Date(d).toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' });
+  box.innerHTML = '<div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">' + lista.map((t, i) => {
+    const m = meccanici.find(x => x.id === t.mecId);
+    const dur = t.uscita ? _fmtHM(_minTim(t)) : '<span style="color:var(--success);font-weight:600">in corso</span>';
+    return `<div style="display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;padding:7px 10px;font-size:12px;${i?'border-top:1px solid var(--border);':''}background:var(--surface)">
+      <span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m ? m.nome : '—'}</span>
+      <span style="font-family:'DM Mono',monospace;color:var(--text3)">${new Date(t.entrata).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'})} · ${hh(t.entrata)}–${t.uscita ? hh(t.uscita) : '…'}</span>
+      <span style="font-family:'DM Mono',monospace;min-width:42px;text-align:right">${dur}</span>
+      <span style="display:flex;gap:2px">
+        <button title="Correggi" onclick="apriModificaTimbratura('${t.id}')" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px">✏️</button>
+        <button title="Elimina" onclick="eliminaTimbraturaCommessa('${t.id}')" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px">🗑</button>
+      </span>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+async function _ricaricaTimbratureCommessa(comId) {
+  timbrature = await DB.load('timbrature');
+  if (selectedCommessaId === comId) showDetailCommessa(comId);
+  try { renderLive(); } catch(e) {}
+}
+
+function apriModificaTimbratura(id) {
+  const t = timbrature.find(x => x.id === id);
+  if (!t) return;
+  const m = meccanici.find(x => x.id === t.mecId);
+  const z = n => String(n).padStart(2,'0');
+  const d = new Date(t.entrata);
+  const data = d.getFullYear() + '-' + z(d.getMonth()+1) + '-' + z(d.getDate());
+  const hm = iso => iso ? new Date(iso).toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' }) : '';
+  document.getElementById('modal-mod-tim')?.remove();
+  const ov = document.createElement('div');
+  ov.id = 'modal-mod-tim';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px';
+  const inp = 'padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:\'DM Mono\',monospace;background:var(--surface)';
+  ov.innerHTML = `
+    <div style="background:var(--surface);border-radius:var(--radius-lg);padding:22px;width:360px;max-width:100%;box-shadow:var(--shadow-lg)">
+      <div style="font-size:16px;font-weight:800;margin-bottom:2px">Correggi timbratura</div>
+      <div style="font-size:13px;color:var(--text3);margin-bottom:14px">${m ? m.nome : '—'}</div>
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px">Data
+        <input type="date" id="mt-data" value="${data}" style="${inp}"></label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--text2)">Inizio
+          <input type="time" id="mt-entrata" value="${hm(t.entrata)}" style="${inp}"></label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--text2)">Fine
+          <input type="time" id="mt-uscita" value="${hm(t.uscita)}" style="${inp}"></label>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:8px">Lascia vuota la fine se il meccanico sta ancora lavorando.</div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('modal-mod-tim').remove()">Annulla</button>
+        <button class="btn btn-primary btn-sm" onclick="salvaModificaTimbratura('${t.id}')">Salva</button>
+      </div>
+    </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+
+async function salvaModificaTimbratura(id) {
+  const t = timbrature.find(x => x.id === id);
+  if (!t) return;
+  const data = document.getElementById('mt-data').value;
+  const e = (document.getElementById('mt-entrata').value || '').slice(0,5);
+  const u = (document.getElementById('mt-uscita').value || '').slice(0,5);
+  if (!data || !e) { alert('Data e ora di inizio sono obbligatorie.'); return; }
+  const ent = new Date(data + 'T' + e + ':00');
+  const usc = u ? new Date(data + 'T' + u + ':00') : null;
+  if (usc && usc <= ent) { alert('La fine deve essere dopo l\'inizio.'); return; }
+  const { error } = await supa.from('timbrature').update({ entrata: ent.toISOString(), uscita: usc ? usc.toISOString() : null }).eq('id', id);
+  if (error) { alert('Errore: ' + error.message); return; }
+  document.getElementById('modal-mod-tim')?.remove();
+  showToast('Timbratura corretta ✓');
+  await _ricaricaTimbratureCommessa(t.comId);
+}
+
+async function eliminaTimbraturaCommessa(id) {
+  const t = timbrature.find(x => x.id === id);
+  if (!t) return;
+  const m = meccanici.find(x => x.id === t.mecId);
+  const hm = iso => new Date(iso).toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' });
+  if (!confirm('Eliminare la timbratura di ' + (m ? m.nome : '—') + ' (' + new Date(t.entrata).toLocaleDateString('it-IT') + ' ' + hm(t.entrata) + (t.uscita ? '–' + hm(t.uscita) : '') + ')?')) return;
+  const { error } = await supa.from('timbrature').delete().eq('id', id);
+  if (error) { alert('Errore: ' + error.message); return; }
+  showToast('Timbratura eliminata');
+  await _ricaricaTimbratureCommessa(t.comId);
+}
+
 function renderTimbratureLiveCommessa(comId) {
   const cm   = commesse.find(c=>c.id===comId);
   const el   = document.getElementById('dc-tim-live');
   if (!el) return;
+  try { renderTimCommessaRiepilogo(comId); } catch(e) { console.warn('riepilogo timbrature', e); }
 
   const isChiusa = cm && (cm.stato === 'chiusa' || cm.stato === 'fatturata');
 
@@ -5285,7 +5429,7 @@ function showDetailCommessa(id) {
 
   // Sezione timbratura: nascosta se chiusa
   const timSec = document.getElementById('dc-tim-section');
-  if (timSec) timSec.style.display = cm.stato === 'chiusa' ? 'none' : '';
+  if (timSec) timSec.style.display = '';   // sempre visibile: riepilogo ore/importo (input timbratura nascosto se chiusa)
 
   // Sezione checkout: visibile solo se chiusa o fatturata
   const checkoutSec = document.getElementById('dc-checkout-section');
@@ -5318,7 +5462,7 @@ function showDetailCommessa(id) {
   const totMano  = (cm.vociMano||[]).reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100),0);
   const totRic   = (cm.vociRic||[]).reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100),0);
   const totExtra = (cm.vociExtra||[]).reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100),0);
-  document.getElementById('dc-tot-mano').textContent  = '€ '+totMano.toFixed(2).replace('.',',');
+  document.getElementById('dc-tot-mano').textContent  = '€ '+(totMano+_importoTimbrature(cm.id)).toFixed(2).replace('.',',');  // manuale + ore timbrate
   document.getElementById('dc-tot-ric').textContent   = '€ '+totRic.toFixed(2).replace('.',',');
   document.getElementById('dc-tot-extra').textContent = '€ '+totExtra.toFixed(2).replace('.',',');
   document.getElementById('dc-tot-mano-hdr').textContent  = '€ '+totMano.toFixed(2).replace('.',',');
@@ -5370,7 +5514,7 @@ function showDetailCommessa(id) {
   // Voci automatiche nel dettaglio
   const imp2       = _impostazioni || {};
   const totRicDC   = (cm.vociRic||[]).reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0);
-  const totManoDC  = (cm.vociMano||[]).reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0);
+  const totManoDC  = (cm.vociMano||[]).reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0) + _importoTimbrature(cm.id);
   const smaltPerc  = cm.smaltimentoPerc ?? imp2.smaltimento_perc ?? imp2.smaltimentoPerc ?? 0;
   const matPerc    = cm.materialeConsumoPerc ?? imp2.materiale_consumo_perc ?? imp2.materialeConsumoPerc ?? 0;
   const smalt      = +(totRicDC  * smaltPerc / 100).toFixed(2);
@@ -5571,7 +5715,7 @@ function aggiornaLiveTotal(comId) {
   const cm = (commesse).find(x=>x.id===comId);
   if (!cm) return;
 
-  const totBase = (cm.totale||0);
+  const totBase = (cm.totale||0) + _importoTimbrature(comId);   // + ore timbrate (chiuse)
 
   // IVA dal cliente
   const cl = clienti.find(c=>c.id===cm.clienteId);
@@ -6336,7 +6480,7 @@ function _disegnaGaranzie() {
       <td style="font-size:12px">${(c.dataApertura||c.createdAt) ? new Date(c.dataApertura||c.createdAt).toLocaleDateString('it-IT') : '—'}</td>
       <td style="font-family:'DM Mono',monospace;font-size:12px">${_escAllG(c.garClaim||'—')}</td>
       <td style="font-family:'DM Mono',monospace;font-size:12px">${_escAllG(c.garRdg||'—')}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace;font-size:12px">${_eur(c.totale)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;font-size:12px">${_eur(_valoreLavoro(c))}</td>
       <td style="text-align:right;font-family:'DM Mono',monospace;font-size:12px;font-weight:600">${c.garImporto ? _eur(c.garImporto) : '—'}${dif ? `<div style="font-size:10px;font-weight:400;color:${dif>0?'var(--danger)':'var(--success)'}">${dif>0?'–':'+'} ${_eur(Math.abs(dif))}</div>` : ''}</td>
       <td><span class="badge ${st.c}">${st.l}</span></td>
     </tr>`;
@@ -9215,7 +9359,7 @@ async function incassaRapido(metodo) {
   // SumUp per carta/POS
   if (metodo === 'carta') {
     const totale = (cm.vociMano||[]).concat(cm.vociRic||[],cm.vociExtra||[])
-      .reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100),0);
+      .reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100),0) + _importoTimbrature(cm.id);
     const pagato  = (cm.pagamenti||[]).reduce((s,p)=>s+(parseFloat(p.importo)||0),0);
     const residuo = Math.max(0, totale - pagato);
     if (residuo <= 0) { showToast('Commessa già saldata ✓'); return; }
@@ -9235,7 +9379,7 @@ async function incassaRapido(metodo) {
   }
 
   const totale = (cm.vociMano||[]).concat(cm.vociRic||[],cm.vociExtra||[])
-    .reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100),0);
+    .reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100),0) + _importoTimbrature(cm.id);
   const pagato  = (cm.pagamenti||[]).reduce((s,p)=>s+(parseFloat(p.importo)||0),0);
   const residuo = Math.max(0, totale - pagato);
   if (residuo <= 0) { showToast('Commessa già saldata ✓'); return; }
@@ -9300,7 +9444,7 @@ function emettiFatturaCommessa(comId) {
   const v  = veicoli.find(x=>x.id===cm.veicoloId);
   if (!cl) { alert('La commessa non ha un cliente associato.'); return; }
   const righe = [
-    ...(cm.vociMano||[]).filter(r=>r.desc).map(r=>({desc:r.desc+' (manodopera)',qta:r.qta||1,prezzo:r.prezzo||0})),
+    ..._rigaManodoperaFattura(cm),
     ...(cm.vociRic||[]).filter(r=>r.desc).map(r=>({desc:_descRic(r),qta:r.qta||1,prezzo:r.prezzo||0})),
     ...(cm.vociExtra||[]).filter(r=>r.desc).map(r=>({desc:r.desc,qta:r.qta||1,prezzo:r.prezzo||0})),
   ];
