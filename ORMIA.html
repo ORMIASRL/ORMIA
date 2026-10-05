@@ -4823,6 +4823,46 @@ function apriEditVoce(tipo, idx) {
   document.getElementById('edit-voce-prezzo').focus();
 }
 
+// ── Quantità ricambi: + / − direttamente dal pannello commessa (aggiorna anche il magazzino) ──
+function _stepperRic(i, qta) {
+  const b = 'width:22px;height:22px;border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer;font-size:14px;font-weight:700;line-height:1;padding:0;color:var(--text2)';
+  return `<span style="display:inline-flex;align-items:center;gap:5px;margin-left:6px;vertical-align:middle" onclick="event.stopPropagation()">
+    <button style="${b}" title="Togli 1" onclick="cambiaQtaRic(${i},-1)">−</button>
+    <span style="font-family:'DM Mono',monospace;font-weight:700;min-width:18px;text-align:center">${String(qta).replace('.',',')}</span>
+    <button style="${b}" title="Aggiungi 1" onclick="cambiaQtaRic(${i},1)">+</button>
+  </span>`;
+}
+let _qtaRicBusy = false;
+async function cambiaQtaRic(idx, delta) {
+  if (_qtaRicBusy) return;
+  const cm = commesse.find(c=>c.id===selectedCommessaId);
+  if (!cm) return;
+  const v = (cm.vociRic||[])[idx];
+  if (!v) return;
+  const attuale = +(v.qta||1);
+  const nuova = +(attuale + delta).toFixed(2);
+  if (nuova <= 0 && !confirm('Togliere "' + _descRic(v) + '" dalla commessa?')) return;
+  const diff = nuova <= 0 ? -attuale : delta;              // + = scarico dal magazzino, − = rientro
+  const pi = v.prodId ? prodotti.findIndex(x=>x.id===v.prodId) : -1;
+  if (pi >= 0 && diff > 0 && (prodotti[pi].giacenza||0) < diff &&
+      !confirm('Giacenza insufficiente per "' + _descRic(v) + '" (disponibili ' + (prodotti[pi].giacenza||0) + '). Aggiungo comunque?')) return;
+  _qtaRicBusy = true;
+  try {
+    if (pi >= 0) {
+      prodotti[pi].giacenza = +((prodotti[pi].giacenza||0) - diff).toFixed(2);
+      await dbSaveMovimento({ id:initId(), prodId:v.prodId, tipo: diff > 0 ? 'scarico' : 'carico', qta: Math.abs(diff), comId: cm.id,
+        note: (diff > 0 ? 'Aggiunto da commessa ' : 'Tolto da commessa ') + (cm.numero||''), data:new Date().toISOString(), createdAt:new Date().toISOString() });
+      await dbSaveProdotto(prodotti[pi]);
+    }
+    if (nuova <= 0) cm.vociRic.splice(idx, 1); else v.qta = nuova;
+    cm.totale = [...(cm.vociMano||[]),...(cm.vociRic||[]),...(cm.vociExtra||[])].reduce((s,x)=>s+(x.qta||1)*(x.prezzo||0)*(1-(x.sconto||0)/100),0);
+    await dbSaveCommessa(cm);
+    showDetailCommessa(cm.id);
+    try { updateBadgeMagazzino(); } catch(e) {}
+  } catch(e) { alert('Errore: ' + e.message); }
+  finally { _qtaRicBusy = false; }
+}
+
 async function salvaEditVoce(tipo, idx) {
   const cm = commesse.find(c=>c.id===selectedCommessaId);
   if (!cm) return;
@@ -5421,7 +5461,7 @@ function showDetailCommessa(id) {
 
   const renderVociDetail = (arr, tipo) => arr.length
     ? arr.map((v,i)=>`<div class="detail-row" style="align-items:flex-start;gap:8px">
-        <span class="detail-key" style="flex:1">${_descRic(v)} × ${v.qta||1}</span>
+        <span class="detail-key" style="flex:1">${_descRic(v)} ${tipo==='ric' && cm.stato!=='fatturata' ? _stepperRic(i, v.qta||1) : '× '+(v.qta||1)}</span>
         <div style="display:flex;align-items:center;gap:6px">
           ${v.sconto ? `<span style="font-size:10px;background:var(--warning-light);color:var(--warning);padding:1px 5px;border-radius:4px">-${v.sconto}%</span>` : ''}
           <span style="font-family:'DM Mono',monospace;font-size:13px">€ ${((v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100)).toFixed(2)}</span>
