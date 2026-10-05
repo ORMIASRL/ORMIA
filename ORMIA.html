@@ -2733,21 +2733,13 @@ function init() {
   </div>
 
   <!-- TIMBRATURA COMMESSA -->
-  <div class="detail-section" id="dc-tim-section">
-    <div class="detail-section-title" onclick="toggleTimCommessa()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;margin-bottom:0">
+  <div class="detail-section" id="dc-tim-section" style="background:var(--surface2)">
+    <div class="detail-section-title" style="display:flex;align-items:center;justify-content:space-between">
       <span style="display:flex;align-items:center;gap:6px">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        Timbrature
-        <span id="dc-tim-chip" style="font-size:11px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--success)"></span>
-      </span>
-      <span style="display:flex;align-items:center;gap:10px">
-        <span id="dc-tim-ore" style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text3)">0h00</span>
-        <span id="dc-tim-eur" style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:var(--text)">€ 0,00</span>
-        <svg id="dc-chev-tim" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;transition:transform .2s;transform:rotate(-90deg)"><polyline points="6 9 12 15 18 9"/></svg>
+        Timbratura
       </span>
     </div>
-    <div id="dc-tim-body" style="display:none;margin-top:12px">
-    <div id="dc-tim-lista" style="margin-bottom:12px"></div>
 
     <!-- Scansione tesserino / selezione manuale -->
     <div id="dc-tim-chiusa-msg" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;font-size:12px;color:var(--text3);margin-bottom:10px">
@@ -2791,7 +2783,6 @@ function init() {
 
     <!-- Timbrature attive su questa commessa -->
     <div id="dc-tim-live" style="margin-top:10px"></div>
-    </div><!-- /dc-tim-body -->
   </div>
   <div class="detail-section" id="dc-sec-mano">
     <div class="detail-section-title" onclick="toggleDcSection('mano')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none">
@@ -4357,40 +4348,28 @@ function _rigaManodoperaFattura(cm) {
   return [{ desc: 'Manodopera' + (ore > 0 ? ' (' + oreTxt + ' h)' : ''), qta: 1, prezzo: imp }];
 }
 
-let _timApertoId = null;
-function toggleTimCommessa() {
-  _timApertoId = _timApertoId === selectedCommessaId ? null : selectedCommessaId;
-  renderTimCommessaRiepilogo(selectedCommessaId);
-}
-function renderTimCommessaRiepilogo(comId) {
-  const lista = _timCommessa(comId);
-  const chiuse = lista.filter(t => t.uscita), aperte = lista.filter(t => !t.uscita);
-  const min = chiuse.reduce((s,t) => s + _minTim(t), 0);
-  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-  set('dc-tim-ore', _fmtHM(min));
-  set('dc-tim-eur', '€ ' + _importoTimbrature(comId).toFixed(2).replace('.',','));
-  const chip = document.getElementById('dc-tim-chip');
-  if (chip) chip.textContent = aperte.length ? '● ' + aperte.map(t => (meccanici.find(m=>m.id===t.mecId)?.nome || '').split(' ')[0]).join(', ') : '';
-  const aperto = _timApertoId === comId;
-  const body = document.getElementById('dc-tim-body'); if (body) body.style.display = aperto ? '' : 'none';
-  const chev = document.getElementById('dc-chev-tim'); if (chev) chev.style.transform = aperto ? 'rotate(0deg)' : 'rotate(-90deg)';
-  const box = document.getElementById('dc-tim-lista');
-  if (!box || !aperto) return;
-  if (!lista.length) { box.innerHTML = '<div style="font-size:12px;color:var(--text3)">Nessuna timbratura su questa commessa.</div>'; return; }
+// Spaccato nella sezione Manodopera: timbrature chiuse (modificabili)
+function _htmlTimbratureMano(comId) {
+  const chiuse = _timCommessa(comId).filter(t => t.uscita);
+  if (!chiuse.length) return '';
+  const tar = (getTariffa('normale') || {}).cli || 0;
   const hh = d => new Date(d).toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' });
-  box.innerHTML = '<div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">' + lista.map((t, i) => {
-    const m = meccanici.find(x => x.id === t.mecId);
-    const dur = t.uscita ? _fmtHM(_minTim(t)) : '<span style="color:var(--success);font-weight:600">in corso</span>';
-    return `<div style="display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;padding:7px 10px;font-size:12px;${i?'border-top:1px solid var(--border);':''}background:var(--surface)">
-      <span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m ? m.nome : '—'}</span>
-      <span style="font-family:'DM Mono',monospace;color:var(--text3)">${new Date(t.entrata).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'})} · ${hh(t.entrata)}–${t.uscita ? hh(t.uscita) : '…'}</span>
-      <span style="font-family:'DM Mono',monospace;min-width:42px;text-align:right">${dur}</span>
-      <span style="display:flex;gap:2px">
-        <button title="Correggi" onclick="apriModificaTimbratura('${t.id}')" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px">✏️</button>
-        <button title="Elimina" onclick="eliminaTimbraturaCommessa('${t.id}')" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px">🗑</button>
-      </span>
-    </div>`;
-  }).join('') + '</div>';
+  const min = chiuse.reduce((s,t) => s + _minTim(t), 0);
+  return `<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin:4px 0 6px;display:flex;justify-content:space-between">
+      <span>Ore timbrate · ${_fmtHM(min)}</span><span style="font-family:'DM Mono',monospace">€ ${_importoTimbrature(comId).toFixed(2).replace('.',',')}</span></div>` +
+    chiuse.map(t => {
+      const m = meccanici.find(x => x.id === t.mecId);
+      const eur = (_minTim(t) / 60 * tar).toFixed(2).replace('.',',');
+      return `<div class="detail-row" style="align-items:center;gap:8px">
+        <span class="detail-key" style="flex:1">${m ? m.nome : '—'} <span style="color:var(--text3);font-family:'DM Mono',monospace;font-size:11px">${new Date(t.entrata).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'})} · ${hh(t.entrata)}–${hh(t.uscita)} · ${_fmtHM(_minTim(t))}</span></span>
+        <span style="display:flex;align-items:center;gap:4px">
+          <span style="font-family:'DM Mono',monospace;font-size:13px">€ ${eur}</span>
+          <button title="Correggi" onclick="apriModificaTimbratura('${t.id}')" style="background:none;border:none;cursor:pointer;font-size:12px;padding:2px 3px">✏️</button>
+          <button title="Elimina" onclick="eliminaTimbraturaCommessa('${t.id}')" style="background:none;border:none;cursor:pointer;font-size:12px;padding:2px 3px">🗑</button>
+        </span>
+      </div>`;
+    }).join('') +
+    ((_timCommessa(comId).length && true) ? '<div style="height:8px"></div>' : '');
 }
 
 async function _ricaricaTimbratureCommessa(comId) {
@@ -4467,7 +4446,6 @@ function renderTimbratureLiveCommessa(comId) {
   const cm   = commesse.find(c=>c.id===comId);
   const el   = document.getElementById('dc-tim-live');
   if (!el) return;
-  try { renderTimCommessaRiepilogo(comId); } catch(e) { console.warn('riepilogo timbrature', e); }
 
   const isChiusa = cm && (cm.stato === 'chiusa' || cm.stato === 'fatturata');
 
@@ -5429,7 +5407,7 @@ function showDetailCommessa(id) {
 
   // Sezione timbratura: nascosta se chiusa
   const timSec = document.getElementById('dc-tim-section');
-  if (timSec) timSec.style.display = '';   // sempre visibile: riepilogo ore/importo (input timbratura nascosto se chiusa)
+  if (timSec) timSec.style.display = cm.stato === 'chiusa' ? 'none' : '';
 
   // Sezione checkout: visibile solo se chiusa o fatturata
   const checkoutSec = document.getElementById('dc-checkout-section');
@@ -5454,7 +5432,7 @@ function showDetailCommessa(id) {
       </div>`).join('')
     : '<div style="font-size:12px;color:var(--text3)">Nessuna voce.</div>';
 
-  document.getElementById('dc-manodopera').innerHTML = renderVociDetail(cm.vociMano||[], 'mano');
+  document.getElementById('dc-manodopera').innerHTML = _htmlTimbratureMano(cm.id) + (((cm.vociMano||[]).length || !_timCommessa(cm.id).some(t=>t.uscita)) ? renderVociDetail(cm.vociMano||[], 'mano') : '');
   document.getElementById('dc-ricambi').innerHTML    = renderVociDetail(cm.vociRic||[], 'ric');
   document.getElementById('dc-extra').innerHTML      = renderVociDetail(cm.vociExtra||[], 'extra');
 
@@ -5465,7 +5443,7 @@ function showDetailCommessa(id) {
   document.getElementById('dc-tot-mano').textContent  = '€ '+(totMano+_importoTimbrature(cm.id)).toFixed(2).replace('.',',');  // manuale + ore timbrate
   document.getElementById('dc-tot-ric').textContent   = '€ '+totRic.toFixed(2).replace('.',',');
   document.getElementById('dc-tot-extra').textContent = '€ '+totExtra.toFixed(2).replace('.',',');
-  document.getElementById('dc-tot-mano-hdr').textContent  = '€ '+totMano.toFixed(2).replace('.',',');
+  document.getElementById('dc-tot-mano-hdr').textContent  = '€ '+(totMano+_importoTimbrature(cm.id)).toFixed(2).replace('.',',');
   document.getElementById('dc-tot-ric-hdr').textContent   = '€ '+totRic.toFixed(2).replace('.',',');
   document.getElementById('dc-tot-extra-hdr').textContent = '€ '+totExtra.toFixed(2).replace('.',',');
 
