@@ -5596,11 +5596,11 @@ function renderCommesse() {
         <div class="commessa-card-body">
           <div class="commessa-card-top">
             <div style="flex:1;min-width:0">
-              <div class="commessa-num">${cm.numero||''} <span style="color:var(--border2)">·</span> <span style="color:var(--text3);font-weight:400;font-size:11px">${formatDate(cm.dataApertura)||'—'}</span>${_comInGaranzia(cm)?` <span style="background:var(--warning-light);color:var(--warning);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;border:1px solid #FDE68A">🔧 GAR.</span>`:''}</div>
+              <div class="commessa-num" style="font-size:19px;letter-spacing:1.5px">${v&&v.targa?v.targa:(cm.numero||'')} <span style="color:var(--border2)">·</span> <span style="color:var(--text3);font-weight:400;font-size:11px">${formatDate(cm.dataApertura)||'—'}</span>${_comInGaranzia(cm)?` <span style="background:var(--warning-light);color:var(--warning);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;border:1px solid #FDE68A">🔧 GAR.</span>`:''}</div>
               <div class="commessa-desc">${cm.descrizione||cm.desc}</div>
               <div class="commessa-cliente" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                 ${cl?`<span>${cl.ragione}</span>`:''}
-                ${v?`<span class="commessa-targa">${v.targa}</span>`:''}
+                ${v&&v.targa?`<span class="commessa-targa">${cm.numero||''}</span>`:''}
                 ${v?`<span style="font-size:12px;color:var(--text3)">${[v.marca,v.modello].filter(Boolean).join(' ')}</span>`:''}
               </div>
             </div>
