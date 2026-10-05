@@ -1691,7 +1691,8 @@ async function inviaSuFIC(fatturaId) {
                   address_street:[cl?.via, cl?.civico].filter(Boolean).join(' '), address_postal_code:cl?.cap||'',
                   address_city:cl?.citta||'', address_province:cl?.provincia||'', country:'Italia' },
         items_list: items,
-      }}),
+        payments_list: [{ amount: Math.round((f.totale||0)*100)/100, due_date: (f.scadenza||f.data||new Date().toISOString()).split('T')[0], status: 'not_paid' }],
+      }, options: { fix_payments: true } }),
     });
     const ficId = String(res.data.id);
     await supa.from('fatture').update({ fic_id:ficId, fic_stato:'confermata' }).eq('id', fatturaId);
