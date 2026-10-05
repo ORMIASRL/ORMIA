@@ -570,7 +570,7 @@ async function timbra(mec, cm) {
     const tAperta = timbrature.find(t=>t.mec_id===mec.id&&t.com_id===cm.id&&!t.uscita);
     if (tAperta) {
       // Uscita
-      await supa.from('timbrature').update({uscita:ora}).eq('id',tAperta.id);
+      await _chiudiTim(tAperta, ora, await _verificaPausa(mec, tAperta.entrata, ora), true);
       const altreAttive = timbrature.filter(x=>x.com_id===cm.id&&!x.uscita&&x.id!==tAperta.id);
       if (!altreAttive.length && (cm.stato==='wip'||cm.stato==='aperta')) {
         await supa.from('commesse').update({stato:'standby'}).eq('id',cm.id);
@@ -579,10 +579,13 @@ async function timbra(mec, cm) {
       suonaSegnale('uscita');
     } else {
       // Entrata — chiudi altre timbrature aperte dello stesso meccanico
+      // Entrata presenze dimenticata → chiede se registrarla
+      if (!(await _presenzaOggi(mec)) && await _chiediEntrata(mec)) await registraPresenza(mec, 'entrata');
+      // Chiude il lavoro sulle altre commesse (con verifica pausa pranzo) e le mette in standby se restano vuote
       const altreAperte = timbrature.filter(t=>t.mec_id===mec.id&&!t.uscita&&t.com_id!==cm.id);
-      for (const t of altreAperte) await supa.from('timbrature').update({uscita:ora}).eq('id',t.id);
+      for (const t of altreAperte) { await _chiudiTim(t, ora, await _verificaPausa(mec, t.entrata, ora), false); await _standbySeVuota(t.com_id, t.id); }
       await supa.from('timbrature').insert({ id:crypto.randomUUID(), mec_id:mec.id, com_id:cm.id, entrata:ora, uscita:null, created_at:ora });
-      if (cm.stato==='aperta') await supa.from('commesse').update({stato:'wip'}).eq('id',cm.id);
+      if (cm.stato==='aperta'||cm.stato==='standby') await supa.from('commesse').update({stato:'wip'}).eq('id',cm.id);
       mostraOverlay('✅', mec.nome, `ENTRATA su ${cm.numero} — ${oraStr}`, 'success');
       suonaSegnale('entrata');
     }
@@ -816,14 +819,69 @@ function _oggiLocale() {
 }
 
 // Chiude il lavoro su commessa ancora aperto (pausa o uscita) e mette la commessa in standby se non lavora nessun altro
-async function _chiudiLavoriAperti(mec, ora) {
+async function _chiudiLavoriAperti(mec, ora, pausa) {
   const aperte = timbrature.filter(t => t.mec_id === mec.id && !t.uscita);
   for (const t of aperte) {
-    await supa.from('timbrature').update({ uscita: ora }).eq('id', t.id);
-    const altre = timbrature.filter(x => x.com_id === t.com_id && !x.uscita && x.id !== t.id);
-    const cm = commesse.find(c => c.id === t.com_id);
-    if (!altre.length && cm && (cm.stato === 'wip' || cm.stato === 'aperta')) await supa.from('commesse').update({ stato: 'standby' }).eq('id', cm.id);
+    await _chiudiTim(t, ora, pausa, true);
+    await _standbySeVuota(t.com_id, t.id);
   }
+}
+
+// ── Pausa pranzo non timbrata sulle commesse / entrata dimenticata ──
+function _fasciaPausa() {
+  const hm = s => String(s||'').slice(0,5); const oggi = _oggiLocale(); const imp = _impTim || {};
+  const da = hm(imp.pausa_inizio) || '13:00', a = hm(imp.pausa_fine) || '14:00';
+  return { da, a, pp1: new Date(`${oggi}T${da}:00`), pp2: new Date(`${oggi}T${a}:00`) };
+}
+function _kNoPausa(mec) { return 'ormia-nopausa-' + mec.id + '-' + _oggiLocale(); }
+async function _presenzaOggi(mec) {
+  const { data } = await supa.from('presenze').select('*').or(`mec_id.eq.${mec.id},dip_id.eq.${mec.id}`).eq('data', _oggiLocale()).order('entrata', { ascending: false }).limit(1);
+  return (data || [])[0] || null;
+}
+// Se il lavoro attraversa la pausa pranzo non timbrata chiede; ritorna {pp1,pp2} se era in pausa
+async function _verificaPausa(mec, entrataIso, ora) {
+  const f = _fasciaPausa();
+  if (!(new Date(entrataIso) < f.pp1 && new Date(ora) > f.pp2)) return null;
+  try { if (localStorage.getItem(_kNoPausa(mec))) return null; } catch(e) {}
+  const p = await _presenzaOggi(mec);
+  if (p && p.pausa_inizio) return null;
+  const inPausa = await _chiediPausaPranzo(mec, f.da, f.a);
+  if (!inPausa) { try { localStorage.setItem(_kNoPausa(mec), '1'); } catch(e) {} return null; }
+  if (p && !p.uscita && new Date(p.entrata) < f.pp1) await supa.from('presenze').update({ pausa_inizio: f.pp1.toISOString(), pausa_fine: f.pp2.toISOString() }).eq('id', p.id);
+  return { pp1: f.pp1.toISOString(), pp2: f.pp2.toISOString() };
+}
+// Chiude una timbratura commessa; con pausa: lavoro fino all'inizio pausa (+ ripresa dopo la pausa se ha continuato sulla stessa)
+async function _chiudiTim(t, ora, pausa, riprende) {
+  if (pausa && new Date(t.entrata) < new Date(pausa.pp1)) {
+    await supa.from('timbrature').update({ uscita: pausa.pp1 }).eq('id', t.id);
+    if (riprende && new Date(ora) > new Date(pausa.pp2)) await supa.from('timbrature').insert({ id: crypto.randomUUID(), mec_id: t.mec_id, com_id: t.com_id, entrata: pausa.pp2, uscita: ora, created_at: ora });
+  } else {
+    await supa.from('timbrature').update({ uscita: ora }).eq('id', t.id);
+  }
+}
+// Commessa senza più nessuno sopra → standby
+async function _standbySeVuota(comId, esclusoId) {
+  const altre = timbrature.filter(x => x.com_id === comId && !x.uscita && x.id !== esclusoId);
+  const cm = commesse.find(c => c.id === comId);
+  if (!altre.length && cm && (cm.stato === 'wip' || cm.stato === 'aperta')) await supa.from('commesse').update({ stato: 'standby' }).eq('id', comId);
+}
+// Entrata presenze non timbrata: chiede se registrarla adesso
+function _chiediEntrata(mec) {
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;display:flex;align-items:center;justify-content:center';
+    const bs = 'flex:1;padding:16px 8px;border-radius:12px;font-size:16px;font-weight:800;cursor:pointer;';
+    ov.innerHTML = `<div style="background:var(--surface);border-radius:16px;padding:24px;width:380px;max-width:92vw;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+      <div style="font-size:34px">⚠️</div>
+      <div style="font-size:19px;font-weight:800;margin:6px 0">Entrata non timbrata</div>
+      <div style="font-size:14px;color:var(--text2);margin-bottom:18px">${mec.nome}, oggi non hai timbrato l'ENTRATA nelle presenze. La registro adesso?</div>
+      <div style="display:flex;gap:10px">
+        <button data-v="1" style="${bs}border:2px solid #68D391;background:#F0FFF4;color:#276749">✅ Sì, registra</button>
+        <button data-v="0" style="${bs}border:2px solid var(--border);background:var(--surface);color:var(--text2)">No</button>
+      </div></div>`;
+    ov.querySelectorAll('button').forEach(b => b.onclick = () => { ov.remove(); resolve(b.dataset.v === '1'); });
+    document.body.appendChild(ov);
+  });
 }
 
 // Domanda sulla pausa pranzo non timbrata (Sì = scala la pausa)
@@ -890,7 +948,7 @@ async function registraPresenza(mec, azione) {
       if (p.uscita) { msg('ℹ️', `Uscita già registrata alle ${hhmm(p.uscita)}`, 'info'); return; }
       const upd = { uscita: ora };
       const ent = new Date(p.entrata);
-      let minPausa = 0;
+      let minPausa = 0; let pausaUsc = null;
       if (p.pausa_inizio) {
         const pf = p.pausa_fine ? new Date(p.pausa_fine) : now;
         if (!p.pausa_fine) upd.pausa_fine = ora;
@@ -899,9 +957,10 @@ async function registraPresenza(mec, azione) {
         // Pausa pranzo non timbrata: domanda (come prima nel gestionale)
         const da = hm(imp.pausa_inizio) || '13:00', a = hm(imp.pausa_fine) || '14:00';
         const pp1 = new Date(`${oggi}T${da}:00`), pp2 = new Date(`${oggi}T${a}:00`);
-        if (ent < pp1 && now > pp2) {
+        let _noP = false; try { _noP = !!localStorage.getItem(_kNoPausa(mec)); } catch(e) {}
+        if (ent < pp1 && now > pp2 && !_noP) {
           const eraInPausa = await _chiediPausaPranzo(mec, da, a);
-          if (eraInPausa) { minPausa = Math.round((pp2 - pp1) / 60000); upd.pausa_inizio = pp1.toISOString(); upd.pausa_fine = pp2.toISOString(); }
+          if (eraInPausa) { pausaUsc = { pp1: pp1.toISOString(), pp2: pp2.toISOString() }; minPausa = Math.round((pp2 - pp1) / 60000); upd.pausa_inizio = pp1.toISOString(); upd.pausa_fine = pp2.toISOString(); }
         }
       }
       const minLav = Math.max(0, Math.round((now - ent) / 60000) - minPausa);
@@ -911,7 +970,7 @@ async function registraPresenza(mec, azione) {
       upd.straordinario = strao > 0 ? strao : null;
       const { error } = await supa.from('presenze').update(upd).eq('id', p.id);
       if (error) throw error;
-      await _chiudiLavoriAperti(mec, ora);
+      await _chiudiLavoriAperti(mec, ora, pausaUsc);
       msg('👋', `USCITA — ${oraStr} · ${Math.floor(minLav/60)}h${String(minLav%60).padStart(2,'0')} lavorate`, 'info');
     }
     await loadAll();
