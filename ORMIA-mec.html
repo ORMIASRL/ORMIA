@@ -290,6 +290,8 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
         <div class="pin-dot" id="pd1"></div>
         <div class="pin-dot" id="pd2"></div>
         <div class="pin-dot" id="pd3"></div>
+        <div class="pin-dot" id="pd4"></div>
+        <div class="pin-dot" id="pd5"></div>
       </div>
       <div class="pinpad">
         <button class="pin-btn" onclick="pinTap('1')">1</button>
@@ -305,6 +307,10 @@ html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-s
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 4H8l-7 8 7 8h13a2 2 0 002-2V6a2 2 0 00-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg>
         </button>
         <button class="pin-btn zero" onclick="pinTap('0')">0</button>
+        <button class="pin-btn" onclick="pinOk()" style="font-size:15px;font-weight:700;color:var(--accent)">OK</button>
+      </div>
+      <div id="pin-msg" style="min-height:18px;margin-top:12px;font-size:13px;font-weight:600;color:var(--danger);text-align:center"></div>
+      <div style="display:none">
       </div>
 
     </div>
@@ -714,25 +720,48 @@ let barcodeDetector = null;
 // LOGIN — PIN
 // ══════════════════════════════════════════════════
 function pinTap(d) {
-  if (pinBuffer.length >= 4) return;
+  if (pinBuffer.length >= 6) return;
   pinBuffer += d;
   renderPinDots();
-  if (pinBuffer.length === 4) setTimeout(checkPin, 100);
+  const m = document.getElementById('pin-msg'); if (m) m.textContent = '';
+  if (pinBuffer.length === 6) setTimeout(checkPin, 100);   // nuovo PIN personale: 6 cifre
+}
+function pinOk() {                                         // vecchio PIN a 4 cifre (periodo di passaggio)
+  if (pinBuffer.length === 4) checkPin();
 }
 function pinDel() {
   pinBuffer = pinBuffer.slice(0,-1);
   renderPinDots();
 }
 function renderPinDots(err=false) {
-  for (let i=0;i<4;i++) {
+  for (let i=0;i<6;i++) {
     const el = document.getElementById('pd'+i);
     el.className = 'pin-dot' + (i < pinBuffer.length ? (err?' error':' filled') : '');
   }
 }
+let _pinBusy = false;
 async function checkPin() {
-  const found = getMeccanici().filter(isMeccanicoOperativo).find(m => m.pin === pinBuffer);
-  if (found) { loginOk(found); return; }
+  if (_pinBusy) return;
+  let found = null, msg = 'PIN errato';
+  if (pinBuffer.length === 6) {
+    _pinBusy = true;
+    try {
+      const { data: { session } } = await supa.auth.getSession();
+      if (!session) await supa.auth.signInAnonymously();
+      const { data, error } = await supa.rpc('ormia_verifica_pin', { pin: pinBuffer });
+      if (error) msg = /troppi/i.test(error.message) ? 'Troppi PIN sbagliati: riprova tra qualche minuto' : 'Errore di connessione';
+      else if (data && data[0]) {
+        if (!getMeccanici().length) await loadAll();
+        found = getMeccanici().find(m => m.id === data[0].id) || null;
+      }
+    } catch(e) { msg = 'Errore di connessione'; }
+    _pinBusy = false;
+  } else if (pinBuffer.length === 4) {
+    found = getMeccanici().filter(isMeccanicoOperativo).find(m => m.pin && m.pin === pinBuffer) || null;
+  }
+  if (found) { const el = document.getElementById('pin-msg'); if (el) el.textContent = ''; loginOk(found); pinBuffer = ''; renderPinDots(); return; }
   renderPinDots(true);
+  const el = document.getElementById('pin-msg'); if (el) el.textContent = msg;
   setTimeout(()=>{ pinBuffer=''; renderPinDots(); }, 700);
 }
 
