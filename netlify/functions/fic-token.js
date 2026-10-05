@@ -53,7 +53,10 @@ exports.handler = async (event) => {
   }
 
   // ── Modalità token OAuth2 ──
-  const { client_id, client_secret, redirect_uri, code, refresh_token } = body;
+  // Il client secret sta SOLO nella variabile d'ambiente Netlify FIC_CLIENT_SECRET (mai nel browser)
+  const { client_id, redirect_uri, code, refresh_token } = body;
+  const client_secret = process.env.FIC_CLIENT_SECRET || '';
+  if (!client_secret) return risposta(500, { error: 'FIC_CLIENT_SECRET non configurato su Netlify' });
   const grant_type = body.grant_type || 'authorization_code';
   let params;
   if (grant_type === 'refresh_token') {
