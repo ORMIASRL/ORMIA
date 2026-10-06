@@ -1672,7 +1672,7 @@
           <input autocomplete="off" type="text" id="v-km" placeholder="es. 150000">
         </div>
         <div class="form-group">
-          <label>Ore motore *</label>
+          <label>Ore motore <span style="font-size:10px;font-weight:400;color:var(--text3)">(obbligatorie solo per Ford)</span></label>
           <input autocomplete="off" type="text" id="v-ore-motore" placeholder="Es. 4500" oninput="this.value=this.value.replace(/\D/g,'')">
         </div>
         <div class="form-group">
@@ -2139,7 +2139,7 @@ async function saveVeicolo() {
   const marca     = document.getElementById('v-marca').value.trim().toLowerCase();
   const garanzia  = document.getElementById('v-garanzia').checked;
   const garanziaScadenza = document.getElementById('v-garanzia-scadenza').value;
-  const isFord    = marca === 'ford';
+  const isFord    = marca.includes('ford');
 
   const errs = [];
   if (!targa)    errs.push('• Targa');
@@ -2622,7 +2622,7 @@ function init() {
           <div style="font-size:11px;color:var(--text3);margin-top:3px">Aggiorna i km del veicolo in anagrafica</div>
         </div>
         <div class="form-group">
-          <label>Ore motore *
+          <label>Ore motore <span style="font-size:10px;font-weight:400;color:var(--text3)">(solo Ford)</span>
             <span style="font-size:10px;font-weight:400;color:var(--text3)" id="com-ore-motore-hint"></span>
           </label>
           <input type="text" id="com-ore-motore" placeholder="Es. 4500" style="font-family:'DM Mono',monospace"
@@ -5319,7 +5319,7 @@ async function saveCommessa(firmaDataUrl=null) {
   if (!km && !editingCommessaId && veicoli.find(x=>x.id===vId)?.tipo !== 'rimorchio')   { alert('I km attuali del veicolo sono obbligatori.'); document.getElementById('com-km').focus(); return; }
   // Ore motore obbligatorie solo per Ford (solo in creazione: in modifica restano quelle del veicolo)
   const veicoloSel = veicoli.find(x=>x.id===vId);
-  const isFordCom  = (veicoloSel?.marca||'').toLowerCase().trim() === 'ford';
+  const isFordCom  = (veicoloSel?.marca||'').toLowerCase().includes('ford');
   if (isFordCom && !oreMotore && !editingCommessaId) { alert('Le ore motore sono obbligatorie per veicoli Ford.'); document.getElementById('com-ore-motore').focus(); return; }
   const clienteId = document.getElementById('com-cliente').value;
 
@@ -9793,7 +9793,7 @@ function avantiFirmaCommessa() {
   if (!vId)  { alert('Cerca e seleziona un veicolo per targa.'); return; }
   if (!km && veicoli.find(x=>x.id===vId)?.tipo !== 'rimorchio')   { alert('I km attuali del veicolo sono obbligatori.'); document.getElementById('com-km').focus(); return; }
   const vSel2   = veicoli.find(x=>x.id===vId);
-  const isFord2 = (vSel2?.marca||'').toLowerCase().trim() === 'ford';
+  const isFord2 = (vSel2?.marca||'').toLowerCase().includes('ford');
   if (isFord2 && !oreMotore) { alert('Le ore motore sono obbligatorie per veicoli Ford.'); document.getElementById('com-ore-motore').focus(); return; }
 
   // Prepara il modal firma
