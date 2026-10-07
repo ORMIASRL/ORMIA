@@ -5479,7 +5479,7 @@ async function cambiaQtaRic(idx, delta) {
       await dbSaveProdotto(prodotti[pi]);
     }
     if (nuova <= 0) cm.vociRic.splice(idx, 1); else v.qta = nuova;
-    cm.totale = [...(cm.vociMano||[]),...(cm.vociRic||[]),...(cm.vociExtra||[])].reduce((s,x)=>s+(x.qta||1)*(x.prezzo||0)*(1-(x.sconto||0)/100),0);
+    cm.totale = _totaleCommessa(cm);
     await dbSaveCommessa(cm);
     showDetailCommessa(cm.id);
     try { updateBadgeMagazzino(); } catch(e) {}
@@ -5496,7 +5496,7 @@ async function salvaEditVoce(tipo, idx) {
   arr[idx].prezzo = prezzo;
   arr[idx].sconto = sconto;
   // Ricalcola totale
-  cm.totale = [...(cm.vociMano||[]),...(cm.vociRic||[]),...(cm.vociExtra||[])].reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100),0);
+  cm.totale = _totaleCommessa(cm);
   await dbSaveCommessa(cm);
   document.getElementById('mini-modal-voce').remove();
   showDetailCommessa(selectedCommessaId);
@@ -6154,10 +6154,10 @@ function showDetailCommessa(id) {
 
   // Voci automatiche nel dettaglio
   const imp2       = _impostazioni || {};
-  const totRicDC   = (cm.vociRic||[]).reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0);
-  const totManoDC  = (cm.vociMano||[]).reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0) + _importoTimbrature(cm.id);
-  const smaltPerc  = cm.smaltimentoPerc ?? imp2.smaltimento_perc ?? imp2.smaltimentoPerc ?? 0;
-  const matPerc    = cm.materialeConsumoPerc ?? imp2.materiale_consumo_perc ?? imp2.materialeConsumoPerc ?? 0;
+  const totRicDC   = (cm.vociRic||[]).reduce((s,v)=>s+_impVoceC(v),0);
+  const totManoDC  = (cm.vociMano||[]).reduce((s,v)=>s+_impVoceC(v),0);
+  const smaltPerc  = +cm.smaltimentoPerc || 0;
+  const matPerc    = +cm.materialeConsumoPerc || 0;
   const smalt      = +(totRicDC  * smaltPerc / 100).toFixed(2);
   const matCons    = +((totManoDC+totRicDC) * matPerc / 100).toFixed(2);
 
@@ -8028,7 +8028,7 @@ async function confermaScan() {
     const voceEsistente = commesse[ci].vociRic.find(v=>v.prodId===p.id);
     if (voceEsistente) { voceEsistente.qta = (voceEsistente.qta||1)+qta; }
     else { commesse[ci].vociRic.push({ prodId:p.id, cod:p.codInt||p.codForn||'', desc:p.descrizione||p.desc+(p.codForn?' ('+p.codForn+')':''), qta, prezzo:p.prezzoVend||0 }); }
-    commesse[ci].totale = [...(commesse[ci].vociMano||[]),...(commesse[ci].vociRic||[]),...(commesse[ci].vociExtra||[])].reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100),0);
+    commesse[ci].totale = _totaleCommessa(commesse[ci]);
     await dbSaveCommessa(commesse[ci]);
   }
 
@@ -8250,7 +8250,7 @@ async function creaESalvaNuovoRicambio() {
     const ci = commesse.findIndex(x=>x.id===selectedCommessaId);
     if (!commesse[ci].vociRic) commesse[ci].vociRic=[];
     commesse[ci].vociRic.push({ prodId:nuovoProd.id, desc, qta, prezzo:vend });
-    commesse[ci].totale=[...(commesse[ci].vociMano||[]),...(commesse[ci].vociRic||[]),...(commesse[ci].vociExtra||[])].reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100),0);
+    commesse[ci].totale = _totaleCommessa(commesse[ci]);
     await dbSaveCommessa(commesse[ci]);
 
     showToast(`"${desc}" creato e aggiunto ✓`);
@@ -8304,7 +8304,7 @@ async function confermaScansioneRicambio() {
       const voceEsistente = commesse[ci].vociRic.find(v=>v.prodId===p.id);
       if (voceEsistente) voceEsistente.qta=(voceEsistente.qta||1)+qta;
       else commesse[ci].vociRic.push({ prodId:p.id, cod:p.codInt||p.codForn||'', desc:(p.descrizione||p.desc)+(p.codForn?' ('+p.codForn+')':''), qta, prezzo:p.prezzoVend||0 });
-      commesse[ci].totale=[...(commesse[ci].vociMano||[]),...(commesse[ci].vociRic||[]),...(commesse[ci].vociExtra||[])].reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100),0);
+      commesse[ci].totale = _totaleCommessa(commesse[ci]);
       await dbSaveCommessa(commesse[ci]);
     }
 
@@ -8747,11 +8747,7 @@ async function salvaManodopera() {
   });
 
   // Ricalcola totale
-  commesse[ci].totale = [
-    ...(commesse[ci].vociMano||[]),
-    ...(commesse[ci].vociRic||[]),
-    ...(commesse[ci].vociExtra||[])
-  ].reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0), 0);
+  commesse[ci].totale = _totaleCommessa(commesse[ci]);
 
   // Salva davvero la commessa nel database (prima restava solo in memoria)
   try { await dbSaveCommessa({ ...commesse[ci] }); }
@@ -10110,11 +10106,7 @@ function emettiFatturaCommessa(comId, extra) {
   const cl = clienti.find(c=>c.id===cm.clienteId);
   const v  = veicoli.find(x=>x.id===cm.veicoloId);
   if (!cl) { alert('La commessa non ha un cliente associato.'); return; }
-  const righe = [
-    ..._rigaManodoperaFattura(cm),
-    ...(cm.vociRic||[]).filter(r=>r.desc).map(r=>_rigaScontata(_descRic(r), r)),
-    ...(cm.vociExtra||[]).filter(r=>r.desc).map(r=>_rigaScontata(r.desc, r)),
-  ];
+  const righe = _righeCommessa(cm);
   if (!righe.length) { alert('La commessa non ha voci da fatturare.'); return; }
   apriFatturaModal({origine:'commessa',origineId:comId,clienteId:cm.clienteId,
     descrizione:`Commessa ${cm.numero} — ${cm.descrizione||cm.desc}`,
@@ -10246,7 +10238,29 @@ function _righeCommessa(cm) {
     ..._rigaManodoperaFattura(cm),
     ...(cm.vociRic || []).filter(r => r.desc).map(r => _rigaScontata(_descRic(r), r)),
     ...(cm.vociExtra || []).filter(r => r.desc).map(r => _rigaScontata(r.desc, r)),
+    ..._righeAutoCommessa(cm),
   ];
+}
+// Diritto di chiamata, smaltimento rifiuti, materiale di consumo (stesso calcolo del totale nel database)
+const _impVoceC = v => (v.qta || 1) * (v.prezzo || 0) * (1 - (v.sconto || 0) / 100);
+const _r2C = n => Math.round((+n + Number.EPSILON) * 100) / 100;
+function _righeAutoCommessa(cm) {
+  const r = [];
+  const tm = (cm.vociMano || []).reduce((s, v) => s + _impVoceC(v), 0);
+  const tr = (cm.vociRic || []).reduce((s, v) => s + _impVoceC(v), 0);
+  if (cm.dirittoChiamata && +cm.dirittoChiamataImporto > 0) {
+    const tipo = cm.dirittoChiamataTipo && cm.dirittoChiamataTipo !== 'standard' ? ' (' + cm.dirittoChiamataTipo + ')' : '';
+    r.push({ desc: 'Diritto di chiamata' + tipo, qta: 1, prezzo: _r2C(+cm.dirittoChiamataImporto) });
+  }
+  const sp = +cm.smaltimentoPerc || 0, mp = +cm.materialeConsumoPerc || 0;
+  const sm = _r2C(tr * sp / 100), mc = _r2C((tm + tr) * mp / 100);
+  if (sm > 0) r.push({ desc: 'Smaltimento rifiuti (' + String(sp).replace('.', ',') + '% sui ricambi)', qta: 1, prezzo: sm });
+  if (mc > 0) r.push({ desc: 'Materiale di consumo (' + String(mp).replace('.', ',') + '%)', qta: 1, prezzo: mc });
+  return r;
+}
+function _totaleCommessa(cm) {
+  const t = [...(cm.vociMano || []), ...(cm.vociRic || []), ...(cm.vociExtra || [])].reduce((s, v) => s + _impVoceC(v), 0);
+  return _r2C(t + _righeAutoCommessa(cm).reduce((s, x) => s + x.prezzo, 0));
 }
 function _righeDDT(d) {
   return (d.righe || []).filter(r => r.desc).map(r => _rigaScontata(r.desc, r));
