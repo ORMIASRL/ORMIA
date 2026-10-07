@@ -1688,7 +1688,7 @@ function apriFatturaLibera() {
   const ov = document.createElement('div'); ov.id = 'modal-fl';
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:5000;display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow-y:auto';
   ov.innerHTML = `<div style="background:white;border-radius:14px;width:820px;max-width:100%;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.25)">
-    <div style="display:flex;align-items:center;margin-bottom:16px"><div style="font-size:18px;font-weight:800;flex:1">Nuova fattura libera</div>
+    <div style="display:flex;align-items:center;margin-bottom:16px"><div style="flex:1"><div style="font-size:18px;font-weight:800">Nuova fattura libera</div><div id="fl-num" style="font-family:'DM Mono',monospace;font-size:13px;color:var(--accent,#1B4FD8);font-weight:700"></div></div>
       <button class="btn btn-sm btn-secondary" onclick="document.getElementById('modal-fl').remove()">✕</button></div>
     <div style="margin-bottom:12px;position:relative">
       <label style="${lab}">Cliente *</label>
@@ -1705,10 +1705,10 @@ function apriFatturaLibera() {
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">
       <div><label style="${lab}">IVA (su tutta la fattura)</label><select id="fl-iva" onchange="flTotali()" style="${inp}">
         <option value="22">22%</option><option value="10">10%</option><option value="5">5%</option><option value="4">4%</option><option value="0">0% (esente / non imponibile)</option></select></div>
-      <div><label style="${lab}">Data</label><input type="date" id="fl-data" value="${oggi}" style="${inp}"></div>
+      <div><label style="${lab}">Data</label><input type="date" id="fl-data" value="${oggi}" onchange="flScadenza()" style="${inp}"></div>
       <div><label style="${lab}">Scadenza</label><input type="date" id="fl-scad" style="${inp}"></div>
-      <div><label style="${lab}">Pagamento</label><select id="fl-pag" style="${inp}">
-        <option value="bonifico">Bonifico</option><option value="contanti">Contanti</option><option value="carta">Carta / POS</option><option value="assegno">Assegno</option><option value="riba">RiBa</option></select></div>
+      <div><label style="${lab}">Pagamento</label><select id="fl-pag" onchange="flScadenza()" style="${inp}">
+        <option value="bonifico">Bonifico bancario</option><option value="30gg">Bonifico 30 gg d.f.</option><option value="60gg">Bonifico 60 gg d.f.</option><option value="90gg">Bonifico 90 gg d.f.</option><option value="riba">Ri.Ba.</option><option value="contanti">Contanti</option><option value="carta">Carta / POS</option><option value="assegno">Assegno</option></select></div>
     </div>
     <div style="margin-bottom:14px"><label style="${lab}">Note (facoltative)</label><textarea id="fl-note" rows="2" style="${inp};resize:vertical"></textarea></div>
     <div style="display:flex;justify-content:flex-end;gap:24px;font-size:14px;background:var(--surface2,#F9F8F6);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px">
@@ -1722,7 +1722,20 @@ function apriFatturaLibera() {
     </div></div>`;
   document.body.appendChild(ov);
   flRenderRighe();
+  flScadenza();
+  // Numero che avrà la fattura (anteprima: il numero vero si assegna all'emissione)
+  supa.from('impostazioni').select('num_fatture,anno_corrente').eq('id','default').single().then(({ data }) => {
+    const anno = new Date().getFullYear(); const n = (data?.anno_corrente === anno ? (data?.num_fatture || 0) : 0) + 1;
+    const el = document.getElementById('fl-num'); if (el) el.textContent = 'Fattura n. FAT' + anno + '-' + String(n).padStart(3, '0');
+  });
   setTimeout(() => document.getElementById('fl-cli-q')?.focus(), 50);
+}
+
+// Scadenza dal metodo di pagamento (30/60/90 gg dalla data, altrimenti immediata)
+function flScadenza() {
+  const p = document.getElementById('fl-pag')?.value || '', d = document.getElementById('fl-data')?.value, sc = document.getElementById('fl-scad');
+  if (!sc || !d) return;
+  const dt = new Date(d + 'T12:00:00'); dt.setDate(dt.getDate() + (parseInt(p) || 0)); sc.value = dt.toISOString().slice(0, 10);
 }
 
 function flCercaCliente(q) {
@@ -1806,7 +1819,7 @@ function flSceltaCliente(id) {
   document.getElementById('fl-cli-q').value = c.ragione || '';
   document.getElementById('fl-cli-dd').style.display = 'none';
   document.getElementById('fl-cli-det').textContent = [c.piva ? 'P.IVA ' + c.piva : (c.cf ? 'CF ' + c.cf : ''), c.indirizzo, c.sdi ? 'SDI ' + c.sdi : (c.pec ? 'PEC ' + c.pec : '')].filter(Boolean).join(' · ');
-  if (c.pagamento) { const p = document.getElementById('fl-pag'); const v = String(c.pagamento).toLowerCase(); if ([...p.options].some(o => o.value === v)) p.value = v; }
+  if (c.pagamento) { const p = document.getElementById('fl-pag'); const v = String(c.pagamento).toLowerCase(); if ([...p.options].some(o => o.value === v)) { p.value = v; flScadenza(); } }
   if (c.iva != null) { const s = document.getElementById('fl-iva'); if ([...s.options].some(o => +o.value === +c.iva)) { s.value = String(+c.iva); flTotali(); } }
 }
 
@@ -1879,7 +1892,7 @@ async function salvaFatturaLibera() {
 }
 
 // ── Fattura elettronica: dati SDI, controllo XML e invio allo SDI ──
-const _MP_FIN = { contanti:'MP01', assegno:'MP02', bonifico:'MP05', carta:'MP08', pos:'MP08', riba:'MP12', finanziamento:'MP05' };
+const _MP_FIN = { contanti:'MP01', assegno:'MP02', bonifico:'MP05', '30gg':'MP05', '60gg':'MP05', '90gg':'MP05', carta:'MP08', pos:'MP08', riba:'MP12', finanziamento:'MP05' };
 function _eiDataFin(pag, iban) {
   const m = _MP_FIN[String(pag||'').toLowerCase()] || 'MP05'; iban = String(iban||'').replace(/\s/g,'');
   return { vat_kind:'I', payment_method:m, ...(m==='MP05' && iban ? { bank_iban: iban } : {}) };
