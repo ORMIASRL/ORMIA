@@ -1695,7 +1695,9 @@ function apriFatturaLibera() {
       <input id="fl-cli-q" placeholder="Cerca per nome o P.IVA…" autocomplete="off" oninput="flCercaCliente(this.value)" style="${inp}">
       <input type="hidden" id="fl-cli">
       <div id="fl-cli-dd" style="display:none;position:absolute;left:0;right:0;top:100%;background:white;border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:10;max-height:220px;overflow-y:auto"></div>
-      <div id="fl-cli-det" style="font-size:12px;color:var(--text3);margin-top:4px"></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:4px"><div id="fl-cli-det" style="font-size:12px;color:var(--text3);flex:1"></div>
+        <button class="btn btn-sm btn-secondary" onclick="flNuovoCliente(document.getElementById('fl-cli-q').value)">+ Nuovo cliente</button></div>
+      <div id="fl-nuovo-cli"></div>
     </div>
     <label style="${lab}">Righe</label>
     <div id="fl-righe"></div>
@@ -1730,8 +1732,72 @@ function flCercaCliente(q) {
   if (!qq) { dd.style.display = 'none'; return; }
   const lista = _clienti.filter(c => (c.ragione || '').toLowerCase().includes(qq) || (c.piva || '').includes(qq) || (c.cf || '').toLowerCase().includes(qq)).slice(0, 12);
   dd.innerHTML = lista.length ? lista.map(c => `<div onmousedown="event.preventDefault()" onclick="flSceltaCliente('${c.id}')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border)" onmouseover="this.style.background='#F5F4F1'" onmouseout="this.style.background=''"><b>${_flEsc(c.ragione)}</b> <span style="color:var(--text3);font-size:12px">${_flEsc(c.piva || c.cf || '')}</span></div>`).join('')
-    : '<div style="padding:8px 12px;color:var(--text3);font-size:13px">Nessun cliente trovato. Aggiungilo prima dall\'anagrafica del gestionale.</div>';
+    : `<div style="padding:8px 12px;font-size:13px;color:var(--text3)">Nessun cliente trovato. <a href="#" onmousedown="event.preventDefault()" onclick="flNuovoCliente(document.getElementById('fl-cli-q').value);return false" style="font-weight:700">+ Crea "${_flEsc(q)}" come nuovo cliente</a></div>`;
   dd.style.display = '';
+}
+
+// Nuovo cliente direttamente dalla fattura libera (stessi campi dell'anagrafica del gestionale)
+function flNuovoCliente(nome) {
+  const box = document.getElementById('fl-nuovo-cli'); if (!box) return;
+  document.getElementById('fl-cli-dd').style.display = 'none';
+  const inp = 'width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:white';
+  const lab = 'display:block;font-size:11px;font-weight:600;color:var(--text3);margin-bottom:3px';
+  const f = (id, l, ph, extra) => `<div ${extra || ''}><label style="${lab}">${l}</label><input id="${id}" placeholder="${ph || ''}" style="${inp}"></div>`;
+  box.innerHTML = `<div style="border:1.5px solid var(--accent,#1B4FD8);border-radius:10px;padding:14px;margin-top:8px;background:#F8FAFF">
+    <div style="font-weight:800;margin-bottom:10px">Nuovo cliente</div>
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;margin-bottom:8px">
+      ${f('flc-ragione', 'Ragione sociale / Nome e cognome *', 'Es. Rossi Trasporti SRL')}
+      <div><label style="${lab}">Tipo</label><select id="flc-tipo" style="${inp}"><option>Azienda</option><option>Privato</option></select></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      ${f('flc-piva', 'Partita IVA', '11 cifre')}${f('flc-cf', 'Codice fiscale', '')}
+    </div>
+    <div style="display:grid;grid-template-columns:2fr 90px 90px 1.3fr 60px;gap:8px;margin-bottom:8px">
+      ${f('flc-via', 'Via / Piazza *', 'Via Roma')}${f('flc-civico', 'N. civico', '12')}${f('flc-cap', 'CAP *', '00100')}${f('flc-citta', 'Città *', 'Roma')}${f('flc-prov', 'Prov.', 'RM')}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1.5fr 1fr 1.5fr;gap:8px;margin-bottom:10px">
+      ${f('flc-sdi', 'Codice SDI', '7 caratteri')}${f('flc-pec', 'PEC', 'fatture@pec.it')}${f('flc-tel', 'Telefono', '')}${f('flc-email', 'Email', '')}
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Per le aziende serve la P.IVA e il codice SDI o la PEC. Per i privati basta il codice fiscale.</div>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn btn-sm btn-secondary" onclick="document.getElementById('fl-nuovo-cli').innerHTML=''">Annulla</button>
+      <button class="btn btn-sm btn-primary" id="flc-salva" onclick="flSalvaNuovoCliente()">Salva cliente</button>
+    </div></div>`;
+  if (nome) document.getElementById('flc-ragione').value = nome;
+  setTimeout(() => document.getElementById('flc-ragione')?.focus(), 30);
+}
+
+async function flSalvaNuovoCliente() {
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const ragione = v('flc-ragione'), tipo = v('flc-tipo') || 'Azienda';
+  const piva = v('flc-piva').replace(/\s/g, ''), cf = v('flc-cf').replace(/\s/g, '').toUpperCase();
+  const via = v('flc-via'), civico = v('flc-civico').toUpperCase(), cap = v('flc-cap'), citta = v('flc-citta'), provincia = v('flc-prov').toUpperCase();
+  const sdi = v('flc-sdi').toUpperCase(), pec = v('flc-pec'), tel = v('flc-tel'), email = v('flc-email');
+  const errs = [];
+  if (!ragione) errs.push('• Ragione sociale / nome');
+  if (!piva && !cf) errs.push('• Partita IVA oppure codice fiscale');
+  if (piva && !/^\d{11}$/.test(piva)) errs.push('• La partita IVA deve avere 11 cifre');
+  if (!via) errs.push('• Via / Piazza');
+  if (!/^\d{5}$/.test(cap)) errs.push('• CAP (5 cifre)');
+  if (!citta) errs.push('• Città');
+  if (sdi && sdi.length !== 7) errs.push('• Il codice SDI deve avere 7 caratteri');
+  if (piva && !sdi && !pec) errs.push('• Codice SDI oppure PEC (per le aziende)');
+  if (errs.length) { alert('Controlla questi dati:\n\n' + errs.join('\n')); return; }
+  if (piva && _clienti.some(c => (c.piva || '').replace(/\s/g, '') === piva)) {
+    const esistente = _clienti.find(c => (c.piva || '').replace(/\s/g, '') === piva);
+    alert('Esiste già un cliente con questa partita IVA: ' + esistente.ragione + '. Lo seleziono.');
+    document.getElementById('fl-nuovo-cli').innerHTML = ''; flSceltaCliente(esistente.id); return;
+  }
+  const btn = document.getElementById('flc-salva'); if (btn) { btn.disabled = true; btn.textContent = 'Salvataggio…'; }
+  const indirizzo = via + (civico ? ' ' + civico : '') + ', ' + cap + ' ' + citta + (provincia ? ' (' + provincia + ')' : '');
+  const row = { id: crypto.randomUUID(), created_at: new Date().toISOString(), ragione, tipo, piva, cf, sdi, pec, tel, email,
+    indirizzo, via, civico, cap, citta, provincia, pagamento: document.getElementById('fl-pag')?.value || 'bonifico', iva: 22 };
+  const { data, error } = await supa.from('clienti').insert(row).select().single();
+  if (error) { alert('Errore salvataggio cliente: ' + error.message); if (btn) { btn.disabled = false; btn.textContent = 'Salva cliente'; } return; }
+  _clienti.push(data); _clienti.sort((a, b) => (a.ragione || '').localeCompare(b.ragione || ''));
+  document.getElementById('fl-nuovo-cli').innerHTML = '';
+  flSceltaCliente(data.id);
+  showToastFin('Cliente ' + ragione + ' salvato in anagrafica ✓');
 }
 
 function flSceltaCliente(id) {
