@@ -10107,6 +10107,13 @@ function renderPagamentiCommessa(cm) {
 
 // genNumFattura: definita sopra con _nextNumero (sistema unificato)
 
+// Riga fattura con lo sconto della commessa già applicato al prezzo unitario
+function _rigaScontata(desc, r) {
+  const sc = +r.sconto || 0;
+  const prezzo = Math.round((r.prezzo || 0) * (1 - sc / 100) * 100) / 100;
+  return { desc: desc + (sc ? ' (sconto ' + String(sc).replace('.', ',') + '%)' : ''), qta: r.qta || 1, prezzo };
+}
+
 function emettiFatturaCommessa(comId) {
   const cm = commesse.find(c=>c.id===comId);
   if (!cm) return;
@@ -10115,8 +10122,8 @@ function emettiFatturaCommessa(comId) {
   if (!cl) { alert('La commessa non ha un cliente associato.'); return; }
   const righe = [
     ..._rigaManodoperaFattura(cm),
-    ...(cm.vociRic||[]).filter(r=>r.desc).map(r=>({desc:_descRic(r),qta:r.qta||1,prezzo:r.prezzo||0})),
-    ...(cm.vociExtra||[]).filter(r=>r.desc).map(r=>({desc:r.desc,qta:r.qta||1,prezzo:r.prezzo||0})),
+    ...(cm.vociRic||[]).filter(r=>r.desc).map(r=>_rigaScontata(_descRic(r), r)),
+    ...(cm.vociExtra||[]).filter(r=>r.desc).map(r=>_rigaScontata(r.desc, r)),
   ];
   if (!righe.length) { alert('La commessa non ha voci da fatturare.'); return; }
   apriFatturaModal({origine:'commessa',origineId:comId,clienteId:cm.clienteId,
