@@ -3388,6 +3388,7 @@ function _pv2Giorno(dipId, data) {
   if (p && p.entrata && !p.pausaInizio && new Date(p.entrata) < pp1 && (p.uscita ? new Date(p.uscita) : (data === oggi ? now : null)) > pp2) anom.push('pausa non timbrata');
   if (tims.some(t => !t.uscita && (data < oggi || (p && p.uscita)))) anom.push('commessa ancora aperta');
   for (let i = 1; i < tims.length; i++) { if (new Date(tims[i].entrata) < fine(tims[i - 1]) - 60000) { anom.push('timbrature sovrapposte'); break; } }
+  if (tims.some(t => t.uscita && (_pv2DataTim({ entrata: t.uscita }) !== data || (p && p.uscita && new Date(t.uscita) - new Date(p.uscita) > 10 * 60000)))) anom.push('lavoro su commessa oltre l\'uscita');
   if (p && p.pausaInizio && p.pausaFine && tims.some(t => new Date(t.entrata) < new Date(p.pausaFine) && fine(t) > new Date(p.pausaInizio) && (Math.min(fine(t), new Date(p.pausaFine)) - Math.max(new Date(t.entrata), new Date(p.pausaInizio))) > 10 * 60000)) anom.push('lavoro su commessa durante la pausa');
   const ass = (typeof assenze !== 'undefined' ? assenze : []).find(a => a.dip_id === dipId && a.stato === 'approvata' && a.dal <= data && a.al >= data);
   return { p, tims, minCom, perCom, minPres, scarto: minPres - minCom, anom, ass };
