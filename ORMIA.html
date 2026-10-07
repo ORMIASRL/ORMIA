@@ -3361,35 +3361,37 @@ function _pv2Commessa(comId) {
 // Calcolo della giornata di un dipendente
 function _pv2Giorno(dipId, data) {
   const now = new Date(), oggi = _pv2Iso(now);
-  const p = presenze.find(x => (x.dipId === dipId || x.mecId === dipId) && _dataLocaleP(x) === data) || null;
+  // Più turni nello stesso giorno (rientro / intervento serale): p = primo, pUlt = ultimo
+  const ps = presenze.filter(x => (x.dipId === dipId || x.mecId === dipId) && _dataLocaleP(x) === data).sort((a, b) => new Date(a.entrata) - new Date(b.entrata));
+  const p = ps[0] || null, pUlt = ps[ps.length - 1] || null;
   const tims = timbrature.filter(t => t.mecId === dipId && t.entrata && _pv2DataTim(t) === data)
     .sort((a, b) => new Date(a.entrata) - new Date(b.entrata));
   const fine = t => t.uscita ? new Date(t.uscita) : (data === oggi ? now : new Date(t.entrata));
   let minCom = 0; const perCom = {};
   tims.forEach(t => { const m = Math.max(0, (fine(t) - new Date(t.entrata)) / 60000); minCom += m; perCom[t.comId] = (perCom[t.comId] || 0) + m; });
   let minPres = 0;
-  if (p && p.entrata) {
-    const u = p.uscita ? new Date(p.uscita) : (data === oggi ? now : null);
-    if (u) {
-      minPres = (u - new Date(p.entrata)) / 60000;
-      if (p.pausaInizio) minPres -= ((p.pausaFine ? new Date(p.pausaFine) : u) - new Date(p.pausaInizio)) / 60000;
-      minPres = Math.max(0, minPres);
-    }
-  }
+  ps.forEach(q => {
+    if (!q.entrata) return;
+    const u = q.uscita ? new Date(q.uscita) : (data === oggi || new Date(q.entrata) > new Date(now - 16 * 3600000) ? now : null);
+    if (!u) return;
+    let m = (u - new Date(q.entrata)) / 60000;
+    if (q.pausaInizio) m -= ((q.pausaFine ? new Date(q.pausaFine) : u) - new Date(q.pausaInizio)) / 60000;
+    minPres += Math.max(0, m);
+  });
   // Anomalie
   const anom = [];
   const imp = _impostazioni || {}, hm = x => String(x || '').slice(0, 5);
   const pp1 = new Date(`${data}T${hm(imp.pausa_inizio || imp.pausaInizio) || '13:00'}:00`);
   const pp2 = new Date(`${data}T${hm(imp.pausa_fine || imp.pausaFine) || '14:00'}:00`);
   if (tims.length && !p) anom.push('entrata presenze mancante');
-  if (p && !p.uscita && data < oggi) anom.push('uscita mancante');
+  if (ps.some(q => q.entrata && !q.uscita && new Date(q.entrata) < new Date(now - 16 * 3600000))) anom.push('uscita mancante');
   if (p && p.entrata && !p.pausaInizio && new Date(p.entrata) < pp1 && (p.uscita ? new Date(p.uscita) : (data === oggi ? now : null)) > pp2) anom.push('pausa non timbrata');
-  if (tims.some(t => !t.uscita && (data < oggi || (p && p.uscita)))) anom.push('commessa ancora aperta');
+  if (tims.some(t => !t.uscita && (data < oggi || (pUlt && pUlt.uscita)))) anom.push('commessa ancora aperta');
   for (let i = 1; i < tims.length; i++) { if (new Date(tims[i].entrata) < fine(tims[i - 1]) - 60000) { anom.push('timbrature sovrapposte'); break; } }
   if (tims.some(t => t.uscita && (_pv2DataTim({ entrata: t.uscita }) !== data || (p && p.uscita && new Date(t.uscita) - new Date(p.uscita) > 10 * 60000)))) anom.push('lavoro su commessa oltre l\'uscita');
   if (p && p.pausaInizio && p.pausaFine && tims.some(t => new Date(t.entrata) < new Date(p.pausaFine) && fine(t) > new Date(p.pausaInizio) && (Math.min(fine(t), new Date(p.pausaFine)) - Math.max(new Date(t.entrata), new Date(p.pausaInizio))) > 10 * 60000)) anom.push('lavoro su commessa durante la pausa');
   const ass = (typeof assenze !== 'undefined' ? assenze : []).find(a => a.dip_id === dipId && a.stato === 'approvata' && a.dal <= data && a.al >= data);
-  return { p, tims, minCom, perCom, minPres, scarto: minPres - minCom, anom, ass };
+  return { p, pUlt, ps, tims, minCom, perCom, minPres, scarto: minPres - minCom, anom, ass };
 }
 
 function pv2Tab(t) {
@@ -3436,7 +3438,7 @@ function pv2RenderGiorno() {
       <td style="${td};font-weight:700">${_pv2Esc(d.nome)} ${assTxt}</td>
       <td style="${td};font-family:'DM Mono',monospace">${p ? _pv2Hm(p.entrata) : '—'}${p && p.ritardo ? ' <span style="color:var(--danger);font-size:11px">ritardo</span>' : ''}</td>
       <td style="${td};font-family:'DM Mono',monospace">${pausa}</td>
-      <td style="${td};font-family:'DM Mono',monospace">${p ? (_pv2Hm(p.uscita) || '<span style="color:var(--success)">in sede</span>') : '—'}</td>
+      <td style="${td};font-family:'DM Mono',monospace">${g.pUlt ? (_pv2Hm(g.pUlt.uscita) || '<span style="color:var(--success)">in sede</span>') + (g.ps.length > 1 ? ' <span style="font-size:11px;color:var(--accent);font-weight:700">+' + (g.ps.length - 1) + ' rientro</span>' : '') : '—'}</td>
       <td style="${td};font-family:'DM Mono',monospace;font-weight:700">${p ? _pv2Min(g.minPres) : '—'}</td>
       <td style="${td};font-family:'DM Mono',monospace">${g.tims.length ? _pv2Min(g.minCom) : '—'}</td>
       <td style="${td};font-family:'DM Mono',monospace;color:${scCol}">${p ? _pv2Min(g.scarto) : '—'}</td>
@@ -3461,7 +3463,7 @@ async function pv2Dettaglio(dipId, data) {
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:8000;display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow-y:auto';
   // Timeline
   const pts = [];
-  if (g.p?.entrata) pts.push(new Date(g.p.entrata)); if (g.p?.uscita) pts.push(new Date(g.p.uscita));
+  g.ps.forEach(q => { if (q.entrata) pts.push(new Date(q.entrata)); if (q.uscita && _pv2Iso(new Date(q.uscita)) === data) pts.push(new Date(q.uscita)); });
   g.tims.forEach(t => { pts.push(new Date(t.entrata)); if (t.uscita) pts.push(new Date(t.uscita)); });
   let h0 = 7, h1 = 19;
   pts.forEach(x => { h0 = Math.min(h0, x.getHours()); h1 = Math.max(h1, x.getHours() + 1); });
@@ -3470,10 +3472,11 @@ async function pv2Dettaglio(dipId, data) {
   const oggi = _pv2Iso(new Date());
   const fineT = t => t.uscita || (data === oggi ? new Date().toISOString() : t.entrata);
   let bar = '';
-  if (g.p?.entrata) {
-    const pu = g.p.uscita || (data === oggi ? new Date().toISOString() : g.p.entrata);
-    bar += `<div title="Presenza" style="position:absolute;top:2px;bottom:2px;left:${pos(g.p.entrata)}%;width:${Math.max(.3, pos(pu) - pos(g.p.entrata))}%;border:2px dashed var(--text3);border-radius:6px"></div>`;
-  }
+  g.ps.forEach(q => {
+    if (!q.entrata) return;
+    const pu = q.uscita || (data === oggi ? new Date().toISOString() : q.entrata);
+    bar += `<div title="Presenza" style="position:absolute;top:2px;bottom:2px;left:${pos(q.entrata)}%;width:${Math.max(.3, pos(pu) - pos(q.entrata))}%;border:2px dashed var(--text3);border-radius:6px"></div>`;
+  });
   if (g.p?.pausaInizio) bar += `<div title="Pausa" style="position:absolute;top:8px;bottom:8px;left:${pos(g.p.pausaInizio)}%;width:${Math.max(.3, pos(g.p.pausaFine || fineT({ entrata: g.p.pausaInizio })) - pos(g.p.pausaInizio))}%;background:repeating-linear-gradient(45deg,#cbd5e1,#cbd5e1 4px,#e2e8f0 4px,#e2e8f0 8px);border-radius:4px"></div>`;
   g.tims.forEach(t => {
     const c = _pv2Commessa(t.comId);
@@ -3516,9 +3519,10 @@ async function pv2Dettaglio(dipId, data) {
     <div style="position:relative;height:34px;background:var(--surface2);border-radius:8px;margin-bottom:2px">${bar}</div>
     <div style="position:relative;height:14px;margin-bottom:16px">${ore}</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
-      ${box('Entrata', p ? _pv2Hm(p.entrata) : '—')}${box('Pausa', p && p.pausaInizio ? _pv2Hm(p.pausaInizio) + '–' + (_pv2Hm(p.pausaFine) || '…') : '—')}${box('Uscita', p ? (_pv2Hm(p.uscita) || 'in sede') : '—')}${box('Presenza', p ? _pv2Min(g.minPres) : '—')}${box('Su commesse', _pv2Min(g.minCom))}
+      ${box('Entrata', p ? _pv2Hm(p.entrata) : '—')}${box('Pausa', p && p.pausaInizio ? _pv2Hm(p.pausaInizio) + '–' + (_pv2Hm(p.pausaFine) || '…') : '—')}${box('Uscita', g.pUlt ? (_pv2Hm(g.pUlt.uscita) || 'in sede') : '—')}${box('Presenza', p ? _pv2Min(g.minPres) : '—')}${box('Su commesse', _pv2Min(g.minCom))}
       <div style="margin-left:auto">${p ? `<button class="btn btn-secondary btn-sm" onclick="apriModificaPresenza('${p.id}')">✏️ Correggi presenza</button>` : `<button class="btn btn-primary btn-sm" onclick="pv2CreaPresenza('${dipId}','${data}')">+ Crea presenza</button>`}</div>
     </div>
+    ${g.ps.length > 1 ? `<div style="margin:-6px 0 14px;font-size:13px">${g.ps.map((q, i) => `<div style="display:flex;align-items:center;gap:8px;padding:3px 0"><b style="width:70px">${i ? 'Rientro' : 'Turno'}</b><span style="font-family:'DM Mono',monospace">${_pv2Hm(q.entrata)} – ${_pv2Hm(q.uscita) || 'in sede'}</span><button class="btn btn-secondary btn-sm" onclick="apriModificaPresenza('${q.id}')" title="Correggi">✏️</button></div>`).join('')}</div>` : ''}
     <div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Ore per commessa</div>
     <div style="margin-bottom:16px">${riep || '<div style="color:var(--text3);font-size:13px">—</div>'}</div>
     <div style="display:flex;align-items:center;margin-bottom:4px"><div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;flex:1">Timbrature</div>
@@ -3637,7 +3641,7 @@ function pv2RenderMese() {
       <td style="${td};text-transform:capitalize;${we ? 'color:var(--text3)' : ''}">${dt.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit' })}</td>
       <td style="${td};font-family:'DM Mono',monospace">${p ? _pv2Hm(p.entrata) : (g.ass ? '<span style="color:var(--warning);font-weight:700">' + _pv2Esc(g.ass.tipo) + '</span>' : '—')}</td>
       <td style="${td};font-family:'DM Mono',monospace">${p && p.pausaInizio ? _pv2Hm(p.pausaInizio) + '–' + (_pv2Hm(p.pausaFine) || '…') : ''}</td>
-      <td style="${td};font-family:'DM Mono',monospace">${p ? (_pv2Hm(p.uscita) || '…') : ''}</td>
+      <td style="${td};font-family:'DM Mono',monospace">${g.pUlt ? (_pv2Hm(g.pUlt.uscita) || '…') + (g.ps.length > 1 ? ' (+' + (g.ps.length - 1) + ')' : '') : ''}</td>
       <td style="${td};font-family:'DM Mono',monospace;font-weight:700">${p ? _pv2Min(g.minPres) : ''}</td>
       <td style="${td};font-family:'DM Mono',monospace">${g.tims.length ? _pv2Min(g.minCom) : ''}</td>
       <td style="${td};font-family:'DM Mono',monospace">${p && +p.straordinario ? _pv2Min(p.straordinario * 60) : ''}</td>
