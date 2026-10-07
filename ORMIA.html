@@ -741,6 +741,11 @@
           Pratiche garanzia
           <span id="badge-garanzie" style="display:none;background:var(--warning);color:white;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span>
         </div>
+        <div class="nav-item solo-admin" id="nav-dafatt" onclick="apriDaFatturare()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 2v20l3-2 3 2 3-2 3 2 3-2V2l-3 2-3-2-3 2-3-2-3 2z"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="14" y2="13"/></svg>
+          Da fatturare
+          <span id="badge-dafatt" style="display:none;background:var(--danger);color:white;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span>
+        </div>
         <div class="nav-item" id="nav-presenze" onclick="setSection('presenze')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
           Presenze e assenze
@@ -3050,6 +3055,7 @@ function init() {
       <div id="dc-tot-live-note" style="display:none;font-size:11px;color:var(--text3);text-align:right"></div>
     </div>
   </div>
+  <div class="detail-section" id="dc-fatt-mag" style="display:none"></div>
   <!-- CHECKOUT COMMESSA -->
   <div class="detail-section" id="dc-checkout-section" style="display:none">
     <div class="detail-section-title">Incassa</div>
@@ -6071,6 +6077,7 @@ function showDetailCommessa(id) {
   // Sezione checkout: visibile solo se chiusa o fatturata
   const checkoutSec = document.getElementById('dc-checkout-section');
   if (checkoutSec) checkoutSec.style.display = (cm.stato==='chiusa'||cm.stato==='fatturata') ? '' : 'none';
+  try { _aggFattBanco(cm); } catch(_) {}
   document.getElementById('dc-data').textContent = formatDate(cm.dataApertura)||'—';
 
   // Solo i meccanici con timbratura aperta adesso su questa commessa
@@ -7196,6 +7203,7 @@ function apriPratica(id) {
       ${fatt ? `<div style="margin-top:12px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">🧾 Fattura <strong>${fatt.numero||''}</strong> · ${_eur(fatt.totale)} ${fatt.stato==='pagata'?'· <span style="color:var(--success);font-weight:700">pagata</span>':'· in attesa di pagamento (segnala pagata in Finance)'}</div>` : ''}
       <div style="font-size:11px;color:var(--text3);margin-top:10px;line-height:1.5">Inserisci N. Claim, N. RDG e importo quando Ford Trucks comunica l'accettazione: la pratica diventa <strong>Accettata</strong> e puoi emettere la fattura.</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;align-items:center">
+        <button class="btn btn-secondary btn-sm" onclick="_vediCommessaSopra('${cm.id}')">👁 Vedi commessa</button>
         <button class="btn btn-secondary btn-sm" onclick="document.getElementById('modal-pratica').remove();setSection('commesse');setTimeout(()=>showDetailCommessa('${cm.id}'),150)">Apri commessa</button>
         <button class="btn btn-secondary btn-sm" onclick="scaricaZipGaranzia('${cm.id}')">⬇ ZIP garanzia</button>
         ${bloccata ? '' : `<button class="btn btn-secondary btn-sm" onclick="segnaPraticaRespinta('${cm.id}')">${st==='respinta'?'↩ Annulla respinta':'✕ Respinta'}</button>`}
@@ -7264,7 +7272,6 @@ function emettiFatturaGaranzia(id) {
     descrizione: testo + (v?.targa ? ' — targa ' + v.targa : '') + ' — commessa ' + (cm.numero||''),
     veicolo: v ? `${v.targa} ${[v.marca,v.modello].filter(Boolean).join(' ')}` : '',
     righe: [{ desc: testo, qta: 1, prezzo: +cm.garImporto }] });
-  if (document.getElementById('modal-documenti').style.display !== 'block') apriDocumenti();
 }
 
 function _escAllG(t){return String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -9225,7 +9232,7 @@ function _selectConvert(el, tipo) {
 
 <!-- ═══════════════ MODAL FATTURA ═══════════════ -->
 <div class="modal-overlay" id="modal-fattura" style="display:none" onclick="closeModalOnBg(event,'modal-fattura')">
-  <div class="modal" style="max-width:620px">
+  <div class="modal" style="max-width:780px">
     <div class="modal-header">
       <div>
         <div class="modal-title">Emetti fattura</div>
@@ -9276,6 +9283,8 @@ function _selectConvert(el, tipo) {
         </div>
       </div>
 
+      <div id="fatt-incasso-box" style="display:none;margin-bottom:12px"></div>
+      <div id="fatt-righe-box" style="margin-bottom:12px"></div>
       <!-- TOTALI -->
       <div style="background:var(--accent-light);border:1px solid #C7D7F8;border-radius:var(--radius);padding:12px 16px;margin-bottom:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
         <div><div style="font-size:11px;color:var(--text3)">Imponibile</div><div style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace" id="fatt-imponibile">€ 0,00</div></div>
@@ -9290,15 +9299,11 @@ function _selectConvert(el, tipo) {
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-fattura')">Annulla</button>
-      <button class="btn btn-secondary" onclick="salvaEInviaFattura()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-        Salva e invia email
-      </button>
       <button class="btn btn-secondary" onclick="salvaEStampaFattura()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
         Salva e stampa
       </button>
-      <button class="btn btn-primary" onclick="salvaFattura()">Salva</button>
+      <button class="btn btn-primary" id="fatt-btn-salva" onclick="salvaFattura()">Emetti fattura</button>
     </div>
   </div>
 </div><!-- /modal-fattura -->
@@ -9956,10 +9961,11 @@ async function postFirmaDDT(ddt) {
     apriFatturaModal({
       origine:'ddt', origineId:ddt.id,
       clienteId:ddt.clienteId||null,
-      descrizione:`DDT ${ddt.numero}`, veicolo:'', righe,
+      descrizione:`DDT ${ddt.numero}`, veicolo:'', righe:_righeDDT(ddt),
+      incasso:true, pagamento:({contanti:'rd_contanti',carta:'rd_carta',bonifico:'rd_bonifico'})[metodo]||'',
     });
   } else {
-    showToast(`DDT ${ddt.numero} salvato — fattura da emettere`, 'info');
+    showToast(`DDT ${ddt.numero} salvato — da fatturare (fattura differita entro il 15 del mese prossimo)`, 'info');
   }
 
   // STAMPA — opzionale, chiedi
@@ -10098,7 +10104,7 @@ function _rigaScontata(desc, r) {
   return { desc: desc + (sc ? ' (sconto ' + String(sc).replace('.', ',') + '%)' : ''), qta: r.qta || 1, prezzo };
 }
 
-function emettiFatturaCommessa(comId) {
+function emettiFatturaCommessa(comId, extra) {
   const cm = commesse.find(c=>c.id===comId);
   if (!cm) return;
   const cl = clienti.find(c=>c.id===cm.clienteId);
@@ -10112,7 +10118,294 @@ function emettiFatturaCommessa(comId) {
   if (!righe.length) { alert('La commessa non ha voci da fatturare.'); return; }
   apriFatturaModal({origine:'commessa',origineId:comId,clienteId:cm.clienteId,
     descrizione:`Commessa ${cm.numero} — ${cm.descrizione||cm.desc}`,
-    veicolo:v?`${v.targa} ${[v.marca,v.modello].filter(Boolean).join(' ')}`:'',righe});
+    veicolo:v?`${v.targa} ${[v.marca,v.modello].filter(Boolean).join(' ')}`:'',righe, ...(extra||{})});
+}
+
+// ╔═══════════════════════════════════════════════════╗
+// ║  FATTURAZIONE: revisione righe, incasso al banco, ║
+// ║  coda "Da fatturare", fattura unica, email FiC    ║
+// ╚═══════════════════════════════════════════════════╝
+let _fattRighe = [];
+const _r4 = n => Math.round((+n || 0) * 10000) / 10000;
+const _escF = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const _eurF = n => '€ ' + (+n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const _totRigaF = r => Math.round((+r.qta || 0) * (+r.prezzo || 0) * (1 - (+r.sconto || 0) / 100) * 100) / 100;
+
+// ── Righe modificabili nel modal fattura ──
+function _fattInitRighe(righe) {
+  _fattRighe = (righe || []).map(r => ({ desc: r.desc || r.descrizione || '', qta: +r.qta || 1, prezzo: +r.prezzo || 0, sconto: 0 }));
+  _fattRenderRighe();
+}
+function _fattSync() {
+  if (!_fattDraft) return;
+  _fattDraft.righe = _fattRighe.filter(r => String(r.desc).trim()).map(r => {
+    const sc = +r.sconto || 0;
+    return { desc: String(r.desc).trim() + (sc ? ' (sconto ' + String(sc).replace('.', ',') + '%)' : ''), qta: +r.qta || 1, prezzo: _r4((+r.prezzo || 0) * (1 - sc / 100)) };
+  });
+  calcolaFattTotali(_fattDraft.righe);
+}
+function _fattRenderRighe() {
+  const box = document.getElementById('fatt-righe-box'); if (!box) return;
+  const inp = 'padding:6px 7px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;width:100%;min-width:0;background:var(--surface);box-sizing:border-box';
+  const cols = 'display:grid;grid-template-columns:minmax(0,1fr) 58px 88px 56px 84px 24px;gap:6px;align-items:center';
+  box.innerHTML = `<div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:6px">RIGHE FATTURA <span style="font-weight:500">(puoi modificarle prima di emettere)</span></div>
+    <div style="${cols};font-size:10px;font-weight:700;color:var(--text3);margin-bottom:4px"><span>Descrizione</span><span>Q.tà</span><span>Prezzo €</span><span>Sc. %</span><span style="text-align:right">Totale</span><span></span></div>
+    ${_fattRighe.map((r, i) => `<div style="${cols};margin-bottom:5px">
+      <input style="${inp}" value="${_escF(r.desc)}" oninput="_fattSet(${i},'desc',this.value)">
+      <input style="${inp}" type="number" step="0.01" value="${r.qta}" oninput="_fattSet(${i},'qta',this.value)">
+      <input style="${inp}" type="number" step="0.01" value="${r.prezzo}" oninput="_fattSet(${i},'prezzo',this.value)">
+      <input style="${inp}" type="number" step="0.5" min="0" max="100" value="${r.sconto || ''}" placeholder="0" oninput="_fattSet(${i},'sconto',this.value)">
+      <span id="fattr-tot-${i}" style="text-align:right;font-family:'DM Mono',monospace;font-size:12px">${_eurF(_totRigaF(r))}</span>
+      <button type="button" title="Elimina riga" onclick="_fattDelRiga(${i})" style="border:none;background:none;color:var(--danger);cursor:pointer;font-size:15px;padding:0">✕</button>
+    </div>`).join('')}
+    <button type="button" class="btn btn-ghost btn-sm" onclick="_fattAddRiga()">+ Aggiungi riga</button>`;
+  _fattSync();
+}
+function _fattSet(i, k, v) {
+  const r = _fattRighe[i]; if (!r) return;
+  r[k] = k === 'desc' ? v : (parseFloat(String(v).replace(',', '.')) || 0);
+  const el = document.getElementById('fattr-tot-' + i); if (el) el.textContent = _eurF(_totRigaF(r));
+  _fattSync();
+}
+function _fattDelRiga(i) {
+  if (_fattRighe.length <= 1) { alert('La fattura deve avere almeno una riga.'); return; }
+  _fattRighe.splice(i, 1); _fattRenderRighe();
+}
+function _fattAddRiga() { _fattRighe.push({ desc: '', qta: 1, prezzo: 0, sconto: 0 }); _fattRenderRighe(); }
+
+// ── Pagamento nel modal: incasso al banco (solo rimessa diretta) ──
+function _fattPagUI(draft, cl) {
+  const sel = document.getElementById('fatt-pagamento'); if (!sel) return;
+  const soloRd = !!draft.incasso || _ruolo === 'magazzino';
+  let v = _normPag(draft.pagamento) || _normPag(cl?.pagamento) || 'rd_bonifico';
+  if (soloRd && !v.startsWith('rd_')) v = 'rd_bonifico';
+  sel.innerHTML = soloRd ? PAGAMENTI.filter(p => p[0].startsWith('rd_')).map(p => `<option value="${p[0]}">${p[1]}</option>`).join('') : _opzioniPag(v);
+  sel.value = v;
+  const btn = document.getElementById('fatt-btn-salva');
+  if (btn) { btn.textContent = draft.incasso ? '💶 Emetti e incassa' : 'Emetti fattura'; btn.disabled = false; }
+  const box = document.getElementById('fatt-incasso-box'); if (!box) return;
+  if (!draft.incasso) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = '';
+  const b = (cod, ico, lab) => `<button type="button" class="btn btn-secondary fatt-inc-btn" data-cod="${cod}" onclick="_fattSceltaIncasso('${cod}')" style="flex:1;flex-direction:column;height:auto;padding:10px"><span style="font-size:20px">${ico}</span><span style="font-size:12px;font-weight:600;margin-top:4px">${lab}</span></button>`;
+  box.innerHTML = `<div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:6px">COME PAGA ADESSO IL CLIENTE?</div>
+    <div style="display:flex;gap:8px">${b('rd_carta', '💳', 'POS / carta')}${b('rd_contanti', '💵', 'Contanti')}${b('rd_bonifico', '🏦', 'Bonifico istantaneo')}</div>`;
+  _fattSceltaIncasso(v);
+}
+function _fattSceltaIncasso(cod) {
+  const sel = document.getElementById('fatt-pagamento'); if (sel) sel.value = cod;
+  document.querySelectorAll('.fatt-inc-btn').forEach(x => {
+    const on = x.dataset.cod === cod;
+    x.style.outline = on ? '2px solid var(--accent)' : ''; x.style.background = on ? 'var(--accent-light)' : '';
+  });
+  _aggScadenzaFatt();
+}
+
+// Dopo l'emissione con incasso: incasso registrato (visibile in Finance) e fattura segnata pagata
+async function _registraIncassoBanco(fatt) {
+  const metodo = _metodoIncasso(fatt.pagamento) || 'contanti';
+  const oggi = new Date().toISOString().split('T')[0];
+  try {
+    const { error } = await supa.from('incassi').insert({ id: crypto.randomUUID(), cliente_id: fatt.clienteId || null, importo: fatt.totale || 0,
+      metodo, data: new Date().toISOString(), riconciliato: true, fattura_id: fatt.id, note: 'Incasso al banco – fattura ' + fatt.numero });
+    if (error) throw error;
+    const { error: e2 } = await supa.from('fatture').update({ stato: 'pagata', data_pagamento: oggi }).eq('id', fatt.id);
+    if (e2) throw e2;
+    fatt.stato = 'pagata'; fatt.dataPagamento = oggi;
+    showToast('💶 Incassato ' + _eurF(fatt.totale) + ' – fattura ' + fatt.numero + ' pagata ✓');
+  } catch (e) {
+    _dialogoOrmia('Fattura ' + fatt.numero + ' emessa, ma l\'incasso NON è stato registrato.\n\nMotivo: ' + (e.message || e) + '\n\nAvvisa l\'amministrazione: va segnata come pagata da Finance.', { ok: 'OK' });
+  }
+}
+
+// ── Commessa: pulsante per il magazzino ──
+function _aggFattBanco(cm) {
+  const box = document.getElementById('dc-fatt-mag'); if (!box) return;
+  const daFatt = cm && cm.stato === 'chiusa' && !cm.fatturaId && !_isPraticaGar(cm);
+  if (!daFatt || _ruolo !== 'magazzino') { box.style.display = 'none'; box.innerHTML = ''; return; }
+  const cl = clienti.find(c => c.id === cm.clienteId);
+  const rd = _normPag(cl?.pagamento).startsWith('rd_');
+  box.style.display = '';
+  box.innerHTML = rd
+    ? `<div class="detail-section-title">Fattura</div>
+       <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" onclick="fatturaEIncassa('${cm.id}')">💶 Fattura e incassa</button>
+       <div style="font-size:11px;color:var(--text3);margin-top:6px;text-align:center">${_escF(cl?.ragione || '')} paga in rimessa diretta</div>`
+    : `<div class="detail-section-title">Fattura</div>
+       <div style="padding:12px;border:1px dashed var(--border);border-radius:var(--radius);font-size:13px;color:var(--text2);text-align:center;line-height:1.5">📋 <strong>Da fatturare</strong> — se ne occupa l'amministrazione<br>
+       <span style="font-size:11px;color:var(--text3)">${_escF(cl ? (_labelPag(cl.pagamento) || 'pagamento non indicato in anagrafica') : 'nessun cliente associato')}</span></div>`;
+}
+function fatturaEIncassa(comId) {
+  const cm = commesse.find(c => c.id === comId); if (!cm) return;
+  const cl = clienti.find(c => c.id === cm.clienteId);
+  if (!_normPag(cl?.pagamento).startsWith('rd_')) { alert('Questo cliente non paga in rimessa diretta: la fattura la emette l\'amministrazione.'); return; }
+  emettiFatturaCommessa(comId, { incasso: true });
+}
+
+// ── Righe da commessa / DDT ──
+function _righeCommessa(cm) {
+  return [
+    ..._rigaManodoperaFattura(cm),
+    ...(cm.vociRic || []).filter(r => r.desc).map(r => _rigaScontata(_descRic(r), r)),
+    ...(cm.vociExtra || []).filter(r => r.desc).map(r => _rigaScontata(r.desc, r)),
+  ];
+}
+function _righeDDT(d) {
+  return (d.righe || []).filter(r => r.desc).map(r => _rigaScontata(r.desc, r));
+}
+const _impRigheF = rr => rr.reduce((s, r) => s + Math.round((r.qta || 1) * (r.prezzo || 0) * 100) / 100, 0);
+
+// ── Coda "Da fatturare" (solo amministrazione) ──
+let _dfSel = new Set();
+function _daFatturare() {
+  const com = commesse.filter(c => c.stato === 'chiusa' && !c.fatturaId && !_isPraticaGar(c));
+  const dd = (typeof ddts !== 'undefined' ? ddts : []).filter(d => !['fatturato', 'annullato'].includes(d.stato || 'aperto'));
+  return { com, dd };
+}
+function _aggBadgeDaFatt() {
+  const b = document.getElementById('badge-dafatt'); if (!b) return;
+  const { com, dd } = _daFatturare(); const n = com.length + dd.length;
+  b.textContent = n; b.style.display = n ? '' : 'none';
+}
+setInterval(() => { try { _aggBadgeDaFatt(); } catch (_) {} }, 5000);
+
+async function apriDaFatturare() {
+  if (_ruolo === 'magazzino') { showToast('Sezione riservata all\'amministrazione'); return; }
+  try { await loadDocumenti(); } catch (_) {}
+  _dfSel.clear();
+  document.getElementById('modal-dafatt')?.remove();
+  const ov = document.createElement('div'); ov.id = 'modal-dafatt';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:800;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML = `<div style="background:var(--surface);border-radius:var(--radius-lg);width:880px;max-width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:var(--shadow-lg)">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px 22px;border-bottom:1px solid var(--border)">
+        <div><div style="font-size:18px;font-weight:800">Da fatturare</div>
+        <div style="font-size:12px;color:var(--text3)">Commesse chiuse e DDT non ancora fatturati. Spunta più voci dello stesso cliente per fare una fattura unica.</div></div>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('modal-dafatt').remove()">Chiudi</button>
+      </div>
+      <div id="df-body" style="overflow:auto;padding:14px 22px 20px"></div>
+    </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+  _dfRender();
+}
+function _dfRender() {
+  const body = document.getElementById('df-body'); if (!body) return;
+  const { com, dd } = _daFatturare();
+  const oggi = new Date();
+  const voci = [
+    ...com.map(c => { const v = veicoli.find(x => x.id === c.veicoloId);
+      return { k: 'c:' + c.id, tipo: 'c', id: c.id, cli: c.clienteId || '', num: c.numero || '', titolo: [v?.targa, c.descrizione || c.desc].filter(Boolean).join(' · '),
+        data: String(c.dataApertura || '').slice(0, 10), imp: _impRigheF(_righeCommessa(c)) }; }),
+    ...dd.map(d => { const dt = String(d.data || d.created_at || '').slice(0, 10); let sc = null;
+      if (dt) { const x = new Date(dt + 'T12:00:00'); sc = new Date(x.getFullYear(), x.getMonth() + 1, 15, 23, 59); }
+      return { k: 'd:' + d.id, tipo: 'd', id: d.id, cli: d.clienteId || '', num: d.numero || '', titolo: d.causale || 'DDT', data: dt, imp: _impRigheF(_righeDDT(d)), scad: sc }; }),
+  ];
+  if (!voci.length) { body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text3);font-size:14px">Niente da fatturare ✓</div>'; return; }
+  const gruppi = {};
+  voci.forEach(v => (gruppi[v.cli] = gruppi[v.cli] || []).push(v));
+  const nomeCli = id => clienti.find(c => c.id === id)?.ragione || 'Cliente non indicato';
+  body.innerHTML = Object.keys(gruppi).sort((a, b) => nomeCli(a).localeCompare(nomeCli(b))).map(cli => {
+    const vv = gruppi[cli], cl = clienti.find(c => c.id === cli);
+    const nSel = vv.filter(v => _dfSel.has(v.k)).length;
+    const tot = vv.reduce((s, v) => s + v.imp, 0);
+    return `<div style="border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;overflow:hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:var(--surface2)">
+        <div style="min-width:0"><div style="font-weight:800">${_escF(nomeCli(cli))}</div>
+          <div style="font-size:11px;color:var(--text3)">${_escF(cl ? (_labelPag(cl.pagamento) || 'pagamento non indicato') : '')} · ${vv.length} da fatturare · ${_eurF(tot)} + IVA</div></div>
+        <button class="btn btn-primary btn-sm" ${nSel < 2 ? 'disabled title="Spunta almeno 2 voci"' : ''} onclick="_dfFatturaUnica('${cli}')">🧾 Fattura unica${nSel >= 2 ? ' (' + nSel + ')' : ''}</button>
+      </div>
+      ${vv.map(v => {
+        const gg = v.scad ? (v.scad - oggi) / 86400000 : null;
+        const scTxt = v.scad ? `<div style="font-size:11px;font-weight:600;color:${gg < 0 ? 'var(--danger)' : gg <= 5 ? 'var(--warning)' : 'var(--text3)'}">Fattura differita entro il ${v.scad.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })}${gg < 0 ? ' — SCADUTA' : ''}</div>` : '';
+        const tag = v.tipo === 'c' ? 'background:#EEF2FF;color:#1B4FD8' : 'background:#F1F0EC;color:#555';
+        return `<div style="display:grid;grid-template-columns:24px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:9px 14px;border-top:1px solid var(--border)">
+          <input type="checkbox" ${_dfSel.has(v.k) ? 'checked' : ''} onchange="_dfToggle('${v.k}',this.checked)" style="width:17px;height:17px;cursor:pointer">
+          <div style="min-width:0">
+            <div style="font-size:13px;font-weight:700"><span style="${tag};font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:6px">${v.tipo === 'c' ? 'COMMESSA' : 'DDT'}</span>${_escF(v.num)}</div>
+            <div style="font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escF(v.titolo)}${v.data ? ' · ' + formatDate(v.data) : ''}</div>${scTxt}
+          </div>
+          <div style="font-family:'DM Mono',monospace;font-weight:700;font-size:13px;white-space:nowrap">${_eurF(v.imp)}</div>
+          <div style="display:flex;gap:6px">${v.tipo === 'c' ? `<button class="btn btn-ghost btn-sm" title="Vedi commessa" onclick="_vediCommessaSopra('${v.id}')">👁</button>` : ''}<button class="btn btn-secondary btn-sm" onclick="_dfFattura('${v.k}')">Fattura</button></div>
+        </div>`; }).join('')}
+    </div>`;
+  }).join('');
+}
+function _dfToggle(k, on) { if (on) _dfSel.add(k); else _dfSel.delete(k); const b = document.getElementById('df-body'); const st = b ? b.scrollTop : 0; _dfRender(); if (b) b.scrollTop = st; }
+function _dfFattura(k) {
+  const [t, id] = k.split(':');
+  document.getElementById('modal-dafatt')?.remove();
+  if (t === 'c') emettiFatturaCommessa(id); else converteDDTinFattura(id);
+}
+function _dfFatturaUnica(cli) {
+  const { com, dd } = _daFatturare();
+  const cs = com.filter(c => (c.clienteId || '') === cli && _dfSel.has('c:' + c.id));
+  const ds = dd.filter(d => (d.clienteId || '') === cli && _dfSel.has('d:' + d.id));
+  if (cs.length + ds.length < 2) return;
+  const righe = [];
+  cs.forEach(c => { const v = veicoli.find(x => x.id === c.veicoloId); const pre = '[' + [c.numero, v?.targa].filter(Boolean).join(' ') + '] ';
+    _righeCommessa(c).forEach(r => righe.push({ ...r, desc: pre + r.desc })); });
+  ds.forEach(d => _righeDDT(d).forEach(r => righe.push({ ...r, desc: '[' + d.numero + '] ' + r.desc })));
+  if (!righe.length) { alert('Le voci selezionate non hanno righe da fatturare.'); return; }
+  const targhe = cs.map(c => veicoli.find(x => x.id === c.veicoloId)?.targa).filter(Boolean);
+  document.getElementById('modal-dafatt')?.remove();
+  apriFatturaModal({ origine: cs.length ? 'commessa' : 'ddt', origineId: (cs[0] || ds[0]).id, clienteId: cli || null,
+    commesseIds: cs.map(c => c.id), ddtIds: ds.map(d => d.id),
+    descrizione: 'Fattura riepilogativa: ' + [...cs.map(c => 'commessa ' + c.numero), ...ds.map(d => 'DDT ' + d.numero)].join(', '),
+    veicolo: targhe.join(', '), righe });
+}
+
+// Pannello commessa sopra a un modal (pratica garanzia, da fatturare)
+function _vediCommessaSopra(id) {
+  const p = document.getElementById('detail-commessa'); if (!p) return;
+  p.style.zIndex = '1000';
+  showDetailCommessa(id);
+  const t = setInterval(() => { if (p.style.display === 'none') { p.style.zIndex = ''; clearInterval(t); } }, 400);
+}
+
+// ── Email al cliente da Fatture in Cloud (dopo l'invio allo SDI) ──
+async function _ficSessione() {
+  let ficCfg = {}, ficToken = {};
+  try {
+    const { data } = await supa.from('fic_auth').select('fic_config,fic_token').eq('id', 'default').single();
+    ficCfg = data?.fic_config || {}; ficToken = data?.fic_token || {};
+  } catch (_) {}
+  if (!ficCfg.company_id || !ficCfg.client_id) throw new Error('Fatture in Cloud non configurato');
+  let accessToken = ficToken.access_token;
+  if (!accessToken || !ficToken.expires_at || ficToken.expires_at <= Date.now() + 60_000) {
+    if (!ficToken.refresh_token) throw new Error('autorizzazione FiC scaduta: ricollega da Finance');
+    const res = await fetch('/.netlify/functions/fic-token', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ grant_type: 'refresh_token', client_id: ficCfg.client_id, refresh_token: ficToken.refresh_token }) });
+    if (!res.ok) throw new Error('autorizzazione FiC scaduta: ricollega da Finance');
+    const d = await res.json(); accessToken = d.access_token;
+    const nuovo = { access_token: d.access_token, refresh_token: d.refresh_token || ficToken.refresh_token, expires_at: Date.now() + (d.expires_in || 3600) * 1000 };
+    try { await supa.from('fic_auth').upsert({ id: 'default', fic_token: nuovo }); } catch (_) {}
+  }
+  const api = async (path, method, body) => {
+    const r = await fetch('/.netlify/functions/fic-token', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_path: path, api_method: method || 'GET', access_token: accessToken, api_body: body == null ? undefined : body }) });
+    return { ok: r.ok, status: r.status, j: await r.json().catch(() => ({})) };
+  };
+  return { cid: ficCfg.company_id, api };
+}
+function _ficErr(j) { const e = j?.error || {}; const v = e.validation_result; return v ? (typeof v === 'string' ? v : JSON.stringify(v)) : (e.message || j?.message || 'errore sconosciuto'); }
+async function _ficInviaEmail(api, cid, ficId, fatt) {
+  const cl = clienti.find(x => x.id === fatt.clienteId);
+  const dest = String(fatt.clEmail || cl?.email || '').trim();
+  if (!dest) {
+    _dialogoOrmia('Fattura ' + fatt.numero + ' inviata allo SDI ✓\n\nIl cliente non ha un indirizzo email: la copia via email NON è stata inviata.\nAggiungi l\'email in anagrafica e usa "Reinvia email" da Finance.', { ok: 'OK' });
+    return false;
+  }
+  const ed = await api(`/c/${cid}/issued_documents/${ficId}/email`, 'GET');
+  if (!ed.ok) throw new Error(_ficErr(ed.j));
+  const d = ed.j?.data || {};
+  const snd = d.default_sender_email || (d.sender_emails_list || [])[0] || {};
+  if (!snd.id && !snd.email) throw new Error('nessun mittente email impostato su Fatture in Cloud');
+  const se = await api(`/c/${cid}/issued_documents/${ficId}/email`, 'POST', { data: {
+    ...(snd.id ? { sender_id: snd.id } : { sender_email: snd.email }),
+    recipient_email: dest, subject: d.subject || ('Fattura ' + fatt.numero), body: d.body || ('In allegato la fattura ' + fatt.numero + '.'),
+    include: { document: true, delivery_note: false, attachment: false, accompanying_invoice: false },
+    attach_pdf: true, send_copy: false } });
+  if (!se.ok) throw new Error(_ficErr(se.j));
+  showToast('📧 Fattura ' + fatt.numero + ' inviata via email a ' + dest);
+  return true;
 }
 
 function convertaAppInCommessa(appId) {
@@ -10657,8 +10950,8 @@ function creaFatturaCumulativa() {
   if (sel.length<2) { alert('Seleziona almeno 2 DDT dello stesso cliente.'); return; }
   const cliSel = [...new Set(sel.map(d=>d.clienteId||''))];
   if (cliSel.length>1) { alert('Seleziona solo DDT dello stesso cliente.'); return; }
-  const righe = sel.flatMap(d=>(d.righe||[]).map(r=>({desc:`[${d.numero}] ${r.desc}`,qta:r.qta||1,prezzo:r.prezzo||0})));
-  apriFatturaModal({origine:'ddt-cumulativa',origineId:sel[0].id,clienteId:cliSel[0]||null,
+  const righe = sel.flatMap(d=>_righeDDT(d).map(r=>({...r, desc:`[${d.numero}] ${r.desc}`})));
+  apriFatturaModal({origine:'ddt-cumulativa',origineId:sel[0].id,ddtIds:sel.map(d=>d.id),clienteId:cliSel[0]||null,
     descrizione:`Fattura cumulativa DDT: ${sel.map(d=>d.numero).join(', ')}`,veicolo:'',righe});
   _ddtSel.clear(); aggiornaBtnCumulativa(); renderDDT();
 }
@@ -10671,7 +10964,7 @@ function converteDDTinFattura(id) {
     clienteId:d.clienteId||null,
     descrizione:`DDT ${d.numero}`,
     veicolo:'',
-    righe:(d.righe||[]).map(r=>({desc:r.desc,qta:r.qta||1,prezzo:r.prezzo||0})),
+    righe:_righeDDT(d),
   });
 }
 
@@ -10687,11 +10980,11 @@ function apriFatturaModal(draft) {
   document.getElementById('fatt-veicolo-row').style.display = draft.veicolo?'':'none';
   document.getElementById('fatt-data').value     = oggi;
   document.getElementById('fatt-scadenza').value = '';
-  document.getElementById('fatt-pagamento').value= _normPag(cl?.pagamento) || 'rd_bonifico';
+  _fattPagUI(draft, cl);
   document.getElementById('fatt-iva').value      = String(cl?.iva ?? 22);
   document.getElementById('fatt-note').value     = '';
   document.getElementById('fatt-email').value    = cl?.email||'';
-  calcolaFattTotali(draft.righe);
+  _fattInitRighe(draft.righe);
   _aggScadenzaFatt();
   _mostraProssimoNumFatt('fatt-numero');
   document.getElementById('modal-fattura').style.display='flex';
@@ -10772,6 +11065,14 @@ function calcolaFattTotali(righe) {
 
 async function salvaFattura() {
   if (!_fattDraft) return;
+  if (!(_fattDraft.righe||[]).length) { alert('La fattura non ha righe.'); return; }
+  const _bSalva = document.getElementById('fatt-btn-salva');
+  if (_bSalva?.disabled) return;
+  if (_fattDraft.incasso) {
+    const _t = calcolaFattTotali();
+    if (!confirm(`Emettere la fattura e registrare l'incasso di € ${_t.totale.toFixed(2).replace('.',',')} (${_labelPag(document.getElementById('fatt-pagamento').value)})?`)) return;
+  }
+  if (_bSalva) { _bSalva.disabled = true; setTimeout(() => { _bSalva.disabled = false; }, 5000); }
   const tots = calcolaFattTotali();
   const cl   = clienti.find(c=>c.id===_fattDraft.clienteId);
   const off  = getDatiOfficina();
@@ -10805,13 +11106,15 @@ async function salvaFattura() {
       offTel:r.off_tel, offEmail:r.off_email, offIban:r.off_iban, offBanca:r.off_banca, offNoteDoc:r.off_note_doc,
       clRagione:r.cl_ragione, clPiva:r.cl_piva, clCf:r.cl_cf, clIndirizzo:r.cl_indirizzo, clSdi:r.cl_sdi, clPec:r.cl_pec};
     fatture.unshift(fatt);
-    if (_fattDraft.origine==='commessa' && _fattDraft.origineId) {
-      const ci = commesse.findIndex(c=>c.id===_fattDraft.origineId);
+    const _comIds = [...new Set([...(_fattDraft.origine==='commessa' && _fattDraft.origineId ? [_fattDraft.origineId] : []), ...(_fattDraft.commesseIds||[])])];
+    for (const oid of _comIds) {
+      const ci = commesse.findIndex(c=>c.id===oid);
       if (ci>=0) { commesse[ci].stato='fatturata'; commesse[ci].fatturaId=fatt.id; await dbSaveCommessa({...commesse[ci]}); }
     }
-    if (_fattDraft.origine==='ddt' && _fattDraft.origineId) {
-      await supa.from('ddt').update({stato:'fatturato', fattura_id:fatt.id}).eq('id', _fattDraft.origineId);
-      const di = ddts.findIndex(d=>d.id===_fattDraft.origineId);
+    const _ddtIds = [...new Set([...(['ddt','ddt-cumulativa'].includes(_fattDraft.origine) && _fattDraft.origineId ? [_fattDraft.origineId] : []), ...(_fattDraft.ddtIds||[])])];
+    for (const oid of _ddtIds) {
+      await supa.from('ddt').update({stato:'fatturato', fattura_id:fatt.id}).eq('id', oid);
+      const di = ddts.findIndex(d=>d.id===oid);
       if (di>=0) { ddts[di].stato='fatturato'; ddts[di].fatturaId=fatt.id; }
     }
     if (_fattDraft.origine==='garanzia' && _fattDraft.origineId) {
@@ -10821,8 +11124,15 @@ async function salvaFattura() {
       _garFatture[fatt.id] = fatt;
       if (currentSection === 'garanzie') renderGaranzie();
     }
+    const _incasso = !!_fattDraft.incasso;
     closeModal('modal-fattura');
     showToast(`Fattura ${numero} emessa ✓`);
+    if (_incasso) await _registraIncassoBanco(fatt);
+    try {
+      _aggBadgeDaFatt();
+      if (currentSection === 'commesse') renderCommesse();
+      if (selectedCommessaId && document.getElementById('detail-commessa')?.style.display !== 'none') showDetailCommessa(selectedCommessaId);
+    } catch(_) {}
     // Auto-invio FiC: asincrono, non blocca il flusso
     autoInviaFIC(fatt).catch(e => {
       console.warn('[FiC auto]', e.message);
@@ -10950,6 +11260,8 @@ async function convertiInDDT(prevId) {
 async function checkoutDDT(ddt) {
   _checkoutDdt = ddt;
   const cl = clienti.find(c=>c.id===ddt.clienteId);
+  const _np = _normPag(cl?.pagamento);
+  if (_np && !_np.startsWith('rd_')) { await completaCheckoutDDT('solo-ddt'); return; }
   const metodo = cl?.pagamento ? _metodoIncasso(cl.pagamento) : '';
   if (!metodo) {
     document.getElementById('pagddt-info').textContent =
@@ -11793,6 +12105,8 @@ async function autoInviaFIC(fatt) {
   }
   await setStato('inviata_sdi', ficId);
   showToast('Fattura ' + fatt.numero + ' inviata allo SDI ✓');
+  try { await _ficInviaEmail(api, cid, ficId, fatt); }
+  catch(e) { _dialogoOrmia('Fattura ' + fatt.numero + ' inviata allo SDI ✓\n\nL\'email al cliente però non è partita.\nMotivo: ' + (e.message||e) + '\n\nPuoi riprovare con "Reinvia email" da Finance.', { ok:'OK' }); }
   console.info('[FiC auto] Fattura inviata allo SDI ✓ fic_id=', ficId);
 }
 
