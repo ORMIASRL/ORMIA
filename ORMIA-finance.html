@@ -1675,6 +1675,45 @@ function _vatFicFin(v) { const id = { 22:0, 10:3, 4:4 }[Number(v)]; return id !=
 // ══════════════════════════════════════════════════
 // FATTURA LIBERA (cliente + righe a testo libero)
 // ══════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
+// METODI DI PAGAMENTO (uguali in gestionale e Finance)
+// [codice, etichetta, codice SDI, giorni dopo fine mese, giorno del mese successivo]
+// ══════════════════════════════════════════════════
+const PAGAMENTI = [
+  ['rd_bonifico', 'Rimessa diretta – bonifico istantaneo', 'MP05', 0, 0],
+  ['rd_carta',    'Rimessa diretta – carta / POS',         'MP08', 0, 0],
+  ['rd_contanti', 'Rimessa diretta – contanti',            'MP01', 0, 0],
+  ['bon30fm',     'Bonifico 30 gg fine mese',              'MP05', 30, 0],
+  ['bon60fm',     'Bonifico 60 gg fine mese',              'MP05', 60, 0],
+  ['riba30fm',    'RiBa 30 gg fine mese',                  'MP12', 30, 0],
+  ['riba30fm5',   'RiBa 30 gg fine mese + 5',              'MP12', 30, 5],
+  ['riba30fm10',  'RiBa 30 gg fine mese + 10',             'MP12', 30, 10],
+  ['riba30fm15',  'RiBa 30 gg fine mese + 15',             'MP12', 30, 15],
+  ['riba60fm',    'RiBa 60 gg fine mese',                  'MP12', 60, 0],
+  ['riba60fm5',   'RiBa 60 gg fine mese + 5',              'MP12', 60, 5],
+  ['riba60fm10',  'RiBa 60 gg fine mese + 10',             'MP12', 60, 10],
+  ['riba60fm15',  'RiBa 60 gg fine mese + 15',             'MP12', 60, 15],
+];
+// Vecchi valori → nuovi codici
+const _PAG_VECCHI = { contanti: 'rd_contanti', bonifico: 'rd_bonifico', carta: 'rd_carta', pos: 'rd_carta', assegno: 'rd_bonifico',
+  riba: 'riba30fm', '30gg': 'bon30fm', '60gg': 'bon60fm', '90gg': 'bon60fm', immediato: 'rd_bonifico' };
+function _normPag(v) { v = String(v || '').trim(); if (PAGAMENTI.some(p => p[0] === v)) return v; return _PAG_VECCHI[v.toLowerCase()] || ''; }
+function _labelPag(v) { const p = PAGAMENTI.find(x => x[0] === _normPag(v)); return p ? p[1] : (v || ''); }
+function _mpPag(v) { const p = PAGAMENTI.find(x => x[0] === _normPag(v)); return p ? p[2] : 'MP05'; }
+function _opzioniPag(sel) { const s = _normPag(sel); return PAGAMENTI.map(p => `<option value="${p[0]}"${p[0] === s ? ' selected' : ''}>${p[1]}</option>`).join(''); }
+// Scadenza: fine mese della data fattura + giorni; con "+5/+10/+15" il giorno indicato del mese successivo
+function _scadenzaPag(v, dataIso) {
+  const p = PAGAMENTI.find(x => x[0] === _normPag(v));
+  if (!dataIso) return '';
+  if (!p || !p[3]) return dataIso;
+  const d = new Date(dataIso + 'T12:00:00');
+  let s = new Date(d.getFullYear(), d.getMonth() + 1, 0, 12);
+  s.setDate(s.getDate() + p[3]);
+  if (p[4]) s = new Date(s.getFullYear(), s.getMonth() + 1, p[4], 12);
+  const z = n => String(n).padStart(2, '0');
+  return s.getFullYear() + '-' + z(s.getMonth() + 1) + '-' + z(s.getDate());
+}
+
 let _flRighe = [];
 const _flEsc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const _flR2 = n => Math.round((n + Number.EPSILON) * 100) / 100;
@@ -1707,8 +1746,7 @@ function apriFatturaLibera() {
         <option value="22">22%</option><option value="10">10%</option><option value="5">5%</option><option value="4">4%</option><option value="0">0% (esente / non imponibile)</option></select></div>
       <div><label style="${lab}">Data</label><input type="date" id="fl-data" value="${oggi}" onchange="flScadenza()" style="${inp}"></div>
       <div><label style="${lab}">Scadenza</label><input type="date" id="fl-scad" style="${inp}"></div>
-      <div><label style="${lab}">Pagamento</label><select id="fl-pag" onchange="flScadenza()" style="${inp}">
-        <option value="bonifico">Bonifico bancario</option><option value="30gg">Bonifico 30 gg d.f.</option><option value="60gg">Bonifico 60 gg d.f.</option><option value="90gg">Bonifico 90 gg d.f.</option><option value="riba">Ri.Ba.</option><option value="contanti">Contanti</option><option value="carta">Carta / POS</option><option value="assegno">Assegno</option></select></div>
+      <div><label style="${lab}">Pagamento</label><select id="fl-pag" onchange="flScadenza()" style="${inp}">${_opzioniPag('rd_bonifico')}</select></div>
     </div>
     <div style="margin-bottom:14px"><label style="${lab}">Note (facoltative)</label><textarea id="fl-note" rows="2" style="${inp};resize:vertical"></textarea></div>
     <div style="display:flex;justify-content:flex-end;gap:24px;font-size:14px;background:var(--surface2,#F9F8F6);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px">
@@ -1735,7 +1773,7 @@ function apriFatturaLibera() {
 function flScadenza() {
   const p = document.getElementById('fl-pag')?.value || '', d = document.getElementById('fl-data')?.value, sc = document.getElementById('fl-scad');
   if (!sc || !d) return;
-  const dt = new Date(d + 'T12:00:00'); dt.setDate(dt.getDate() + (parseInt(p) || 0)); sc.value = dt.toISOString().slice(0, 10);
+  sc.value = _scadenzaPag(p, d);
 }
 
 function flCercaCliente(q) {
@@ -1819,7 +1857,7 @@ function flSceltaCliente(id) {
   document.getElementById('fl-cli-q').value = c.ragione || '';
   document.getElementById('fl-cli-dd').style.display = 'none';
   document.getElementById('fl-cli-det').textContent = [c.piva ? 'P.IVA ' + c.piva : (c.cf ? 'CF ' + c.cf : ''), c.indirizzo, c.sdi ? 'SDI ' + c.sdi : (c.pec ? 'PEC ' + c.pec : '')].filter(Boolean).join(' · ');
-  if (c.pagamento) { const p = document.getElementById('fl-pag'); const v = String(c.pagamento).toLowerCase(); if ([...p.options].some(o => o.value === v)) { p.value = v; flScadenza(); } }
+  { const v = _normPag(c.pagamento); if (v) { document.getElementById('fl-pag').value = v; flScadenza(); } }
   if (c.iva != null) { const s = document.getElementById('fl-iva'); if ([...s.options].some(o => +o.value === +c.iva)) { s.value = String(+c.iva); flTotali(); } }
 }
 
@@ -1894,7 +1932,7 @@ async function salvaFatturaLibera() {
 // ── Fattura elettronica: dati SDI, controllo XML e invio allo SDI ──
 const _MP_FIN = { contanti:'MP01', assegno:'MP02', bonifico:'MP05', '30gg':'MP05', '60gg':'MP05', '90gg':'MP05', carta:'MP08', pos:'MP08', riba:'MP12', finanziamento:'MP05' };
 function _eiDataFin(pag, iban) {
-  const m = _MP_FIN[String(pag||'').toLowerCase()] || 'MP05'; iban = String(iban||'').replace(/\s/g,'');
+  const m = _mpPag(pag); iban = String(iban||'').replace(/\s/g,'');
   return { vat_kind:'I', payment_method:m, ...(m==='MP05' && iban ? { bank_iban: iban } : {}) };
 }
 async function _ficInviaSDI(ficId) {
