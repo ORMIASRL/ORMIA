@@ -507,6 +507,11 @@
     display: flex; align-items: flex-start; justify-content: space-between;
     gap: 12px;
   }
+  /* Pannello commessa: pulsanti su una riga sopra il titolo, mai coperti dalla barra di scorrimento */
+  #detail-commessa .detail-header { flex-wrap: wrap; padding-right: 22px; }
+  #detail-commessa .detail-header > div:first-child { order: 2; flex: 1 1 100%; min-width: 0; }
+  #detail-commessa .detail-header > div:last-child { order: 1; flex: 1 1 100%; justify-content: flex-end; flex-wrap: wrap; }
+  #detail-commessa .detail-header .btn { white-space: nowrap; }
 
   .detail-avatar {
     width: 44px; height: 44px;
