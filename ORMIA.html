@@ -2789,6 +2789,7 @@ function init() {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
         Stampa
       </button>
+      <button class="btn btn-secondary btn-sm" onclick="stampaPrefattura(selectedCommessaId)">🧾 Prefattura</button>
       <button class="btn btn-secondary btn-sm" id="dc-btn-firma" onclick="faiFirmareCommessa(selectedCommessaId)" style="display:none">✍️ Fai firmare</button>
       <button class="btn btn-secondary btn-sm" id="dc-btn-zip" onclick="scaricaZipGaranzia(selectedCommessaId)" style="display:none">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -5438,6 +5439,7 @@ function apriEditVoce(tipo, idx) {
         <div style="font-size:11px;color:var(--text3);margin-top:3px">0 = nessuno sconto</div>
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
+        ${tipo !== 'ric' && cm.stato !== 'fatturata' ? `<button class="btn btn-sm" style="margin-right:auto;color:var(--danger);background:none;border:1px solid var(--danger)" onclick="eliminaVoceCommessa('${tipo}',${idx})">🗑 Elimina</button>` : ''}
         <button class="btn btn-secondary btn-sm" onclick="document.getElementById('mini-modal-voce').remove()">Annulla</button>
         <button class="btn btn-primary btn-sm" onclick="salvaEditVoce('${tipo}',${idx})">Salva</button>
       </div>
@@ -10420,6 +10422,69 @@ async function _ficInviaEmail(api, cid, ficId, fatt) {
   if (!se.ok) throw new Error(_ficErr(se.j));
   showToast('📧 Fattura ' + fatt.numero + ' inviata via email a ' + dest);
   return true;
+}
+
+// Elimina una voce (manodopera / extra) dal pannello commessa
+async function eliminaVoceCommessa(tipo, idx) {
+  const cm = commesse.find(c => c.id === selectedCommessaId); if (!cm) return;
+  if (cm.stato === 'fatturata') { alert('La commessa è già fatturata: non si possono togliere voci.'); return; }
+  const arr = tipo === 'mano' ? cm.vociMano : cm.vociExtra;
+  const v = arr?.[idx]; if (!v) return;
+  if (!confirm('Eliminare la voce "' + (v.desc || '—') + '" (' + (v.qta || 1) + ' × € ' + (+v.prezzo || 0).toFixed(2).replace('.', ',') + ')?')) return;
+  arr.splice(idx, 1);
+  cm.totale = _totaleCommessa(cm);
+  try { await dbSaveCommessa(cm); } catch (e) { alert('Errore: ' + e.message); return; }
+  document.getElementById('mini-modal-voce')?.remove();
+  showDetailCommessa(selectedCommessaId);
+  showToast('Voce eliminata ✓');
+}
+
+// Prefattura (documento non fiscale) dalla commessa
+function stampaPrefattura(comId) {
+  const cm = commesse.find(c => c.id === comId); if (!cm) return;
+  const cl = clienti.find(c => c.id === cm.clienteId);
+  const v = veicoli.find(x => x.id === cm.veicoloId);
+  const off = getDatiOfficina() || {};
+  const righe = _righeCommessa(cm);
+  if (!righe.length) { alert('La commessa non ha voci.'); return; }
+  const e = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const r2 = n => Math.round((n + Number.EPSILON) * 100) / 100;
+  const eu = n => '€ ' + (+n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const iva = +(cl?.iva ?? 22);
+  const imponibile = r2(righe.reduce((s, x) => s + r2((x.qta || 1) * (x.prezzo || 0)), 0));
+  const ivaAmt = r2(imponibile * iva / 100), totale = r2(imponibile + ivaAmt);
+  const oggi = new Date().toISOString().split('T')[0];
+  const pag = cl?.pagamento ? _labelPag(cl.pagamento) : '';
+  const scad = cl?.pagamento ? _scadenzaPag(cl.pagamento, oggi) : '';
+  const fd = d => d ? new Date(d + 'T12:00:00').toLocaleDateString('it-IT') : '';
+  const rows = righe.map((x, i) => `<tr style="background:${i % 2 ? '#FAFAF8' : '#FFF'}"><td>${e(x.desc)}</td><td class="c">${String(x.qta || 1).replace('.', ',')}</td><td class="r">${eu(x.prezzo)}</td><td class="r b">${eu(r2((x.qta || 1) * (x.prezzo || 0)))}</td></tr>`).join('');
+  const html = `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>Prefattura ${e(cm.numero || '')}</title>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;color:#1A1917;padding:36px 40px;max-width:820px;margin:0 auto}
+@media print{body{padding:0}@page{size:A4;margin:14mm 18mm}}
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #1A1917}
+.on{font-size:21px;font-weight:800;margin-bottom:3px}.om{font-size:11px;color:#666;line-height:1.7}
+.di{text-align:right}.dt{font-size:24px;font-weight:900;letter-spacing:1px}.dd{font-size:12px;color:#666;margin-top:3px}
+.nf{display:inline-block;margin-top:6px;padding:3px 10px;border:1.5px solid #B45309;color:#B45309;border-radius:4px;font-size:10px;font-weight:800;letter-spacing:.5px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}.bx{background:#F5F4F1;border-radius:6px;padding:12px 14px}
+.bt{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#999;margin-bottom:6px}.bm{font-size:14px;font-weight:700;margin-bottom:2px}.bs{font-size:12px;color:#555;line-height:1.6}
+table{width:100%;border-collapse:collapse;margin-bottom:18px}th{background:#F5F4F1;padding:8px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:#666;border-bottom:2px solid #E4E2DC;text-align:left}
+td{padding:7px 10px;border-bottom:1px solid #E4E2DC}.c{text-align:center;width:60px}.r{text-align:right;width:100px;font-family:monospace}.b{font-weight:600}
+.tf{display:flex;justify-content:flex-end;margin-bottom:18px}.tb{background:#F5F4F1;padding:14px 20px;border-radius:6px;min-width:250px}
+.tr_{display:flex;justify-content:space-between;gap:24px;margin-bottom:4px;color:#555}.fin{font-size:17px;font-weight:800;color:#1A1917;padding-top:8px;border-top:2px solid #E4E2DC;margin-top:4px}
+.pb{background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#92400E;line-height:1.6}
+.ft{border-top:1px solid #E4E2DC;padding-top:12px;font-size:11px;color:#888;line-height:1.7}
+.wm{position:fixed;top:42%;left:0;right:0;text-align:center;transform:rotate(-24deg);font-size:90px;font-weight:900;color:#000;opacity:.05;letter-spacing:8px;pointer-events:none}</style></head><body>
+<div class="wm">PREFATTURA</div>
+<div class="hdr"><div><div class="on">${e(off.ragione || 'Officina')}</div><div class="om">${e(off.indirizzo || '')}<br>${off.tel ? 'Tel: ' + e(off.tel) + '  ' : ''}${e(off.email || '')}<br>${off.piva ? 'P.IVA: ' + e(off.piva) : ''}</div></div>
+<div class="di"><div class="dt">PREFATTURA</div><div class="dd">Commessa ${e(cm.numero || '')}</div><div class="dd">Data: ${fd(oggi)}</div><div class="nf">DOCUMENTO NON VALIDO AI FINI FISCALI</div></div></div>
+<div class="g2"><div class="bx"><div class="bt">Cliente</div><div class="bm">${e(cl?.ragione || 'Cliente occasionale')}</div><div class="bs">${cl?.piva ? 'P.IVA: ' + e(cl.piva) + '<br>' : ''}${cl?.cf ? 'C.F.: ' + e(cl.cf) + '<br>' : ''}${e(cl?.indirizzo || '')}</div></div>
+<div class="bx"><div class="bt">Veicolo / lavoro</div><div class="bm">${e(v?.targa || '—')} ${e([v?.marca, v?.modello].filter(Boolean).join(' '))}</div><div class="bs">${e(cm.descrizione || cm.desc || '')}${v?.km ? '<br>Km: ' + Number(v.km).toLocaleString('it-IT') : ''}</div></div></div>
+<table><thead><tr><th>Descrizione</th><th class="c">Q.tà</th><th class="r">Prezzo</th><th class="r">Importo</th></tr></thead><tbody>${rows}</tbody></table>
+<div class="tf"><div class="tb"><div class="tr_"><span>Imponibile</span><span>${eu(imponibile)}</span></div><div class="tr_"><span>IVA ${iva}%</span><span>${eu(ivaAmt)}</span></div><div class="tr_ fin"><span>TOTALE</span><span>${eu(totale)}</span></div></div></div>
+${pag ? `<div class="pb"><strong>Pagamento:</strong> ${e(pag)}${scad && scad !== oggi ? ' · scadenza prevista ' + fd(scad) : ''}${off.iban ? '<br><strong>IBAN:</strong> ' + e(off.iban) : ''}</div>` : ''}
+<div class="ft">Documento provvisorio di riepilogo: la fattura elettronica verrà emessa e trasmessa tramite SDI. Importi soggetti a conferma.</div>
+</body></html>`;
+  apriStampa(html);
 }
 
 function convertaAppInCommessa(appId) {
