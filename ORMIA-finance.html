@@ -1070,6 +1070,7 @@ function renderFattureFin() {
         <div style="display:flex;gap:4px">
           ${f.stato!=='pagata'?`<button class="btn btn-sm btn-success" onclick="segnaFatturaPagata('${f.id}')">Segna pagata</button>`:''}
           ${!f.ficId?`<button class="btn btn-sm btn-secondary" onclick="inviaSuFIC('${f.id}')">→ FiC</button>`:''}
+          ${f.ficId?`<button class="btn btn-sm btn-secondary" title="Reinvia la fattura al cliente via email da Fatture in Cloud" onclick="_ficEmailFin('${f.id}')">📧 Reinvia email</button>`:''}
         </div>
       </td>
     </tr>`;
@@ -1977,9 +1978,32 @@ async function inviaSuFIC(fatturaId) {
     const sdi = await _ficInviaSDI(ficId);
     await supa.from('fatture').update({ fic_stato: sdi.ok ? 'inviata_sdi' : 'errore_sdi' }).eq('id', fatturaId);
     await loadAll(); renderFattureFin();
-    if (sdi.ok) showToastFin('Fattura ' + f.numero + ' inviata allo SDI ✓');
+    if (sdi.ok) { showToastFin('Fattura ' + f.numero + ' inviata allo SDI ✓'); await _ficEmailFin(fatturaId, true); }
     else alert('Fattura ' + f.numero + ' creata su Fatture in Cloud come fattura elettronica, ma NON inviata allo SDI.\n\nMotivo: ' + sdi.msg + '\n\nCorreggi i dati e inviala da Fatture in Cloud.');
   } catch(e) { alert('Errore invio FiC: ' + e.message); }
+}
+
+// Email al cliente da Fatture in Cloud (automatica dopo lo SDI, o "Reinvia email")
+async function _ficEmailFin(fatturaId, auto) {
+  const f = _fatture.find(x => x.id === fatturaId); if (!f) return;
+  const cid = _ficConfig.company_id;
+  if (!cid || !f.ficId) { if (!auto) alert('La fattura non è ancora su Fatture in Cloud.'); return; }
+  const cl = _clienti.find(c => c.id === f.clienteId);
+  const dest = String(f.clEmail || f.cl_email || cl?.email || '').trim();
+  if (!dest) { alert('Fattura ' + f.numero + ': il cliente non ha un indirizzo email.' + (auto ? ' La copia via email non è stata inviata.' : '') + '\n\nAggiungi l\'email in anagrafica e usa "Reinvia email".'); return; }
+  if (!auto && !confirm('Inviare la fattura ' + f.numero + ' via email a ' + dest + '?')) return;
+  try {
+    const ed = await ficFetch(`/c/${cid}/issued_documents/${f.ficId}/email`);
+    const d = ed?.data || {};
+    const snd = d.default_sender_email || (d.sender_emails_list || [])[0] || {};
+    if (!snd.id && !snd.email) throw new Error('nessun mittente email impostato su Fatture in Cloud');
+    await ficFetch(`/c/${cid}/issued_documents/${f.ficId}/email`, { method: 'POST', body: JSON.stringify({ data: {
+      ...(snd.id ? { sender_id: snd.id } : { sender_email: snd.email }),
+      recipient_email: dest, subject: d.subject || ('Fattura ' + f.numero), body: d.body || ('In allegato la fattura ' + f.numero + '.'),
+      include: { document: true, delivery_note: false, attachment: false, accompanying_invoice: false },
+      attach_pdf: true, send_copy: false } }) });
+    showToastFin('📧 Fattura ' + f.numero + ' inviata via email a ' + dest);
+  } catch (e) { alert('Email fattura ' + f.numero + ' non inviata: ' + e.message); }
 }
 
 async function sincronizzaFICManuale() { await sincronizzaFIC(false); }
