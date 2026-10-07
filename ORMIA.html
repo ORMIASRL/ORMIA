@@ -10110,7 +10110,8 @@ function renderPagamentiCommessa(cm) {
 // Riga fattura con lo sconto della commessa già applicato al prezzo unitario
 function _rigaScontata(desc, r) {
   const sc = +r.sconto || 0;
-  const prezzo = Math.round((r.prezzo || 0) * (1 - sc / 100) * 100) / 100;
+  // 4 decimali sul prezzo unitario: così il totale riga torna identico a quello della commessa
+  const prezzo = Math.round((r.prezzo || 0) * (1 - sc / 100) * 10000) / 10000;
   return { desc: desc + (sc ? ' (sconto ' + String(sc).replace('.', ',') + '%)' : ''), qta: r.qta || 1, prezzo };
 }
 
