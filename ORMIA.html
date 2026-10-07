@@ -11698,35 +11698,58 @@ async function autoInviaFIC(fatt) {
     : [{ name:fatt.descrizione||'Servizio officina', qty:1,
          net_price:fatt.imponibile||(fatt.totale||0)/(1+(fatt.iva||22)/100), vat:_vatFic(fatt.iva||22) }];
 
-  const res = await fetch('/.netlify/functions/fic-token', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      api_path: `/c/${ficCfg.company_id}/issued_documents`, api_method: 'POST', access_token: accessToken,
-      api_body: { data: {
-        type:'invoice', date:(fatt.data||new Date().toISOString()).split('T')[0],
-        ...(/(\d+)\s*$/.test(String(fatt.numero||'')) ? { number: parseInt(String(fatt.numero).match(/(\d+)\s*$/)[1], 10) } : {}),
-        entity:{ name:fatt.clRagione||cl?.ragione||'Cliente', vat_number:fatt.clPiva||cl?.piva||'',
-                 tax_code:fatt.clCf||cl?.cf||'', ei_code:fatt.clSdi||cl?.sdi||'',
-                 certified_email:fatt.clPec||cl?.pec||'',
-                 address_street:[cl?.via, cl?.civico].filter(Boolean).join(' '), address_postal_code:cl?.cap||'', address_city:cl?.citta||'',
-                 address_province:cl?.provincia||'', country:'Italia' },
-        items_list: items,
-        payments_list: [{ amount: Math.round((fatt.totale||0)*100)/100, due_date: (fatt.scadenza||fatt.data||new Date().toISOString()).split('T')[0], status: 'not_paid' }],
-      }, options: { fix_payments: true } },
-    }),
-  });
-  const d = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const msg = d?.error?.message || d?.error?.validation_result ? JSON.stringify(d.error.validation_result || d.error.message) : ('errore ' + res.status);
-    console.warn('[FiC auto] Errore invio:', res.status, d);
-    throw new Error(msg);
+  // ── Fattura elettronica: creazione su FiC, controllo XML e invio allo SDI in automatico ──
+  const cid = ficCfg.company_id;
+  const api = async (path, method, body) => {
+    const r = await fetch('/.netlify/functions/fic-token', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_path: path, api_method: method || 'GET', access_token: accessToken, api_body: body == null ? undefined : body }),
+    });
+    return { ok: r.ok, status: r.status, j: await r.json().catch(() => ({})) };
+  };
+  const errMsg = j => { const e = j?.error || {}; const v = e.validation_result; return v ? (Array.isArray(v) ? v.join(' · ') : (typeof v === 'string' ? v : JSON.stringify(v))) : (e.message || 'errore sconosciuto'); };
+  const setStato = async (stato, ficId) => {
+    const upd = { fic_stato: stato }; if (ficId) upd.fic_id = ficId;
+    await supa.from('fatture').update(upd).eq('id', fatt.id);
+    const idx = fatture.findIndex(x => x.id === fatt.id);
+    if (idx >= 0) { fatture[idx].ficStato = stato; if (ficId) fatture[idx].ficId = ficId; }
+  };
+  const MP = { contanti:'MP01', assegno:'MP02', bonifico:'MP05', carta:'MP08', pos:'MP08', riba:'MP12', finanziamento:'MP05' };
+  const metodo = MP[String(fatt.pagamento||'').toLowerCase()] || 'MP05';
+  const piva = String(fatt.clPiva||cl?.piva||'').replace(/\s/g,''), cf = String(fatt.clCf||cl?.cf||'').replace(/\s/g,'').toUpperCase();
+  const iban = String(fatt.offIban||'').replace(/\s/g,'');
+  const cr = await api(`/c/${cid}/issued_documents`, 'POST', { data: {
+      type:'invoice', date:(fatt.data||new Date().toISOString()).split('T')[0], e_invoice:true,
+      ...(/(\d+)\s*$/.test(String(fatt.numero||'')) ? { number: parseInt(String(fatt.numero).match(/(\d+)\s*$/)[1], 10) } : {}),
+      entity:{ name:fatt.clRagione||cl?.ragione||'Cliente', vat_number:piva, tax_code:cf||piva, e_invoice:true,
+               ei_code:String(fatt.clSdi||cl?.sdi||'').trim().toUpperCase() || '0000000', certified_email:fatt.clPec||cl?.pec||'',
+               address_street:[cl?.via, cl?.civico].filter(Boolean).join(' '), address_postal_code:cl?.cap||'', address_city:cl?.citta||'',
+               address_province:cl?.provincia||'', country:'Italia' },
+      ei_data:{ vat_kind:'I', payment_method:metodo, ...(metodo==='MP05' && iban ? { bank_iban: iban } : {}) },
+      items_list: items,
+      payments_list: [{ amount: Math.round((fatt.totale||0)*100)/100, due_date: (fatt.scadenza||fatt.data||new Date().toISOString()).split('T')[0], status: 'not_paid' }],
+    }, options: { fix_payments: true } });
+  if (!cr.ok) { console.warn('[FiC auto] Errore creazione:', cr.status, cr.j); throw new Error(errMsg(cr.j)); }
+  const ficId = String(cr.j.data.id);
+  await setStato('creata', ficId);
+
+  const ve = await api(`/c/${cid}/issued_documents/${ficId}/e_invoice/xml_verify`, 'GET');
+  if (!ve.ok) {
+    await setStato('errore_sdi');
+    console.warn('[FiC auto] XML non valido:', ve.j);
+    _dialogoOrmia('Fattura ' + fatt.numero + ' creata su Fatture in Cloud come fattura elettronica, ma NON inviata allo SDI.\n\nMotivo: ' + errMsg(ve.j) + '\n\nCorreggi i dati (anagrafica cliente o dati aziendali su Fatture in Cloud) e inviala da Fatture in Cloud.', { ok:'OK' });
+    return;
   }
-  const ficId = String(d.data.id);
-  await supa.from('fatture').update({ fic_id: ficId, fic_stato: 'confermata' }).eq('id', fatt.id);
-  const idx = fatture.findIndex(x => x.id === fatt.id);
-  if (idx >= 0) { fatture[idx].ficId = ficId; fatture[idx].ficStato = 'confermata'; }
-  showToast('Fattura ' + fatt.numero + ' inviata a Fatture in Cloud ✓');
-  console.info('[FiC auto] Fattura inviata ✓ fic_id=', ficId);
+  const se = await api(`/c/${cid}/issued_documents/${ficId}/e_invoice/send`, 'POST', { data: {} });
+  if (!se.ok) {
+    await setStato('errore_sdi');
+    console.warn('[FiC auto] Errore invio SDI:', se.j);
+    _dialogoOrmia('Fattura ' + fatt.numero + ' creata su Fatture in Cloud, ma l\'invio allo SDI non è riuscito.\n\nMotivo: ' + errMsg(se.j) + '\n\nPuoi riprovare l\'invio da Fatture in Cloud.', { ok:'OK' });
+    return;
+  }
+  await setStato('inviata_sdi', ficId);
+  showToast('Fattura ' + fatt.numero + ' inviata allo SDI ✓');
+  console.info('[FiC auto] Fattura inviata allo SDI ✓ fic_id=', ficId);
 }
 
 function apriDocumenti() {
