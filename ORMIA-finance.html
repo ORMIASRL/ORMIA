@@ -371,6 +371,7 @@ tr:hover td { background:var(--surface2); }
             <button class="tab-btn" data-fstato="pagata" onclick="setFattStatoFil(this,'pagata')">Pagate</button>
             <button class="tab-btn" data-fstato="scaduta" onclick="setFattStatoFil(this,'scaduta')">Scadute</button>
           </div>
+          <button class="btn btn-primary" onclick="apriFatturaLibera()" style="background:var(--success,#276749);border-color:var(--success,#276749)">+ Fattura libera</button>
           <button class="btn btn-primary" onclick="sincronizzaFIC()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.62"/></svg>
             Sincronizza FiC
@@ -1670,6 +1671,146 @@ async function sincronizzaFIC(silent = false) {
 // ── inviaSuFIC ────────────────────────────────────
 // Aliquote IVA standard di Fatture in Cloud (id interni): 22% → 0, 10% → 3, 4% → 4
 function _vatFicFin(v) { const id = { 22:0, 10:3, 4:4 }[Number(v)]; return id != null ? { id } : { value: Number(v) }; }
+
+// ══════════════════════════════════════════════════
+// FATTURA LIBERA (cliente + righe a testo libero)
+// ══════════════════════════════════════════════════
+let _flRighe = [];
+const _flEsc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const _flR2 = n => Math.round((n + Number.EPSILON) * 100) / 100;
+
+function apriFatturaLibera() {
+  _flRighe = [{ desc: '', qta: 1, prezzo: 0, sconto: 0 }];
+  document.getElementById('modal-fl')?.remove();
+  const oggi = new Date().toISOString().split('T')[0];
+  const inp = 'width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:white';
+  const lab = 'display:block;font-size:12px;font-weight:600;color:var(--text3);margin-bottom:4px';
+  const ov = document.createElement('div'); ov.id = 'modal-fl';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:5000;display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow-y:auto';
+  ov.innerHTML = `<div style="background:white;border-radius:14px;width:820px;max-width:100%;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+    <div style="display:flex;align-items:center;margin-bottom:16px"><div style="font-size:18px;font-weight:800;flex:1">Nuova fattura libera</div>
+      <button class="btn btn-sm btn-secondary" onclick="document.getElementById('modal-fl').remove()">✕</button></div>
+    <div style="margin-bottom:12px;position:relative">
+      <label style="${lab}">Cliente *</label>
+      <input id="fl-cli-q" placeholder="Cerca per nome o P.IVA…" autocomplete="off" oninput="flCercaCliente(this.value)" style="${inp}">
+      <input type="hidden" id="fl-cli">
+      <div id="fl-cli-dd" style="display:none;position:absolute;left:0;right:0;top:100%;background:white;border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:10;max-height:220px;overflow-y:auto"></div>
+      <div id="fl-cli-det" style="font-size:12px;color:var(--text3);margin-top:4px"></div>
+    </div>
+    <label style="${lab}">Righe</label>
+    <div id="fl-righe"></div>
+    <button class="btn btn-sm btn-secondary" onclick="flAggiungiRiga()" style="margin:6px 0 14px">+ Aggiungi riga</button>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">
+      <div><label style="${lab}">IVA (su tutta la fattura)</label><select id="fl-iva" onchange="flTotali()" style="${inp}">
+        <option value="22">22%</option><option value="10">10%</option><option value="5">5%</option><option value="4">4%</option><option value="0">0% (esente / non imponibile)</option></select></div>
+      <div><label style="${lab}">Data</label><input type="date" id="fl-data" value="${oggi}" style="${inp}"></div>
+      <div><label style="${lab}">Scadenza</label><input type="date" id="fl-scad" style="${inp}"></div>
+      <div><label style="${lab}">Pagamento</label><select id="fl-pag" style="${inp}">
+        <option value="bonifico">Bonifico</option><option value="contanti">Contanti</option><option value="carta">Carta / POS</option><option value="assegno">Assegno</option><option value="riba">RiBa</option></select></div>
+    </div>
+    <div style="margin-bottom:14px"><label style="${lab}">Note (facoltative)</label><textarea id="fl-note" rows="2" style="${inp};resize:vertical"></textarea></div>
+    <div style="display:flex;justify-content:flex-end;gap:24px;font-size:14px;background:var(--surface2,#F9F8F6);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px">
+      <div>Imponibile <b id="fl-imp" style="font-family:'DM Mono',monospace">€ 0,00</b></div>
+      <div>IVA <b id="fl-ivaamt" style="font-family:'DM Mono',monospace">€ 0,00</b></div>
+      <div>Totale <b id="fl-tot" style="font-family:'DM Mono',monospace;font-size:16px">€ 0,00</b></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-fl').remove()">Annulla</button>
+      <button class="btn btn-primary" id="fl-salva" onclick="salvaFatturaLibera()">Emetti fattura</button>
+    </div></div>`;
+  document.body.appendChild(ov);
+  flRenderRighe();
+  setTimeout(() => document.getElementById('fl-cli-q')?.focus(), 50);
+}
+
+function flCercaCliente(q) {
+  const dd = document.getElementById('fl-cli-dd'); if (!dd) return;
+  document.getElementById('fl-cli').value = ''; document.getElementById('fl-cli-det').textContent = '';
+  const qq = (q || '').toLowerCase().trim();
+  if (!qq) { dd.style.display = 'none'; return; }
+  const lista = _clienti.filter(c => (c.ragione || '').toLowerCase().includes(qq) || (c.piva || '').includes(qq) || (c.cf || '').toLowerCase().includes(qq)).slice(0, 12);
+  dd.innerHTML = lista.length ? lista.map(c => `<div onmousedown="event.preventDefault()" onclick="flSceltaCliente('${c.id}')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border)" onmouseover="this.style.background='#F5F4F1'" onmouseout="this.style.background=''"><b>${_flEsc(c.ragione)}</b> <span style="color:var(--text3);font-size:12px">${_flEsc(c.piva || c.cf || '')}</span></div>`).join('')
+    : '<div style="padding:8px 12px;color:var(--text3);font-size:13px">Nessun cliente trovato. Aggiungilo prima dall\'anagrafica del gestionale.</div>';
+  dd.style.display = '';
+}
+
+function flSceltaCliente(id) {
+  const c = _clienti.find(x => x.id === id); if (!c) return;
+  document.getElementById('fl-cli').value = id;
+  document.getElementById('fl-cli-q').value = c.ragione || '';
+  document.getElementById('fl-cli-dd').style.display = 'none';
+  document.getElementById('fl-cli-det').textContent = [c.piva ? 'P.IVA ' + c.piva : (c.cf ? 'CF ' + c.cf : ''), c.indirizzo, c.sdi ? 'SDI ' + c.sdi : (c.pec ? 'PEC ' + c.pec : '')].filter(Boolean).join(' · ');
+  if (c.pagamento) { const p = document.getElementById('fl-pag'); const v = String(c.pagamento).toLowerCase(); if ([...p.options].some(o => o.value === v)) p.value = v; }
+  if (c.iva != null) { const s = document.getElementById('fl-iva'); if ([...s.options].some(o => +o.value === +c.iva)) { s.value = String(+c.iva); flTotali(); } }
+}
+
+function flRenderRighe() {
+  const box = document.getElementById('fl-righe'); if (!box) return;
+  const inp = 'padding:7px 9px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;width:100%;background:white';
+  box.innerHTML = `<div style="display:grid;grid-template-columns:1fr 70px 110px 80px 34px;gap:6px;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:4px">
+      <div>Descrizione</div><div>Q.tà</div><div>Prezzo €</div><div>Sconto %</div><div></div></div>` +
+    _flRighe.map((r, i) => `<div style="display:grid;grid-template-columns:1fr 70px 110px 80px 34px;gap:6px;margin-bottom:6px">
+      <input value="${_flEsc(r.desc)}" placeholder="Es. Noleggio rimorchio ottobre" oninput="_flRighe[${i}].desc=this.value" style="${inp}">
+      <input type="number" step="0.01" min="0" value="${r.qta}" oninput="_flRighe[${i}].qta=parseFloat(this.value)||0;flTotali()" style="${inp};font-family:'DM Mono',monospace">
+      <input type="number" step="0.01" value="${r.prezzo || ''}" placeholder="0,00" oninput="_flRighe[${i}].prezzo=parseFloat(this.value)||0;flTotali()" style="${inp};font-family:'DM Mono',monospace">
+      <input type="number" step="0.5" min="0" max="100" value="${r.sconto || ''}" placeholder="0" oninput="_flRighe[${i}].sconto=parseFloat(this.value)||0;flTotali()" style="${inp};font-family:'DM Mono',monospace">
+      <button class="btn btn-sm btn-secondary" title="Togli riga" onclick="flTogliRiga(${i})" style="color:var(--danger);padding:0">🗑</button></div>`).join('');
+  flTotali();
+}
+function flAggiungiRiga() { _flRighe.push({ desc: '', qta: 1, prezzo: 0, sconto: 0 }); flRenderRighe(); }
+function flTogliRiga(i) { _flRighe.splice(i, 1); if (!_flRighe.length) _flRighe.push({ desc: '', qta: 1, prezzo: 0, sconto: 0 }); flRenderRighe(); }
+
+function _flCalcolo() {
+  const iva = parseFloat(document.getElementById('fl-iva')?.value) || 0;
+  const righe = _flRighe.filter(r => (r.desc || '').trim()).map(r => {
+    const sc = +r.sconto || 0;
+    return { desc: r.desc.trim() + (sc ? ' (sconto ' + String(sc).replace('.', ',') + '%)' : ''), qta: +r.qta || 1, prezzo: Math.round((+r.prezzo || 0) * (1 - sc / 100) * 10000) / 10000 };
+  });
+  const imponibile = _flR2(righe.reduce((s, r) => s + _flR2(r.qta * r.prezzo), 0));
+  const ivaAmt = _flR2(imponibile * iva / 100);
+  return { righe, iva, imponibile, ivaAmt, totale: _flR2(imponibile + ivaAmt) };
+}
+function flTotali() {
+  const t = _flCalcolo(), f = n => '€ ' + n.toFixed(2).replace('.', ',');
+  const s = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  s('fl-imp', f(t.imponibile)); s('fl-ivaamt', f(t.ivaAmt)); s('fl-tot', f(t.totale));
+}
+
+async function salvaFatturaLibera() {
+  const cliId = document.getElementById('fl-cli').value;
+  const cl = _clienti.find(c => c.id === cliId);
+  const t = _flCalcolo();
+  if (!cl) { alert('Scegli il cliente dall\'elenco.'); return; }
+  if (!t.righe.length) { alert('Inserisci almeno una riga con la descrizione.'); return; }
+  if (!(t.imponibile > 0)) { alert('L\'importo della fattura deve essere maggiore di zero.'); return; }
+  const btn = document.getElementById('fl-salva'); if (btn) { btn.disabled = true; btn.textContent = 'Salvataggio…'; }
+  try {
+    const { data: n, error: eN } = await supa.rpc('ormia_prossimo_numero', { campo: 'num_fatture' });
+    if (eN || !n) throw new Error('numero progressivo non disponibile' + (eN ? ': ' + eN.message : ''));
+    const anno = new Date().getFullYear();
+    const numero = `FAT${anno}-${String(n).padStart(3, '0')}`;
+    const { data: off } = await supa.from('impostazioni').select('*').eq('id', 'default').single();
+    const o = off || {};
+    const row = {
+      numero, data: document.getElementById('fl-data').value || null, scadenza: document.getElementById('fl-scad').value || null,
+      pagamento: document.getElementById('fl-pag').value, stato: 'emessa', origine: 'libera', origine_id: null, cliente_id: cl.id,
+      descrizione: t.righe[0].desc, righe: t.righe, iva: t.iva, imponibile: t.imponibile, iva_amt: t.ivaAmt, totale: t.totale,
+      note: document.getElementById('fl-note').value.trim(), cl_email: cl.email || null,
+      off_ragione: o.ragione || null, off_piva: o.piva || null, off_indirizzo: o.indirizzo || null, off_tel: o.tel || null,
+      off_email: o.email || null, off_iban: o.iban || null, off_banca: o.banca || null, off_note_doc: o.note_doc || null,
+      cl_ragione: cl.ragione || null, cl_piva: cl.piva || null, cl_cf: cl.cf || null, cl_indirizzo: cl.indirizzo || null, cl_sdi: cl.sdi || null, cl_pec: cl.pec || null,
+    };
+    const { data: r, error } = await supa.from('fatture').insert(row).select().single();
+    if (error) throw error;
+    document.getElementById('modal-fl')?.remove();
+    await loadAll(); try { renderFattureFin(); } catch (e) {}
+    showToastFin('Fattura ' + numero + ' emessa ✓');
+    if (_ficConfig.company_id && (_ficToken?.access_token || _ficToken?.refresh_token)) inviaSuFIC(r.id);
+  } catch (e) {
+    alert('Errore: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Emetti fattura'; }
+  }
+}
 
 async function inviaSuFIC(fatturaId) {
   if (!_ficConfig.company_id) { alert('Configura prima Fatture in Cloud.'); return; }
