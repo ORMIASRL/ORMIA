@@ -1046,7 +1046,56 @@
         <!-- FERIE · PERMESSI · MALATTIE -->
         <div id="ass-card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:16px;box-shadow:var(--shadow)"></div>
 
-        <!-- TOOLBAR -->
+        <!-- PRESENZE v2 -->
+<div id="pv2-tabs" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+  <button class="btn btn-sm" data-tab="giorno" onclick="pv2Tab('giorno')" style="border:1px solid var(--border)">📅 Giornata</button>
+  <button class="btn btn-sm" data-tab="mese" onclick="pv2Tab('mese')" style="border:1px solid var(--border)">🗓 Mese dipendente</button>
+  <button class="btn btn-sm" data-tab="assenze" onclick="pv2Tab('assenze')" style="border:1px solid var(--border)">🏖 Ferie · Permessi · Malattie <span id="pv2-badge-ass" style="display:none;background:var(--danger);color:#fff;border-radius:10px;padding:0 6px;font-size:11px;margin-left:4px">0</span></button>
+  <button class="btn btn-sm" data-tab="dipendenti" onclick="pv2Tab('dipendenti')" style="border:1px solid var(--border)">👥 Dipendenti</button>
+  <button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="pv2Excel()">📊 Excel commercialista</button>
+</div>
+<div id="pv2-giorno">
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+    <button class="btn btn-secondary btn-sm" onclick="pv2Sposta(-1)">◀</button>
+    <input type="date" id="pv2-data" onchange="_pv2Data=this.value;pv2RenderGiorno()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-family:'DM Mono',monospace">
+    <button class="btn btn-secondary btn-sm" onclick="pv2Sposta(1)">▶</button>
+    <button class="btn btn-secondary btn-sm" onclick="pv2Sposta(0)">Oggi</button>
+    <span id="pv2-data-lbl" style="font-weight:700;text-transform:capitalize;margin-left:6px"></span>
+  </div>
+  <div id="pv2-giorno-body"></div>
+</div>
+<div id="pv2-mese" style="display:none">
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+    <select id="pv2-mese-dip" onchange="pv2RenderMese()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius)"></select>
+    <input type="month" id="pv2-mese-m" onchange="pv2RenderMese()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius)">
+    <span style="font-size:12px;color:var(--text3)">Clicca un giorno per lo spaccato e le correzioni</span>
+  </div>
+  <div id="pv2-mese-body"></div>
+</div>
+<div id="pv2-dipendenti" style="display:none">
+<!-- ELENCO DIPENDENTI -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:13px;font-weight:600">Dipendenti</div>
+          <button class="btn btn-secondary btn-sm" onclick="openModalDipendente()">+ Aggiungi</button>
+        </div>
+        <div class="table-wrap" style="margin-bottom:20px">
+          <table>
+            <thead><tr>
+              <th>Nome</th><th>Ruolo</th><th>Ore/giorno</th><th>Assunzione</th><th>Stato oggi</th><th></th>
+            </tr></thead>
+            <tbody id="tbody-dipendenti-presenze"></tbody>
+          </table>
+          <div class="empty-state" id="empty-dipendenti-presenze" style="display:none">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            <p>Nessun dipendente ancora. Aggiungine uno!</p>
+            <button class="btn btn-primary" onclick="openModalDipendente()">+ Aggiungi dipendente</button>
+          </div>
+        </div>
+
+        </div>
+<!-- vecchia vista presenze (nascosta, usata dalle funzioni esistenti) -->
+<div id="pv2-legacy" style="display:none">
+<!-- TOOLBAR -->
         <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
           <div class="search-wrap">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -1113,25 +1162,6 @@
           </div>
         </div>
 
-        <!-- ELENCO DIPENDENTI -->
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <div style="font-size:13px;font-weight:600">Dipendenti</div>
-          <button class="btn btn-secondary btn-sm" onclick="openModalDipendente()">+ Aggiungi</button>
-        </div>
-        <div class="table-wrap" style="margin-bottom:20px">
-          <table>
-            <thead><tr>
-              <th>Nome</th><th>Ruolo</th><th>Ore/giorno</th><th>Assunzione</th><th>Stato oggi</th><th></th>
-            </tr></thead>
-            <tbody id="tbody-dipendenti-presenze"></tbody>
-          </table>
-          <div class="empty-state" id="empty-dipendenti-presenze" style="display:none">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-            <p>Nessun dipendente ancora. Aggiungine uno!</p>
-            <button class="btn btn-primary" onclick="openModalDipendente()">+ Aggiungi dipendente</button>
-          </div>
-        </div>
-
         <!-- STORICO PRESENZE -->
         <div class="table-wrap">
           <table>
@@ -1155,7 +1185,8 @@
           <div id="p-riepilogo"></div>
         </div>
 
-      </div><!-- /section-presenze -->
+      </div>
+</div><!-- /section-presenze -->
 
       <!-- SEZIONE MAGAZZINO -->
       <div id="section-magazzino" style="display:none;overflow:hidden">
@@ -3307,6 +3338,331 @@ const _nomeDip = id => meccanici.find(m => m.id === id)?.nome || '—';
 const _periodoAss = a => (a.dal === a.al ? _fmtG(a.dal) : _fmtG(a.dal) + ' → ' + _fmtG(a.al)) + (a.ora_dalle ? ' · ' + a.ora_dalle.slice(0,5) + '–' + (a.ora_alle||'').slice(0,5) : '');
 const _tipoVisibile = a => (a.tipo === 'malattia' && _ruolo !== 'amministratore') ? { i:'🚫', l:'Assente' } : ASS_TIPI_G[a.tipo];
 
+// ╔═══════════════════════════════════════════════════╗
+// ║  PRESENZE v2 — giornata, spaccato, mese, storico  ║
+// ╚═══════════════════════════════════════════════════╝
+let _pv2Tab = 'giorno', _pv2Data = null, _pv2Det = null;
+const _pv2z = n => String(n).padStart(2, '0');
+function _pv2Iso(d) { return d.getFullYear() + '-' + _pv2z(d.getMonth() + 1) + '-' + _pv2z(d.getDate()); }
+function _pv2Esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function _pv2Hm(iso) { return iso ? new Date(iso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : ''; }
+function _pv2Min(m) { m = Math.round(m || 0); const s = m < 0 ? '-' : ''; m = Math.abs(m); return s + Math.floor(m / 60) + 'h' + _pv2z(m % 60); }
+function _pv2DataTim(t) { return _pv2Iso(new Date(t.entrata)); }
+function _pv2Dips() { return meccanici.filter(m => m.attivo !== false).sort((a, b) => (a.nome || '').localeCompare(b.nome || '')); }
+function _pv2Colore(comId) {
+  let h = 0; String(comId || '').split('').forEach(c => { h = (h * 31 + c.charCodeAt(0)) % 360; });
+  return `hsl(${h},62%,52%)`;
+}
+function _pv2Commessa(comId) {
+  const cm = commesse.find(c => c.id === comId);
+  if (!cm) return { num: '—', sub: 'commessa eliminata' };
+  const cl = clienti.find(c => c.id === cm.clienteId), v = veicoli.find(x => x.id === cm.veicoloId);
+  return { num: cm.numero || '—', sub: [v?.targa, cl?.ragione].filter(Boolean).join(' · ') };
+}
+
+// Calcolo della giornata di un dipendente
+function _pv2Giorno(dipId, data) {
+  const now = new Date(), oggi = _pv2Iso(now);
+  const p = presenze.find(x => (x.dipId === dipId || x.mecId === dipId) && _dataLocaleP(x) === data) || null;
+  const tims = timbrature.filter(t => t.mecId === dipId && t.entrata && _pv2DataTim(t) === data)
+    .sort((a, b) => new Date(a.entrata) - new Date(b.entrata));
+  const fine = t => t.uscita ? new Date(t.uscita) : (data === oggi ? now : new Date(t.entrata));
+  let minCom = 0; const perCom = {};
+  tims.forEach(t => { const m = Math.max(0, (fine(t) - new Date(t.entrata)) / 60000); minCom += m; perCom[t.comId] = (perCom[t.comId] || 0) + m; });
+  let minPres = 0;
+  if (p && p.entrata) {
+    const u = p.uscita ? new Date(p.uscita) : (data === oggi ? now : null);
+    if (u) {
+      minPres = (u - new Date(p.entrata)) / 60000;
+      if (p.pausaInizio) minPres -= ((p.pausaFine ? new Date(p.pausaFine) : u) - new Date(p.pausaInizio)) / 60000;
+      minPres = Math.max(0, minPres);
+    }
+  }
+  // Anomalie
+  const anom = [];
+  const imp = _impostazioni || {}, hm = x => String(x || '').slice(0, 5);
+  const pp1 = new Date(`${data}T${hm(imp.pausa_inizio || imp.pausaInizio) || '13:00'}:00`);
+  const pp2 = new Date(`${data}T${hm(imp.pausa_fine || imp.pausaFine) || '14:00'}:00`);
+  if (tims.length && !p) anom.push('entrata presenze mancante');
+  if (p && !p.uscita && data < oggi) anom.push('uscita mancante');
+  if (p && p.entrata && !p.pausaInizio && new Date(p.entrata) < pp1 && (p.uscita ? new Date(p.uscita) : (data === oggi ? now : null)) > pp2) anom.push('pausa non timbrata');
+  if (tims.some(t => !t.uscita && (data < oggi || (p && p.uscita)))) anom.push('commessa ancora aperta');
+  for (let i = 1; i < tims.length; i++) { if (new Date(tims[i].entrata) < fine(tims[i - 1]) - 60000) { anom.push('timbrature sovrapposte'); break; } }
+  if (p && p.pausaInizio && p.pausaFine && tims.some(t => new Date(t.entrata) < new Date(p.pausaFine) && fine(t) > new Date(p.pausaInizio) && (Math.min(fine(t), new Date(p.pausaFine)) - Math.max(new Date(t.entrata), new Date(p.pausaInizio))) > 10 * 60000)) anom.push('lavoro su commessa durante la pausa');
+  const ass = (typeof assenze !== 'undefined' ? assenze : []).find(a => a.dip_id === dipId && a.stato === 'approvata' && a.dal <= data && a.al >= data);
+  return { p, tims, minCom, perCom, minPres, scarto: minPres - minCom, anom, ass };
+}
+
+function pv2Tab(t) {
+  _pv2Tab = t;
+  ['giorno', 'mese', 'dipendenti'].forEach(k => { const el = document.getElementById('pv2-' + k); if (el) el.style.display = k === t ? '' : 'none'; });
+  const ac = document.getElementById('ass-card'); if (ac) ac.style.display = t === 'assenze' ? '' : 'none';
+  document.querySelectorAll('#pv2-tabs [data-tab]').forEach(b => {
+    const on = b.dataset.tab === t;
+    b.style.background = on ? 'var(--accent)' : 'var(--surface)'; b.style.color = on ? '#fff' : 'var(--text2)'; b.style.borderColor = on ? 'var(--accent)' : 'var(--border)';
+  });
+  if (t === 'giorno') pv2RenderGiorno();
+  if (t === 'mese') pv2RenderMese();
+  if (t === 'dipendenti') { try { renderDipendenti(); } catch (e) {} }
+  const n = (typeof assenze !== 'undefined' ? assenze : []).filter(a => a.stato === 'richiesta').length;
+  const b = document.getElementById('pv2-badge-ass'); if (b) { b.textContent = n; b.style.display = n ? '' : 'none'; }
+}
+
+function pv2Sposta(giorni) {
+  const d = new Date((_pv2Data || _pv2Iso(new Date())) + 'T12:00:00');
+  if (giorni === 0) _pv2Data = _pv2Iso(new Date()); else { d.setDate(d.getDate() + giorni); _pv2Data = _pv2Iso(d); }
+  const inp = document.getElementById('pv2-data'); if (inp) inp.value = _pv2Data;
+  pv2RenderGiorno();
+}
+
+function pv2RenderGiorno() {
+  const box = document.getElementById('pv2-giorno-body'); if (!box) return;
+  if (!_pv2Data) _pv2Data = _pv2Iso(new Date());
+  const inp = document.getElementById('pv2-data'); if (inp && inp.value !== _pv2Data) inp.value = _pv2Data;
+  const lbl = document.getElementById('pv2-data-lbl');
+  if (lbl) lbl.textContent = new Date(_pv2Data + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const td = 'padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;white-space:nowrap';
+  const righe = _pv2Dips().map(d => {
+    const g = _pv2Giorno(d.id, _pv2Data);
+    if (!g.p && !g.tims.length && !g.ass) return { d, g, vuoto: true };
+    return { d, g };
+  });
+  const attivi = righe.filter(r => !r.vuoto), assenti = righe.filter(r => r.vuoto);
+  const riga = ({ d, g }) => {
+    const p = g.p;
+    const pausa = p && p.pausaInizio ? _pv2Hm(p.pausaInizio) + '–' + (_pv2Hm(p.pausaFine) || '…') : '—';
+    const scCol = g.scarto > 60 ? 'var(--warning)' : g.scarto < -5 ? 'var(--danger)' : 'var(--text3)';
+    const assTxt = g.ass ? `<span style="font-size:11px;background:var(--warning-light);color:var(--warning);padding:2px 7px;border-radius:10px;font-weight:700">${_pv2Esc(g.ass.tipo)}</span>` : '';
+    return `<tr onclick="pv2Dettaglio('${d.id}','${_pv2Data}')" style="cursor:pointer" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <td style="${td};font-weight:700">${_pv2Esc(d.nome)} ${assTxt}</td>
+      <td style="${td};font-family:'DM Mono',monospace">${p ? _pv2Hm(p.entrata) : '—'}${p && p.ritardo ? ' <span style="color:var(--danger);font-size:11px">ritardo</span>' : ''}</td>
+      <td style="${td};font-family:'DM Mono',monospace">${pausa}</td>
+      <td style="${td};font-family:'DM Mono',monospace">${p ? (_pv2Hm(p.uscita) || '<span style="color:var(--success)">in sede</span>') : '—'}</td>
+      <td style="${td};font-family:'DM Mono',monospace;font-weight:700">${p ? _pv2Min(g.minPres) : '—'}</td>
+      <td style="${td};font-family:'DM Mono',monospace">${g.tims.length ? _pv2Min(g.minCom) : '—'}</td>
+      <td style="${td};font-family:'DM Mono',monospace;color:${scCol}">${p ? _pv2Min(g.scarto) : '—'}</td>
+      <td style="${td};white-space:normal;font-size:12px;color:var(--danger)">${g.anom.map(a => '⚠ ' + a).join('<br>')}</td>
+    </tr>`;
+  };
+  const th = 'padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border)';
+  box.innerHTML = `<div class="table-wrap"><table style="width:100%;border-collapse:collapse">
+    <thead><tr><th style="${th}">Dipendente</th><th style="${th}">Entrata</th><th style="${th}">Pausa</th><th style="${th}">Uscita</th><th style="${th}">Presenza</th><th style="${th}">Su commesse</th><th style="${th}">Scarto</th><th style="${th}">Anomalie</th></tr></thead>
+    <tbody>${attivi.map(riga).join('') || `<tr><td colspan="8" style="${td};color:var(--text3);text-align:center">Nessuna presenza registrata in questo giorno.</td></tr>`}</tbody></table></div>
+    ${assenti.length ? `<div style="font-size:12px;color:var(--text3);margin-top:10px">Senza presenze: ${assenti.map(r => `<a href="#" onclick="pv2Dettaglio('${r.d.id}','${_pv2Data}');return false" style="color:var(--text2)">${_pv2Esc(r.d.nome)}</a>`).join(' · ')}</div>` : ''}
+    <div style="font-size:11px;color:var(--text3);margin-top:6px">Clicca un dipendente per vedere lo spaccato della giornata. Scarto = presenza meno ore timbrate sulle commesse.</div>`;
+}
+
+// ── Dettaglio giornata di un dipendente ──
+async function pv2Dettaglio(dipId, data) {
+  _pv2Det = { dipId, data };
+  const d = meccanici.find(m => m.id === dipId);
+  const g = _pv2Giorno(dipId, data);
+  document.getElementById('pv2-modal')?.remove();
+  const ov = document.createElement('div'); ov.id = 'pv2-modal';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:8000;display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow-y:auto';
+  // Timeline
+  const pts = [];
+  if (g.p?.entrata) pts.push(new Date(g.p.entrata)); if (g.p?.uscita) pts.push(new Date(g.p.uscita));
+  g.tims.forEach(t => { pts.push(new Date(t.entrata)); if (t.uscita) pts.push(new Date(t.uscita)); });
+  let h0 = 7, h1 = 19;
+  pts.forEach(x => { h0 = Math.min(h0, x.getHours()); h1 = Math.max(h1, x.getHours() + 1); });
+  const base = new Date(data + 'T00:00:00'); const t0 = new Date(base); t0.setHours(h0); const t1 = new Date(base); t1.setHours(h1);
+  const pos = x => Math.max(0, Math.min(100, (new Date(x) - t0) / (t1 - t0) * 100));
+  const oggi = _pv2Iso(new Date());
+  const fineT = t => t.uscita || (data === oggi ? new Date().toISOString() : t.entrata);
+  let bar = '';
+  if (g.p?.entrata) {
+    const pu = g.p.uscita || (data === oggi ? new Date().toISOString() : g.p.entrata);
+    bar += `<div title="Presenza" style="position:absolute;top:2px;bottom:2px;left:${pos(g.p.entrata)}%;width:${Math.max(.3, pos(pu) - pos(g.p.entrata))}%;border:2px dashed var(--text3);border-radius:6px"></div>`;
+  }
+  if (g.p?.pausaInizio) bar += `<div title="Pausa" style="position:absolute;top:8px;bottom:8px;left:${pos(g.p.pausaInizio)}%;width:${Math.max(.3, pos(g.p.pausaFine || fineT({ entrata: g.p.pausaInizio })) - pos(g.p.pausaInizio))}%;background:repeating-linear-gradient(45deg,#cbd5e1,#cbd5e1 4px,#e2e8f0 4px,#e2e8f0 8px);border-radius:4px"></div>`;
+  g.tims.forEach(t => {
+    const c = _pv2Commessa(t.comId);
+    bar += `<div title="${_pv2Esc(c.num + ' ' + c.sub)} ${_pv2Hm(t.entrata)}–${_pv2Hm(t.uscita) || 'in corso'}" style="position:absolute;top:8px;bottom:8px;left:${pos(t.entrata)}%;width:${Math.max(.4, pos(fineT(t)) - pos(t.entrata))}%;background:${_pv2Colore(t.comId)};border-radius:4px;opacity:.9"></div>`;
+  });
+  let ore = ''; for (let h = h0; h <= h1; h++) ore += `<span style="position:absolute;left:${(h - h0) / (h1 - h0) * 100}%;transform:translateX(-50%);font-size:10px;color:var(--text3)">${h}</span>`;
+  // Riepilogo commesse
+  const riep = Object.entries(g.perCom).sort((a, b) => b[1] - a[1]).map(([cid, m]) => {
+    const c = _pv2Commessa(cid);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)">
+      <span style="width:12px;height:12px;border-radius:3px;background:${_pv2Colore(cid)};flex-shrink:0"></span>
+      <span style="font-weight:700;font-family:'DM Mono',monospace">${_pv2Esc(c.num)}</span>
+      <span style="color:var(--text3);font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_pv2Esc(c.sub)}</span>
+      <span style="font-family:'DM Mono',monospace;font-weight:700">${_pv2Min(m)}</span></div>`;
+  }).join('') + (g.p ? `<div style="display:flex;gap:10px;padding:6px 0;color:var(--text3)"><span style="width:12px"></span><span style="flex:1">Non assegnato (scarto)</span><span style="font-family:'DM Mono',monospace;font-weight:700;color:${g.scarto < -5 ? 'var(--danger)' : 'var(--text3)'}">${_pv2Min(g.scarto)}</span></div>` : '');
+  // Elenco timbrature
+  const tabT = g.tims.map(t => {
+    const c = _pv2Commessa(t.comId);
+    const dur = (new Date(fineT(t)) - new Date(t.entrata)) / 60000;
+    return `<tr>
+      <td style="padding:7px 8px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace">${_pv2Hm(t.entrata)} – ${t.uscita ? _pv2Hm(t.uscita) : '<span style="color:var(--success)">in corso</span>'}</td>
+      <td style="padding:7px 8px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace">${_pv2Min(dur)}</td>
+      <td style="padding:7px 8px;border-bottom:1px solid var(--border)"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${_pv2Colore(t.comId)}"></span> <b>${_pv2Esc(c.num)}</b> <span style="color:var(--text3);font-size:12px">${_pv2Esc(c.sub)}</span></td>
+      <td style="padding:7px 8px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap">
+        <button class="btn btn-secondary btn-sm" onclick="apriModificaTimbratura('${t.id}')" title="Correggi">✏️</button>
+        <button class="btn btn-secondary btn-sm" onclick="pv2EliminaTim('${t.id}')" title="Elimina" style="color:var(--danger)">🗑</button></td></tr>`;
+  }).join('') || `<tr><td colspan="4" style="padding:10px;color:var(--text3)">Nessuna timbratura su commessa.</td></tr>`;
+  const p = g.p;
+  const box = (lab, val) => `<div style="background:var(--surface2);border-radius:var(--radius);padding:8px 12px;min-width:90px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">${lab}</div><div style="font-family:'DM Mono',monospace;font-size:15px;font-weight:700">${val}</div></div>`;
+  const dataLbl = new Date(data + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  ov.innerHTML = `<div style="background:var(--surface);border-radius:var(--radius-lg);width:760px;max-width:100%;box-shadow:var(--shadow-lg);padding:20px 22px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <button class="btn btn-secondary btn-sm" onclick="pv2DettSposta(-1)">◀</button>
+      <div style="flex:1"><div style="font-size:18px;font-weight:800">${_pv2Esc(d?.nome || '—')}</div><div style="font-size:13px;color:var(--text3);text-transform:capitalize">${dataLbl}</div></div>
+      <button class="btn btn-secondary btn-sm" onclick="pv2DettSposta(1)">▶</button>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('pv2-modal').remove()">✕</button>
+    </div>
+    ${g.ass ? `<div style="background:var(--warning-light);color:var(--warning);border-radius:var(--radius);padding:8px 12px;font-size:13px;font-weight:600;margin-bottom:10px">🏖 ${_pv2Esc(g.ass.tipo)} approvata per questo giorno</div>` : ''}
+    ${g.anom.length ? `<div style="background:var(--danger-light);color:var(--danger);border-radius:var(--radius);padding:8px 12px;font-size:13px;margin-bottom:10px">${g.anom.map(a => '⚠ ' + a).join('<br>')}</div>` : ''}
+    <div style="position:relative;height:34px;background:var(--surface2);border-radius:8px;margin-bottom:2px">${bar}</div>
+    <div style="position:relative;height:14px;margin-bottom:16px">${ore}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
+      ${box('Entrata', p ? _pv2Hm(p.entrata) : '—')}${box('Pausa', p && p.pausaInizio ? _pv2Hm(p.pausaInizio) + '–' + (_pv2Hm(p.pausaFine) || '…') : '—')}${box('Uscita', p ? (_pv2Hm(p.uscita) || 'in sede') : '—')}${box('Presenza', p ? _pv2Min(g.minPres) : '—')}${box('Su commesse', _pv2Min(g.minCom))}
+      <div style="margin-left:auto">${p ? `<button class="btn btn-secondary btn-sm" onclick="apriModificaPresenza('${p.id}')">✏️ Correggi presenza</button>` : `<button class="btn btn-primary btn-sm" onclick="pv2CreaPresenza('${dipId}','${data}')">+ Crea presenza</button>`}</div>
+    </div>
+    <div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Ore per commessa</div>
+    <div style="margin-bottom:16px">${riep || '<div style="color:var(--text3);font-size:13px">—</div>'}</div>
+    <div style="display:flex;align-items:center;margin-bottom:4px"><div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;flex:1">Timbrature</div>
+      <button class="btn btn-secondary btn-sm" onclick="pv2NuovaTim('${dipId}','${data}')">+ Aggiungi timbratura</button></div>
+    <div class="table-wrap" style="margin-bottom:16px"><table style="width:100%;border-collapse:collapse;font-size:13px">${tabT}</table></div>
+    <div id="pv2-nuova-tim"></div>
+    <div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Storico modifiche</div>
+    <div id="pv2-storico" style="font-size:12px;color:var(--text3)">Caricamento…</div>
+  </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+  pv2CaricaStorico(dipId, data);
+}
+
+function pv2DettSposta(n) {
+  if (!_pv2Det) return;
+  const d = new Date(_pv2Det.data + 'T12:00:00'); d.setDate(d.getDate() + n);
+  pv2Dettaglio(_pv2Det.dipId, _pv2Iso(d));
+}
+
+// Aggiorna le viste aperte dopo una modifica
+function _pv2Refresh() {
+  try { if (currentSection === 'presenze') { if (_pv2Tab === 'giorno') pv2RenderGiorno(); if (_pv2Tab === 'mese') pv2RenderMese(); } } catch (e) {}
+  // (non ridisegna il dettaglio mentre si sta compilando una nuova timbratura)
+  try { if (_pv2Det && document.getElementById('pv2-modal') && !document.getElementById('pv2-nuova-tim')?.innerHTML) pv2Dettaglio(_pv2Det.dipId, _pv2Det.data); } catch (e) {}
+}
+
+async function pv2CaricaStorico(dipId, data) {
+  const el = document.getElementById('pv2-storico'); if (!el) return;
+  try {
+    const { data: rows, error } = await supa.from('log_modifiche').select('*').eq('dip_id', dipId).eq('giorno', data).order('created_at', { ascending: false });
+    if (error) throw error;
+    if (!rows || !rows.length) { el.innerHTML = 'Nessuna modifica manuale per questo giorno.'; return; }
+    const rng = r => r ? (_pv2Hm(r.entrata) + '–' + (_pv2Hm(r.uscita) || '…')) : '';
+    const desc = r => {
+      const a = r.prima, b = r.dopo;
+      if (r.tabella === 'timbrature') {
+        const c = _pv2Commessa((b || a)?.com_id).num;
+        if (r.azione === 'insert') return `Timbratura aggiunta ${rng(b)} (${c})`;
+        if (r.azione === 'delete') return `Timbratura eliminata ${rng(a)} (${c})`;
+        return `Timbratura ${c}: ${rng(a)} → ${rng(b)}`;
+      }
+      const pz = x => x ? `ent. ${_pv2Hm(x.entrata) || '—'}, pausa ${x.pausa_inizio ? _pv2Hm(x.pausa_inizio) + '–' + (_pv2Hm(x.pausa_fine) || '…') : '—'}, usc. ${_pv2Hm(x.uscita) || '—'}` : '';
+      if (r.azione === 'insert') return `Presenza creata (${pz(b)})`;
+      if (r.azione === 'delete') return `Presenza eliminata (${pz(a)})`;
+      return `Presenza: ${pz(a)} → ${pz(b)}`;
+    };
+    el.innerHTML = rows.map(r => `<div style="padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-family:'DM Mono',monospace">${new Date(r.created_at).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span> · <b style="color:var(--text2)">${_pv2Esc(r.utente)}</b> · ${_pv2Esc(desc(r))}</div>`).join('');
+  } catch (e) { el.innerHTML = 'Storico non disponibile.'; }
+}
+
+async function pv2EliminaTim(id) {
+  const t = timbrature.find(x => x.id === id); if (!t) return;
+  const c = _pv2Commessa(t.comId);
+  const ok = await _dialogoOrmia(`Eliminare la timbratura ${_pv2Hm(t.entrata)}–${_pv2Hm(t.uscita) || 'in corso'} su ${c.num}?`, { ok: 'Elimina', pericolo: true });
+  if (!ok) return;
+  const { error } = await supa.from('timbrature').delete().eq('id', id);
+  if (error) { _dialogoOrmia('Errore: ' + error.message, { ok: 'OK' }); return; }
+  showToast('Timbratura eliminata');
+  await _ricaricaTimbratureCommessa(t.comId);
+}
+
+function pv2NuovaTim(dipId, data) {
+  const box = document.getElementById('pv2-nuova-tim'); if (!box) return;
+  const opz = commesse.filter(c => c.stato !== 'fatturata').sort((a, b) => (b.numero || '').localeCompare(a.numero || ''))
+    .map(c => { const x = _pv2Commessa(c.id); return `<option value="${c.id}">${_pv2Esc(x.num + ' — ' + x.sub)}</option>`; }).join('');
+  const inp = 'padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface)';
+  box.innerHTML = `<div style="background:var(--surface2);border-radius:var(--radius);padding:12px;margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+    <label style="display:flex;flex-direction:column;font-size:11px;font-weight:600;color:var(--text2);flex:1;min-width:220px">Commessa<select id="pv2-nt-com" style="${inp}">${opz}</select></label>
+    <label style="display:flex;flex-direction:column;font-size:11px;font-weight:600;color:var(--text2)">Dalle<input type="time" id="pv2-nt-da" style="${inp};font-family:'DM Mono',monospace"></label>
+    <label style="display:flex;flex-direction:column;font-size:11px;font-weight:600;color:var(--text2)">Alle<input type="time" id="pv2-nt-a" style="${inp};font-family:'DM Mono',monospace"></label>
+    <button class="btn btn-primary btn-sm" onclick="pv2SalvaNuovaTim('${dipId}','${data}')">Salva</button>
+    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('pv2-nuova-tim').innerHTML=''">Annulla</button></div>`;
+}
+
+async function pv2SalvaNuovaTim(dipId, data) {
+  const comId = document.getElementById('pv2-nt-com')?.value;
+  const da = (document.getElementById('pv2-nt-da')?.value || '').slice(0, 5), a = (document.getElementById('pv2-nt-a')?.value || '').slice(0, 5);
+  if (!comId || !da || !a) { _dialogoOrmia('Scegli la commessa e inserisci gli orari "dalle" e "alle".', { ok: 'OK' }); return; }
+  const ent = new Date(`${data}T${da}:00`), usc = new Date(`${data}T${a}:00`);
+  if (usc <= ent) { _dialogoOrmia('L\'orario di fine deve essere dopo quello di inizio.', { ok: 'OK' }); return; }
+  const { error } = await supa.from('timbrature').insert({ id: crypto.randomUUID(), mec_id: dipId, com_id: comId, entrata: ent.toISOString(), uscita: usc.toISOString(), created_at: new Date().toISOString() });
+  if (error) { _dialogoOrmia('Errore: ' + error.message, { ok: 'OK' }); return; }
+  showToast('Timbratura aggiunta ✓');
+  const _f = document.getElementById('pv2-nuova-tim'); if (_f) _f.innerHTML = '';
+  await _ricaricaTimbratureCommessa(comId);
+}
+
+async function pv2CreaPresenza(dipId, data) {
+  const imp = _impostazioni || {}, hm = x => String(x || '').slice(0, 5);
+  const ent = new Date(`${data}T${hm(imp.orario_inizio || imp.orarioInizio) || '08:30'}:00`);
+  const { data: row, error } = await supa.from('presenze').insert({ id: crypto.randomUUID(), mec_id: dipId, dip_id: dipId, data, entrata: ent.toISOString(), uscita: null, tipo: 'normale', ritardo: false, minuti_ritardo: 0, created_at: new Date().toISOString() }).select().single();
+  if (error) { _dialogoOrmia('Errore: ' + error.message, { ok: 'OK' }); return; }
+  presenze.push(fromDb('presenze', row));
+  _pv2Refresh();
+  apriModificaPresenza(row.id);
+}
+
+// ── Vista mese di un dipendente ──
+function pv2RenderMese() {
+  const box = document.getElementById('pv2-mese-body'); if (!box) return;
+  const sel = document.getElementById('pv2-mese-dip'), mi = document.getElementById('pv2-mese-m');
+  if (sel && !sel.options.length) sel.innerHTML = _pv2Dips().map(d => `<option value="${d.id}">${_pv2Esc(d.nome)}</option>`).join('');
+  if (mi && !mi.value) mi.value = _pv2Iso(new Date()).slice(0, 7);
+  const dipId = sel?.value, mese = mi?.value; if (!dipId || !mese) { box.innerHTML = ''; return; }
+  const [y, m] = mese.split('-').map(Number); const nGiorni = new Date(y, m, 0).getDate();
+  const td = 'padding:7px 10px;border-bottom:1px solid var(--border);font-size:13px;white-space:nowrap';
+  let tot = { pres: 0, com: 0, strao: 0, rit: 0, gg: 0 };
+  const righe = [];
+  for (let i = 1; i <= nGiorni; i++) {
+    const data = `${mese}-${_pv2z(i)}`, dt = new Date(data + 'T12:00:00'), we = dt.getDay() === 0 || dt.getDay() === 6;
+    const g = _pv2Giorno(dipId, data), p = g.p;
+    if (p) { tot.pres += g.minPres; tot.gg++; tot.strao += (+p.straordinario || 0); if (p.ritardo) tot.rit++; }
+    tot.com += g.minCom;
+    righe.push(`<tr onclick="pv2Dettaglio('${dipId}','${data}')" style="cursor:pointer;${we ? 'background:var(--surface2);' : ''}" onmouseover="this.style.outline='1px solid var(--accent)'" onmouseout="this.style.outline=''">
+      <td style="${td};text-transform:capitalize;${we ? 'color:var(--text3)' : ''}">${dt.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit' })}</td>
+      <td style="${td};font-family:'DM Mono',monospace">${p ? _pv2Hm(p.entrata) : (g.ass ? '<span style="color:var(--warning);font-weight:700">' + _pv2Esc(g.ass.tipo) + '</span>' : '—')}</td>
+      <td style="${td};font-family:'DM Mono',monospace">${p && p.pausaInizio ? _pv2Hm(p.pausaInizio) + '–' + (_pv2Hm(p.pausaFine) || '…') : ''}</td>
+      <td style="${td};font-family:'DM Mono',monospace">${p ? (_pv2Hm(p.uscita) || '…') : ''}</td>
+      <td style="${td};font-family:'DM Mono',monospace;font-weight:700">${p ? _pv2Min(g.minPres) : ''}</td>
+      <td style="${td};font-family:'DM Mono',monospace">${g.tims.length ? _pv2Min(g.minCom) : ''}</td>
+      <td style="${td};font-family:'DM Mono',monospace">${p && +p.straordinario ? _pv2Min(p.straordinario * 60) : ''}</td>
+      <td style="${td};color:var(--danger);font-size:12px">${p && p.ritardo ? 'ritardo ' + (p.minutiRitardo || '') + 'm ' : ''}${g.anom.length ? '⚠ ' + g.anom.length : ''}</td></tr>`);
+  }
+  const th = 'padding:8px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border)';
+  box.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      ${[['Giorni presenti', tot.gg], ['Ore presenza', _pv2Min(tot.pres)], ['Ore su commesse', _pv2Min(tot.com)], ['Straordinari', _pv2Min(tot.strao * 60)], ['Ritardi', tot.rit]].map(([l, v]) => `<div style="background:var(--surface2);border-radius:var(--radius);padding:8px 14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">${l}</div><div style="font-family:'DM Mono',monospace;font-size:16px;font-weight:800">${v}</div></div>`).join('')}
+    </div>
+    <div class="table-wrap"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="${th}">Giorno</th><th style="${th}">Entrata</th><th style="${th}">Pausa</th><th style="${th}">Uscita</th><th style="${th}">Presenza</th><th style="${th}">Su commesse</th><th style="${th}">Straord.</th><th style="${th}">Note</th></tr></thead><tbody>${righe.join('')}</tbody></table></div>`;
+}
+
+function pv2Excel() {
+  const fm = document.getElementById('p-filter-mese');
+  const m = document.getElementById('pv2-mese-m')?.value || (_pv2Data || _pv2Iso(new Date())).slice(0, 7);
+  if (fm) fm.value = m;
+  esportaPresenzeExcel();
+}
+
+function pv2Init() {
+  if (!_pv2Data) _pv2Data = _pv2Iso(new Date());
+  pv2Tab(_pv2Tab || 'giorno');
+}
+
 async function caricaAssenze() {
   try {
     const { data } = await supa.from('assenze').select('*').gte('al', _isoG(new Date(Date.now() - 62*86400000))).order('dal');
@@ -4137,6 +4493,7 @@ function renderLivePresenze() {
 
 function renderPresenze() {
   updateBadgePresenze();
+  try { _pv2Refresh(); } catch(e) {}
   renderDipendenti();
   const q    = (document.getElementById('search-presenze')?.value||'').toLowerCase();
   const fd   = document.getElementById('p-filter-data')?.value||'';
@@ -4603,6 +4960,7 @@ async function _ricaricaTimbratureCommessa(comId) {
   timbrature = await DB.load('timbrature');
   if (selectedCommessaId === comId) showDetailCommessa(comId);
   try { renderLive(); } catch(e) {}
+  try { _pv2Refresh(); } catch(e) {}
 }
 
 function apriModificaTimbratura(id) {
@@ -5993,7 +6351,8 @@ function setSection(sec) {
     btn.onclick = () => openModalDipendente();
     closeDetail('detail-cliente'); closeDetail('detail-veicolo'); closeDetail('detail-commessa');
     initPresenze();
-    caricaAssenze();
+    pv2Init();
+    caricaAssenze().then(() => { try { pv2Tab(_pv2Tab); } catch(e) {} });
   }
   // sec === 'anagrafiche' gestito da setTab
 }
