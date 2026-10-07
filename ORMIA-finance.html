@@ -1812,6 +1812,21 @@ async function salvaFatturaLibera() {
   }
 }
 
+// ── Fattura elettronica: dati SDI, controllo XML e invio allo SDI ──
+const _MP_FIN = { contanti:'MP01', assegno:'MP02', bonifico:'MP05', carta:'MP08', pos:'MP08', riba:'MP12', finanziamento:'MP05' };
+function _eiDataFin(pag, iban) {
+  const m = _MP_FIN[String(pag||'').toLowerCase()] || 'MP05'; iban = String(iban||'').replace(/\s/g,'');
+  return { vat_kind:'I', payment_method:m, ...(m==='MP05' && iban ? { bank_iban: iban } : {}) };
+}
+async function _ficInviaSDI(ficId) {
+  const cid = _ficConfig.company_id;
+  try { await ficFetch(`/c/${cid}/issued_documents/${ficId}/e_invoice/xml_verify`); }
+  catch(e) { return { ok:false, msg:'dati non validi per lo SDI: ' + e.message }; }
+  try { await ficFetch(`/c/${cid}/issued_documents/${ficId}/e_invoice/send`, { method:'POST', body: JSON.stringify({ data:{} }) }); }
+  catch(e) { return { ok:false, msg:'invio allo SDI non riuscito: ' + e.message }; }
+  return { ok:true };
+}
+
 async function inviaSuFIC(fatturaId) {
   if (!_ficConfig.company_id) { alert('Configura prima Fatture in Cloud.'); return; }
   const f = _fatture.find(x => x.id === fatturaId);
@@ -1828,10 +1843,11 @@ async function inviaSuFIC(fatturaId) {
     const res = await ficFetch(`/c/${_ficConfig.company_id}/issued_documents`, {
       method: 'POST',
       body: JSON.stringify({ data: {
-        type:'invoice', date:(f.data||new Date().toISOString()).split('T')[0],
+        type:'invoice', date:(f.data||new Date().toISOString()).split('T')[0], e_invoice:true,
         ...(_num ? { number: parseInt(_num[1], 10) } : {}),
-        entity: { name:f.cl_ragione||cl?.ragione||'Cliente', vat_number:f.cl_piva||cl?.piva||'',
-                  tax_code:f.cl_cf||cl?.cf||'', ei_code:f.cl_sdi||cl?.sdi||'',
+        ei_data: _eiDataFin(f.pagamento, f.off_iban),
+        entity: { name:f.cl_ragione||cl?.ragione||'Cliente', vat_number:f.cl_piva||cl?.piva||'', e_invoice:true,
+                  tax_code:f.cl_cf||cl?.cf||f.cl_piva||cl?.piva||'', ei_code:String(f.cl_sdi||cl?.sdi||'').trim().toUpperCase()||'0000000',
                   certified_email:f.cl_pec||cl?.pec||'',
                   address_street:[cl?.via, cl?.civico].filter(Boolean).join(' '), address_postal_code:cl?.cap||'',
                   address_city:cl?.citta||'', address_province:cl?.provincia||'', country:'Italia' },
@@ -1840,9 +1856,12 @@ async function inviaSuFIC(fatturaId) {
       }, options: { fix_payments: true } }),
     });
     const ficId = String(res.data.id);
-    await supa.from('fatture').update({ fic_id:ficId, fic_stato:'confermata' }).eq('id', fatturaId);
+    await supa.from('fatture').update({ fic_id:ficId, fic_stato:'creata' }).eq('id', fatturaId);
+    const sdi = await _ficInviaSDI(ficId);
+    await supa.from('fatture').update({ fic_stato: sdi.ok ? 'inviata_sdi' : 'errore_sdi' }).eq('id', fatturaId);
     await loadAll(); renderFattureFin();
-    showToastFin('Fattura inviata a FiC ✓ (ID: ' + ficId + ')');
+    if (sdi.ok) showToastFin('Fattura ' + f.numero + ' inviata allo SDI ✓');
+    else alert('Fattura ' + f.numero + ' creata su Fatture in Cloud come fattura elettronica, ma NON inviata allo SDI.\n\nMotivo: ' + sdi.msg + '\n\nCorreggi i dati e inviala da Fatture in Cloud.');
   } catch(e) { alert('Errore invio FiC: ' + e.message); }
 }
 
@@ -2124,10 +2143,12 @@ async function inviaNCFiC(id) {
     const res = await ficFetch(`/c/${_ficConfig.company_id}/issued_documents`, {
       method: 'POST',
       body: JSON.stringify({ data: {
-        type: 'credit_note',
+        type: 'credit_note', e_invoice: true,
         date: (nc.data||new Date().toISOString()).split('T')[0],
+        ei_data: _eiDataFin(fatt?.pagamento, fatt?.off_iban),
         ...(/(\d+)\s*$/.test(String(nc.numero||'')) ? { number: parseInt(String(nc.numero).match(/(\d+)\s*$/)[1], 10) } : {}),
-        entity: { name: fatt?.cl_ragione||cl?.ragione||'Cliente', vat_number: cl?.piva||'', tax_code: cl?.cf||'', ei_code: cl?.sdi||'', certified_email: cl?.pec||'',
+        entity: { name: fatt?.cl_ragione||cl?.ragione||'Cliente', vat_number: cl?.piva||'', tax_code: cl?.cf||cl?.piva||'', e_invoice: true,
+                  ei_code: String(cl?.sdi||'').trim().toUpperCase()||'0000000', certified_email: cl?.pec||'',
                   address_street: [cl?.via, cl?.civico].filter(Boolean).join(' '), address_postal_code: cl?.cap||'',
                   address_city: cl?.citta||'', address_province: cl?.provincia||'', country: 'Italia' },
         // L'importo della nota è IVA inclusa: su FiC va il netto (positivo) con l'aliquota della fattura
@@ -2138,11 +2159,14 @@ async function inviaNCFiC(id) {
       }, options: { fix_payments: true } }),
     });
     const ficId = String(res.data.id);
-    await supa.from('note_credito').update({ fic_id:ficId, fic_stato:'confermata' }).eq('id', id);
+    const sdi = await _ficInviaSDI(ficId);
+    const stato = sdi.ok ? 'inviata_sdi' : 'errore_sdi';
+    await supa.from('note_credito').update({ fic_id:ficId, fic_stato:stato }).eq('id', id);
     const idx = _noteCredito.findIndex(n=>n.id===id);
-    if (idx>=0) { _noteCredito[idx].ficId=ficId; _noteCredito[idx].ficStato='confermata'; }
+    if (idx>=0) { _noteCredito[idx].ficId=ficId; _noteCredito[idx].ficStato=stato; }
     renderNoteCredito();
-    showToastFin('Nota credito inviata a FiC ✓ (ID: ' + ficId + ')');
+    if (sdi.ok) showToastFin('Nota credito ' + nc.numero + ' inviata allo SDI ✓');
+    else alert('Nota credito ' + nc.numero + ' creata su Fatture in Cloud come documento elettronico, ma NON inviata allo SDI.\n\nMotivo: ' + sdi.msg + '\n\nCorreggi i dati e inviala da Fatture in Cloud.');
   } catch(e) { alert('Errore invio FiC: ' + e.message); }
 }
 
