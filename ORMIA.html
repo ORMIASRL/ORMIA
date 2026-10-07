@@ -11551,20 +11551,12 @@ function caricaDatiOfficina() {
 // Reset automatico a inizio anno
 // ═══════════════════════════════════════════════════
 async function _nextNumero(campo, formato) {
+  // Progressivo atomico sul database: niente doppioni anche se più postazioni (o Finance) numerano insieme
   const annoCorrente = new Date().getFullYear();
   const annoShort    = String(annoCorrente).slice(-2);
-  const imp          = _impostazioni || {};
-  // Reset se anno cambiato
-  const annoDB = imp.anno_corrente || imp.annoCorrente || 0;
-  let n = annoDB !== annoCorrente ? 1 : ((imp[campo] || imp[campo.replace('_','')] || 0) + 1);
-  // Salva su Supabase
-  await supa.from('impostazioni').update({
-    [campo]: n,
-    anno_corrente: annoCorrente,
-  }).eq('id','default');
-  // Aggiorna locale
-  _impostazioni[campo] = n;
-  _impostazioni.anno_corrente = annoCorrente;
+  const { data: n, error } = await supa.rpc('ormia_prossimo_numero', { campo });
+  if (error || !n) throw new Error('Impossibile ottenere il numero progressivo: ' + (error?.message || 'risposta vuota'));
+  if (_impostazioni) { _impostazioni[campo] = n; _impostazioni.anno_corrente = annoCorrente; }
   return formato(annoShort, n);
 }
 
