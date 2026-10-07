@@ -9260,7 +9260,7 @@ function _selectConvert(el, tipo) {
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
         <div class="form-group" style="margin:0">
           <label>Data fattura</label>
-          <input type="date" id="fatt-data">
+          <input type="date" id="fatt-data" onchange="_aggScadenzaFatt()">
         </div>
         <div class="form-group" style="margin:0">
           <label>Scadenza pagamento</label>
@@ -9268,14 +9268,15 @@ function _selectConvert(el, tipo) {
         </div>
         <div class="form-group" style="margin:0">
           <label>Modalità pagamento</label>
-          <select id="fatt-pagamento">
-            <option>Immediato</option>
-            <option>30 giorni d.f.</option>
-            <option>60 giorni d.f.</option>
-            <option>90 giorni d.f.</option>
-            <option>Bonifico anticipato</option>
-            <option>Contanti</option>
-            <option>POS / carta</option>
+          <select id="fatt-pagamento" onchange="_aggScadenzaFatt()">
+            <option value="bonifico">Bonifico bancario</option>
+            <option value="30gg">Bonifico 30 giorni d.f.</option>
+            <option value="60gg">Bonifico 60 giorni d.f.</option>
+            <option value="90gg">Bonifico 90 giorni d.f.</option>
+            <option value="riba">Ri.Ba.</option>
+            <option value="contanti">Contanti</option>
+            <option value="carta">Carta / POS</option>
+            <option value="assegno">Assegno</option>
           </select>
         </div>
         <div class="form-group" style="margin:0">
@@ -10704,12 +10705,34 @@ function apriFatturaModal(draft) {
   document.getElementById('fatt-veicolo-row').style.display = draft.veicolo?'':'none';
   document.getElementById('fatt-data').value     = oggi;
   document.getElementById('fatt-scadenza').value = '';
-  document.getElementById('fatt-pagamento').value= 'Immediato';
+  document.getElementById('fatt-pagamento').value= (cl && cl.pagamento && [...document.getElementById('fatt-pagamento').options].some(o=>o.value===String(cl.pagamento).toLowerCase())) ? String(cl.pagamento).toLowerCase() : 'bonifico';
   document.getElementById('fatt-iva').value      = String(cl?.iva ?? 22);
   document.getElementById('fatt-note').value     = '';
   document.getElementById('fatt-email').value    = cl?.email||'';
   calcolaFattTotali(draft.righe);
+  _aggScadenzaFatt();
+  _mostraProssimoNumFatt('fatt-numero');
   document.getElementById('modal-fattura').style.display='flex';
+}
+
+// Numero che avrà la fattura (anteprima: il numero vero si assegna al salvataggio)
+async function _mostraProssimoNumFatt(elId) {
+  const el = document.getElementById(elId); if (!el) return;
+  try {
+    const { data } = await supa.from('impostazioni').select('num_fatture,anno_corrente').eq('id','default').single();
+    const anno = new Date().getFullYear();
+    const n = (data?.anno_corrente === anno ? (data?.num_fatture || 0) : 0) + 1;
+    el.textContent = 'Fattura n. FAT' + anno + '-' + String(n).padStart(3,'0');
+  } catch(e) {}
+}
+
+// Scadenza calcolata dal metodo di pagamento (30/60/90 gg dalla data fattura, altrimenti immediata)
+function _aggScadenzaFatt() {
+  const p = document.getElementById('fatt-pagamento')?.value || '';
+  const d = document.getElementById('fatt-data')?.value; const sc = document.getElementById('fatt-scadenza');
+  if (!sc || !d) return;
+  const dt = new Date(d + 'T12:00:00'); dt.setDate(dt.getDate() + (parseInt(p) || 0));
+  sc.value = dt.toISOString().slice(0,10);
 }
 
 function calcolaFattTotali(righe) {
@@ -11714,7 +11737,7 @@ async function autoInviaFIC(fatt) {
     const idx = fatture.findIndex(x => x.id === fatt.id);
     if (idx >= 0) { fatture[idx].ficStato = stato; if (ficId) fatture[idx].ficId = ficId; }
   };
-  const MP = { contanti:'MP01', assegno:'MP02', bonifico:'MP05', carta:'MP08', pos:'MP08', riba:'MP12', finanziamento:'MP05' };
+  const MP = { contanti:'MP01', assegno:'MP02', bonifico:'MP05', '30gg':'MP05', '60gg':'MP05', '90gg':'MP05', carta:'MP08', pos:'MP08', riba:'MP12', finanziamento:'MP05' };
   const metodo = MP[String(fatt.pagamento||'').toLowerCase()] || 'MP05';
   const piva = String(fatt.clPiva||cl?.piva||'').replace(/\s/g,''), cf = String(fatt.clCf||cl?.cf||'').replace(/\s/g,'').toUpperCase();
   const iban = String(fatt.offIban||'').replace(/\s/g,'');
