@@ -1615,16 +1615,7 @@
         </div>
         <div class="form-group">
           <label>Metodo di pagamento *</label>
-          <select id="c-pagamento">
-            <option value="">— Seleziona —</option>
-            <option value="contanti">Contanti</option>
-            <option value="bonifico">Bonifico bancario</option>
-            <option value="carta">Carta di credito/debito</option>
-            <option value="riba">Ri.Ba. (Ricevuta Bancaria)</option>
-            <option value="30gg">30 giorni data fattura</option>
-            <option value="60gg">60 giorni data fattura</option>
-            <option value="90gg">90 giorni data fattura</option>
-          </select>
+          <select id="c-pagamento"><option value="">— Seleziona —</option><option value="rd_bonifico">Rimessa diretta – bonifico istantaneo</option><option value="rd_carta">Rimessa diretta – carta / POS</option><option value="rd_contanti">Rimessa diretta – contanti</option><option value="bon30fm">Bonifico 30 gg fine mese</option><option value="bon60fm">Bonifico 60 gg fine mese</option><option value="riba30fm">RiBa 30 gg fine mese</option><option value="riba30fm5">RiBa 30 gg fine mese + 5</option><option value="riba30fm10">RiBa 30 gg fine mese + 10</option><option value="riba30fm15">RiBa 30 gg fine mese + 15</option><option value="riba60fm">RiBa 60 gg fine mese</option><option value="riba60fm5">RiBa 60 gg fine mese + 5</option><option value="riba60fm10">RiBa 60 gg fine mese + 10</option><option value="riba60fm15">RiBa 60 gg fine mese + 15</option></select>
         </div>
         <div class="form-group">
           <label>Codice SDI <span style="font-size:10px;color:var(--text3);font-weight:400">* (o PEC)</span></label>
@@ -2394,7 +2385,7 @@ function openModal(type, preselectClienteId, editId, tipoNuovo) {
         document.getElementById('c-prov').value = c.provincia || '';
         document.getElementById('c-note').value = c.note||'';
         document.getElementById('c-iva').value = c.iva ?? 22;
-        document.getElementById('c-pagamento').value = c.pagamento||'';
+        document.getElementById('c-pagamento').value = _normPag(c.pagamento);
         document.getElementById('c-soglia-moroso').value = c.soglia_moroso || c.sogliamoroso || '';
       }
     } else {
@@ -6032,7 +6023,7 @@ function showDetailCommessa(id) {
     const pag = cl?.pagamento;
     if (pag) {
       _pagBadge.style.display = '';
-      _pagBadge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:2px 10px">${PAG_LABEL[pag]||pag}</span>`;
+      _pagBadge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:2px 10px">${PAG_LABEL[pag]||_labelPag(pag)}</span>`;
     } else {
       _pagBadge.style.display = 'none';
     }
@@ -7587,7 +7578,7 @@ function apriConvertPrev(prevId) {
 
   const cl = clienti.find(c=>c.id===p.clienteId);
   const IMMEDIATI = ['contanti','carta','pos','bonifico'];
-  const metodoCliente = cl?.pagamento || '';
+  const metodoCliente = _metodoIncasso(cl?.pagamento);
   const isImmediato   = IMMEDIATI.includes(metodoCliente);
 
   const overlay = document.createElement('div');
@@ -7665,7 +7656,7 @@ async function convertiInDDTImmediato(prevId) {
   if (!p) return;
   const cl = clienti.find(c=>c.id===p.clienteId);
   const IMMEDIATI = ['contanti','carta','pos','bonifico'];
-  const metodoCl  = cl?.pagamento || '';
+  const metodoCl  = _metodoIncasso(cl?.pagamento);
 
   // Scelta metodo se non impostato
   let metodo = metodoCl;
@@ -9268,16 +9259,7 @@ function _selectConvert(el, tipo) {
         </div>
         <div class="form-group" style="margin:0">
           <label>Modalità pagamento</label>
-          <select id="fatt-pagamento" onchange="_aggScadenzaFatt()">
-            <option value="bonifico">Bonifico bancario</option>
-            <option value="30gg">Bonifico 30 giorni d.f.</option>
-            <option value="60gg">Bonifico 60 giorni d.f.</option>
-            <option value="90gg">Bonifico 90 giorni d.f.</option>
-            <option value="riba">Ri.Ba.</option>
-            <option value="contanti">Contanti</option>
-            <option value="carta">Carta / POS</option>
-            <option value="assegno">Assegno</option>
-          </select>
+          <select id="fatt-pagamento" onchange="_aggScadenzaFatt()"><option value="rd_bonifico">Rimessa diretta – bonifico istantaneo</option><option value="rd_carta">Rimessa diretta – carta / POS</option><option value="rd_contanti">Rimessa diretta – contanti</option><option value="bon30fm">Bonifico 30 gg fine mese</option><option value="bon60fm">Bonifico 60 gg fine mese</option><option value="riba30fm">RiBa 30 gg fine mese</option><option value="riba30fm5">RiBa 30 gg fine mese + 5</option><option value="riba30fm10">RiBa 30 gg fine mese + 10</option><option value="riba30fm15">RiBa 30 gg fine mese + 15</option><option value="riba60fm">RiBa 60 gg fine mese</option><option value="riba60fm5">RiBa 60 gg fine mese + 5</option><option value="riba60fm10">RiBa 60 gg fine mese + 10</option><option value="riba60fm15">RiBa 60 gg fine mese + 15</option></select>
         </div>
         <div class="form-group" style="margin:0">
           <label>IVA %</label>
@@ -10419,7 +10401,7 @@ function selezionaClienteDDT(id) {
   document.getElementById('ddt-cliente-dropdown').style.display = 'none';
   // Mostra metodo pagamento default
   const mi = document.getElementById('ddt-metodo-info');
-  if (mi && cl.pagamento) mi.textContent = 'Metodo: ' + cl.pagamento;
+  if (mi && cl.pagamento) mi.textContent = 'Metodo: ' + _labelPag(cl.pagamento);
   else if (mi) mi.textContent = '';
   setTimeout(()=>document.getElementById('ddt-prod-search').focus(), 50);
 }
@@ -10705,7 +10687,7 @@ function apriFatturaModal(draft) {
   document.getElementById('fatt-veicolo-row').style.display = draft.veicolo?'':'none';
   document.getElementById('fatt-data').value     = oggi;
   document.getElementById('fatt-scadenza').value = '';
-  document.getElementById('fatt-pagamento').value= (cl && cl.pagamento && [...document.getElementById('fatt-pagamento').options].some(o=>o.value===String(cl.pagamento).toLowerCase())) ? String(cl.pagamento).toLowerCase() : 'bonifico';
+  document.getElementById('fatt-pagamento').value= _normPag(cl?.pagamento) || 'rd_bonifico';
   document.getElementById('fatt-iva').value      = String(cl?.iva ?? 22);
   document.getElementById('fatt-note').value     = '';
   document.getElementById('fatt-email').value    = cl?.email||'';
@@ -10726,13 +10708,53 @@ async function _mostraProssimoNumFatt(elId) {
   } catch(e) {}
 }
 
-// Scadenza calcolata dal metodo di pagamento (30/60/90 gg dalla data fattura, altrimenti immediata)
+// ══════════════════════════════════════════════════
+// METODI DI PAGAMENTO (uguali in gestionale e Finance)
+// [codice, etichetta, codice SDI, giorni dopo fine mese, giorno del mese successivo]
+// ══════════════════════════════════════════════════
+const PAGAMENTI = [
+  ['rd_bonifico', 'Rimessa diretta – bonifico istantaneo', 'MP05', 0, 0],
+  ['rd_carta',    'Rimessa diretta – carta / POS',         'MP08', 0, 0],
+  ['rd_contanti', 'Rimessa diretta – contanti',            'MP01', 0, 0],
+  ['bon30fm',     'Bonifico 30 gg fine mese',              'MP05', 30, 0],
+  ['bon60fm',     'Bonifico 60 gg fine mese',              'MP05', 60, 0],
+  ['riba30fm',    'RiBa 30 gg fine mese',                  'MP12', 30, 0],
+  ['riba30fm5',   'RiBa 30 gg fine mese + 5',              'MP12', 30, 5],
+  ['riba30fm10',  'RiBa 30 gg fine mese + 10',             'MP12', 30, 10],
+  ['riba30fm15',  'RiBa 30 gg fine mese + 15',             'MP12', 30, 15],
+  ['riba60fm',    'RiBa 60 gg fine mese',                  'MP12', 60, 0],
+  ['riba60fm5',   'RiBa 60 gg fine mese + 5',              'MP12', 60, 5],
+  ['riba60fm10',  'RiBa 60 gg fine mese + 10',             'MP12', 60, 10],
+  ['riba60fm15',  'RiBa 60 gg fine mese + 15',             'MP12', 60, 15],
+];
+// Vecchi valori → nuovi codici
+const _PAG_VECCHI = { contanti: 'rd_contanti', bonifico: 'rd_bonifico', carta: 'rd_carta', pos: 'rd_carta', assegno: 'rd_bonifico',
+  riba: 'riba30fm', '30gg': 'bon30fm', '60gg': 'bon60fm', '90gg': 'bon60fm', immediato: 'rd_bonifico' };
+function _normPag(v) { v = String(v || '').trim(); if (PAGAMENTI.some(p => p[0] === v)) return v; return _PAG_VECCHI[v.toLowerCase()] || ''; }
+function _labelPag(v) { const p = PAGAMENTI.find(x => x[0] === _normPag(v)); return p ? p[1] : (v || ''); }
+function _mpPag(v) { const p = PAGAMENTI.find(x => x[0] === _normPag(v)); return p ? p[2] : 'MP05'; }
+function _opzioniPag(sel) { const s = _normPag(sel); return PAGAMENTI.map(p => `<option value="${p[0]}"${p[0] === s ? ' selected' : ''}>${p[1]}</option>`).join(''); }
+// Scadenza: fine mese della data fattura + giorni; con "+5/+10/+15" il giorno indicato del mese successivo
+function _scadenzaPag(v, dataIso) {
+  const p = PAGAMENTI.find(x => x[0] === _normPag(v));
+  if (!dataIso) return '';
+  if (!p || !p[3]) return dataIso;
+  const d = new Date(dataIso + 'T12:00:00');
+  let s = new Date(d.getFullYear(), d.getMonth() + 1, 0, 12);
+  s.setDate(s.getDate() + p[3]);
+  if (p[4]) s = new Date(s.getFullYear(), s.getMonth() + 1, p[4], 12);
+  const z = n => String(n).padStart(2, '0');
+  return s.getFullYear() + '-' + z(s.getMonth() + 1) + '-' + z(s.getDate());
+}
+// Metodo di incasso immediato (contanti/carta/bonifico) dal pagamento del cliente; i pagamenti a scadenza restano il loro codice
+function _metodoIncasso(v) { const n = _normPag(v); return ({ rd_contanti:'contanti', rd_carta:'carta', rd_bonifico:'bonifico' })[n] || (n || String(v||'')); }
+
+// Scadenza calcolata dal metodo di pagamento
 function _aggScadenzaFatt() {
   const p = document.getElementById('fatt-pagamento')?.value || '';
   const d = document.getElementById('fatt-data')?.value; const sc = document.getElementById('fatt-scadenza');
   if (!sc || !d) return;
-  const dt = new Date(d + 'T12:00:00'); dt.setDate(dt.getDate() + (parseInt(p) || 0));
-  sc.value = dt.toISOString().slice(0,10);
+  sc.value = _scadenzaPag(p, d);
 }
 
 function calcolaFattTotali(righe) {
@@ -10857,7 +10879,7 @@ ${f.stato==='pagata'?'<div class="ps">PAGATA</div>':''}
 <div class="tr_ fin"><span>TOTALE</span><span>€ ${(f.totale||0).toFixed(2)}</span></div>
 ${f.stato==='pagata'&&f.dataPagamento?`<div class="tr_" style="margin-top:8px;font-size:11px;color:#276749"><span>Pagata il</span><span>${new Date(f.dataPagamento).toLocaleDateString('it-IT')}</span></div>`:''}
 </div></div>
-<div class="pb"><strong>Pagamento:</strong> ${f.pagamento||'—'}${f.offIban?`<br><span class="ib">${f.offIban}</span>${f.offBanca?' — '+f.offBanca:''}`:''}
+<div class="pb"><strong>Pagamento:</strong> ${_labelPag(f.pagamento)||'—'}${f.offIban?`<br><span class="ib">${f.offIban}</span>${f.offBanca?' — '+f.offBanca:''}`:''}
 </div>
 ${f.note?`<div style="font-size:11px;color:#888;margin-bottom:12px"><strong>Note:</strong> ${f.note}</div>`:''}
 ${f.offNoteDoc?`<div class="ft">${f.offNoteDoc}</div>`:''}
@@ -10873,7 +10895,7 @@ function inviaEmailFattura(id) {
     `Gentile ${f.clRagione||'Cliente'},\n\n`+
     `In allegato la fattura n. ${f.numero} del ${f.data?new Date(f.data).toLocaleDateString('it-IT'):'—'} `+
     `per un importo di € ${(f.totale||0).toFixed(2)} (IVA inclusa).\n\n`+
-    `${f.pagamento?'Pagamento: '+f.pagamento+'\n':''}${f.offIban?'IBAN: '+f.offIban+'\n':''}${f.scadenza?'Scadenza: '+new Date(f.scadenza).toLocaleDateString('it-IT')+'\n':''}`+
+    `${f.pagamento?'Pagamento: '+_labelPag(f.pagamento)+'\n':''}${f.offIban?'IBAN: '+f.offIban+'\n':''}${f.scadenza?'Scadenza: '+new Date(f.scadenza).toLocaleDateString('it-IT')+'\n':''}`+
     `\nCordiali saluti,\n${f.offRagione||'Officina'}${f.offTel?'\nTel: '+f.offTel:''}${f.offEmail?'\n'+f.offEmail:''}`
   );
   window.location.href=`mailto:${dest}?subject=${ogg}&body=${corp}`;
@@ -10928,7 +10950,7 @@ async function convertiInDDT(prevId) {
 async function checkoutDDT(ddt) {
   _checkoutDdt = ddt;
   const cl = clienti.find(c=>c.id===ddt.clienteId);
-  const metodo = cl?.pagamento;
+  const metodo = cl?.pagamento ? _metodoIncasso(cl.pagamento) : '';
   if (!metodo) {
     document.getElementById('pagddt-info').textContent =
       cl ? `${cl.ragione} · nessun metodo in anagrafica` : 'Cliente occasionale';
@@ -11264,7 +11286,7 @@ async function avviaVendita() {
   const cId = document.getElementById('vb-cliente')?.value || null;
   const cl  = clienti.find(c=>c.id===cId);
   const IMMEDIATI = ['contanti','carta','pos','bonifico'];
-  const metodoCl  = cl?.pagamento || '';
+  const metodoCl  = _metodoIncasso(cl?.pagamento);
   let metodo    = metodoCl;
   let immediato = IMMEDIATI.includes(metodoCl);
   if (!metodoCl) {
@@ -11737,8 +11759,7 @@ async function autoInviaFIC(fatt) {
     const idx = fatture.findIndex(x => x.id === fatt.id);
     if (idx >= 0) { fatture[idx].ficStato = stato; if (ficId) fatture[idx].ficId = ficId; }
   };
-  const MP = { contanti:'MP01', assegno:'MP02', bonifico:'MP05', '30gg':'MP05', '60gg':'MP05', '90gg':'MP05', carta:'MP08', pos:'MP08', riba:'MP12', finanziamento:'MP05' };
-  const metodo = MP[String(fatt.pagamento||'').toLowerCase()] || 'MP05';
+  const metodo = _mpPag(fatt.pagamento);
   const piva = String(fatt.clPiva||cl?.piva||'').replace(/\s/g,''), cf = String(fatt.clCf||cl?.cf||'').replace(/\s/g,'').toUpperCase();
   const iban = String(fatt.offIban||'').replace(/\s/g,'');
   const cr = await api(`/c/${cid}/issued_documents`, 'POST', { data: {
