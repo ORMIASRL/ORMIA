@@ -10130,8 +10130,6 @@ function emettiFatturaCommessa(comId) {
   apriFatturaModal({origine:'commessa',origineId:comId,clienteId:cm.clienteId,
     descrizione:`Commessa ${cm.numero} — ${cm.descrizione||cm.desc}`,
     veicolo:v?`${v.targa} ${[v.marca,v.modello].filter(Boolean).join(' ')}`:'',righe});
-  // Assicurati che il modal documenti sia aperto
-  if (document.getElementById('modal-documenti').style.display !== 'block') apriDocumenti();
 }
 
 function convertaAppInCommessa(appId) {
