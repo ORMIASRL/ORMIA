@@ -9571,7 +9571,10 @@ function calcTotalePreventivo() {
 async function salvaPreventivo() {
   const oggetto = document.getElementById('prev-oggetto').value.trim();
   if (!oggetto) { alert('Inserisci l\'oggetto del preventivo.'); return; }
-  const tots = calcTotalePreventivo();
+  // calcTotalePreventivo restituisce solo l'imponibile: qui si calcolano IVA e totale da salvare
+  const _impPrev = calcTotalePreventivo(), _ivaPrev = parseFloat(document.getElementById('prev-iva')?.value)||22;
+  const _r2P = x => Math.round((x + Number.EPSILON) * 100) / 100;
+  const tots = { imponibile: _r2P(_impPrev), ivaAmt: _r2P(_impPrev * _ivaPrev / 100), totale: _r2P(_impPrev * (1 + _ivaPrev / 100)) };
   const data = {
     cliente_id: document.getElementById('prev-cliente').value || null,
     veicolo_id: document.getElementById('prev-veicolo').value || null,
