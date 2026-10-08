@@ -3062,6 +3062,7 @@ function init() {
       <div id="dc-tot-live-note" style="display:none;font-size:11px;color:var(--text3);text-align:right"></div>
     </div>
   </div>
+  <div class="detail-section" id="dc-prev-extra" style="display:none"></div>
   <div class="detail-section" id="dc-fatt-mag" style="display:none"></div>
   <!-- CHECKOUT COMMESSA -->
   <div class="detail-section" id="dc-checkout-section" style="display:none">
@@ -6096,6 +6097,7 @@ function showDetailCommessa(id) {
   const checkoutSec = document.getElementById('dc-checkout-section');
   if (checkoutSec) checkoutSec.style.display = (cm.stato==='chiusa'||cm.stato==='fatturata') ? '' : 'none';
   try { _aggFattBanco(cm); } catch(_) {}
+  try { _renderPrevExtra(cm); } catch(_) {}
   document.getElementById('dc-data').textContent = formatDate(cm.dataApertura)||'—';
   { const _vv = veicoli.find(x=>x.id===cm.veicoloId), _ev = document.getElementById('dc-vin');
     if (_ev) { _ev.textContent = _vv?.vin ? _vv.vin + '  ⧉' : '—'; _ev.dataset.vin = _vv?.vin || ''; } }
@@ -9514,6 +9516,8 @@ async function _genNumPreventivo() {
 
 function openModalPreventivo(editId) {
   editingPreventivoId = editId || null;
+  _prevCommessaId = editId ? (preventivi.find(x=>x.id===editId)?.commessa_id || null) : (window._prevDaCommessa || null);
+  window._prevDaCommessa = null;
   document.getElementById('prev-cliente').innerHTML =
     '<option value="">— Cliente occasionale —</option>' +
     clienti.map(c=>`<option value="${c.id}">${c.ragione}</option>`).join('');
@@ -9584,6 +9588,7 @@ async function salvaPreventivo() {
     iva: parseFloat(document.getElementById('prev-iva').value)||22,
     note: document.getElementById('prev-note').value.trim(),
     voci_mano: prevVociMano, voci_ric: prevVociRic, voci_extra: prevVociExtra,
+    commessa_id: _prevCommessaId || null,
     imponibile: tots.imponibile, iva_amt: tots.ivaAmt, totale: tots.totale,
   };
   try {
@@ -9601,6 +9606,7 @@ async function salvaPreventivo() {
       preventivi.unshift({...r, clienteId:r.cliente_id, veicoloId:r.veicolo_id, vociMano:r.voci_mano||[], vociRic:r.voci_ric||[], vociExtra:r.voci_extra||[], ivaAmt:r.iva_amt, createdAt:r.created_at});
     }
     closeModal('modal-preventivo'); renderPreventivi();
+    try { if (_prevCommessaId && selectedCommessaId === _prevCommessaId) showDetailCommessa(selectedCommessaId); } catch(_) {}
     const _bp=document.getElementById('badge-preventivi'); if(_bp) _bp.textContent=preventivi.filter(p=>p.stato==='bozza'||p.stato==='inviato').length;
     showToast('Preventivo salvato ✓');
   } catch(e) { alert('Errore: '+e.message); }
@@ -9635,6 +9641,7 @@ function renderPreventivi() {
           <span style="font-family:'DM Mono',monospace;font-size:11px;font-weight:600;color:var(--text3)">${p.numero}</span>
           <span class="badge ${smap[p.stato]||'badge-gray'}">${lmap[p.stato]||p.stato}</span>
           ${scaduta?'<span class="badge badge-red">Scaduto</span>':''}
+          ${p.commessa_id?`<span class="badge badge-gray">📎 ${commesse.find(c=>c.id===p.commessa_id)?.numero||'commessa'}</span>`:''}
         </div>
         <div style="font-size:14px;font-weight:600;margin-bottom:3px">${p.oggetto}</div>
         <div style="font-size:12px;color:var(--text2)">${cl?cl.ragione:'Occasionale'}${v?' · '+v.targa:''}</div>
@@ -9644,9 +9651,7 @@ function renderPreventivi() {
         <div style="font-family:'DM Mono',monospace;font-size:18px;font-weight:700">€ ${(p.totale||0).toFixed(2)}</div>
         <div style="display:flex;gap:6px">
           <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();stampaPreventivo('${p.id}')">PDF</button>
-          ${p.stato==='accettato'?`
-            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();apriConvertPrev('${p.id}')">→ Converti</button>
-          `:''}
+          ${p.stato==='accettato'?(p.commessa_id?`<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();apriInserisciPrev('${p.id}')">➕ In commessa</button>`:`<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();apriConvertPrev('${p.id}')">→ Converti</button>`):''}
           ${p.stato==='convertito'?'<span class="badge badge-gray" style="align-self:center">✓ Convertito</span>':''}
           <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();eliminaPreventivo('${p.id}')">Elimina</button>
         </div>
@@ -10679,6 +10684,136 @@ async function azzeraLavoriInterni() {
   ci.dataApertura = oggi;
   showToast('Conteggio lavori interni azzerato ✓');
   apriLavoriInterni();
+}
+
+// ── Preventivi extra collegati a una commessa (lavori da far accettare al cliente) ──
+let _prevCommessaId = null;
+const _PREV_ST = { bozza: ['Bozza', '#6B7280', '#F3F4F6'], inviato: ['Inviato', '#1B4FD8', '#EEF2FF'], accettato: ['Accettato', '#047857', '#ECFDF5'], rifiutato: ['Rifiutato', '#B91C1C', '#FEF2F2'], convertito: ['Inserito in commessa', '#6B7280', '#F3F4F6'] };
+
+function _renderPrevExtra(cm) {
+  const box = document.getElementById('dc-prev-extra'); if (!box) return;
+  if (!cm || cm.stato === 'fatturata') { box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = '';
+  const lista = (typeof preventivi !== 'undefined' ? preventivi : []).filter(p => p.commessa_id === cm.id)
+    .sort((a, b) => new Date(b.createdAt || b.created_at) - new Date(a.createdAt || a.created_at));
+  const eur = n => '€ ' + (+n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  box.innerHTML = `<div class="detail-section-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span>Preventivi extra</span>
+      <button class="btn btn-secondary btn-sm" onclick="nuovoPrevExtra('${cm.id}')">📝 Nuovo preventivo extra</button>
+    </div>
+    ${lista.length ? lista.map(p => {
+      const s = _PREV_ST[p.stato] || [p.stato, '#6B7280', '#F3F4F6'];
+      const az = p.stato === 'accettato'
+        ? `<button class="btn btn-primary btn-sm" onclick="apriInserisciPrev('${p.id}')">➕ Aggiungi in commessa</button>`
+        : '';
+      return `<div style="border:1px solid var(--border);border-radius:var(--radius);padding:9px 11px;margin-bottom:6px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:var(--text3)">${_escF(p.numero || '')}</span>
+          <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;color:${s[1]};background:${s[2]}">${s[0]}</span>
+          <span style="margin-left:auto;font-family:'DM Mono',monospace;font-weight:700;font-size:13px">${eur(p.imponibile ?? 0)} + IVA</span>
+        </div>
+        <div style="font-size:13px;margin:4px 0 6px;color:var(--text)">${_escF(p.oggetto || '')}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="openModalPreventivo('${p.id}')">Apri</button>
+          <button class="btn btn-ghost btn-sm" onclick="stampaPreventivo('${p.id}')">PDF</button>
+          ${az}
+          ${['bozza', 'inviato'].includes(p.stato) ? '<span style="font-size:11px;color:var(--text3);align-self:center">quando il cliente accetta, apri e metti lo stato "Accettato"</span>' : ''}
+        </div></div>`;
+    }).join('') : '<div style="font-size:12px;color:var(--text3)">Nessun preventivo extra. Usalo per i lavori in più da far accettare al cliente.</div>'}`;
+}
+
+function nuovoPrevExtra(comId) {
+  const cm = commesse.find(c => c.id === comId); if (!cm) return;
+  window._prevDaCommessa = comId;
+  openModalPreventivo();
+  document.getElementById('prev-cliente').value = cm.clienteId || '';
+  popolaPrevVeicoli(cm.veicoloId);
+  document.getElementById('prev-oggetto').value = 'Lavori extra – commessa ' + (cm.numero || '');
+  const t = document.getElementById('modal-preventivo-title'); if (t) t.textContent = 'Preventivo extra · commessa ' + (cm.numero || '');
+}
+
+// Riepilogo voci con spunte, poi inserimento in commessa
+function apriInserisciPrev(prevId) {
+  const p = preventivi.find(x => x.id === prevId); if (!p) return;
+  const cm = commesse.find(c => c.id === p.commessa_id);
+  if (!cm) { alert('La commessa collegata non esiste più.'); return; }
+  if (cm.stato === 'fatturata') { alert('La commessa ' + cm.numero + ' è già fatturata: non si possono aggiungere voci.'); return; }
+  const voci = [
+    ...(p.vociMano || []).map((v, i) => ({ k: 'm' + i, tipo: 'mano', lab: 'Manodopera', v })),
+    ...(p.vociRic || []).map((v, i) => ({ k: 'r' + i, tipo: 'ric', lab: 'Ricambio', v })),
+    ...(p.vociExtra || []).map((v, i) => ({ k: 'e' + i, tipo: 'extra', lab: 'Extra', v })),
+  ].filter(x => x.v && (x.v.desc || x.v.prezzo));
+  if (!voci.length) { alert('Il preventivo non ha voci.'); return; }
+  const eur = n => '€ ' + (+n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  window._insPrev = { prevId, voci };
+  document.getElementById('modal-ins-prev')?.remove();
+  const ov = document.createElement('div'); ov.id = 'modal-ins-prev';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1100;display:flex;align-items:center;justify-content:center;padding:16px';
+  const td = 'padding:7px 8px;border-bottom:1px solid var(--border);font-size:13px';
+  ov.innerHTML = `<div style="background:var(--surface);border-radius:var(--radius-lg);width:640px;max-width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:var(--shadow-lg)">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border)">
+      <div style="font-size:17px;font-weight:800">Aggiungi in commessa ${_escF(cm.numero || '')}</div>
+      <div style="font-size:12px;color:var(--text3)">Preventivo ${_escF(p.numero || '')} · togli la spunta alle voci da non inserire (es. manodopera che i meccanici timbrano già)</div>
+    </div>
+    <div style="overflow:auto;padding:8px 20px">
+      <table style="width:100%;border-collapse:collapse">${voci.map(x => `<tr>
+        <td style="${td};width:28px"><input type="checkbox" id="insp-${x.k}" checked style="width:16px;height:16px"></td>
+        <td style="${td};font-size:11px;color:var(--text3);white-space:nowrap">${x.lab}</td>
+        <td style="${td}">${_escF(x.v.desc || '—')}${x.tipo === 'ric' && x.v.prodId ? ' <span style="font-size:10px;color:var(--accent)">magazzino</span>' : ''}</td>
+        <td style="${td};text-align:right;white-space:nowrap">${String(x.v.qta || 1).replace('.', ',')} × ${eur(x.v.prezzo)}${x.v.sconto ? ' −' + x.v.sconto + '%' : ''}</td></tr>`).join('')}</table>
+      <div style="font-size:11px;color:var(--text3);margin-top:8px">I ricambi di magazzino vengono scaricati dalla giacenza, come quando li aggiungi dalla commessa.</div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 20px;border-top:1px solid var(--border)">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-ins-prev').remove()">Annulla</button>
+      <button class="btn btn-primary" id="insp-ok" onclick="inserisciPrevInCommessa()">➕ Aggiungi in commessa</button>
+    </div></div>`;
+  document.body.appendChild(ov);
+}
+
+async function inserisciPrevInCommessa() {
+  const st = window._insPrev; if (!st) return;
+  const p = preventivi.find(x => x.id === st.prevId); if (!p) return;
+  const ci = commesse.findIndex(c => c.id === p.commessa_id); if (ci < 0) return;
+  const cm = commesse[ci];
+  const scelte = st.voci.filter(x => document.getElementById('insp-' + x.k)?.checked);
+  if (!scelte.length) { alert('Nessuna voce selezionata.'); return; }
+  const corti = scelte.filter(x => x.tipo === 'ric' && x.v.prodId).map(x => ({ x, pr: prodotti.find(q => q.id === x.v.prodId) }))
+    .filter(o => o.pr && (o.pr.giacenza || 0) < (+o.x.v.qta || 1));
+  if (corti.length && !confirm('Giacenza insufficiente per:\n' + corti.map(o => '• ' + (o.pr.descrizione || o.pr.desc) + ' (disponibili ' + (o.pr.giacenza || 0) + ')').join('\n') + '\n\nInserire comunque?')) return;
+  const btn = document.getElementById('insp-ok'); if (btn) { btn.disabled = true; btn.textContent = 'Inserimento…'; }
+  try {
+    cm.vociMano = cm.vociMano || []; cm.vociRic = cm.vociRic || []; cm.vociExtra = cm.vociExtra || [];
+    for (const x of scelte) {
+      const v = x.v, qta = +v.qta || 1, sconto = +v.sconto || 0;
+      if (x.tipo === 'mano') cm.vociMano.push({ desc: v.desc || 'Manodopera', qta, prezzo: +v.prezzo || 0, sconto, tipoTariffa: v.tipoTariffa || 'normale' });
+      else if (x.tipo === 'extra') cm.vociExtra.push({ desc: v.desc || '', qta, prezzo: +v.prezzo || 0, sconto });
+      else {
+        const pr = v.prodId ? prodotti.find(q => q.id === v.prodId) : null;
+        if (pr) {
+          const pi = prodotti.findIndex(q => q.id === pr.id);
+          prodotti[pi].giacenza = (prodotti[pi].giacenza || 0) - qta;
+          await dbSaveMovimento({ id: initId(), prodId: pr.id, tipo: 'scarico', qta, comId: cm.id, note: 'Scarico da preventivo ' + (p.numero || ''), data: new Date().toISOString(), createdAt: new Date().toISOString() });
+          await dbSaveProdotto(prodotti[pi]);
+        }
+        const es = pr ? cm.vociRic.find(r => r.prodId === pr.id && +r.prezzo === +v.prezzo && (+r.sconto || 0) === sconto) : null;
+        if (es) es.qta = (+es.qta || 1) + qta;
+        else cm.vociRic.push({ ...(pr ? { prodId: pr.id, cod: pr.codInt || pr.codForn || '' } : {}), desc: v.desc || (pr ? (pr.descrizione || pr.desc) : ''), qta, prezzo: +v.prezzo || 0, sconto });
+      }
+    }
+    cm.totale = _totaleCommessa(cm);
+    await dbSaveCommessa(cm);
+    const { error } = await supa.from('preventivi').update({ stato: 'convertito', commessa_creata: true }).eq('id', p.id);
+    if (error) throw error;
+    p.stato = 'convertito'; p.commessaCreata = true; p.commessa_creata = true;
+    document.getElementById('modal-ins-prev')?.remove();
+    try { renderPreventivi(); } catch (_) {}
+    try { if (typeof renderProdotti === 'function') renderProdotti(); updateBadgeMagazzino(); } catch (_) {}
+    if (selectedCommessaId === cm.id) showDetailCommessa(cm.id);
+    showToast('Preventivo ' + (p.numero || '') + ' inserito in commessa ' + (cm.numero || '') + ' ✓');
+  } catch (e) {
+    alert('Errore: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = '➕ Aggiungi in commessa'; }
+  }
 }
 
 function convertaAppInCommessa(appId) {
