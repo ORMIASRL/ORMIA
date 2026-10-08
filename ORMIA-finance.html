@@ -1077,8 +1077,22 @@ function renderFattureFin() {
   }).join('');
 }
 
+// Quando una fattura risulta pagata senza un incasso registrato, crea l'incasso per quanto mancava
+// (così compare in "Incassato" e negli ultimi incassi). Va chiamata PRIMA di segnare la fattura pagata.
+async function _incassoDaFatturaPagata(f, dataPag, nota) {
+  const resto = residuoFattura(f.id);
+  if (!(resto > 0)) return;
+  const p = String(f.pagamento || '');
+  const metodo = /contanti/.test(p) ? 'contanti' : /carta|pos/.test(p) ? 'carta' : 'bonifico';
+  const d = dataPag ? new Date(String(dataPag).length === 10 ? dataPag + 'T12:00:00' : dataPag) : new Date();
+  const { error } = await supa.from('incassi').insert({ id: crypto.randomUUID(), cliente_id: f.clienteId || null, importo: resto,
+    metodo, data: d.toISOString(), riconciliato: true, fattura_id: f.id, note: nota || null });
+  if (error) console.warn('[incasso da fattura pagata]', error.message);
+}
+
 async function segnaFatturaPagata(id) {
   if (!confirm('Segnare questa fattura come pagata?')) return;
+  const _fp = _fatture.find(x => x.id === id); if (_fp) await _incassoDaFatturaPagata(_fp, null, 'Fattura segnata pagata in Finance');
   await supa.from('fatture').update({stato:'pagata', data_pagamento:new Date().toISOString()}).eq('id',id);
   await loadAll();
   renderFattureFin();
@@ -1649,6 +1663,7 @@ async function sincronizzaFIC(silent = false) {
       }
       if (doc.payment_status === 'paid' && f.stato !== 'pagata') {
         const dataPag = doc.payment_date || new Date().toISOString().split('T')[0];
+        await _incassoDaFatturaPagata(f, dataPag, 'Pagamento segnato su Fatture in Cloud');
         await supa.from('fatture').update({ stato:'pagata', data_pagamento:dataPag, fic_stato:'pagata' }).eq('id', f.id);
         const idx = _fatture.findIndex(x => x.id === f.id);
         if (idx >= 0) { _fatture[idx].stato = 'pagata'; _fatture[idx].ficStato = 'pagata'; }
