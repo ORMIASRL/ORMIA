@@ -2057,12 +2057,13 @@ function renderTable() {
       <th>Cliente</th><th>Tipo</th><th>P. IVA</th><th>SDI</th><th>Telefono</th><th>Veicoli</th><th></th>
     </tr>`;
     const filtered = clienti.filter(c =>
-      (!q || (c.ragione||'').toLowerCase().includes(q) || (c.piva||'').includes(q) || (c.tel||'').includes(q))
-    );
+      (!q || _contiene(q, c.ragione, c.piva, c.cf, c.tel, c.email, c.pec, c.citta, c.indirizzo, c.sdi))
+    ).sort(_ordRecenti('cli'));
     const tbody = document.getElementById('table-body');
     if (!filtered.length) { showEmpty('Nessun cliente trovato.'); return; }
     hideEmpty();
-    tbody.innerHTML = filtered.map(c => {
+    const _vis = _limita('clienti', filtered, q);
+    tbody.innerHTML = _vis.map(c => {
       const vCount = veicoli.filter(v => v.clienteId === c.id).length;
       const initials = (c.ragione||'?').split(' ').map(w=>w[0]).join('').substr(0,2).toUpperCase();
       return `<tr onclick="showDetailCliente('${c.id}')">
@@ -2080,22 +2081,24 @@ function renderTable() {
           <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();confirmDeleteCliente('${c.id}')">Elimina</button>
         </div></td>
       </tr>`;
-    }).join('');
+    }).join('') + _piedeLista('clienti', _vis.length, filtered.length, 7);
 
   } else {
     document.getElementById('table-head').innerHTML = `<tr>
       <th>Targa</th><th>Veicolo</th><th>Cliente</th><th>Km</th><th>Revisione</th><th>Stato</th><th></th>
     </tr>`;
     let filtered = veicoli.filter(v => {
-      const q2 = !q || (v.targa||'').toLowerCase().includes(q) || (v.marca||'').toLowerCase().includes(q) || (v.modello||'').toLowerCase().includes(q);
+      const q2 = !q || _contiene(q, v.targa, String(v.targa||'').replace(/\s/g,''), v.marca, v.modello, v.telaio, v.vin, clienti.find(c=>c.id===v.clienteId)?.ragione);
       const f2 = !f || v.clienteId === f;
       const t2 = currentTab === 'rimorchi' ? v.tipo === 'rimorchio' : v.tipo !== 'rimorchio';
       return q2 && f2 && t2;
     });
+    filtered.sort(_ordRecenti('vei'));
     const tbody = document.getElementById('table-body');
     if (!filtered.length) { showEmpty(currentTab === 'rimorchi' ? 'Nessun rimorchio trovato.' : 'Nessun veicolo trovato.'); return; }
     hideEmpty();
-    tbody.innerHTML = filtered.map(v => {
+    const _vis = _limita(currentTab, filtered, q + '|' + f);
+    tbody.innerHTML = _vis.map(v => {
       const cl = clienti.find(c=>c.id===v.clienteId);
       const stato = getVeicoloStato(v);
       return `<tr onclick="showDetailVeicolo('${v.id}')">
@@ -2110,7 +2113,7 @@ function renderTable() {
           <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();confirmDeleteVeicolo('${v.id}')">Elimina</button>
         </div></td>
       </tr>`;
-    }).join('');
+    }).join('') + _piedeLista(currentTab, _vis.length, filtered.length, 7);
   }
 }
 
@@ -3170,7 +3173,14 @@ const FIELD_MAP = {
 // ── DB API ──────────────────────────────────────────
 const DB = {
   async load(table) {
-    const { data, error } = await supa.from(TABLE[table]).select('*').order('created_at', {ascending:true});
+    // a blocchi da 1000 righe (limite di Supabase per richiesta): nessun dato perso quando le tabelle crescono
+    let data = [], error = null;
+    for (let from = 0; ; from += 1000) {
+      const r = await supa.from(TABLE[table]).select('*').order('created_at', {ascending:true}).order('id', {ascending:true}).range(from, from + 999);
+      if (r.error) { error = r.error; break; }
+      data = data.concat(r.data || []);
+      if (!r.data || r.data.length < 1000) break;
+    }
     if (error) { console.error('DB.load', table, error); return []; }
     if (table === 'commesse') {   // la commessa "Lavori interni" resta fuori da liste, fatture e conteggi
       const arr = fromDbArr(table, data);
@@ -8403,16 +8413,17 @@ function renderProdotti() {
   const cat = document.getElementById('mag-filter-cat')?.value||'';
   const st  = document.getElementById('mag-filter-stato')?.value||'';
   const filtered = prodotti.filter(p=>{
-    const matchQ = !q || (p.descrizione||p.desc||'').toLowerCase().includes(q) || (p.codInt||'').toLowerCase().includes(q) || (p.codForn||'').toLowerCase().includes(q);
+    const matchQ = !q || (p.descrizione||p.desc||'').toLowerCase().includes(q) || (p.codInt||'').toLowerCase().includes(q) || (p.codForn||'').toLowerCase().includes(q) || prodMatchBarcodePartial(p, q);
     const matchC = !cat || p.categoria===cat;
     const matchS = !st || !q || statoProdotto(p).key===st; // se c'è testo libero, ignora filtro stato
     return matchQ && matchC && matchS;
-  });
+  }).sort(_ordRecenti('prod'));
   const tbody = document.getElementById('tbody-prodotti');
   const empty = document.getElementById('empty-prodotti');
   if (!filtered.length) { tbody.innerHTML=''; empty.style.display=''; return; }
   empty.style.display='none';
-  tbody.innerHTML = filtered.map(p => {
+  const _vis = _limita('prodotti', filtered, q + '|' + cat + '|' + st);
+  tbody.innerHTML = _vis.map(p => {
     const st = statoProdotto(p);
     const forn = fornitori.find(f=>f.id===p.fornitoreId);
     return `<tr>
@@ -8430,7 +8441,7 @@ function renderProdotti() {
         <button class="btn btn-danger btn-sm" onclick="deleteProdotto('${p.id}')">Elimina</button>
       </div></td>
     </tr>`;
-  }).join('');
+  }).join('') + _piedeLista('prodotti', _vis.length, filtered.length, 11);
 }
 
 function openModalProdotto(editId) {
@@ -11006,6 +11017,47 @@ async function _inviaMailDocOk() {
     btn.disabled = false; btn.textContent = '📧 Invia';
   }
 }
+
+// ── Liste lunghe (clienti, veicoli, ricambi): prima i più usati di recente, 50 righe alla volta con "Mostra altri" ──
+window._listLim = {}; window._listQ = {};
+function _limita(key, arr, q) {
+  if (_listQ[key] !== q) { _listQ[key] = q; _listLim[key] = 50; }
+  return arr.slice(0, _listLim[key] || 50);
+}
+function _mostraAltri(key, tutti) {
+  _listLim[key] = tutti ? 1e9 : (_listLim[key] || 50) + 50;
+  if (key === 'prodotti') renderProdotti(); else renderTable();
+}
+function _piedeLista(key, shown, tot, cols) {
+  if (tot <= 50) return '';
+  const n = x => x.toLocaleString('it-IT');
+  return `<tr class="lista-piede" onclick="event.stopPropagation()"><td colspan="${cols}" style="text-align:center;padding:12px;color:var(--text3);font-size:12px;cursor:default">
+    Mostrati <b>${n(shown)}</b> di <b>${n(tot)}</b>${shown < tot ? ` · <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();_mostraAltri('${key}')">Mostra altri 50</button> <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();_mostraAltri('${key}',true)">Mostra tutti</button>` : ''}
+    <div style="margin-top:4px;font-size:11px">In cima quelli usati di recente · per trovarne uno, scrivi nella ricerca</div></td></tr>`;
+}
+let _recCache = { t: 0 };
+function _recenti() {
+  if (Date.now() - _recCache.t < 3000) return _recCache;
+  const cli = {}, vei = {}, prod = {};
+  const ts = d => { const x = Date.parse(d || ''); return isNaN(x) ? 0 : x; };
+  (typeof commesse !== 'undefined' ? commesse : []).forEach(c => {
+    const t = Math.max(ts(c.dataApertura), ts(c.createdAt), ts(c.updatedAt));
+    if (c.clienteId) cli[c.clienteId] = Math.max(cli[c.clienteId] || 0, t);
+    if (c.veicoloId) vei[c.veicoloId] = Math.max(vei[c.veicoloId] || 0, t);
+  });
+  (typeof movimenti !== 'undefined' ? movimenti : []).forEach(m => {
+    const t = Math.max(ts(m.data), ts(m.createdAt));
+    if (m.prodId) prod[m.prodId] = Math.max(prod[m.prodId] || 0, t);
+  });
+  return (_recCache = { t: Date.now(), cli, vei, prod });
+}
+function _ordRecenti(tipo) {
+  const r = _recenti()[tipo] || {};
+  const base = x => Date.parse(x.createdAt || '') || 0;
+  const nome = x => String(x.ragione || x.targa || x.descrizione || x.desc || '').toLowerCase();
+  return (a, b) => (Math.max(r[b.id] || 0, base(b)) - Math.max(r[a.id] || 0, base(a))) || nome(a).localeCompare(nome(b));
+}
+const _contiene = (q, ...campi) => campi.some(x => String(x == null ? '' : x).toLowerCase().includes(q));
 
 function convertaAppInCommessa(appId) {
   const a = appuntamenti.find(x=>x.id===appId);
