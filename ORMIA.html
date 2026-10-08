@@ -4948,7 +4948,7 @@ function _rigaManodoperaFattura(cm) {
   const imp = +(impMan + _importoTimbrature(cm.id)).toFixed(2);
   if (!(imp > 0)) return [];
   const oreTxt = (Math.round(ore * 100) / 100).toLocaleString('it-IT');
-  return [{ desc: 'Manodopera' + (ore > 0 ? ' (' + oreTxt + ' h)' : ''), qta: 1, prezzo: imp }];
+  return [{ desc: 'Manodopera', qta: 1, prezzo: imp }];
 }
 
 // Spaccato nella sezione Manodopera: timbrature chiuse (modificabili)
