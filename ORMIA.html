@@ -2795,7 +2795,6 @@ function init() {
         Stampa
       </button>
       <button class="btn btn-secondary btn-sm" onclick="stampaPrefattura(selectedCommessaId)">🧾 Prefattura</button>
-      <button class="btn btn-secondary btn-sm" onclick="inviaPrefattura(selectedCommessaId)">📧 Invia prefattura</button>
       <button class="btn btn-secondary btn-sm" id="dc-btn-firma" onclick="faiFirmareCommessa(selectedCommessaId)" style="display:none">✍️ Fai firmare</button>
       <button class="btn btn-secondary btn-sm" id="dc-btn-zip" onclick="scaricaZipGaranzia(selectedCommessaId)" style="display:none">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -9684,7 +9683,7 @@ async function eliminaPreventivo(id) {
 
 function stampaPreventivo(prevId) {
   const p=preventivi.find(x=>x.id===prevId); if(!p) return;
-  apriStampa(generaHtmlPreventivo(p,getDatiOfficina(),clienti.find(c=>c.id===p.clienteId),veicoli.find(x=>x.id===p.veicoloId)));
+  apriAnteprima(generaHtmlPreventivo(p,getDatiOfficina(),clienti.find(c=>c.id===p.clienteId),veicoli.find(x=>x.id===p.veicoloId)), 'Preventivo ' + (p.numero || ''), _mailPreventivo(p));
 }
 
 function generaHtmlPreventivo(p,off,cl,v) {
@@ -10523,7 +10522,7 @@ ${pag ? `<div class="pb"><strong>Pagamento:</strong> ${e(pag)}${scad && scad !==
 <div class="ft">Documento provvisorio di riepilogo: la fattura elettronica verrà emessa e trasmessa tramite SDI. Importi soggetti a conferma.</div>
 </body></html>`;
   if (_soloHtml) return html;
-  apriStampa(html);
+  apriAnteprima(html, 'Prefattura ' + (cm.numero || ''), _mailPrefattura(cm));
 }
 function stampaPrefattura(comId) { _htmlPrefattura(comId); }
 
@@ -10901,7 +10900,7 @@ function _renderBoxControllo() {
     <span style="font-size:12px;font-weight:700">${window._soloDaCtrl ? 'Mostra tutte ›' : 'Mostra solo queste ›'}</span></div>`;
 }
 
-// ── Invio prefattura via email (PDF allegato, dalla casella dell'officina) ──
+// ── Invio documenti via email dall'anteprima (prefattura, preventivo): PDF allegato dalla casella dell'officina ──
 function _caricaLib(src) {
   return new Promise((ok, ko) => {
     if (document.querySelector('script[data-lib="' + src + '"]')) return ok();
@@ -10937,60 +10936,73 @@ async function _pdfDaHtml(html) {
     return pdf.output('datauristring').split(',')[1];
   } finally { ifr.remove(); }
 }
-function inviaPrefattura(comId) {
-  const cm = commesse.find(c => c.id === comId); if (!cm) return;
-  if (!_righeCommessa(cm).length) { alert('La commessa non ha voci.'); return; }
-  const cl = clienti.find(c => c.id === cm.clienteId);
-  const v = veicoli.find(x => x.id === cm.veicoloId);
+function _firmaMail(off) { return 'Cordiali saluti\n' + (off.ragione || 'ORMIA SNC') + (off.tel ? '\nTel. ' + off.tel : ''); }
+function _mailPrefattura(cm) {
+  const cl = clienti.find(c => c.id === cm.clienteId), v = veicoli.find(x => x.id === cm.veicoloId);
   const off = getDatiOfficina() || {};
   const rif = [cm.numero, v?.targa].filter(Boolean).join(' – ');
-  document.getElementById('modal-mail-pref')?.remove();
-  const ov = document.createElement('div'); ov.id = 'modal-mail-pref';
-  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1100;display:flex;align-items:center;justify-content:center;padding:16px';
+  return { tipo: 'prefattura', f: true, clienteId: cm.clienteId, to: cl?.email || '', nome: 'Prefattura ' + (cm.numero || ''),
+    subject: 'Prefattura commessa ' + rif + ' – ' + (off.ragione || 'ORMIA SNC'),
+    text: 'Buongiorno,\n\nin allegato la prefattura relativa alla commessa ' + rif + '.\nSi tratta di un riepilogo provvisorio: la fattura elettronica verrà emessa e trasmessa tramite SDI.\n\n' + _firmaMail(off) };
+}
+function _mailPreventivo(p) {
+  const cl = clienti.find(c => c.id === p.clienteId), v = veicoli.find(x => x.id === p.veicoloId);
+  const off = getDatiOfficina() || {};
+  const rif = [p.numero, v?.targa].filter(Boolean).join(' – ');
+  return { tipo: 'preventivo', f: false, clienteId: p.clienteId, to: cl?.email || '', nome: 'Preventivo ' + (p.numero || ''),
+    subject: 'Preventivo ' + rif + ' – ' + (off.ragione || 'ORMIA SNC'),
+    text: 'Buongiorno,\n\nin allegato il preventivo ' + rif + (p.oggetto ? ' per: ' + p.oggetto : '') + '.\nRestiamo a disposizione per qualsiasi chiarimento; per accettarlo è sufficiente rispondere a questa email.\n\n' + _firmaMail(off) };
+}
+function _mailDaAnteprima() {
+  const modal = document.getElementById('modal-anteprima'); const m = modal?._mail;
+  if (!m || !modal._html) return;
+  window._mailDoc = { ...m, html: modal._html };
+  const off = getDatiOfficina() || {};
+  document.getElementById('modal-mail-doc')?.remove();
+  const ov = document.createElement('div'); ov.id = 'modal-mail-doc';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px';
   const inp = 'width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box;background:var(--surface);color:var(--text)';
-  const testo = 'Buongiorno,\n\nin allegato la prefattura relativa alla commessa ' + rif + '.\nSi tratta di un riepilogo provvisorio: la fattura elettronica verrà emessa e trasmessa tramite SDI.\n\nCordiali saluti\n' + (off.ragione || 'ORMIA SNC') + (off.tel ? '\nTel. ' + off.tel : '');
   ov.innerHTML = `<div style="background:var(--surface);border-radius:var(--radius-lg);width:560px;max-width:100%;max-height:92vh;overflow:auto;box-shadow:var(--shadow-lg);padding:18px 20px">
-    <div style="font-size:17px;font-weight:800;margin-bottom:2px">📧 Invia prefattura</div>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:14px">Commessa ${_escF(rif)} · parte da ${_escF(off.email || 'officina@officinaormia.it')} con il PDF allegato (una copia arriva anche all'officina)</div>
+    <div style="font-size:17px;font-weight:800;margin-bottom:2px">📧 Invia ${_escF(m.tipo)}</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px">${_escF(m.nome)} · parte da ${_escF(off.email || 'officina@officinaormia.it')} con il PDF allegato (una copia arriva anche all'officina)</div>
     <label style="font-size:12px;font-weight:700;color:var(--text2)">Destinatario</label>
-    <input id="mp-to" type="email" style="${inp};margin:4px 0 10px" value="${_escF(cl?.email || '')}" placeholder="email del cliente">
+    <input id="md-to" type="email" style="${inp};margin:4px 0 10px" value="${_escF(m.to)}" placeholder="email del cliente">
     <label style="font-size:12px;font-weight:700;color:var(--text2)">Oggetto</label>
-    <input id="mp-sub" style="${inp};margin:4px 0 10px" value="${_escF('Prefattura commessa ' + rif + ' – ' + (off.ragione || 'ORMIA SNC'))}">
+    <input id="md-sub" style="${inp};margin:4px 0 10px" value="${_escF(m.subject)}">
     <label style="font-size:12px;font-weight:700;color:var(--text2)">Messaggio</label>
-    <textarea id="mp-txt" rows="8" style="${inp};margin:4px 0 12px;resize:vertical">${_escF(testo)}</textarea>
+    <textarea id="md-txt" rows="8" style="${inp};margin:4px 0 12px;resize:vertical">${_escF(m.text)}</textarea>
     <div style="display:flex;justify-content:flex-end;gap:8px">
-      <button class="btn btn-secondary" onclick="document.getElementById('modal-mail-pref').remove()">Annulla</button>
-      <button class="btn btn-primary" id="mp-ok" onclick="_inviaPrefOk('${cm.id}')">📧 Invia</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-mail-doc').remove()">Annulla</button>
+      <button class="btn btn-primary" id="md-ok" onclick="_inviaMailDocOk()">📧 Invia</button>
     </div></div>`;
   document.body.appendChild(ov);
-  if (!cl?.email) setTimeout(() => document.getElementById('mp-to')?.focus(), 50);
+  if (!m.to) setTimeout(() => document.getElementById('md-to')?.focus(), 50);
 }
-async function _inviaPrefOk(comId) {
-  const cm = commesse.find(c => c.id === comId); if (!cm) return;
-  const to = document.getElementById('mp-to').value.trim();
+async function _inviaMailDocOk() {
+  const m = window._mailDoc; if (!m) return;
+  const to = document.getElementById('md-to').value.trim();
   if (!/^[^\s@<>,;"]+@[^\s@<>,;"]+\.[a-z]{2,}$/i.test(to)) { alert('Inserisci un indirizzo email valido.'); return; }
-  const btn = document.getElementById('mp-ok'); btn.disabled = true; btn.textContent = 'Preparo il PDF…';
+  const btn = document.getElementById('md-ok'); btn.disabled = true; btn.textContent = 'Preparo il PDF…';
   try {
-    const html = _htmlPrefattura(comId, true); if (!html) throw new Error('prefattura vuota');
-    const pdf = await _pdfDaHtml(html);
+    const pdf = await _pdfDaHtml(m.html);
     btn.textContent = 'Invio…';
     const { data: { session } } = await supa.auth.getSession();
     if (!session) throw new Error('sessione scaduta: rientra nel gestionale');
     const res = await fetch('/.netlify/functions/invia-email', { method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token },
-      body: JSON.stringify({ apikey: SUPA_KEY, to, subject: document.getElementById('mp-sub').value, text: document.getElementById('mp-txt').value,
-        attachment: { name: 'Prefattura ' + String(cm.numero || '').replace(/[^\w\-]/g, '_') + '.pdf', data: pdf } }) });
+      body: JSON.stringify({ apikey: SUPA_KEY, to, subject: document.getElementById('md-sub').value, text: document.getElementById('md-txt').value,
+        attachment: { name: m.nome.replace(/[^\w\- ]/g, '_') + '.pdf', data: pdf } }) });
     const j = await res.json().catch(() => ({}));
     if (!res.ok || !j.ok) throw new Error(j.error || ('errore ' + res.status));
-    document.getElementById('modal-mail-pref')?.remove();
-    showToast('📧 Prefattura ' + (cm.numero || '') + ' inviata a ' + to);
-    const cl = clienti.find(c => c.id === cm.clienteId);
+    document.getElementById('modal-mail-doc')?.remove();
+    showToast('📧 ' + m.nome + (m.f ? ' inviata' : ' inviato') + ' a ' + to);
+    const cl = clienti.find(c => c.id === m.clienteId);
     if (cl && !cl.email && confirm('Salvare ' + to + ' come email del cliente ' + (cl.ragione || '') + '?')) {
       const { error } = await supa.from('clienti').update({ email: to }).eq('id', cl.id);
       if (!error) cl.email = to;
     }
   } catch (e) {
-    alert('Prefattura non inviata: ' + e.message);
+    alert(m.nome + ' non ' + (m.f ? 'inviata' : 'inviato') + ': ' + e.message);
     btn.disabled = false; btn.textContent = '📧 Invia';
   }
 }
@@ -12583,7 +12595,7 @@ ${_impostazioni.note_doc?`<div style="margin-top:24px;padding-top:16px;border-to
 </body></html>`;
 }
 
-function apriAnteprima(html, titolo) {
+function apriAnteprima(html, titolo, mail) {
   const modal = document.getElementById('modal-anteprima');
   const frame = document.getElementById('anteprima-frame');
   document.getElementById('anteprima-titolo').textContent = titolo || 'Anteprima documento';
@@ -12591,6 +12603,8 @@ function apriAnteprima(html, titolo) {
   modal.style.display = 'flex';
   // Salva per stampa
   modal._html = html;
+  modal._mail = mail || null;
+  const _bm = document.getElementById('anteprima-mail'); if (_bm) _bm.style.display = mail ? '' : 'none';
 }
 
 function stampaAnteprima() {
@@ -12878,6 +12892,7 @@ initDocumenti();
     <div class="modal-header" style="padding:14px 20px;flex-shrink:0">
       <div class="modal-title" id="anteprima-titolo">Anteprima</div>
       <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-secondary btn-sm" id="anteprima-mail" style="display:none" onclick="_mailDaAnteprima()">📧 Invia per email</button>
         <button class="btn btn-primary btn-sm" onclick="stampaAnteprima()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
           Stampa / Salva PDF
