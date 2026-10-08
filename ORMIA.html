@@ -6086,9 +6086,9 @@ function showDetailCommessa(id) {
   const btnFatt = document.getElementById('dc-btn-fattura');
   if (btnFatt) btnFatt.style.display = 'none'; // sostituito dal checkout inline
 
-  // Mostra tasto ZIP solo se commessa chiusa o fatturata
+  // Tasto ZIP (documenti per il portale Ford) solo per commesse in garanzia, chiuse o fatturate
   const btnZip = document.getElementById('dc-btn-zip');
-  if (btnZip) btnZip.style.display = (cm.stato==='chiusa'||cm.stato==='fatturata') ? '' : 'none';
+  if (btnZip) btnZip.style.display = (cm.stato==='chiusa'||cm.stato==='fatturata') && _comInGaranzia(cm) ? '' : 'none';
   const btnFirma = document.getElementById('dc-btn-firma');
   if (btnFirma) btnFirma.style.display = cm.firma ? 'none' : '';
 
