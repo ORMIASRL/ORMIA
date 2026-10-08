@@ -1966,7 +1966,7 @@ async function inviaSuFIC(fatturaId) {
         ei_data: _eiDataFin(f.pagamento, f.off_iban),
         entity: { name:f.cl_ragione||cl?.ragione||'Cliente', vat_number:f.cl_piva||cl?.piva||'', e_invoice:true,
                   tax_code:f.cl_cf||cl?.cf||f.cl_piva||cl?.piva||'', ei_code:String(f.cl_sdi||cl?.sdi||'').trim().toUpperCase()||'0000000',
-                  certified_email:f.cl_pec||cl?.pec||'',
+                  certified_email:f.cl_pec||cl?.pec||'', email:f.cl_email||cl?.email||'',
                   address_street:[cl?.via, cl?.civico].filter(Boolean).join(' '), address_postal_code:cl?.cap||'',
                   address_city:cl?.citta||'', address_province:cl?.provincia||'', country:'Italia' },
         items_list: items,
@@ -2289,7 +2289,7 @@ async function inviaNCFiC(id) {
         ei_data: _eiDataFin(fatt?.pagamento, fatt?.off_iban),
         ...(/(\d+)\s*$/.test(String(nc.numero||'')) ? { number: parseInt(String(nc.numero).match(/(\d+)\s*$/)[1], 10) } : {}),
         entity: { name: fatt?.cl_ragione||cl?.ragione||'Cliente', vat_number: cl?.piva||'', tax_code: cl?.cf||cl?.piva||'', e_invoice: true,
-                  ei_code: String(cl?.sdi||'').trim().toUpperCase()||'0000000', certified_email: cl?.pec||'',
+                  ei_code: String(cl?.sdi||'').trim().toUpperCase()||'0000000', certified_email: cl?.pec||'', email: cl?.email||'',
                   address_street: [cl?.via, cl?.civico].filter(Boolean).join(' '), address_postal_code: cl?.cap||'',
                   address_city: cl?.citta||'', address_province: cl?.provincia||'', country: 'Italia' },
         // L'importo della nota è IVA inclusa: su FiC va il netto (positivo) con l'aliquota della fattura
