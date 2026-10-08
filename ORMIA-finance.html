@@ -1633,7 +1633,7 @@ async function sincronizzaFIC(silent = false) {
   try {
     let allDocs = [];
     for (let page = 1; page <= 5; page++) {
-      const r = await ficFetch(`/c/${_ficConfig.company_id}/issued_documents?type=invoice&per_page=50&page=${page}`);
+      const r = await ficFetch(`/c/${_ficConfig.company_id}/issued_documents?type=invoice&per_page=50&page=${page}&fieldset=detailed`);
       allDocs = allDocs.concat(r.data || []);
       if (!r.next_page_url) break;
     }
@@ -1641,6 +1641,12 @@ async function sincronizzaFIC(silent = false) {
     for (const f of _fatture.filter(x => x.ficId)) {
       const doc = allDocs.find(d => String(d.id) === String(f.ficId));
       if (!doc) continue;
+      if (!doc.payment_status && Array.isArray(doc.payments_list) && doc.payments_list.length) {
+        const pl = doc.payments_list, pag = pl.filter(p => p.status === 'paid');
+        doc.payment_status = pag.length === pl.length ? 'paid' : (pag.length ? 'partial' : 'not_paid');
+        doc.payment_date = doc.payment_date || pag.map(p => p.paid_date).filter(Boolean).sort().pop();
+        if (doc.amount_due == null) doc.amount_due = pl.filter(p => p.status !== 'paid').reduce((t, p) => t + (+p.amount || 0), 0);
+      }
       if (doc.payment_status === 'paid' && f.stato !== 'pagata') {
         const dataPag = doc.payment_date || new Date().toISOString().split('T')[0];
         await supa.from('fatture').update({ stato:'pagata', data_pagamento:dataPag, fic_stato:'pagata' }).eq('id', f.id);
