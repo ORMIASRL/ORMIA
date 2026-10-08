@@ -2815,6 +2815,7 @@ function init() {
     <div class="detail-section-title">Stato & info</div>
     <div class="detail-row"><span class="detail-key">Stato</span><span class="detail-val" id="dc-stato" style="display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:4px;max-width:70%"></span></div>
     <div class="detail-row"><span class="detail-key">Data apertura</span><span class="detail-val" id="dc-data"></span></div>
+    <div class="detail-row"><span class="detail-key">Telaio</span><span class="detail-val" id="dc-vin" title="Clicca per copiare" style="font-family:'DM Mono',monospace;font-weight:600;cursor:pointer;letter-spacing:.5px" onclick="if(this.dataset.vin){navigator.clipboard?.writeText(this.dataset.vin);showToast('Telaio copiato ✓');}"></span></div>
     <div class="detail-row"><span class="detail-key">Meccanici</span><span class="detail-val" id="dc-meccanici" style="text-align:right"></span></div>
   </div>
 
@@ -6098,6 +6099,8 @@ function showDetailCommessa(id) {
   if (checkoutSec) checkoutSec.style.display = (cm.stato==='chiusa'||cm.stato==='fatturata') ? '' : 'none';
   try { _aggFattBanco(cm); } catch(_) {}
   document.getElementById('dc-data').textContent = formatDate(cm.dataApertura)||'—';
+  { const _vv = veicoli.find(x=>x.id===cm.veicoloId), _ev = document.getElementById('dc-vin');
+    if (_ev) { _ev.textContent = _vv?.vin ? _vv.vin + '  ⧉' : '—'; _ev.dataset.vin = _vv?.vin || ''; } }
 
   // Solo i meccanici con timbratura aperta adesso su questa commessa
   const mecAttuali = [...new Set(timbrature.filter(t=>t.comId===id && !t.uscita).map(t=>t.mecId))]
@@ -10586,6 +10589,31 @@ setInterval(async () => {
 // Quantità ricambi del pannello commessa: torna a 1
 function _resetQtaRic() { ['dc-scan-qta', 'dc-man-qta', 'dc-new-qta'].forEach(id => { const e = document.getElementById(id); if (e) e.value = 1; }); }
 
+// Elimina un DDT non fatturato (con eventuale rientro in magazzino dei pezzi)
+async function eliminaDDT(id) {
+  const d = ddts.find(x => x.id === id); if (!d) return;
+  if ((d.stato || 'aperto') === 'fatturato') { alert('Il DDT ' + d.numero + ' è già fatturato: non si può eliminare.\nPer annullarlo serve una nota di credito sulla fattura.'); return; }
+  if (!confirm('Eliminare definitivamente il DDT ' + d.numero + '?')) return;
+  const conProd = (d.righe || []).filter(r => r.prodId);
+  let rientro = false;
+  if (conProd.length) rientro = confirm('Il DDT contiene ' + conProd.length + ' articoli di magazzino.\n\nRimetterli in magazzino (giacenza)?\nOK = sì, rimetti i pezzi · Annulla = no, lascia la giacenza com\'è');
+  try {
+    const { error } = await supa.from('ddt').delete().eq('id', id);
+    if (error) throw error;
+    if (rientro) {
+      for (const r of conProd) {
+        const pi = prodotti.findIndex(p => p.id === r.prodId);
+        if (pi >= 0) { prodotti[pi].giacenza = (prodotti[pi].giacenza || 0) + (+r.qta || 1); await dbSaveProdotto(prodotti[pi]); }
+      }
+      try { renderProdotti(); updateBadgeMagazzino(); } catch (_) {}
+    }
+    ddts = ddts.filter(x => x.id !== id);
+    _ddtSel.delete(id);
+    renderDDT();
+    showToast('DDT ' + d.numero + ' eliminato' + (rientro ? ' · pezzi rimessi in magazzino' : '') + ' ✓');
+  } catch (e) { alert('Errore eliminazione DDT: ' + e.message); }
+}
+
 function convertaAppInCommessa(appId) {
   const a = appuntamenti.find(x=>x.id===appId);
   if (!a) return;
@@ -11527,6 +11555,7 @@ function renderDDT(showAll) {
         <button class="btn btn-ghost btn-sm" onclick="anteprimaDDT('${d.id}')">Anteprima</button>
         <button class="btn btn-ghost btn-sm" onclick="ristampaDDT('${d.id}')">Stampa</button>
         ${stato!=='fatturato'?`<button class="btn btn-primary btn-sm" onclick="converteDDTinFattura('${d.id}')">→ Fattura</button>`:''}
+        ${stato!=='fatturato'?`<button class="btn btn-ghost btn-sm" title="Elimina DDT" style="color:var(--danger)" onclick="eliminaDDT('${d.id}')">🗑</button>`:''}
       </div>
     </div>`;
   }).join('')
