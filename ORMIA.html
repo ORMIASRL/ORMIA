@@ -3062,6 +3062,7 @@ function init() {
       <div id="dc-tot-live-note" style="display:none;font-size:11px;color:var(--text3);text-align:right"></div>
     </div>
   </div>
+  <div class="detail-section" id="dc-controllo" style="display:none"></div>
   <div class="detail-section" id="dc-prev-extra" style="display:none"></div>
   <div class="detail-section" id="dc-fatt-mag" style="display:none"></div>
   <!-- CHECKOUT COMMESSA -->
@@ -5818,6 +5819,7 @@ function setVistaCommesse(v) {
 
 function renderCommesse() {
   try { _renderBoxInterni(); } catch (_) {}
+  try { _renderBoxControllo(); } catch (_) {}
   updateBadgeCommesse();
 
   const q = (document.getElementById('search-commesse')?.value||'').toLowerCase();
@@ -5838,6 +5840,7 @@ function renderCommesse() {
   filtered = filtered.filter(cm => cm.stato !== 'fatturata');
   // Le garanzie chiuse passano alla sezione Pratiche garanzia
   filtered = filtered.filter(cm => !_isPraticaGar(cm));
+  if (window._soloDaCtrl) filtered = filtered.filter(_daControllare);
   try { _badgeGaranzie(); } catch(e) {}
   filtered.sort((a,b)=>{
     const ord={aperta:0,wip:1,chiusa:2,fatturata:3};
@@ -5987,7 +5990,7 @@ function renderCommesse() {
         <div class="commessa-card-body">
           <div class="commessa-card-top">
             <div style="flex:1;min-width:0">
-              <div class="commessa-num">${v&&v.targa?`<span class="commessa-targa" style="font-size:18px;padding:3px 11px;letter-spacing:1.5px">${v.targa}</span>`:(cm.numero||'')} <span style="color:var(--border2)">·</span> <span style="color:var(--text3);font-weight:400;font-size:11px">${formatDate(cm.dataApertura)||'—'}</span>${_comInGaranzia(cm)?` <span style="background:var(--warning-light);color:var(--warning);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;border:1px solid #FDE68A">🔧 GAR.</span>`:''}</div>
+              <div class="commessa-num">${v&&v.targa?`<span class="commessa-targa" style="font-size:18px;padding:3px 11px;letter-spacing:1.5px">${v.targa}</span>`:(cm.numero||'')} <span style="color:var(--border2)">·</span> <span style="color:var(--text3);font-weight:400;font-size:11px">${formatDate(cm.dataApertura)||'—'}</span>${_comInGaranzia(cm)?` <span style="background:var(--warning-light);color:var(--warning);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;border:1px solid #FDE68A">🔧 GAR.</span>`:''}${cm.stato==='chiusa'&&!cm.controllataAt&&!cm.fatturaId?` <span style="background:#FEF3C7;color:#92400E;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;border:1px solid #FDE68A">🔍 DA CONTROLLARE</span>`:''}</div>
               <div class="commessa-desc">${cm.descrizione||cm.desc}</div>
               <div class="commessa-cliente" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                 ${cl?`<span>${cl.ragione}</span>`:''}
@@ -6098,6 +6101,7 @@ function showDetailCommessa(id) {
   if (checkoutSec) checkoutSec.style.display = (cm.stato==='chiusa'||cm.stato==='fatturata') ? '' : 'none';
   try { _aggFattBanco(cm); } catch(_) {}
   try { _renderPrevExtra(cm); } catch(_) {}
+  try { _renderControllo(cm); } catch(_) {}
   document.getElementById('dc-data').textContent = formatDate(cm.dataApertura)||'—';
   { const _vv = veicoli.find(x=>x.id===cm.veicoloId), _ev = document.getElementById('dc-vin');
     if (_ev) { _ev.textContent = _vv?.vin ? _vv.vin + '  ⧉' : '—'; _ev.dataset.vin = _vv?.vin || ''; } }
@@ -6242,7 +6246,7 @@ async function riaprirCommessa() {
   if (!confirm('Riaprire questa commessa (tornerà in stato "Aperta")?')) return;
   const { error } = await supa.from('commesse').update({stato:'aperta'}).eq('id', cm.id);
   if (error) { showToast('Errore: '+error.message); return; }
-  cm.stato = 'aperta';
+  cm.stato = 'aperta'; cm.controllataAt = null; cm.controllataDa = null;
   renderCommesse(); renderKanban();
   showDetailCommessa(cm.id);
   showToast('Commessa riaperta ✓');
@@ -6270,7 +6274,13 @@ async function cambiaStato() {
   if (!confirm(`Cambiare stato da "${labels[idx]}" a "${labels[nuovoIdx]}"?`)) return;
   const statoVecchio = cm.stato;
   try {
-    await dbSaveCommessa({...cm, stato: nuovo});
+    const _ctrl = {};
+    if (nuovo === 'chiusa') {
+      if (confirm('Hai già controllato voci, ricambi e ore di questa commessa?\n\nOK = sì, è pronta da fatturare\nAnnulla = no, va ancora controllata')) { _ctrl.controllataAt = new Date().toISOString(); _ctrl.controllataDa = await _chiSonoCtrl(); }
+      else { _ctrl.controllataAt = null; _ctrl.controllataDa = null; }
+    }
+    await dbSaveCommessa({...cm, stato: nuovo, ..._ctrl});
+    Object.assign(cm, _ctrl);
     if (statoVecchio !== nuovo && (nuovo === 'chiusa' || nuovo === 'fatturata')) {
       await chiudiTimbratureCommessa(selectedCommessaId, new Date().toISOString());
     }
@@ -10240,7 +10250,7 @@ async function _registraIncassoBanco(fatt) {
 // ── Commessa: pulsante per il magazzino ──
 function _aggFattBanco(cm) {
   const box = document.getElementById('dc-fatt-mag'); if (!box) return;
-  const daFatt = cm && cm.stato === 'chiusa' && !cm.fatturaId && !_isPraticaGar(cm);
+  const daFatt = cm && cm.stato === 'chiusa' && !cm.fatturaId && !_isPraticaGar(cm) && !!cm.controllataAt;
   if (!daFatt || _ruolo !== 'magazzino') { box.style.display = 'none'; box.innerHTML = ''; return; }
   const cl = clienti.find(c => c.id === cm.clienteId);
   const rd = _normPag(cl?.pagamento).startsWith('rd_');
@@ -10298,7 +10308,7 @@ const _impRigheF = rr => rr.reduce((s, r) => s + Math.round((r.qta || 1) * (r.pr
 // ── Coda "Da fatturare" (solo amministrazione) ──
 let _dfSel = new Set();
 function _daFatturare() {
-  const com = commesse.filter(c => c.stato === 'chiusa' && !c.fatturaId && !_isPraticaGar(c));
+  const com = commesse.filter(c => c.stato === 'chiusa' && !c.fatturaId && !_isPraticaGar(c) && !!c.controllataAt);
   const dd = (typeof ddts !== 'undefined' ? ddts : []).filter(d => !['fatturato', 'annullato'].includes(d.stato || 'aperto'));
   return { com, dd };
 }
@@ -10319,7 +10329,7 @@ async function apriDaFatturare() {
   ov.innerHTML = `<div style="background:var(--surface);border-radius:var(--radius-lg);width:880px;max-width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:var(--shadow-lg)">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px 22px;border-bottom:1px solid var(--border)">
         <div><div style="font-size:18px;font-weight:800">Da fatturare</div>
-        <div style="font-size:12px;color:var(--text3)">Commesse chiuse e DDT non ancora fatturati. Spunta più voci dello stesso cliente per fare una fattura unica.</div></div>
+        <div style="font-size:12px;color:var(--text3)">Commesse chiuse e DDT non ancora fatturati. Spunta più voci dello stesso cliente per fare una fattura unica.${(() => { const n = commesse.filter(_daControllare).length; return n ? ' <b style="color:#92400E">· ' + n + ' commess' + (n === 1 ? 'a' : 'e') + ' in attesa di controllo (non mostrate)</b>' : ''; })()}</div></div>
         <button class="btn btn-secondary btn-sm" onclick="document.getElementById('modal-dafatt').remove()">Chiudi</button>
       </div>
       <div id="df-body" style="overflow:auto;padding:14px 22px 20px"></div>
@@ -10814,6 +10824,77 @@ async function inserisciPrevInCommessa() {
     alert('Errore: ' + e.message);
     if (btn) { btn.disabled = false; btn.textContent = '➕ Aggiungi in commessa'; }
   }
+}
+
+// ── Controllo commessa (magazzino / amministrazione) prima della fatturazione ──
+const _daControllare = cm => !!cm && cm.stato === 'chiusa' && !cm.controllataAt && !cm.fatturaId && !_isPraticaGar(cm);
+async function _chiSonoCtrl() {
+  try { const { data } = await supa.auth.getUser(); const em = data?.user?.email || ''; return em ? em.split('@')[0] : (_ruolo || 'utente'); }
+  catch (_) { return _ruolo || 'utente'; }
+}
+function _renderControllo(cm) {
+  const box = document.getElementById('dc-controllo'); if (!box) return;
+  if (!cm || !['chiusa', 'fatturata'].includes(cm.stato) || _isPraticaGar(cm)) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = '';
+  if (cm.controllataAt) {
+    const d = new Date(cm.controllataAt);
+    box.innerHTML = `<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--success);font-weight:600">✅ Controllata${cm.controllataDa ? ' da ' + _escF(cm.controllataDa) : ''} il ${d.toLocaleDateString('it-IT')} alle ${d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+      ${cm.stato === 'chiusa' && !cm.fatturaId ? `<button class="btn btn-ghost btn-sm" style="margin-left:auto;font-size:11px" onclick="annullaControllo('${cm.id}')">annulla</button>` : ''}</div>`;
+    return;
+  }
+  if (cm.stato !== 'chiusa') { box.style.display = 'none'; box.innerHTML = ''; return; }
+  const imp = v => (v.qta || 1) * (v.prezzo || 0) * (1 - (v.sconto || 0) / 100);
+  const oreTim = typeof _oreTimbrate === 'function' ? _oreTimbrate(cm.id) : 0;
+  const oreMan = (cm.vociMano || []).reduce((s, v) => s + (+v.qta || 0), 0);
+  const ric = (cm.vociRic || []).filter(r => r.desc);
+  const ext = (cm.vociExtra || []).filter(r => r.desc);
+  const nota = cm.notaMec || cm.nota_mec || '';
+  const riga = (k, v) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:12px"><span style="color:#92400E">${k}</span><span style="font-weight:600;text-align:right">${v}</span></div>`;
+  box.innerHTML = `<div style="border:2px solid #F6AD55;background:#FFFBEB;border-radius:var(--radius);padding:12px 14px">
+    <div style="font-weight:800;color:#92400E;margin-bottom:6px">🔍 Da controllare prima della fattura</div>
+    ${riga('Ore timbrate dai meccanici', (Math.round(oreTim * 100) / 100).toLocaleString('it-IT') + ' h')}
+    ${riga('Manodopera inserita a mano', oreMan ? oreMan.toLocaleString('it-IT') + ' h' : '—')}
+    ${riga('Ricambi', ric.length ? ric.slice(0, 6).map(r => _escF((r.desc || '').slice(0, 28)) + ' ×' + (r.qta || 1)).join('<br>') + (ric.length > 6 ? '<br>… altri ' + (ric.length - 6) : '') : '<span style="color:var(--danger)">nessuno</span>')}
+    ${ext.length ? riga('Voci extra', ext.length + ' (' + _eurF(ext.reduce((s, v) => s + imp(v), 0)) + ')') : ''}
+    ${cm.dirittoChiamata ? riga('Diritto di chiamata', _eurF(cm.dirittoChiamataImporto)) : ''}
+    ${nota ? riga('Nota meccanico', _escF(nota.slice(0, 120))) : ''}
+    ${riga('Totale commessa', _eurF(_totaleCommessa(cm)) + ' + IVA')}
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:10px" onclick="segnaControllata('${cm.id}')">✅ Controllata — pronta da fatturare</button>
+  </div>`;
+}
+async function segnaControllata(id) {
+  const cm = commesse.find(c => c.id === id); if (!cm) return;
+  const da = await _chiSonoCtrl(), at = new Date().toISOString();
+  const { error } = await supa.from('commesse').update({ controllata_at: at, controllata_da: da }).eq('id', id);
+  if (error) { alert('Errore: ' + error.message); return; }
+  cm.controllataAt = at; cm.controllataDa = da;
+  try { renderCommesse(); } catch (_) {}
+  try { _aggBadgeDaFatt(); } catch (_) {}
+  if (selectedCommessaId === id) showDetailCommessa(id);
+  showToast('Commessa ' + (cm.numero || '') + ' controllata ✓ — ora è da fatturare');
+}
+async function annullaControllo(id) {
+  const cm = commesse.find(c => c.id === id); if (!cm) return;
+  if (!confirm('Rimettere la commessa ' + (cm.numero || '') + ' tra quelle da controllare?')) return;
+  const { error } = await supa.from('commesse').update({ controllata_at: null, controllata_da: null }).eq('id', id);
+  if (error) { alert('Errore: ' + error.message); return; }
+  cm.controllataAt = null; cm.controllataDa = null;
+  try { renderCommesse(); } catch (_) {}
+  try { _aggBadgeDaFatt(); } catch (_) {}
+  if (selectedCommessaId === id) showDetailCommessa(id);
+}
+// Avviso nella lista commesse: quante sono da controllare (cliccando mostra solo quelle)
+function _renderBoxControllo() {
+  const kpi = document.getElementById('dash-kpi'); if (!kpi) return;
+  let box = document.getElementById('box-controllo');
+  if (!box) { box = document.createElement('div'); box.id = 'box-controllo'; kpi.parentNode.insertBefore(box, kpi); }
+  const n = commesse.filter(_daControllare).length;
+  if (!n && !window._soloDaCtrl) { box.innerHTML = ''; box.style.display = 'none'; return; }
+  box.style.display = '';
+  box.innerHTML = `<div onclick="window._soloDaCtrl=!window._soloDaCtrl;renderCommesse()" style="display:flex;align-items:center;gap:10px;padding:10px 14px;margin-bottom:14px;border:2px solid #F6AD55;background:#FFFBEB;border-radius:var(--radius-lg);cursor:pointer;color:#92400E">
+    <span style="font-size:20px">🔍</span>
+    <div style="flex:1;font-weight:700">${n} commess${n === 1 ? 'a' : 'e'} da controllare prima della fattura</div>
+    <span style="font-size:12px;font-weight:700">${window._soloDaCtrl ? 'Mostra tutte ›' : 'Mostra solo queste ›'}</span></div>`;
 }
 
 function convertaAppInCommessa(appId) {
