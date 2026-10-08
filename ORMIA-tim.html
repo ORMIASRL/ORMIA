@@ -343,11 +343,23 @@ function renderCommessaList() {
   const el = document.getElementById('commessa-list');
   if (!el) return;
   const aperte = commesse.filter(c => c.stato==='aperta'||c.stato==='wip'||c.stato==='standby');
+  // Lavori interni (pulizie, riordino, officina): sempre in cima
+  const _int = commesse.find(c => c.stato === 'interna');
+  const _intHtml = _int ? (() => {
+    const att = timbrature.filter(t => t.com_id === _int.id && !t.uscita).map(t => meccanici.find(m => m.id === t.mec_id)).filter(Boolean);
+    const sel = comSelezionata && comSelezionata.id === _int.id;
+    return `<div onclick="selezionaCommessa('${_int.id}')" style="background:${sel ? '#FEF3C7' : '#FFFBEB'};border:2px ${sel ? 'solid #B45309' : 'dashed #F6AD55'};border-radius:14px;padding:12px 16px;cursor:pointer;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="font-size:28px;line-height:1">🧹</span>
+      <div style="flex:1;min-width:140px"><div style="font-size:18px;font-weight:800;color:#92400E">LAVORI INTERNI</div><div style="font-size:12px;color:#92400E">Pulizie, riordino, manutenzione officina</div></div>
+      ${att.length ? `<span style="font-size:11px;color:var(--success);font-weight:600"><span class="dot"></span>${att.map(m => m.nome.split(' ')[0]).join(', ')}</span>` : ''}
+      ${sel ? '<span style="font-size:11px;font-weight:700;color:#92400E">← codice</span>' : ''}
+    </div>`;
+  })() : '';
   if (!aperte.length) {
-    el.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:20px 0;text-align:center">Nessuna commessa aperta</div>';
+    el.innerHTML = _intHtml + '<div style="font-size:13px;color:var(--text3);padding:20px 0;text-align:center">Nessuna commessa aperta</div>';
     return;
   }
-  el.innerHTML = aperte.map(cm => {
+  el.innerHTML = _intHtml + aperte.map(cm => {
     const cl = clienti.find(c=>c.id===cm.cliente_id);
     const v  = veicoli.find(x=>x.id===cm.veicolo_id);
     const attivi = timbrature.filter(t=>t.com_id===cm.id&&!t.uscita).map(t=>meccanici.find(m=>m.id===t.mec_id)).filter(Boolean);
