@@ -844,7 +844,7 @@ function renderHome() {
 
   // Stato live
   const tAperta = timbrature.find(t=>t.mecId===mecLogged.id && !t.uscita);
-  const comAttiva = tAperta ? commesse.find(c=>c.id===tAperta.comId && (c.stato==='aperta'||c.stato==='wip'||c.stato==='standby')) : null;
+  const comAttiva = tAperta ? commesse.find(c=>c.id===tAperta.comId && (c.stato==='aperta'||c.stato==='wip'||c.stato==='standby'||c.stato==='interna')) : null;
   const dot  = document.getElementById('home-dot');
   const stxt = document.getElementById('home-status-text');
   const ssub = document.getElementById('home-status-sub');
@@ -853,7 +853,7 @@ function renderHome() {
     stxt.textContent = 'In lavorazione';
     const mins = Math.floor((Date.now()-new Date(tAperta.entrata))/60000);
     const dur  = mins>=60?`${Math.floor(mins/60)}h ${String(mins%60).padStart(2,'0')}m`:`${mins}m`;
-    ssub.textContent = `${comAttiva.numero} · ${dur}`;
+    ssub.textContent = `${comAttiva.stato === 'interna' ? '🧹 Lavori interni' : comAttiva.numero} · ${dur}`;
   } else {
     dot.className = 'mec-status-dot idle';
     stxt.textContent = 'Non in lavorazione';
@@ -867,6 +867,21 @@ function renderHome() {
   });
   const list  = document.getElementById('home-list');
   const empty = document.getElementById('home-empty');
+  // Lavori interni (pulizie, riordino, officina): pulsante sempre in cima
+  {
+    const _int = commesse.find(c => c.stato === 'interna');
+    let bi = document.getElementById('home-interni');
+    if (!bi && list) { bi = document.createElement('div'); bi.id = 'home-interni'; list.parentNode.insertBefore(bi, list); }
+    if (bi) {
+      if (_int && !isMagazziniere()) {
+        const qui = timbrature.find(t => t.comId === _int.id && t.mecId === mecLogged.id && !t.uscita);
+        bi.innerHTML = `<button onclick="lavoriInterniM()" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;margin:0 0 12px;border-radius:14px;border:2px ${qui ? 'solid #B45309' : 'dashed #F6AD55'};background:${qui ? '#FEF3C7' : '#FFFBEB'};color:#92400E;font-family:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent">
+          <span style="font-size:28px;line-height:1">🧹</span>
+          <span style="flex:1"><span style="display:block;font-size:16px;font-weight:800">${qui ? 'Stai facendo lavori interni' : 'Lavori interni'}</span><span style="display:block;font-size:12px;font-weight:500">${qui ? 'Tocca per terminare' : 'Pulizie, riordino, manutenzione officina'}</span></span>
+          <span style="font-size:22px">${qui ? '⏹' : '▶'}</span></button>`;
+      } else bi.innerHTML = '';
+    }
+  }
   if (!attive.length) { list.innerHTML=''; empty.style.display=''; return; }
   empty.style.display='none';
   list.innerHTML = attive.map(cm=>{
@@ -1309,6 +1324,16 @@ async function _standbySeVuotaM(comId, esclusoId) {
   const cm = _commesse.find(c => c.id === comId);
   if (!altre.length && cm && (cm.stato === 'wip' || cm.stato === 'aperta')) await supa.from('commesse').update({ stato: 'standby' }).eq('id', comId);
 }
+// Pulsante "Lavori interni": inizia o termina la timbratura sulla commessa interna
+async function lavoriInterniM() {
+  const _int = getCommesse().find(c => c.stato === 'interna');
+  if (!_int || !mecLogged) return;
+  const qui = getTimbrature().find(t => t.comId === _int.id && t.mecId === mecLogged.id && !t.uscita);
+  const prima = comSelected;
+  comSelected = _int;
+  try { await timbra(qui ? 'uscita' : 'entrata'); }
+  finally { comSelected = prima && prima.id !== _int.id ? prima : null; renderHome(); }
+}
 async function _registraEntrataM(mec) {
   const imp = await _getImpM(); const now = new Date(); const ora = now.toISOString(); const oggi = _oggiLocM();
   const inizio = new Date(`${oggi}T${_hmM(imp.orario_inizio) || '08:30'}:00`);
@@ -1344,14 +1369,15 @@ async function timbra(verso) {
       await _chiudiTimM(t, ora, await _verificaPausaM(mecLogged, t.entrata, ora), true);
       // Se nessun altro meccanico è ancora attivo → standby
       const altreAperte = _timbrature.filter(x=>x.com_id===comSelected.id&&!x.uscita&&x.id!==t.id);
-      if (!altreAperte.length) {
+      if (!altreAperte.length && comSelected.stato !== 'interna') {
         await supa.from('commesse').update({stato:'standby'}).eq('id',comSelected.id);
       }
       showToast('Fine lavoro registrato ✓');
     }
     await loadAll();
     comSelected = getCommesse().find(c=>c.id===comSelected.id) || comSelected;
-    renderDetail(); renderHome();
+    if (comSelected.stato !== 'interna') renderDetail();
+    renderHome();
   } catch(e) { showToast('Errore: '+e.message); }
 }
 
