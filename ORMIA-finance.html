@@ -1960,7 +1960,7 @@ async function inviaSuFIC(fatturaId) {
   try {
     const righe = (f.righe||[]).filter(r => r.desc||r.descrizione);
     const items = righe.length
-      ? righe.map(r => ({ name:r.desc||r.descrizione, qty:r.qta||1, net_price:r.prezzo||0, vat:_vatFicFin(f.iva||22) }))
+      ? righe.map(r => ({ name:r.desc||r.descrizione, qty:r.qta||1, ...(r.sconto && r.listino != null ? { net_price:+r.listino, discount:+r.sconto } : { net_price:r.prezzo||0 }), vat:_vatFicFin(f.iva||22) }))
       : [{ name:f.descrizione||'Servizio officina', qty:1,
            net_price: f.imponibile||(f.totale||0)/(1+(f.iva||22)/100), vat:_vatFicFin(f.iva||22) }];
     const _num = String(f.numero||'').match(/(\d+)\s*$/);
