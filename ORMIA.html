@@ -12568,7 +12568,7 @@ async function autoInviaFIC(fatt) {
       type:'invoice', date:(fatt.data||new Date().toISOString()).split('T')[0], e_invoice:true,
       ...(/(\d+)\s*$/.test(String(fatt.numero||'')) ? { number: parseInt(String(fatt.numero).match(/(\d+)\s*$/)[1], 10) } : {}),
       entity:{ name:fatt.clRagione||cl?.ragione||'Cliente', vat_number:piva, tax_code:cf||piva, e_invoice:true,
-               ei_code:String(fatt.clSdi||cl?.sdi||'').trim().toUpperCase() || '0000000', certified_email:fatt.clPec||cl?.pec||'',
+               ei_code:String(fatt.clSdi||cl?.sdi||'').trim().toUpperCase() || '0000000', certified_email:fatt.clPec||cl?.pec||'', email:fatt.clEmail||cl?.email||'',
                address_street:[cl?.via, cl?.civico].filter(Boolean).join(' '), address_postal_code:cl?.cap||'', address_city:cl?.citta||'',
                address_province:cl?.provincia||'', country:'Italia' },
       ei_data:{ vat_kind:'I', payment_method:metodo, ...(metodo==='MP05' && iban ? { bank_iban: iban } : {}) },
