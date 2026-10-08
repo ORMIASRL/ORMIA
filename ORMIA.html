@@ -5816,9 +5816,7 @@ function setVistaCommesse(v) {
 }
 
 function renderCommesse() {
-  
-  
-  
+  try { _renderBoxInterni(); } catch (_) {}
   updateBadgeCommesse();
 
   const q = (document.getElementById('search-commesse')?.value||'').toLowerCase();
@@ -10612,6 +10610,72 @@ async function eliminaDDT(id) {
     renderDDT();
     showToast('DDT ' + d.numero + ' eliminato' + (rientro ? ' · pezzi rimessi in magazzino' : '') + ' ✓');
   } catch (e) { alert('Errore eliminazione DDT: ' + e.message); }
+}
+
+// ── Lavori interni nella lista commesse: visibile solo quando qualcuno ci sta timbrando ──
+function _renderBoxInterni() {
+  const kpi = document.getElementById('dash-kpi'); if (!kpi) return;
+  let box = document.getElementById('box-interni');
+  if (!box) { box = document.createElement('div'); box.id = 'box-interni'; kpi.parentNode.insertBefore(box, kpi); }
+  const ci = window._comInterna;
+  const att = ci ? timbrature.filter(t => t.comId === ci.id && t.entrata && !t.uscita) : [];
+  if (!att.length) { box.innerHTML = ''; box.style.display = 'none'; return; }
+  const hm = d => new Date(d).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  const chi = att.sort((a, b) => new Date(a.entrata) - new Date(b.entrata))
+    .map(t => `<b>${_escF((meccanici.find(m => m.id === t.mecId)?.nome || '—').split(' ')[0])}</b> dalle ${hm(t.entrata)}`).join(' · ');
+  box.style.display = '';
+  box.innerHTML = `<div onclick="apriLavoriInterni()" style="display:flex;align-items:center;gap:12px;padding:12px 16px;margin-bottom:14px;border:2px solid #F6AD55;background:#FFFBEB;border-radius:var(--radius-lg);cursor:pointer;color:#92400E">
+    <span style="font-size:24px">🧹</span>
+    <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:15px">Lavori interni in corso</div><div style="font-size:13px">${chi}</div></div>
+    <span style="font-size:12px;font-weight:700">Dettaglio ›</span></div>`;
+}
+
+// Riepilogo delle ore interne dall'ultimo azzeramento (le ore restano comunque in Presenze)
+function apriLavoriInterni() {
+  const ci = window._comInterna; if (!ci) return;
+  const dal = String(ci.dataApertura || '').slice(0, 10);
+  const now = new Date();
+  const dataL = d => { const x = new Date(d); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
+  const tims = timbrature.filter(t => t.comId === ci.id && t.entrata && (!dal || dataL(t.entrata) >= dal))
+    .sort((a, b) => new Date(b.entrata) - new Date(a.entrata));
+  const min = t => Math.max(0, ((t.uscita ? new Date(t.uscita) : now) - new Date(t.entrata)) / 60000);
+  const hm = d => new Date(d).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  const dur = m => Math.floor(m / 60) + 'h' + String(Math.round(m % 60)).padStart(2, '0');
+  const nome = id => meccanici.find(m => m.id === id)?.nome || '—';
+  const perDip = {}; tims.forEach(t => { perDip[t.mecId] = (perDip[t.mecId] || 0) + min(t); });
+  const tot = Object.values(perDip).reduce((s, x) => s + x, 0);
+  const td = 'padding:7px 10px;border-bottom:1px solid var(--border);font-size:13px';
+  document.getElementById('modal-interni')?.remove();
+  const ov = document.createElement('div'); ov.id = 'modal-interni';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:800;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML = `<div style="background:var(--surface);border-radius:var(--radius-lg);width:640px;max-width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:var(--shadow-lg)">
+    <div style="display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--border)">
+      <span style="font-size:22px">🧹</span>
+      <div style="flex:1"><div style="font-size:17px;font-weight:800">Lavori interni</div><div style="font-size:12px;color:var(--text3)">${dal ? 'dal ' + formatDate(dal) : 'tutte le ore'} · totale <b>${dur(tot)}</b></div></div>
+      <button class="btn btn-secondary btn-sm" onclick="azzeraLavoriInterni()">🔄 Azzera conteggio</button>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('modal-interni').remove()">✕</button>
+    </div>
+    <div style="overflow:auto;padding:12px 20px 18px">
+      ${Object.keys(perDip).length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${Object.entries(perDip).sort((a, b) => b[1] - a[1]).map(([id, m]) => `<span style="background:#FFFBEB;color:#92400E;border-radius:20px;padding:4px 10px;font-size:12px;font-weight:700">${_escF(nome(id))} · ${dur(m)}</span>`).join('')}</div>` : ''}
+      <table style="width:100%;border-collapse:collapse">${tims.map(t => `<tr>
+        <td style="${td};white-space:nowrap">${formatDate(dataL(t.entrata))}</td>
+        <td style="${td};font-weight:600">${_escF(nome(t.mecId))}</td>
+        <td style="${td};font-family:'DM Mono',monospace;white-space:nowrap">${hm(t.entrata)} – ${t.uscita ? hm(t.uscita) : '<span style="color:var(--success)">in corso</span>'}</td>
+        <td style="${td};font-family:'DM Mono',monospace;text-align:right">${dur(min(t))}</td></tr>`).join('') || `<tr><td style="${td};color:var(--text3)">Nessuna timbratura in questo periodo.</td></tr>`}</table>
+      <div style="font-size:11px;color:var(--text3);margin-top:10px">Azzerando, qui ricominci a contare da oggi. Le ore già timbrate restano in Presenze (giornata, mese ed Excel).</div>
+    </div></div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+async function azzeraLavoriInterni() {
+  const ci = window._comInterna; if (!ci) return;
+  if (!confirm('Azzerare il conteggio dei lavori interni?\n\nDa oggi qui vedrai solo le nuove timbrature. Le ore già fatte restano in Presenze.')) return;
+  const oggi = new Date().toISOString().split('T')[0];
+  const { error } = await supa.from('commesse').update({ data_apertura: oggi }).eq('id', ci.id);
+  if (error) { alert('Errore: ' + error.message); return; }
+  ci.dataApertura = oggi;
+  showToast('Conteggio lavori interni azzerato ✓');
+  apriLavoriInterni();
 }
 
 function convertaAppInCommessa(appId) {
