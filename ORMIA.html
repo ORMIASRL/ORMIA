@@ -2795,6 +2795,7 @@ function init() {
         Stampa
       </button>
       <button class="btn btn-secondary btn-sm" onclick="stampaPrefattura(selectedCommessaId)">🧾 Prefattura</button>
+      <button class="btn btn-secondary btn-sm" onclick="inviaPrefattura(selectedCommessaId)">📧 Invia prefattura</button>
       <button class="btn btn-secondary btn-sm" id="dc-btn-firma" onclick="faiFirmareCommessa(selectedCommessaId)" style="display:none">✍️ Fai firmare</button>
       <button class="btn btn-secondary btn-sm" id="dc-btn-zip" onclick="scaricaZipGaranzia(selectedCommessaId)" style="display:none">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -10476,7 +10477,7 @@ async function eliminaVoceCommessa(tipo, idx) {
 }
 
 // Prefattura (documento non fiscale) dalla commessa
-function stampaPrefattura(comId) {
+function _htmlPrefattura(comId, _soloHtml) {
   const cm = commesse.find(c => c.id === comId); if (!cm) return;
   const cl = clienti.find(c => c.id === cm.clienteId);
   const v = veicoli.find(x => x.id === cm.veicoloId);
@@ -10521,8 +10522,10 @@ td{padding:7px 10px;border-bottom:1px solid #E4E2DC}.c{text-align:center;width:6
 ${pag ? `<div class="pb"><strong>Pagamento:</strong> ${e(pag)}${scad && scad !== oggi ? ' · scadenza prevista ' + fd(scad) : ''}${off.iban ? '<br><strong>IBAN:</strong> ' + e(off.iban) : ''}</div>` : ''}
 <div class="ft">Documento provvisorio di riepilogo: la fattura elettronica verrà emessa e trasmessa tramite SDI. Importi soggetti a conferma.</div>
 </body></html>`;
+  if (_soloHtml) return html;
   apriStampa(html);
 }
+function stampaPrefattura(comId) { _htmlPrefattura(comId); }
 
 // ── Lavori interni (commessa fissa con stato 'interna', tenuta fuori dalle liste) ──
 function _pv2Interna(comId) { return !!(window._comInterna && comId === window._comInterna.id); }
@@ -10896,6 +10899,100 @@ function _renderBoxControllo() {
     <span style="font-size:20px">🔍</span>
     <div style="flex:1;font-weight:700">${n} commess${n === 1 ? 'a' : 'e'} da controllare prima della fattura</div>
     <span style="font-size:12px;font-weight:700">${window._soloDaCtrl ? 'Mostra tutte ›' : 'Mostra solo queste ›'}</span></div>`;
+}
+
+// ── Invio prefattura via email (PDF allegato, dalla casella dell'officina) ──
+function _caricaLib(src) {
+  return new Promise((ok, ko) => {
+    if (document.querySelector('script[data-lib="' + src + '"]')) return ok();
+    const s = document.createElement('script'); s.src = src; s.dataset.lib = src;
+    s.onload = () => ok(); s.onerror = () => ko(new Error('impossibile caricare ' + src.split('/').pop()));
+    document.head.appendChild(s);
+  });
+}
+async function _pdfDaHtml(html) {
+  await _caricaLib('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+  const ifr = document.createElement('iframe');
+  ifr.style.cssText = 'position:fixed;left:-12000px;top:0;width:820px;height:300px;border:0;background:#fff';
+  document.body.appendChild(ifr);
+  try {
+    await new Promise(r => { ifr.onload = r; ifr.srcdoc = html.replace(/<div class="wm">[^<]*<\/div>/, ''); });
+    const w = ifr.contentWindow, d = ifr.contentDocument;
+    // html2canvas va caricato dentro il documento da fotografare
+    await new Promise((ok, ko) => { const s = d.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'; s.onload = ok; s.onerror = () => ko(new Error('impossibile caricare html2canvas')); d.head.appendChild(s); });
+    await new Promise(r => setTimeout(r, 150));
+    const cv = await w.html2canvas(d.body, { scale: 2, backgroundColor: '#ffffff' });
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const m = 10, iw = 210 - 2 * m, pageH = 297 - 2 * m;
+    const pxPage = Math.floor(pageH * cv.width / iw);
+    for (let y = 0, p = 0; y < cv.height; y += pxPage, p++) {
+      const h = Math.min(pxPage, cv.height - y);
+      const c = document.createElement('canvas'); c.width = cv.width; c.height = h;
+      const cx = c.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, c.width, h);
+      cx.drawImage(cv, 0, y, cv.width, h, 0, 0, cv.width, h);
+      if (p) pdf.addPage();
+      pdf.addImage(c.toDataURL('image/jpeg', 0.9), 'JPEG', m, m, iw, h * iw / cv.width);
+    }
+    return pdf.output('datauristring').split(',')[1];
+  } finally { ifr.remove(); }
+}
+function inviaPrefattura(comId) {
+  const cm = commesse.find(c => c.id === comId); if (!cm) return;
+  if (!_righeCommessa(cm).length) { alert('La commessa non ha voci.'); return; }
+  const cl = clienti.find(c => c.id === cm.clienteId);
+  const v = veicoli.find(x => x.id === cm.veicoloId);
+  const off = getDatiOfficina() || {};
+  const rif = [cm.numero, v?.targa].filter(Boolean).join(' – ');
+  document.getElementById('modal-mail-pref')?.remove();
+  const ov = document.createElement('div'); ov.id = 'modal-mail-pref';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1100;display:flex;align-items:center;justify-content:center;padding:16px';
+  const inp = 'width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box;background:var(--surface);color:var(--text)';
+  const testo = 'Buongiorno,\n\nin allegato la prefattura relativa alla commessa ' + rif + '.\nSi tratta di un riepilogo provvisorio: la fattura elettronica verrà emessa e trasmessa tramite SDI.\n\nCordiali saluti\n' + (off.ragione || 'ORMIA SNC') + (off.tel ? '\nTel. ' + off.tel : '');
+  ov.innerHTML = `<div style="background:var(--surface);border-radius:var(--radius-lg);width:560px;max-width:100%;max-height:92vh;overflow:auto;box-shadow:var(--shadow-lg);padding:18px 20px">
+    <div style="font-size:17px;font-weight:800;margin-bottom:2px">📧 Invia prefattura</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px">Commessa ${_escF(rif)} · parte da ${_escF(off.email || 'officina@officinaormia.it')} con il PDF allegato (una copia arriva anche all'officina)</div>
+    <label style="font-size:12px;font-weight:700;color:var(--text2)">Destinatario</label>
+    <input id="mp-to" type="email" style="${inp};margin:4px 0 10px" value="${_escF(cl?.email || '')}" placeholder="email del cliente">
+    <label style="font-size:12px;font-weight:700;color:var(--text2)">Oggetto</label>
+    <input id="mp-sub" style="${inp};margin:4px 0 10px" value="${_escF('Prefattura commessa ' + rif + ' – ' + (off.ragione || 'ORMIA SNC'))}">
+    <label style="font-size:12px;font-weight:700;color:var(--text2)">Messaggio</label>
+    <textarea id="mp-txt" rows="8" style="${inp};margin:4px 0 12px;resize:vertical">${_escF(testo)}</textarea>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-mail-pref').remove()">Annulla</button>
+      <button class="btn btn-primary" id="mp-ok" onclick="_inviaPrefOk('${cm.id}')">📧 Invia</button>
+    </div></div>`;
+  document.body.appendChild(ov);
+  if (!cl?.email) setTimeout(() => document.getElementById('mp-to')?.focus(), 50);
+}
+async function _inviaPrefOk(comId) {
+  const cm = commesse.find(c => c.id === comId); if (!cm) return;
+  const to = document.getElementById('mp-to').value.trim();
+  if (!/^[^\s@<>,;"]+@[^\s@<>,;"]+\.[a-z]{2,}$/i.test(to)) { alert('Inserisci un indirizzo email valido.'); return; }
+  const btn = document.getElementById('mp-ok'); btn.disabled = true; btn.textContent = 'Preparo il PDF…';
+  try {
+    const html = _htmlPrefattura(comId, true); if (!html) throw new Error('prefattura vuota');
+    const pdf = await _pdfDaHtml(html);
+    btn.textContent = 'Invio…';
+    const { data: { session } } = await supa.auth.getSession();
+    if (!session) throw new Error('sessione scaduta: rientra nel gestionale');
+    const res = await fetch('/.netlify/functions/invia-email', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token },
+      body: JSON.stringify({ apikey: SUPA_KEY, to, subject: document.getElementById('mp-sub').value, text: document.getElementById('mp-txt').value,
+        attachment: { name: 'Prefattura ' + String(cm.numero || '').replace(/[^\w\-]/g, '_') + '.pdf', data: pdf } }) });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || !j.ok) throw new Error(j.error || ('errore ' + res.status));
+    document.getElementById('modal-mail-pref')?.remove();
+    showToast('📧 Prefattura ' + (cm.numero || '') + ' inviata a ' + to);
+    const cl = clienti.find(c => c.id === cm.clienteId);
+    if (cl && !cl.email && confirm('Salvare ' + to + ' come email del cliente ' + (cl.ragione || '') + '?')) {
+      const { error } = await supa.from('clienti').update({ email: to }).eq('id', cl.id);
+      if (!error) cl.email = to;
+    }
+  } catch (e) {
+    alert('Prefattura non inviata: ' + e.message);
+    btn.disabled = false; btn.textContent = '📧 Invia';
+  }
 }
 
 function convertaAppInCommessa(appId) {
