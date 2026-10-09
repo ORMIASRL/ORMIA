@@ -6,6 +6,19 @@
 <title>ORMIA — Magazzino</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script>
+// Commesse senza la colonna firma (immagini pesanti): meno traffico verso Supabase
+async function _colsComT() {
+  if (window.__colsCom) return window.__colsCom;
+  try {
+    let r = await supa.from('commesse').select('*').is('firma', null).limit(1);
+    if (!r.data || !r.data.length) r = await supa.from('commesse').select('*').limit(1);
+    const k = r.data && r.data[0] ? Object.keys(r.data[0]).filter(x => x !== 'firma') : [];
+    if (k.length) window.__colsCom = k.join(',');
+  } catch (_) {}
+  return window.__colsCom || '*';
+}
+</script>
+<script>
 /* ORMIA — ora del server: tutte le date usano l'orologio del server, non quello del PC */
 (function () {
   if (window.__ormiaOraServer) return;
@@ -614,7 +627,7 @@ let tabAttivo = 'scan';
 // ── CARICA DATI ──────────────────────────────
 async function loadAll() {
   const [co, cl, v, p, mec] = await Promise.all([
-    supa.from('commesse').select('*').order('created_at', {ascending: false}),
+    supa.from('commesse').select(await _colsComT()).order('created_at', {ascending: false}),
     supa.from('clienti').select('*'),
     supa.from('veicoli').select('*'),
     supa.from('prodotti').select('*'),
@@ -1050,7 +1063,7 @@ async function confermaScan() {
     await supa.from('prodotti').update({giacenza: p.giacenza - qta}).eq('id', scanProdId);
 
     // Aggiorna voci commessa
-    const { data: cmFresh } = await supa.from('commesse').select('*').eq('id', comSelected.id).single();
+    const { data: cmFresh } = await supa.from('commesse').select(await _colsComT()).eq('id', comSelected.id).single();
     const vociRic = [...(cmFresh?.voci_ric||[])];
     const ve = vociRic.find(v=>v.prodId===scanProdId);
     if (ve) ve.qta = (ve.qta||1)+qta;
@@ -1093,7 +1106,7 @@ async function creaNuovoRicambio() {
     await supa.from('prodotti').insert({id:npId,created_at:ora,descrizione:desc,cod_int:cod,um:'pz',categoria:'Varie',giacenza:0,scorta_min:1,qta_riordino:10,prezzo_acq:0,prezzo_vend:0,barcodes:[]});
     await supa.from('movimenti').insert({id:crypto.randomUUID(),prod_id:npId,tipo:'carico',qta,com_id:null,note:'Acquisto per '+comSelected.numero,data:ora,created_at:ora});
     await supa.from('movimenti').insert({id:crypto.randomUUID(),prod_id:npId,tipo:'scarico',qta,com_id:comSelected.id,note:'Utilizzo in '+comSelected.numero,data:ora,created_at:ora});
-    const { data: cmFresh } = await supa.from('commesse').select('*').eq('id', comSelected.id).single();
+    const { data: cmFresh } = await supa.from('commesse').select(await _colsComT()).eq('id', comSelected.id).single();
     const vociRic = [...(cmFresh?.voci_ric||[])];
     vociRic.push({prodId:npId, desc, qta, prezzo:0});
     const totale = [...(cmFresh?.voci_mano||[]),...vociRic,...(cmFresh?.voci_extra||[])].reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0);
