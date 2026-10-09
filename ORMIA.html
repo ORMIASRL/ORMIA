@@ -5847,7 +5847,7 @@ function renderCommesse() {
     return matchQ && matchS;
   });
   // Escludi sempre le fatturate dalla lista commesse
-  filtered = filtered.filter(cm => cm.stato !== 'fatturata');
+  filtered = filtered.filter(cm => cm.stato !== 'fatturata' && cm.stato !== 'annullata');
   // Le garanzie chiuse passano alla sezione Pratiche garanzia
   filtered = filtered.filter(cm => !_isPraticaGar(cm));
   if (window._soloDaCtrl) filtered = filtered.filter(_daControllare);
@@ -6266,6 +6266,9 @@ async function riaprirCommessa() {
 async function cambiaStato() {
   const cm = commesse.find(x=>x.id===selectedCommessaId);
   if (!cm) return;
+  if (cm.stato === 'annullata') { ripristinaCommessa(cm.id); return; }
+  if (!window._csOk) { _sceltaStato(cm); return; }
+  window._csOk = false;
   const stati = ['aperta','wip','chiusa','fatturata'];
   const labels = ['Aperta','In lavorazione','Chiusa','Fatturata'];
   const idx = stati.indexOf(cm.stato);
@@ -6282,7 +6285,8 @@ async function cambiaStato() {
     }
   }
 
-  if (!confirm(`Cambiare stato da "${labels[idx]}" a "${labels[nuovoIdx]}"?`)) return;
+  const _skipConf = !!window._csSkip; window._csSkip = false;
+  if (!_skipConf && !confirm(`Cambiare stato da "${labels[idx]}" a "${labels[nuovoIdx]}"?`)) return;
   const statoVecchio = cm.stato;
   try {
     const _ctrl = {};
@@ -6301,6 +6305,8 @@ async function cambiaStato() {
 }
 
 async function confirmDeleteCommessa(id) {
+  const _cDel = commesse.find(x => x.id === id);
+  if (_cDel && _comHaLavoro(_cDel)) { alert('La commessa ' + (_cDel.numero || '') + ' ha già lavoro registrato (ore, ricambi, voci, foto o fattura): non si può eliminare.\n\nUsa «Cambia stato» → «Annulla commessa»: resta in archivio con il motivo.'); return; }
   if (!confirm('Eliminare questa commessa?')) return;
   try { await dbDeleteCommessa(id); closeDetail('detail-commessa'); renderCommesse(); } catch(e) { alert('Errore: '+e.message); }
 }
@@ -7692,6 +7698,7 @@ function statoLabel(s) {
     standby:   { label:'Standby',       cls:'stato-standby',   icon:'⏸' },
     chiusa:    { label:'Chiusa',        cls:'stato-chiusa',    icon:'✓' },
     fatturata: { label:'Fatturata',     cls:'stato-fatturata', icon:'◈' },
+    annullata: { label:'Annullata',     cls:'stato-fatturata', icon:'✕' },
   };
   const d = map[s] || map.aperta;
   return `<span class="commessa-stato-badge ${d.cls}">${d.icon} ${d.label}</span>`;
@@ -10175,6 +10182,7 @@ const _totRigaF = r => Math.round((+r.qta || 0) * (+r.prezzo || 0) * (1 - (+r.sc
 
 // ── Righe modificabili nel modal fattura ──
 function _fattInitRighe(righe) {
+  _fattTotConc = 0;
   _fattRighe = (righe || []).map(r => ({ desc: r.desc || r.descrizione || '', qta: +r.qta || 1, prezzo: r.sconto && r.listino != null ? +r.listino : (+r.prezzo || 0), sconto: +r.sconto || 0 }));
   _fattRenderRighe();
 }
@@ -10184,6 +10192,14 @@ function _fattSync() {
     const sc = +r.sconto || 0;
     return { desc: String(r.desc).trim(), qta: +r.qta || 1, prezzo: _r4((+r.prezzo || 0) * (1 - sc / 100)), ...(sc ? { sconto: sc, listino: +r.prezzo || 0 } : {}) };
   });
+  // Sconto sul totale (facoltativo): se l'imponibile concordato è più basso, riga "Sconto" negativa
+  const _impR = _fattDraft.righe.reduce((s, r) => s + Math.round((r.qta || 1) * (r.prezzo || 0) * 100) / 100, 0);
+  const _info = document.getElementById('fatt-sconto-info');
+  if (_fattTotConc > 0 && _fattTotConc < _impR - 0.004) {
+    const _d = Math.round((_impR - _fattTotConc) * 100) / 100;
+    _fattDraft.righe.push({ desc: 'Sconto', qta: 1, prezzo: -_d, scontoTot: true });
+    if (_info) _info.innerHTML = 'Totale lavori <b>' + _eurF(_impR) + '</b> → sconto <b style="color:var(--danger)">− ' + _eurF(_d) + '</b> (' + (_d / _impR * 100).toFixed(1).replace('.', ',') + '%) → da fatturare <b>' + _eurF(_fattTotConc) + '</b> + IVA';
+  } else if (_info) _info.innerHTML = _fattTotConc > 0 ? 'Cifra uguale o superiore al totale: la fattura resta normale (' + _eurF(_impR) + ' + IVA).' : 'Lascia vuoto per fatturare il totale (' + _eurF(_impR) + ' + IVA).';
   calcolaFattTotali(_fattDraft.righe);
 }
 function _fattRenderRighe() {
@@ -10200,7 +10216,12 @@ function _fattRenderRighe() {
       <span id="fattr-tot-${i}" style="text-align:right;font-family:'DM Mono',monospace;font-size:12px">${_eurF(_totRigaF(r))}</span>
       <button type="button" title="Elimina riga" onclick="_fattDelRiga(${i})" style="border:none;background:none;color:var(--danger);cursor:pointer;font-size:15px;padding:0">✕</button>
     </div>`).join('')}
-    <button type="button" class="btn btn-ghost btn-sm" onclick="_fattAddRiga()">+ Aggiungi riga</button>`;
+    <button type="button" class="btn btn-ghost btn-sm" onclick="_fattAddRiga()">+ Aggiungi riga</button>
+    <div style="margin-top:10px;padding:10px 12px;border:1px dashed var(--border);border-radius:var(--radius);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <label for="fatt-tot-conc" style="font-size:12px;font-weight:700;color:var(--text2);margin:0">Imponibile da fatturare <span style="font-weight:400;color:var(--text3)">(facoltativo · sconto sul totale)</span></label>
+      <input id="fatt-tot-conc" type="number" step="0.01" min="0" style="${inp};width:150px" value="${_fattTotConc > 0 ? _fattTotConc : ''}" placeholder="come da righe" oninput="_fattTotConc = parseFloat(String(this.value).replace(',', '.')) || 0; _fattSync()">
+      <div id="fatt-sconto-info" style="font-size:12px;color:var(--text3);flex-basis:100%"></div>
+    </div>`;
   _fattSync();
 }
 function _fattSet(i, k, v) {
@@ -10340,7 +10361,7 @@ async function apriDaFatturare() {
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:800;display:flex;align-items:center;justify-content:center;padding:16px';
   ov.innerHTML = `<div style="background:var(--surface);border-radius:var(--radius-lg);width:880px;max-width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:var(--shadow-lg)">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px 22px;border-bottom:1px solid var(--border)">
-        <div><div style="font-size:18px;font-weight:800">Da fatturare</div>
+        <div><div style="font-size:18px;font-weight:800">Da fatturare <button class="btn btn-ghost btn-sm" style="margin-left:6px;font-size:12px;vertical-align:middle" onclick="apriRiepilogoSconti()">📉 Sconti fatti</button></div>
         <div style="font-size:12px;color:var(--text3)">Commesse chiuse e DDT non ancora fatturati. Spunta più voci dello stesso cliente per fare una fattura unica.${(() => { const n = commesse.filter(_daControllare).length; return n ? ' <b style="color:#92400E">· ' + n + ' commess' + (n === 1 ? 'a' : 'e') + ' in attesa di controllo (non mostrate)</b>' : ''; })()}</div></div>
         <button class="btn btn-secondary btn-sm" onclick="document.getElementById('modal-dafatt').remove()">Chiudi</button>
       </div>
@@ -11079,7 +11100,7 @@ function _renderArchivioCommesse(q) {
   window._nArchivio = 0;
   if (!box) return;
   if (!q || q.length < 2 || window._soloDaCtrl) { box.innerHTML = ''; return; }
-  const arr = commesse.filter(cm => (cm.stato === 'fatturata' || _isPraticaGar(cm)) && _matchCom(cm, q))
+  const arr = commesse.filter(cm => (cm.stato === 'fatturata' || cm.stato === 'annullata' || _isPraticaGar(cm)) && _matchCom(cm, q))
     .sort((a, b) => String(b.dataApertura || b.createdAt || '').localeCompare(String(a.dataApertura || a.createdAt || '')));
   window._nArchivio = arr.length;
   if (!arr.length) { box.innerHTML = ''; return; }
@@ -11090,7 +11111,7 @@ function _renderArchivioCommesse(q) {
     const cl = clienti.find(c => c.id === cm.clienteId), v = veicoli.find(x => x.id === cm.veicoloId);
     const fid = cm.fatturaId || cm.garFatturaId;
     const f = fid && typeof fatture !== 'undefined' ? fatture.find(x => x.id === fid) : null;
-    const et = _isPraticaGar(cm)
+    const et = cm.stato === 'annullata' ? pill('#FEF2F2', '#B91C1C', '#FECACA', '❌ ANNULLATA' + (cm.annullataMotivo ? ' · ' + _escF(cm.annullataMotivo) : '')) : _isPraticaGar(cm)
       ? pill('#FEF3C7', '#92400E', '#FDE68A', '🔧 GARANZIA · ' + (lblGar[_statoPratica(cm)] || ''))
       : pill('#ECFDF5', '#047857', '#A7F3D0', '✅ FATTURATA' + (f ? ' · ' + _escF(f.numero || '') + ' del ' + formatDate(f.data) : ''));
     return `<div class="commessa-card" onclick="showDetailCommessa('${cm.id}')" style="cursor:pointer">
@@ -11121,19 +11142,25 @@ function _soloLetturaReset() {
 }
 function _soloLetturaCommessa(id) {
   const root = document.getElementById('detail-commessa'); if (!root) return;
-  const cm = commesse.find(c => c.id === id); if (!cm || cm.stato !== 'fatturata') return;
-  const ok = /stampaCommessa|stampaPrefattura|closeDetail|scaricaZipGaranzia|stampaFattura/;
+  document.getElementById('dc-archivio')?.remove();
+  const cm = commesse.find(c => c.id === id); if (!cm || !['fatturata', 'annullata'].includes(cm.stato)) return;
+  const ok = /stampaCommessa|stampaPrefattura|closeDetail|scaricaZipGaranzia|stampaFattura|ripristinaCommessa/;
   root.querySelectorAll('button, [onclick]').forEach(el => {
     const oc = el.getAttribute('onclick') || '';
-    if (ok.test(oc)) return;
+    if (ok.test(oc) || el.dataset.ro) return;
     if (el.tagName !== 'BUTTON' && !/elimin|rimuov|delete|remove|aggiung|add|incass|modific|edit|nuov|segna|annulla|cambia|firma|timbr/i.test(oc)) return;
     el.dataset.ro = 'h'; el.dataset.roPrev = el.style.display; el.style.display = 'none';
   });
   root.querySelectorAll('input, textarea, select').forEach(i => { if (i.disabled) return; i.dataset.ro = 'd'; i.disabled = true; });
   const f = typeof fatture !== 'undefined' ? fatture.find(x => x.id === cm.fatturaId) : null;
   const ban = document.createElement('div'); ban.id = 'dc-archivio';
-  ban.style.cssText = 'margin:0 0 12px;padding:10px 14px;border-radius:var(--radius);background:#ECFDF5;border:1px solid #A7F3D0;color:#047857;font-size:13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap';
-  ban.innerHTML = `<span style="font-weight:700">📁 Commessa fatturata${f ? ' · ' + _escF(f.numero || '') + ' del ' + formatDate(f.data) : ''}</span><span style="color:#065F46">sola consultazione</span>
+  const _ann = cm.stato === 'annullata';
+  const _sr = f ? (f.righe || []).find(r => r.scontoTot) : null;
+  ban.style.cssText = 'margin:0 0 12px;padding:10px 14px;border-radius:var(--radius);font-size:13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;' + (_ann ? 'background:#FEF2F2;border:1px solid #FECACA;color:#B91C1C' : 'background:#ECFDF5;border:1px solid #A7F3D0;color:#047857');
+  ban.innerHTML = _ann
+    ? `<span style="font-weight:700">❌ Commessa annullata${cm.annullataAt ? ' il ' + new Date(cm.annullataAt).toLocaleDateString('it-IT') : ''}${cm.annullataDa ? ' da ' + _escF(cm.annullataDa) : ''}</span><span>Motivo: ${_escF(cm.annullataMotivo || '—')}${cm.annullataRicReso ? ' · ricambi rimessi in magazzino' : ''}</span>
+      <button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="ripristinaCommessa('${cm.id}')">↩️ Riapri</button>`
+    : `<span style="font-weight:700">📁 Commessa fatturata${f ? ' · ' + _escF(f.numero || '') + ' del ' + formatDate(f.data) : ''}</span><span style="color:#065F46">sola consultazione${_sr ? ' · fatturata a ' + _eurF(f.imponibile) + ' + IVA, sconto ' + _eurF(-(+_sr.prezzo || 0)) : ''}</span>
     ${f ? `<button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="stampaFattura('${f.id}')">🧾 Apri fattura</button>` : ''}`;
   const head = root.querySelector('.detail-header');
   if (head && head.nextSibling) head.parentNode.insertBefore(ban, head.nextSibling); else root.prepend(ban);
@@ -11148,6 +11175,173 @@ function _soloLetturaCommessa(id) {
     return r;
   };
 })();
+
+// ── Sconto sul totale in fattura (facoltativo) + commesse annullate (al posto dell'eliminazione) ──
+var _fattTotConc = 0;
+const _r2A = n => Math.round((+n + Number.EPSILON) * 100) / 100;
+
+// Commessa con lavoro registrato: non si elimina, si annulla
+function _comHaLavoro(cm) {
+  return (typeof timbrature !== 'undefined' && timbrature.some(t => t.comId === cm.id))
+    || (cm.vociMano || []).length || (cm.vociRic || []).length || (cm.vociExtra || []).length
+    || (cm.fotoFine || []).filter(Boolean).length || Object.values(cm.fotoInizio || {}).filter(Boolean).length
+    || !!cm.fatturaId;
+}
+
+// "Cambia stato": passa allo stato successivo oppure annulla la commessa
+function _sceltaStato(cm) {
+  const stati = ['aperta', 'wip', 'chiusa', 'fatturata'], labels = ['Aperta', 'In lavorazione', 'Chiusa', 'Fatturata'];
+  const nuovo = labels[(stati.indexOf(cm.stato) + 1) % stati.length];
+  window._csSkip = false;
+  document.getElementById('modal-stato')?.remove();
+  const ov = document.createElement('div'); ov.id = 'modal-stato';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML = `<div style="background:var(--surface);border-radius:var(--radius-lg);width:420px;max-width:100%;box-shadow:var(--shadow-lg);padding:18px 20px">
+    <div style="font-size:17px;font-weight:800;margin-bottom:2px">Cambia stato</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px">Commessa ${_escF(cm.numero || '')} · ora: ${_escF(labels[stati.indexOf(cm.stato)] || cm.stato)}</div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:8px" onclick="_csGo()">➡️ Passa a «${_escF(nuovo)}»</button>
+    ${cm.stato !== 'fatturata' ? `<button class="btn btn-secondary" style="width:100%;justify-content:center;margin-bottom:8px;color:var(--danger)" onclick="document.getElementById('modal-stato').remove();annullaCommessa('${cm.id}')">❌ Annulla commessa</button>` : ''}
+    <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="document.getElementById('modal-stato').remove()">Chiudi</button>
+  </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+function _csGo() {
+  document.getElementById('modal-stato')?.remove();
+  window._csOk = true; window._csSkip = true;
+  cambiaStato();
+}
+
+function annullaCommessa(id) {
+  const cm = commesse.find(c => c.id === id); if (!cm) return;
+  if (cm.stato === 'fatturata' || cm.fatturaId) { alert('La commessa è già fatturata: non si può annullare.\nPer stornarla serve una nota di credito.'); return; }
+  const ric = (cm.vociRic || []).filter(r => r.prodId && (+r.qta || 0) > 0);
+  const nTim = (typeof timbrature !== 'undefined' ? timbrature : []).filter(t => t.comId === id).length;
+  document.getElementById('modal-annulla')?.remove();
+  const ov = document.createElement('div'); ov.id = 'modal-annulla';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px';
+  const inp = 'width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box;background:var(--surface);color:var(--text)';
+  ov.innerHTML = `<div style="background:var(--surface);border-radius:var(--radius-lg);width:520px;max-width:100%;max-height:92vh;overflow:auto;box-shadow:var(--shadow-lg);padding:18px 20px">
+    <div style="font-size:17px;font-weight:800;margin-bottom:2px;color:var(--danger)">❌ Annulla commessa ${_escF(cm.numero || '')}</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px">Esce dalle liste e dai conteggi ma resta in archivio con il motivo. Si può riaprire.</div>
+    <label style="font-size:12px;font-weight:700;color:var(--text2)">Motivo *</label>
+    <select id="an-motivo" style="${inp};margin:4px 0 10px">
+      <option value="">— scegli —</option>
+      <option>Cliente ha rinunciato</option>
+      <option>Preventivo non accettato</option>
+      <option>Aperta per errore</option>
+      <option>Altro</option>
+    </select>
+    <label style="font-size:12px;font-weight:700;color:var(--text2)">Note</label>
+    <textarea id="an-note" rows="2" style="${inp};margin:4px 0 10px;resize:vertical" placeholder="facoltative (obbligatorie se «Altro»)"></textarea>
+    ${ric.length ? `<label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:10px;cursor:pointer"><input type="checkbox" id="an-reso" checked style="width:16px;height:16px;margin-top:2px">
+      <span>Rimetti in magazzino i ricambi scaricati (${ric.length} articol${ric.length === 1 ? 'o' : 'i'}: ${ric.slice(0, 4).map(r => _escF((r.desc || '').slice(0, 24)) + ' ×' + r.qta).join(', ')}${ric.length > 4 ? '…' : ''})</span></label>` : ''}
+    ${nTim ? `<div style="font-size:12px;color:var(--text3);margin-bottom:10px">Le ore timbrate (${nTim} timbratur${nTim === 1 ? 'a' : 'e'}) restano nelle presenze dei meccanici.</div>` : ''}
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-annulla').remove()">Indietro</button>
+      <button class="btn btn-danger" id="an-ok" onclick="_annullaOk('${cm.id}')">❌ Annulla commessa</button>
+    </div></div>`;
+  document.body.appendChild(ov);
+}
+async function _annullaOk(id) {
+  const cm = commesse.find(c => c.id === id); if (!cm) return;
+  const sel = document.getElementById('an-motivo').value, note = document.getElementById('an-note').value.trim();
+  if (!sel) { alert('Scegli il motivo.'); return; }
+  if (sel === 'Altro' && !note) { alert('Scrivi il motivo nelle note.'); return; }
+  const motivo = sel === 'Altro' ? note : sel + (note ? ' – ' + note : '');
+  const reso = !!document.getElementById('an-reso')?.checked;
+  const btn = document.getElementById('an-ok'); btn.disabled = true; btn.textContent = 'Annullamento…';
+  try {
+    const ora = new Date().toISOString();
+    if (reso) {
+      for (const r of (cm.vociRic || []).filter(r => r.prodId && (+r.qta || 0) > 0)) {
+        const pi = prodotti.findIndex(p => p.id === r.prodId); if (pi < 0) continue;
+        prodotti[pi].giacenza = (prodotti[pi].giacenza || 0) + (+r.qta || 0);
+        await dbSaveMovimento({ id: initId(), prodId: r.prodId, tipo: 'carico', qta: +r.qta || 0, comId: cm.id, note: 'Rientro da commessa annullata ' + (cm.numero || ''), data: ora, createdAt: ora });
+        await dbSaveProdotto(prodotti[pi]);
+      }
+    }
+    try { await chiudiTimbratureCommessa(id, ora); } catch (_) {}
+    const da = await _chiSonoCtrl();
+    const { error } = await supa.from('commesse').update({ stato: 'annullata', annullata_motivo: motivo, annullata_da: da, annullata_at: ora, annullata_ric_reso: reso }).eq('id', id);
+    if (error) throw error;
+    Object.assign(cm, { stato: 'annullata', annullataMotivo: motivo, annullataDa: da, annullataAt: ora, annullataRicReso: reso, controllataAt: null, controllataDa: null });
+    document.getElementById('modal-annulla')?.remove();
+    try { renderCommesse(); } catch (_) {}
+    try { _aggBadgeDaFatt(); } catch (_) {}
+    try { if (reso) { renderProdotti(); updateBadgeMagazzino(); } } catch (_) {}
+    if (selectedCommessaId === id) showDetailCommessa(id);
+    showToast('Commessa ' + (cm.numero || '') + ' annullata' + (reso ? ' · ricambi rimessi in magazzino' : ''));
+  } catch (e) {
+    alert('Errore: ' + e.message);
+    btn.disabled = false; btn.textContent = '❌ Annulla commessa';
+  }
+}
+async function ripristinaCommessa(id) {
+  const cm = commesse.find(c => c.id === id); if (!cm || cm.stato !== 'annullata') return;
+  if (!confirm('Riaprire la commessa ' + (cm.numero || '') + '?\nTorna tra le commesse aperte.')) return;
+  try {
+    const ric = (cm.vociRic || []).filter(r => r.prodId && (+r.qta || 0) > 0);
+    if (cm.annullataRicReso && ric.length && confirm('All\'annullamento i ricambi erano stati rimessi in magazzino.\n\nRiscaricarli dalla giacenza (' + ric.length + ' articol' + (ric.length === 1 ? 'o' : 'i') + ')?')) {
+      const ora = new Date().toISOString();
+      for (const r of ric) {
+        const pi = prodotti.findIndex(p => p.id === r.prodId); if (pi < 0) continue;
+        prodotti[pi].giacenza = (prodotti[pi].giacenza || 0) - (+r.qta || 0);
+        await dbSaveMovimento({ id: initId(), prodId: r.prodId, tipo: 'scarico', qta: +r.qta || 0, comId: cm.id, note: 'Commessa ' + (cm.numero || '') + ' riaperta', data: ora, createdAt: ora });
+        await dbSaveProdotto(prodotti[pi]);
+      }
+      try { renderProdotti(); updateBadgeMagazzino(); } catch (_) {}
+    }
+    const { error } = await supa.from('commesse').update({ stato: 'aperta', annullata_motivo: null, annullata_da: null, annullata_at: null, annullata_ric_reso: null }).eq('id', id);
+    if (error) throw error;
+    Object.assign(cm, { stato: 'aperta', annullataMotivo: null, annullataDa: null, annullataAt: null, annullataRicReso: null });
+    try { renderCommesse(); } catch (_) {}
+    if (selectedCommessaId === id) showDetailCommessa(id);
+    showToast('Commessa ' + (cm.numero || '') + ' riaperta');
+  } catch (e) { alert('Errore: ' + e.message); }
+}
+
+// Riepilogo degli sconti fatti in fattura (sconto sul totale)
+async function apriRiepilogoSconti() {
+  try { await loadDocumenti(); } catch (_) {}
+  const rows = (typeof fatture !== 'undefined' ? fatture : []).map(f => {
+    const sr = (f.righe || []).find(r => r.scontoTot); if (!sr) return null;
+    const d = _r2A(-(+sr.prezzo || 0) * (+sr.qta || 1));
+    return { f, d, lordo: _r2A((+f.imponibile || 0) + d) };
+  }).filter(Boolean).sort((a, b) => String(b.f.data || '').localeCompare(String(a.f.data || '')));
+  const mesi = {}, cli = {};
+  rows.forEach(x => {
+    const m = String(x.f.data || '').slice(0, 7); const c = x.f.clRagione || '—';
+    (mesi[m] = mesi[m] || { n: 0, lordo: 0, d: 0 }); mesi[m].n++; mesi[m].lordo += x.lordo; mesi[m].d += x.d;
+    (cli[c] = cli[c] || { n: 0, d: 0 }); cli[c].n++; cli[c].d += x.d;
+  });
+  const nomeMese = k => { const [y, m] = k.split('-'); return new Date(+y, +m - 1, 1).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' }); };
+  const pc = (d, l) => l > 0 ? (d / l * 100).toFixed(1).replace('.', ',') + '%' : '—';
+  const td = 'padding:7px 10px;border-bottom:1px solid var(--border);font-size:13px', tdr = td + ';text-align:right;font-family:\'DM Mono\',monospace';
+  const th = 'padding:7px 10px;font-size:11px;color:var(--text3);text-align:left;border-bottom:2px solid var(--border)';
+  document.getElementById('modal-sconti')?.remove();
+  const ov = document.createElement('div'); ov.id = 'modal-sconti';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1500;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML = `<div style="background:var(--surface);border-radius:var(--radius-lg);width:760px;max-width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:var(--shadow-lg)">
+    <div style="display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--border)">
+      <div style="flex:1"><div style="font-size:17px;font-weight:800">📉 Sconti fatti in fattura</div><div style="font-size:12px;color:var(--text3)">Fatture emesse con «Imponibile da fatturare» più basso del totale lavori</div></div>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('modal-sconti').remove()">✕</button>
+    </div>
+    <div style="overflow:auto;padding:12px 20px 18px">
+    ${!rows.length ? '<div style="color:var(--text3);font-size:13px;padding:20px 0">Nessuno sconto sul totale finora.</div>' : `
+      <div style="font-size:12px;font-weight:700;color:var(--text3);margin:4px 0 6px">PER MESE</div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:16px"><tr><th style="${th}">Mese</th><th style="${th};text-align:right">Fatture</th><th style="${th};text-align:right">Valore lavori</th><th style="${th};text-align:right">Sconti</th><th style="${th};text-align:right">Fatturato</th><th style="${th};text-align:right">%</th></tr>
+      ${Object.keys(mesi).sort().reverse().map(k => { const m = mesi[k]; return `<tr><td style="${td};text-transform:capitalize">${nomeMese(k)}</td><td style="${tdr}">${m.n}</td><td style="${tdr}">${_eurF(m.lordo)}</td><td style="${tdr};color:var(--danger)">− ${_eurF(m.d)}</td><td style="${tdr}">${_eurF(m.lordo - m.d)}</td><td style="${tdr}">${pc(m.d, m.lordo)}</td></tr>`; }).join('')}</table>
+      <div style="font-size:12px;font-weight:700;color:var(--text3);margin:4px 0 6px">PER CLIENTE</div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:16px"><tr><th style="${th}">Cliente</th><th style="${th};text-align:right">Fatture</th><th style="${th};text-align:right">Sconti</th></tr>
+      ${Object.entries(cli).sort((a, b) => b[1].d - a[1].d).map(([c, x]) => `<tr><td style="${td}">${_escF(c)}</td><td style="${tdr}">${x.n}</td><td style="${tdr};color:var(--danger)">− ${_eurF(x.d)}</td></tr>`).join('')}</table>
+      <div style="font-size:12px;font-weight:700;color:var(--text3);margin:4px 0 6px">FATTURE</div>
+      <table style="width:100%;border-collapse:collapse"><tr><th style="${th}">Data</th><th style="${th}">Fattura</th><th style="${th}">Cliente</th><th style="${th};text-align:right">Lavori</th><th style="${th};text-align:right">Sconto</th><th style="${th};text-align:right">%</th></tr>
+      ${rows.map(x => `<tr style="cursor:pointer" onclick="stampaFattura('${x.f.id}')"><td style="${td}">${formatDate(x.f.data)}</td><td style="${td};font-family:'DM Mono',monospace">${_escF(x.f.numero || '')}</td><td style="${td}">${_escF(x.f.clRagione || '')}</td><td style="${tdr}">${_eurF(x.lordo)}</td><td style="${tdr};color:var(--danger)">− ${_eurF(x.d)}</td><td style="${tdr}">${pc(x.d, x.lordo)}</td></tr>`).join('')}</table>`}
+    </div></div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
 
 function convertaAppInCommessa(appId) {
   const a = appuntamenti.find(x=>x.id===appId);
@@ -11806,6 +12000,12 @@ function calcolaFattTotali(righe) {
 
 async function salvaFattura() {
   if (!_fattDraft) return;
+  const _srF = (_fattDraft.righe || []).find(r => r.scontoTot);
+  if (_srF) {
+    const _lordo = (_fattDraft.righe || []).filter(r => !r.scontoTot).reduce((s, r) => s + Math.round((r.qta || 1) * (r.prezzo || 0) * 100) / 100, 0);
+    const _dF = -(+_srF.prezzo || 0);
+    if (_lordo > 0 && _dF / _lordo > 0.5 && !confirm('Stai applicando uno sconto del ' + Math.round(_dF / _lordo * 100) + '% (− ' + _eurF(_dF) + ' su ' + _eurF(_lordo) + ').\n\nConfermi?')) return;
+  }
   if (!(_fattDraft.righe||[]).length) { alert('La fattura non ha righe.'); return; }
   const _bSalva = document.getElementById('fatt-btn-salva');
   if (_bSalva?.disabled) return;
