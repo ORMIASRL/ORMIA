@@ -6,6 +6,19 @@
 <title>ORMIA — Postazione Timbratura</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script>
+// Commesse senza la colonna firma (immagini pesanti): meno traffico verso Supabase
+async function _colsComT() {
+  if (window.__colsCom) return window.__colsCom;
+  try {
+    let r = await supa.from('commesse').select('*').is('firma', null).limit(1);
+    if (!r.data || !r.data.length) r = await supa.from('commesse').select('*').limit(1);
+    const k = r.data && r.data[0] ? Object.keys(r.data[0]).filter(x => x !== 'firma') : [];
+    if (k.length) window.__colsCom = k.join(',');
+  } catch (_) {}
+  return window.__colsCom || '*';
+}
+</script>
+<script>
 /* ORMIA — ora del server: tutte le date usano l'orologio del server, non quello del PC */
 (function () {
   if (window.__ormiaOraServer) return;
@@ -291,7 +304,7 @@ async function loadAll() {
   const mesePrima = new Date(); mesePrima.setDate(1); mesePrima.setHours(0,0,0,0);
   const [m, co, cl, v, t, p, a] = await Promise.all([
     supa.from('meccanici').select('*'),
-    supa.from('commesse').select('*'),
+    supa.from('commesse').select(await _colsComT()),
     supa.from('clienti').select('*'),
     supa.from('veicoli').select('*'),
     supa.from('timbrature').select('*'),
@@ -1004,14 +1017,14 @@ setInterval(async()=>{
   const oggi=new Date().toISOString().split('T')[0];
   const mesePrima=new Date();mesePrima.setDate(1);mesePrima.setHours(0,0,0,0);
   const[t,co,p,a]=await Promise.all([
-    supa.from('timbrature').select('*'),
-    supa.from('commesse').select('*'),
+    supa.from('timbrature').select('*').is('uscita', null),
+    supa.from('commesse').select(await _colsComT()).not('stato', 'in', '(fatturata,annullata)'),
     supa.from('presenze').select('*').gte('data',oggi),
     supa.from('appuntamenti').select('*').gte('data_ora',mesePrima.toISOString()).order('data_ora'),
   ]);
   timbrature=t.data||[];commesse=co.data||[];presenze=p.data||[];appuntamenti=a.data||[];
   renderCommessaList();renderLive();renderCalendario();
-},5000);
+},15000);
 
 // ── PIN GIORNALIERO ───────────────────────────────────
 function controllaPinGiornaliero(){
