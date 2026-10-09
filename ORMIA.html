@@ -936,6 +936,7 @@
             <div class="stato-pill" onclick="setGarFiltro(this,'fatturata')">Fatturate</div>
             <div class="stato-pill" onclick="setGarFiltro(this,'pagata')">Pagate</div>
             <div class="stato-pill" onclick="setGarFiltro(this,'respinta')">Respinte</div>
+            <div class="stato-pill" onclick="setGarFiltro(this,'inserita')">Inserite</div>
           </div>
         </div>
         <div class="table-wrap">
@@ -7110,6 +7111,7 @@ let _garFiltro = '';
 let _garFatture = {};
 const GAR_STATI = {
   attesa:    { l:'In attesa',  c:'badge-yellow' },
+  inserita:  { l:'Inserita',   c:'badge-orange' },
   accettata: { l:'Accettata',  c:'badge-blue'   },
   fatturata: { l:'Fatturata',  c:'badge-gray'   },
   pagata:    { l:'Pagata',     c:'badge-green'  },
@@ -7125,11 +7127,12 @@ function _statoPratica(cm) {
     return f && f.stato === 'pagata' ? 'pagata' : 'fatturata';
   }
   if (cm.garClaim && cm.garRdg && +cm.garImporto > 0) return 'accettata';
+  if (cm.garClaim || cm.garRdg) return 'inserita';   // codice inserito sul portale, in attesa di accettazione
   return 'attesa';
 }
 const _eur = n => '€ ' + (+n||0).toLocaleString('it-IT', { minimumFractionDigits:2, maximumFractionDigits:2 });
 function _badgeGaranzie() {
-  const n = commesse.filter(c => _isPraticaGar(c) && ['attesa','accettata'].includes(_statoPratica(c))).length;
+  const n = commesse.filter(c => _isPraticaGar(c) && ['attesa','inserita','accettata'].includes(_statoPratica(c))).length;
   const b = document.getElementById('badge-garanzie');
   if (b) { b.textContent = n; b.style.display = n ? '' : 'none'; }
 }
@@ -7162,13 +7165,13 @@ function _disegnaGaranzie() {
   // KPI
   const per = st => tutte.filter(c => _statoPratica(c) === st);
   const somma = (arr, f) => arr.reduce((s,c) => s + (+f(c)||0), 0);
-  const att = per('attesa'), acc = per('accettata'), fat = per('fatturata'), pag = per('pagata');
+  const att = per('attesa'), ins = per('inserita'), acc = per('accettata'), fat = per('fatturata'), pag = per('pagata');
   const chiuse = [...acc, ...fat, ...pag];
   const diff = somma(chiuse, c => (c.totale||0) - (c.garImporto||0));
   const kpi = (lab, val, sub, col, f) => `<div class="dash-kpi-card" onclick="setGarFiltro(document.querySelectorAll('#gar-filter .stato-pill')[${f}], '${['','attesa','accettata','fatturata','pagata','respinta'][f]}')" style="cursor:pointer">
       <div class="dash-kpi-label">${lab}</div><div class="dash-kpi-val" style="color:${col}">${val}</div><div class="dash-kpi-sub">${sub}</div></div>`;
   document.getElementById('gar-kpi').innerHTML =
-    kpi('In attesa', att.length, 'valore lavori ' + _eur(somma(att, c=>c.totale)), 'var(--warning)', 1) +
+    kpi('In attesa', att.length + ins.length, (ins.length ? ins.length + ' inserit' + (ins.length === 1 ? 'a' : 'e') + ' sul portale · ' : '') + 'valore lavori ' + _eur(somma([...att, ...ins], c=>c.totale)), 'var(--warning)', 1) +
     kpi('Accettate', acc.length, 'da fatturare ' + _eur(somma(acc, c=>c.garImporto)), 'var(--accent)', 2) +
     kpi('Fatturate', fat.length, 'da incassare ' + _eur(somma(fat, c=>c.garImporto)), 'var(--text)', 3) +
     kpi('Pagate', pag.length, 'incassato ' + _eur(somma(pag, c=>c.garImporto)), 'var(--success)', 4) +
@@ -7178,9 +7181,9 @@ function _disegnaGaranzie() {
   const lista = tutte.filter(c => {
     const cl = clienti.find(x=>x.id===c.clienteId), v = veicoli.find(x=>x.id===c.veicoloId);
     const okQ = !q || [c.numero, cl?.ragione, v?.targa, c.garClaim, c.garRdg, c.descrizione].some(t => (t||'').toLowerCase().includes(q));
-    return okQ && (!_garFiltro || _statoPratica(c) === _garFiltro);
+    return okQ && (!_garFiltro || _statoPratica(c) === _garFiltro || (_garFiltro === 'attesa' && _statoPratica(c) === 'inserita'));
   }).sort((a,b) => {
-    const ord = { attesa:0, accettata:1, fatturata:2, respinta:3, pagata:4 };
+    const ord = { attesa:0, inserita:0.5, accettata:1, fatturata:2, respinta:3, pagata:4 };
     return (ord[_statoPratica(a)] - ord[_statoPratica(b)]) || (new Date(b.dataApertura||b.createdAt) - new Date(a.dataApertura||a.createdAt));
   });
   const empty = document.getElementById('empty-garanzie');
@@ -11109,7 +11112,7 @@ function _renderArchivioCommesse(q) {
   window._nArchivio = arr.length;
   if (!arr.length) { box.innerHTML = ''; return; }
   const vis = _limita('archivio', arr, q);
-  const lblGar = { attesa: 'in attesa', accettata: 'accettata', fatturata: 'fatturata a Ford', pagata: 'pagata', respinta: 'respinta' };
+  const lblGar = { attesa: 'in attesa', inserita: 'inserita sul portale', accettata: 'accettata', fatturata: 'fatturata a Ford', pagata: 'pagata', respinta: 'respinta' };
   const pill = (bg, fg, bd, t) => `<span style="background:${bg};color:${fg};font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;border:1px solid ${bd};white-space:nowrap">${t}</span>`;
   const card = cm => {
     const cl = clienti.find(c => c.id === cm.clienteId), v = veicoli.find(x => x.id === cm.veicoloId);
