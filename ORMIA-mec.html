@@ -8,6 +8,19 @@
 <title>ORMIA — Officina</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script>
+// Commesse senza la colonna firma (immagini pesanti): meno traffico verso Supabase
+async function _colsComT() {
+  if (window.__colsCom) return window.__colsCom;
+  try {
+    let r = await supa.from('commesse').select('*').is('firma', null).limit(1);
+    if (!r.data || !r.data.length) r = await supa.from('commesse').select('*').limit(1);
+    const k = r.data && r.data[0] ? Object.keys(r.data[0]).filter(x => x !== 'firma') : [];
+    if (k.length) window.__colsCom = k.join(',');
+  } catch (_) {}
+  return window.__colsCom || '*';
+}
+</script>
+<script>
 /* ORMIA — ora del server: tutte le date usano l'orologio del server, non quello del PC */
 (function () {
   if (window.__ormiaOraServer) return;
@@ -639,7 +652,7 @@ async function loadAll() {
 
   const [m, co, cl, v, p, t, pr, mo] = await Promise.all([
     supa.from('dipendenti').select('*'),
-    supa.from('commesse').select('*'),
+    supa.from('commesse').select(await _colsComT()),
     supa.from('clienti').select('*'),
     supa.from('veicoli').select('*'),
     supa.from('prodotti').select('*'),
@@ -665,7 +678,7 @@ function initRealtime() {
       // Se il dipendente loggato è stato eliminato, il watcher se ne accorgerà
     })
     .on('postgres_changes', {event:'*', schema:'public', table:'commesse'}, async () => {
-      const { data } = await supa.from('commesse').select('*');
+      const { data } = await supa.from('commesse').select(await _colsComT());
       _commesse = data || [];
       if (mecLogged) renderHome();
     })
@@ -777,6 +790,7 @@ function startSessionWatch() {
   if (window._sessionWatcher) clearInterval(window._sessionWatcher);
   window._sessionWatcher = setInterval(async () => {
     if (!mecLogged) { clearInterval(window._sessionWatcher); return; }
+    if (document.hidden) return;   // app in secondo piano: niente traffico
     await loadAll();
     const still = getMeccanici().filter(isMeccanicoOperativo).find(m => m.id === mecLogged.id);
     if (!still || still.attivo === false) {
