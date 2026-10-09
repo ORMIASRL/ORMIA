@@ -11234,8 +11234,11 @@ function annullaCommessa(id) {
     </select>
     <label style="font-size:12px;font-weight:700;color:var(--text2)">Note</label>
     <textarea id="an-note" rows="2" style="${inp};margin:4px 0 10px;resize:vertical" placeholder="facoltative (obbligatorie se «Altro»)"></textarea>
-    ${ric.length ? `<label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:10px;cursor:pointer"><input type="checkbox" id="an-reso" checked style="width:16px;height:16px;margin-top:2px">
-      <span>Rimetti in magazzino i ricambi scaricati (${ric.length} articol${ric.length === 1 ? 'o' : 'i'}: ${ric.slice(0, 4).map(r => _escF((r.desc || '').slice(0, 24)) + ' ×' + r.qta).join(', ')}${ric.length > 4 ? '…' : ''})</span></label>` : ''}
+    ${ric.length ? `<div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:4px">Ricambi scaricati dal magazzino * <span style="font-weight:400;color:var(--text3)">(${ric.length} articol${ric.length === 1 ? 'o' : 'i'}: ${ric.slice(0, 4).map(r => _escF((r.desc || '').slice(0, 24)) + ' ×' + r.qta).join(', ')}${ric.length > 4 ? '…' : ''})</span></div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;margin-bottom:10px">
+        <label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="radio" name="an-reso" value="no"> Lasciali scaricati</label>
+        <label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="radio" name="an-reso" value="si"> Rimettili in giacenza</label>
+      </div>` : ''}
     ${nTim ? `<div style="font-size:12px;color:var(--text3);margin-bottom:10px">Le ore timbrate (${nTim} timbratur${nTim === 1 ? 'a' : 'e'}) restano nelle presenze dei meccanici.</div>` : ''}
     <div style="display:flex;justify-content:flex-end;gap:8px">
       <button class="btn btn-secondary" onclick="document.getElementById('modal-annulla').remove()">Indietro</button>
@@ -11249,7 +11252,10 @@ async function _annullaOk(id) {
   if (!sel) { alert('Scegli il motivo.'); return; }
   if (sel === 'Altro' && !note) { alert('Scrivi il motivo nelle note.'); return; }
   const motivo = sel === 'Altro' ? note : sel + (note ? ' – ' + note : '');
-  const reso = !!document.getElementById('an-reso')?.checked;
+  const _hasRic = (cm.vociRic || []).some(r => r.prodId && (+r.qta || 0) > 0);
+  const _rs = document.querySelector('input[name="an-reso"]:checked')?.value;
+  if (_hasRic && !_rs) { alert('Scegli cosa fare con i ricambi: lasciarli scaricati o rimetterli in giacenza.'); return; }
+  const reso = _rs === 'si';
   const btn = document.getElementById('an-ok'); btn.disabled = true; btn.textContent = 'Annullamento…';
   try {
     const ora = new Date().toISOString();
