@@ -7126,7 +7126,7 @@ function _statoPratica(cm) {
     const f = _garFatture[cm.garFatturaId] || (typeof fatture !== 'undefined' ? fatture.find(x=>x.id===cm.garFatturaId) : null);
     return f && f.stato === 'pagata' ? 'pagata' : 'fatturata';
   }
-  if (cm.garClaim && cm.garRdg && +cm.garImporto > 0) return 'accettata';
+  if (cm.garRdg && +cm.garImporto > 0) return 'accettata';   // ok di Ford: RDG + importo riconosciuto (il claim arriva con la fattura)
   if (cm.garClaim || cm.garRdg) return 'inserita';   // codice inserito sul portale, in attesa di accettazione
   return 'attesa';
 }
@@ -7257,7 +7257,7 @@ function apriPratica(id) {
       </div>
       <div id="gp-diff" style="font-size:12px;margin-top:8px;min-height:16px"></div>
       ${fatt ? `<div style="margin-top:12px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">🧾 Fattura <strong>${fatt.numero||''}</strong> · ${_eur(fatt.totale)} ${fatt.stato==='pagata'?'· <span style="color:var(--success);font-weight:700">pagata</span>':'· in attesa di pagamento (segnala pagata in Finance)'}</div>` : ''}
-      <div style="font-size:11px;color:var(--text3);margin-top:10px;line-height:1.5">Inserisci N. Claim, N. RDG e importo quando Ford Trucks comunica l'accettazione: la pratica diventa <strong>Accettata</strong> e puoi emettere la fattura.</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:10px;line-height:1.5">Dopo l'inserimento sul portale scrivi il <strong>N. RDG</strong>: la pratica diventa <strong>Inserita</strong>. Quando Ford dà l'ok scrivi l'<strong>importo riconosciuto</strong>: diventa <strong>Accettata</strong>. Il <strong>N. Claim</strong> serve solo per la fattura: se manca, te lo chiedo quando la emetti.</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;align-items:center">
         <button class="btn btn-secondary btn-sm" onclick="_vediCommessaSopra('${cm.id}')">👁 Vedi commessa</button>
         <button class="btn btn-secondary btn-sm" onclick="document.getElementById('modal-pratica').remove();setSection('commesse');setTimeout(()=>showDetailCommessa('${cm.id}'),150)">Apri commessa</button>
@@ -7285,17 +7285,22 @@ function _aggDiffPratica(tot) {
 async function salvaPratica(id, poiFattura) {
   const cm = commesse.find(c=>c.id===id);
   if (!cm) return;
-  const claim = (document.getElementById('gp-claim').value||'').trim();
+  let claim = (document.getElementById('gp-claim').value||'').trim();
   const rdg   = (document.getElementById('gp-rdg').value||'').trim();
   const imp   = parseFloat((document.getElementById('gp-importo').value||'').replace(',','.'));
   const cliId = document.getElementById('gp-cliente').value || null;
   if (poiFattura) {
-    const manca = [!claim&&'N. Claim', !rdg&&'N. RDG', !(imp>0)&&'Importo riconosciuto', !cliId&&'Fatturare a (cliente)'].filter(Boolean);
+    const manca = [!rdg&&'N. RDG', !(imp>0)&&'Importo riconosciuto', !cliId&&'Fatturare a (cliente)'].filter(Boolean);
     if (manca.length) { alert('Per emettere la fattura manca:\n\n• ' + manca.join('\n• ')); return; }
     if (cm.garStato === 'respinta') { alert('La pratica è segnata come respinta.'); return; }
+    if (!claim) {
+      claim = (prompt('Per emettere la fattura a Ford serve il N. Claim.\n\nInserisci il N. Claim:') || '').trim();
+      if (!claim) return;
+      const _gc = document.getElementById('gp-claim'); if (_gc) _gc.value = claim;
+    }
   }
   const upd = { gar_claim: claim||null, gar_rdg: rdg||null, gar_importo: imp>0 ? +imp.toFixed(2) : null, gar_cliente_id: cliId };
-  if (claim && rdg && imp>0 && !cm.garDataAccettazione) upd.gar_data_accettazione = new Date().toISOString();
+  if (rdg && imp>0 && !cm.garDataAccettazione) upd.gar_data_accettazione = new Date().toISOString();
   const { error } = await supa.from('commesse').update(upd).eq('id', id);
   if (error) { alert('Errore salvataggio: ' + error.message); return; }
   Object.assign(cm, { garClaim: upd.gar_claim, garRdg: upd.gar_rdg, garImporto: upd.gar_importo, garClienteId: upd.gar_cliente_id });
