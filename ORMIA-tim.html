@@ -1018,7 +1018,8 @@ setInterval(async()=>{
   const mesePrima=new Date();mesePrima.setDate(1);mesePrima.setHours(0,0,0,0);
   const[t,co,p,a]=await Promise.all([
     supa.from('timbrature').select('*').is('uscita', null),
-    supa.from('commesse').select(await _colsComT()).not('stato', 'in', '(fatturata,annullata)'),
+    // commesse ogni 2 minuti (cambiano poco); timbrature aperte e presenze di oggi ogni 15 secondi
+    (Date.now() - (window.__comT || 0) > 120000 ? (window.__comT = Date.now(), supa.from('commesse').select(await _colsComT()).not('stato', 'in', '(fatturata,annullata)')) : Promise.resolve({ data: commesse })),
     supa.from('presenze').select('*').gte('data',oggi),
     supa.from('appuntamenti').select('*').gte('data_ora',mesePrima.toISOString()).order('data_ora'),
   ]);
