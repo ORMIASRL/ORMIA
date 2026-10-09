@@ -698,7 +698,7 @@ function setStatoFiltro(el, stato) {
 
 function renderCommesse() {
   const q = (document.getElementById('search-com')?.value||'').toLowerCase();
-  const commesse = getCommesse();
+  const commesse = getCommesse().filter(c => c.stato !== 'annullata');
   const filtered = commesse.filter(cm => {
     const cl = _clienti.find(c=>c.id===cm.clienteId);
     const v  = getVeicoli().find(x=>x.id===cm.veicoloId);
