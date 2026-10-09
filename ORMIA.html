@@ -3176,7 +3176,7 @@ const DB = {
     // a blocchi da 1000 righe (limite di Supabase per richiesta): nessun dato perso quando le tabelle crescono
     let data = [], error = null;
     for (let from = 0; ; from += 1000) {
-      const r = await supa.from(TABLE[table]).select('*').order('created_at', {ascending:true}).order('id', {ascending:true}).range(from, from + 999);
+      const r = await supa.from(TABLE[table]).select(table === 'commesse' ? await _colsCom() : '*').order('created_at', {ascending:true}).order('id', {ascending:true}).range(from, from + 999);
       if (r.error) { error = r.error; break; }
       data = data.concat(r.data || []);
       if (!r.data || r.data.length < 1000) break;
@@ -3184,6 +3184,7 @@ const DB = {
     if (error) { console.error('DB.load', table, error); return []; }
     if (table === 'commesse') {   // la commessa "Lavori interni" resta fuori da liste, fatture e conteggi
       const arr = fromDbArr(table, data);
+      arr.forEach(c => { const f = _firmeMem()[c.id]; if (f) c.firma = f; });
       window._comInterna = arr.find(c => c.stato === 'interna') || null;
       return arr.filter(c => c.stato !== 'interna');
     }
@@ -3191,6 +3192,7 @@ const DB = {
   },
   async insert(table, obj) {
     const row = toDb(table, obj);
+    if (table === 'commesse') delete row.ha_firma;
     const { data, error } = await supa.from(TABLE[table]).insert(row).select().single();
     if (error) { console.error('DB.insert', table, error); throw error; }
     return fromDb(table, data);
@@ -3198,7 +3200,7 @@ const DB = {
   async update(table, id, obj) {
     const row = toDb(table, obj);
     // Commesse: firma, foto e allegati si scrivono solo con salvataggi dedicati (mai sovrascritti da modifiche)
-    if (table === 'commesse') { delete row.firma; delete row.firma_data; delete row.foto_inizio; delete row.foto_fine; delete row.allegati; }
+    if (table === 'commesse') { delete row.firma; delete row.firma_data; delete row.foto_inizio; delete row.foto_fine; delete row.allegati; delete row.ha_firma; }
     const { data, error } = await supa.from(TABLE[table]).update(row).eq('id', id).select().single();
     if (error) { console.error('DB.update', table, error); throw error; }
     return fromDb(table, data);
@@ -3942,6 +3944,7 @@ async function showApp() {
   _avviaTimerFineTurno();
   // Presenze: si registrano dalla TIM → aggiorna l'elenco ogni 30 secondi
   setInterval(async () => {
+    if (document.hidden) return;
     try { presenze = await DB.load('presenze'); renderLivePresenze(); updateBadgePresenze(); if (currentSection === 'presenze') renderPresenze(); } catch(e) {}
   }, 30000);
   // Timbratura automatica entrata per amministrazione
@@ -5573,6 +5576,7 @@ function initRealtime() {
 
   // Refresh automatico ogni 5 secondi
   setInterval(async () => {
+    if (document.hidden) return;   // finestra in secondo piano: niente traffico
     timbrature = await DB.load('timbrature');
     commesse   = await DB.load('commesse');
     renderLive();
@@ -5584,7 +5588,7 @@ function initRealtime() {
     // Controllo chiusura automatica presenze (ogni ora)
   const oraAttuale = new Date();
   if (oraAttuale.getHours() >= 20) chiudiPresenzeAutomatiche();
-}, 5000);
+}, 30000);
 
   // Refresh immediato quando si torna sulla finestra
   document.addEventListener('visibilitychange', async () => {
@@ -6101,7 +6105,7 @@ function showDetailCommessa(id) {
   const btnZip = document.getElementById('dc-btn-zip');
   if (btnZip) btnZip.style.display = (cm.stato==='chiusa'||cm.stato==='fatturata') && _comInGaranzia(cm) ? '' : 'none';
   const btnFirma = document.getElementById('dc-btn-firma');
-  if (btnFirma) btnFirma.style.display = cm.firma ? 'none' : '';
+  if (btnFirma) btnFirma.style.display = (cm.firma || cm.haFirma) ? 'none' : '';
 
   // Sezione timbratura: nascosta se chiusa
   const timSec = document.getElementById('dc-tim-section');
@@ -11349,6 +11353,42 @@ async function apriRiepilogoSconti() {
   document.body.appendChild(ov);
 }
 
+// ── Traffico leggero verso Supabase: le firme (immagini pesanti) non viaggiano più con le liste delle commesse ──
+// Si caricano solo quando servono (apertura commessa, stampa, ZIP) e restano in memoria.
+function _firmeMem() { return window.__firmeCom || (window.__firmeCom = {}); }
+async function _colsCom() {
+  if (window.__colsCom) return window.__colsCom;
+  try {
+    let r = await supa.from('commesse').select('*').is('firma', null).limit(1);
+    if (!r.data || !r.data.length) r = await supa.from('commesse').select('*').limit(1);
+    const k = r.data && r.data[0] ? Object.keys(r.data[0]).filter(x => x !== 'firma') : [];
+    if (k.length) window.__colsCom = k.join(',');
+  } catch (_) {}
+  return window.__colsCom || '*';
+}
+async function _ensureFirma(id) {
+  const cm = commesse.find(c => c.id === id);
+  if (!cm || cm.firma || !cm.haFirma) return cm;
+  try {
+    const { data } = await supa.from('commesse').select('firma').eq('id', id).single();
+    if (data && data.firma) { cm.firma = data.firma; _firmeMem()[id] = data.firma; }
+  } catch (e) { console.warn('[firma]', e); }
+  return cm;
+}
+(function () {
+  const oStampa = stampaCommessa;
+  stampaCommessa = async function (id) { await _ensureFirma(id); return oStampa.apply(this, arguments); };
+  const oZip = scaricaZipGaranzia;
+  scaricaZipGaranzia = async function (id) { await _ensureFirma(id); return oZip.apply(this, arguments); };
+  const oDet = showDetailCommessa;
+  showDetailCommessa = function (id) {
+    const r = oDet.apply(this, arguments);
+    const cm = commesse.find(c => c.id === id);
+    if (cm && cm.haFirma && !cm.firma) _ensureFirma(id);
+    return r;
+  };
+})();
+
 function convertaAppInCommessa(appId) {
   const a = appuntamenti.find(x=>x.id===appId);
   if (!a) return;
@@ -11461,7 +11501,7 @@ let _firmaSoloComId = null;
 function faiFirmareCommessa(comId) {
   const cm = commesse.find(c=>c.id===comId);
   if (!cm) return;
-  if (cm.firma) { alert('Questa commessa è già firmata.'); return; }
+  if (cm.firma || cm.haFirma) { alert('Questa commessa è già firmata.'); return; }
   const v  = veicoli.find(x=>x.id===cm.veicoloId);
   const cl = clienti.find(c=>c.id===cm.clienteId);
   document.getElementById('firma-commessa-info').textContent = [cm.numero, v?.targa, cl?.ragione].filter(Boolean).join(' · ');
@@ -11489,7 +11529,7 @@ async function confermaSalvaCommessa() {
     const { error } = await supa.from('commesse').update({ firma, firma_data: quando }).eq('id', soloComId);
     if (error) { alert('Errore salvataggio firma: ' + error.message); return; }
     const cm = commesse.find(c=>c.id===soloComId);
-    if (cm) { cm.firma = firma; cm.firmaData = quando; }
+    if (cm) { cm.firma = firma; cm.firmaData = quando; cm.haFirma = true; } _firmeMem()[soloComId] = firma;
     showToast('Firma salvata ✓');
     if (selectedCommessaId === soloComId) showDetailCommessa(soloComId);
     return;
