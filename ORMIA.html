@@ -5928,8 +5928,9 @@ function renderCommesse() {
 
   // ── EMPTY ────────────────────────────────────────────
   const empty = document.getElementById('empty-commesse');
+  try { _renderArchivioCommesse(q); } catch (e) { console.warn('[archivio]', e); }
   if (!filtered.length) {
-    empty.style.display='';
+    empty.style.display = window._nArchivio ? 'none' : '';
     document.getElementById('dash-kanban').style.display='none';
     document.getElementById('lista-commesse').style.display='none';
     return;
@@ -11058,6 +11059,95 @@ function _ordRecenti(tipo) {
   return (a, b) => (Math.max(r[b.id] || 0, base(b)) - Math.max(r[a.id] || 0, base(a))) || nome(a).localeCompare(nome(b));
 }
 const _contiene = (q, ...campi) => campi.some(x => String(x == null ? '' : x).toLowerCase().includes(q));
+
+// ── Archivio commesse: cercando compaiono anche fatturate e garanzie chiuse; le fatturate si aprono in sola consultazione ──
+function _matchCom(cm, q) {
+  const cl = clienti.find(c => c.id === cm.clienteId), v = veicoli.find(x => x.id === cm.veicoloId);
+  const qs = q.replace(/\s/g, '');
+  return [cm.descrizione, cm.desc, cm.numero, cl?.ragione, v?.targa, v?.marca, v?.modello, v?.telaio]
+    .some(x => String(x || '').toLowerCase().includes(q)) || String(v?.targa || '').replace(/\s/g, '').toLowerCase().includes(qs);
+}
+function _renderArchivioCommesse(q) {
+  const lc = document.getElementById('lista-commesse');
+  let box = document.getElementById('archivio-commesse');
+  if (!box && lc) {
+    box = document.createElement('div'); box.id = 'archivio-commesse';
+    const kb = document.getElementById('dash-kanban');
+    const dopo = kb && (lc.compareDocumentPosition(kb) & Node.DOCUMENT_POSITION_FOLLOWING) ? kb : lc;
+    dopo.parentNode.insertBefore(box, dopo.nextSibling);
+  }
+  window._nArchivio = 0;
+  if (!box) return;
+  if (!q || q.length < 2 || window._soloDaCtrl) { box.innerHTML = ''; return; }
+  const arr = commesse.filter(cm => (cm.stato === 'fatturata' || _isPraticaGar(cm)) && _matchCom(cm, q))
+    .sort((a, b) => String(b.dataApertura || b.createdAt || '').localeCompare(String(a.dataApertura || a.createdAt || '')));
+  window._nArchivio = arr.length;
+  if (!arr.length) { box.innerHTML = ''; return; }
+  const vis = _limita('archivio', arr, q);
+  const lblGar = { attesa: 'in attesa', accettata: 'accettata', fatturata: 'fatturata a Ford', pagata: 'pagata', respinta: 'respinta' };
+  const pill = (bg, fg, bd, t) => `<span style="background:${bg};color:${fg};font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;border:1px solid ${bd};white-space:nowrap">${t}</span>`;
+  const card = cm => {
+    const cl = clienti.find(c => c.id === cm.clienteId), v = veicoli.find(x => x.id === cm.veicoloId);
+    const fid = cm.fatturaId || cm.garFatturaId;
+    const f = fid && typeof fatture !== 'undefined' ? fatture.find(x => x.id === fid) : null;
+    const et = _isPraticaGar(cm)
+      ? pill('#FEF3C7', '#92400E', '#FDE68A', '🔧 GARANZIA · ' + (lblGar[_statoPratica(cm)] || ''))
+      : pill('#ECFDF5', '#047857', '#A7F3D0', '✅ FATTURATA' + (f ? ' · ' + _escF(f.numero || '') + ' del ' + formatDate(f.data) : ''));
+    return `<div class="commessa-card" onclick="showDetailCommessa('${cm.id}')" style="cursor:pointer">
+      <div class="commessa-card-body">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          ${v?.targa ? `<span class="commessa-targa" style="font-size:15px;padding:2px 9px;letter-spacing:1px">${_escF(v.targa)}</span>` : ''}
+          <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text3)">${_escF(cm.numero || '')} · ${formatDate(cm.dataApertura) || '—'}</span>
+          ${et}
+          <span style="margin-left:auto;font-family:'DM Mono',monospace;font-weight:700">${cm.totale ? _eurF(cm.totale) : '—'}</span>
+        </div>
+        <div class="commessa-desc" style="margin-top:6px">${_escF(cm.descrizione || cm.desc || '')}</div>
+        <div class="commessa-cliente">${cl ? _escF(cl.ragione || '') : ''}${v && (v.marca || v.modello) ? ' <span style="font-size:12px;color:var(--text3)">· ' + _escF([v.marca, v.modello].filter(Boolean).join(' ')) + '</span>' : ''}</div>
+      </div></div>`;
+  };
+  box.innerHTML = `<div style="display:flex;align-items:center;gap:10px;margin:22px 0 10px;color:var(--text3);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px">
+      <span>📁 Archivio</span><span style="flex:1;height:1px;background:var(--border)"></span><span>${arr.length} trovat${arr.length === 1 ? 'a' : 'e'}</span></div>
+    ${vis.map(card).join('')}
+    ${vis.length < arr.length ? `<div style="text-align:center;padding:10px;font-size:12px;color:var(--text3)">Mostrate ${vis.length} di ${arr.length} · <button class="btn btn-secondary btn-sm" onclick="_listLim.archivio=(_listLim.archivio||50)+50;renderCommesse()">Mostra altre 50</button></div>` : ''}`;
+}
+// Commessa fatturata: pannello in sola consultazione (stampe, prefattura, ZIP e fattura restano disponibili)
+function _soloLetturaReset() {
+  const root = document.getElementById('detail-commessa'); if (!root) return;
+  root.querySelectorAll('[data-ro]').forEach(el => {
+    if (el.dataset.ro === 'h') el.style.display = el.dataset.roPrev || ''; else el.disabled = false;
+    el.removeAttribute('data-ro'); el.removeAttribute('data-ro-prev');
+  });
+  document.getElementById('dc-archivio')?.remove();
+}
+function _soloLetturaCommessa(id) {
+  const root = document.getElementById('detail-commessa'); if (!root) return;
+  const cm = commesse.find(c => c.id === id); if (!cm || cm.stato !== 'fatturata') return;
+  const ok = /stampaCommessa|stampaPrefattura|closeDetail|scaricaZipGaranzia|stampaFattura/;
+  root.querySelectorAll('button, [onclick]').forEach(el => {
+    const oc = el.getAttribute('onclick') || '';
+    if (ok.test(oc)) return;
+    if (el.tagName !== 'BUTTON' && !/elimin|rimuov|delete|remove|aggiung|add|incass|modific|edit|nuov|segna|annulla|cambia|firma|timbr/i.test(oc)) return;
+    el.dataset.ro = 'h'; el.dataset.roPrev = el.style.display; el.style.display = 'none';
+  });
+  root.querySelectorAll('input, textarea, select').forEach(i => { if (i.disabled) return; i.dataset.ro = 'd'; i.disabled = true; });
+  const f = typeof fatture !== 'undefined' ? fatture.find(x => x.id === cm.fatturaId) : null;
+  const ban = document.createElement('div'); ban.id = 'dc-archivio';
+  ban.style.cssText = 'margin:0 0 12px;padding:10px 14px;border-radius:var(--radius);background:#ECFDF5;border:1px solid #A7F3D0;color:#047857;font-size:13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap';
+  ban.innerHTML = `<span style="font-weight:700">📁 Commessa fatturata${f ? ' · ' + _escF(f.numero || '') + ' del ' + formatDate(f.data) : ''}</span><span style="color:#065F46">sola consultazione</span>
+    ${f ? `<button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="stampaFattura('${f.id}')">🧾 Apri fattura</button>` : ''}`;
+  const head = root.querySelector('.detail-header');
+  if (head && head.nextSibling) head.parentNode.insertBefore(ban, head.nextSibling); else root.prepend(ban);
+}
+(function () {
+  const orig = showDetailCommessa;
+  showDetailCommessa = function (id) {
+    try { _soloLetturaReset(); } catch (_) {}
+    const r = orig.apply(this, arguments);
+    const after = () => { try { _soloLetturaCommessa(id); } catch (e) { console.warn('[sola lettura]', e); } };
+    if (r && typeof r.then === 'function') r.then(after, after); else after();
+    return r;
+  };
+})();
 
 function convertaAppInCommessa(appId) {
   const a = appuntamenti.find(x=>x.id===appId);
