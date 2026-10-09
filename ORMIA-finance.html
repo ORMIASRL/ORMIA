@@ -6,6 +6,19 @@
 <title>ORMIA Finance</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script>
+// Commesse senza la colonna firma (immagini pesanti): meno traffico verso Supabase
+async function _colsComT() {
+  if (window.__colsCom) return window.__colsCom;
+  try {
+    let r = await supa.from('commesse').select('*').is('firma', null).limit(1);
+    if (!r.data || !r.data.length) r = await supa.from('commesse').select('*').limit(1);
+    const k = r.data && r.data[0] ? Object.keys(r.data[0]).filter(x => x !== 'firma') : [];
+    if (k.length) window.__colsCom = k.join(',');
+  } catch (_) {}
+  return window.__colsCom || '*';
+}
+</script>
+<script>
 /* ORMIA — ora del server: tutte le date usano l'orologio del server, non quello del PC */
 (function () {
   if (window.__ormiaOraServer) return;
@@ -833,7 +846,7 @@ async function loadAll() {
     supa.from('fatture').select('*').order('created_at', {ascending:false}),
     supa.from('incassi').select('*').order('data', {ascending:false}),
     supa.from('clienti').select('*').order('ragione'),
-    supa.from('commesse').select('*').in('stato',['chiusa','fatturata']).order('created_at',{ascending:false}).limit(100),
+    supa.from('commesse').select(await _colsComT()).in('stato',['chiusa','fatturata']).order('created_at',{ascending:false}).limit(100),
     supa.from('note_credito').select('*').order('created_at', {ascending:false}),
   ]);
   _fatture     = (f.data||[]).map(x=>({...x, clienteId:x.cliente_id, commessaId:x.commessa_id, fatturaId:x.id, ficId:x.fic_id, ficStato:x.fic_stato, dataPagamento:x.data_pagamento, scadenza:x.scadenza}));
