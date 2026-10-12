@@ -1741,6 +1741,20 @@
           <input type="date" id="v-garanzia-scadenza">
           <div style="font-size:11px;color:var(--text3);margin-top:3px">Il veicolo verrà segnalato come fuori garanzia dopo questa data</div>
         </div>
+        <div class="form-section-title">Contratto di manutenzione</div>
+        <div class="form-group span-2">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="v-contratto" style="width:16px;height:16px;cursor:pointer" onchange="document.getElementById('v-contratto-wrap').style.display=this.checked?'contents':'none'">
+            Contratto di manutenzione attivo
+          </label>
+        </div>
+        <div id="v-contratto-wrap" style="display:none">
+          <div class="form-group"><label>Scadenza contratto *</label><input type="date" id="v-contratto-scad"></div>
+          <div class="form-group"><label>Scadenza km</label><input autocomplete="off" type="text" id="v-contratto-km" placeholder="Es. 500000"></div>
+          <div class="form-group"><label>Tipo / nome contratto</label><input autocomplete="off" type="text" id="v-contratto-tipo" placeholder="Es. Ford Protect"></div>
+          <div class="form-group"><label>N. contratto</label><input autocomplete="off" type="text" id="v-contratto-num"></div>
+          <div class="form-group span-2"><label>Cosa copre</label><input autocomplete="off" type="text" id="v-contratto-note" placeholder="Es. solo tagliandi / manutenzione e usura"></div>
+        </div>
         <div class="form-group span-2">
           <label>Note</label>
           <textarea autocomplete="off" id="v-note" placeholder="Difetti noti, particolarità..."></textarea>
@@ -2185,6 +2199,7 @@ async function saveVeicolo() {
   if (!_isRim && !km)  errs.push('• Chilometraggio attuale');
   if (!_isRim && isFord && !oreMotore) errs.push('• Ore motore (obbligatorie per Ford)');
   if (isFord && garanzia && !garanziaScadenza) errs.push('• Data scadenza garanzia (obbligatoria se in garanzia)');
+  if (document.getElementById('v-contratto')?.checked && !document.getElementById('v-contratto-scad').value) errs.push('• Scadenza del contratto di manutenzione');
 
   if (errs.length) {
     alert('Campi obbligatori mancanti:\n\n' + errs.join('\n'));
@@ -2205,6 +2220,12 @@ async function saveVeicolo() {
     tagliandoData: document.getElementById('v-tagliando-data').value || null,
     garanzia,
     garanziaScadenza: garanziaScadenza || null,
+    contratto: !!document.getElementById('v-contratto')?.checked,
+    contrattoScadenza: document.getElementById('v-contratto-scad')?.value || null,
+    contrattoKm:   (document.getElementById('v-contratto-km')?.value || '').trim() || null,
+    contrattoTipo: (document.getElementById('v-contratto-tipo')?.value || '').trim() || null,
+    contrattoNum:  (document.getElementById('v-contratto-num')?.value || '').trim() || null,
+    contrattoNote: (document.getElementById('v-contratto-note')?.value || '').trim() || null,
     note: document.getElementById('v-note').value.trim(),
   };
   // Il tipo si salva solo per i rimorchi (i veicoli usano il valore predefinito del database)
@@ -2309,6 +2330,8 @@ function showDetailVeicolo(id) {
     const dg = daysUntil(v.garanziaScadenza);
     scadenze.unshift({label:'Garanzia', val:v.garanziaScadenza, isGaranzia:true, scaduta: dg < 0});
   }
+
+  if (v.contratto && v.contrattoScadenza) scadenze.unshift({label:'Contratto manutenzione', val:String(v.contrattoScadenza).slice(0, 10)});
 
   // Tagliando — alert a 6 mesi
   if (v.tagliandoData) {
@@ -2438,6 +2461,10 @@ function openModal(type, preselectClienteId, editId, tipoNuovo) {
         document.getElementById('v-garanzia').checked = !!v.garanzia;
         document.getElementById('v-garanzia-scadenza').value = v.garanziaScadenza||'';
         document.getElementById('v-garanzia-scadenza-wrap').style.display = v.garanzia ? '' : 'none';
+        { const _c = !!v.contratto; document.getElementById('v-contratto').checked = _c; document.getElementById('v-contratto-wrap').style.display = _c ? 'contents' : 'none';
+          document.getElementById('v-contratto-scad').value = v.contrattoScadenza ? String(v.contrattoScadenza).slice(0, 10) : '';
+          document.getElementById('v-contratto-km').value = v.contrattoKm || ''; document.getElementById('v-contratto-tipo').value = v.contrattoTipo || '';
+          document.getElementById('v-contratto-num').value = v.contrattoNum || ''; document.getElementById('v-contratto-note').value = v.contrattoNote || ''; }
         document.getElementById('v-note').value = v.note||'';
       }
     } else {
@@ -2446,6 +2473,8 @@ function openModal(type, preselectClienteId, editId, tipoNuovo) {
       document.getElementById('v-garanzia').checked = false;
       document.getElementById('v-garanzia-scadenza').value = '';
       document.getElementById('v-garanzia-scadenza-wrap').style.display = 'none';
+      document.getElementById('v-contratto').checked = false; document.getElementById('v-contratto-wrap').style.display = 'none';
+      ['v-contratto-scad','v-contratto-km','v-contratto-tipo','v-contratto-num','v-contratto-note'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
       document.getElementById('v-ore-motore').value = '';
       if (preselectClienteId) document.getElementById('v-cliente').value = preselectClienteId;
     }
@@ -5961,7 +5990,7 @@ function renderCommesse() {
           .map(mid=>{ const m=meccanici.find(x=>x.id===mid); return m?m.nome:null; }).filter(Boolean);
         const totFmt = cm.totale ? '€ '+cm.totale.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,'.') : '—';
         return `<div class="k-card k-${cm.stato}" onclick="showDetailCommessa('${cm.id}')">
-          <div class="k-num">${cm.numero||''} <span style="opacity:.5">·</span> ${formatDate(cm.dataApertura)||'—'}${_comInGaranzia(cm)?' <span style="color:var(--warning);font-size:10px;font-weight:700">🔧 GAR.</span>':''}</div>
+          <div class="k-num">${cm.numero||''} <span style="opacity:.5">·</span> ${formatDate(cm.dataApertura)||'—'}${_comInGaranzia(cm)?' <span style="color:var(--warning);font-size:10px;font-weight:700">🔧 GAR.</span>':''}${_badgeContratto(cm)}</div>
           <div class="k-desc">${cm.descrizione||cm.desc}</div>
           <div class="k-cli">
             ${cl?`<span>${cl.ragione}</span>`:''}
@@ -6006,7 +6035,7 @@ function renderCommesse() {
         <div class="commessa-card-body">
           <div class="commessa-card-top">
             <div style="flex:1;min-width:0">
-              <div class="commessa-num">${v&&v.targa?`<span class="commessa-targa" style="font-size:18px;padding:3px 11px;letter-spacing:1.5px">${v.targa}</span>`:(cm.numero||'')} <span style="color:var(--border2)">·</span> <span style="color:var(--text3);font-weight:400;font-size:11px">${formatDate(cm.dataApertura)||'—'}</span>${_comInGaranzia(cm)?` <span style="background:var(--warning-light);color:var(--warning);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;border:1px solid #FDE68A">🔧 GAR.</span>`:''}${cm.stato==='chiusa'&&!cm.controllataAt&&!cm.fatturaId?` <span style="background:#FEF3C7;color:#92400E;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;border:1px solid #FDE68A">🔍 DA CONTROLLARE</span>`:''}</div>
+              <div class="commessa-num">${v&&v.targa?`<span class="commessa-targa" style="font-size:18px;padding:3px 11px;letter-spacing:1.5px">${v.targa}</span>`:(cm.numero||'')} <span style="color:var(--border2)">·</span> <span style="color:var(--text3);font-weight:400;font-size:11px">${formatDate(cm.dataApertura)||'—'}</span>${_comInGaranzia(cm)?` <span style="background:var(--warning-light);color:var(--warning);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;border:1px solid #FDE68A">🔧 GAR.</span>`:''}${_badgeContratto(cm)}${cm.stato==='chiusa'&&!cm.controllataAt&&!cm.fatturaId?` <span style="background:#FEF3C7;color:#92400E;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;border:1px solid #FDE68A">🔍 DA CONTROLLARE</span>`:''}</div>
               <div class="commessa-desc">${cm.descrizione||cm.desc}</div>
               <div class="commessa-cliente" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                 ${cl?`<span>${cl.ragione}</span>`:''}
@@ -6868,6 +6897,7 @@ function selezionaVeicoloCommessa(vId) {
   closeModal('modal-sel-veicolo');
   onVeicoloChange();
   _aggGaranziaCommessa();
+  try { _avvisoContratto(vId); } catch (_) {}
   setTimeout(() => { const km = document.getElementById('com-km'); if(km) km.focus(); }, 100);
 }
 
@@ -11393,6 +11423,53 @@ async function _ensureFirma(id) {
     const r = oDet.apply(this, arguments);
     const cm = commesse.find(c => c.id === id);
     if (cm && cm.haFirma && !cm.firma) _ensureFirma(id);
+    return r;
+  };
+})();
+
+// ── Contratto di manutenzione (mezzi Ford): promemoria nella scheda veicolo e nelle commesse ──
+function _contrattoStato(v) {
+  if (!v || !v.contratto || !v.contrattoScadenza) return null;
+  const scadData = new Date(String(v.contrattoScadenza).slice(0, 10) + 'T23:59:59') < new Date();
+  const kmMax = parseInt(String(v.contrattoKm || '').replace(/\D/g, ''), 10);
+  const kmNow = parseInt(String(v.km || '').replace(/\D/g, ''), 10);
+  const scadKm = kmMax > 0 && kmNow > 0 && kmNow > kmMax;
+  return { scaduto: scadData || scadKm, perKm: !scadData && scadKm };
+}
+function _badgeContratto(cm) {
+  const s = _contrattoStato(veicoli.find(x => x.id === cm.veicoloId)); if (!s) return '';
+  return s.scaduto
+    ? ' <span style="background:var(--surface2);color:var(--text3);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;border:1px solid var(--border)">📄 CONTRATTO SCADUTO</span>'
+    : ' <span style="background:#E0F2FE;color:#075985;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;border:1px solid #BAE6FD">📄 CONTRATTO</span>';
+}
+function _testoContratto(v) {
+  const s = _contrattoStato(v); if (!s) return '';
+  const km = parseInt(String(v.contrattoKm || '').replace(/\D/g, ''), 10);
+  return [v.contrattoTipo, v.contrattoNum ? 'n. ' + v.contrattoNum : '',
+    'scade il ' + formatDate(String(v.contrattoScadenza).slice(0, 10)) + (km > 0 ? ' o a ' + km.toLocaleString('it-IT') + ' km' : '')]
+    .filter(Boolean).join(' · ');
+}
+function _renderContrattoDC(id) {
+  document.getElementById('dc-contratto')?.remove();
+  const cm = commesse.find(c => c.id === id); if (!cm) return;
+  const v = veicoli.find(x => x.id === cm.veicoloId); const s = _contrattoStato(v); if (!s) return;
+  const ref = document.getElementById('dc-controllo'); if (!ref) return;
+  const box = document.createElement('div'); box.id = 'dc-contratto'; box.className = 'detail-section';
+  box.innerHTML = `<div style="border:1px solid ${s.scaduto ? 'var(--border)' : '#BAE6FD'};background:${s.scaduto ? 'var(--surface2)' : '#F0F9FF'};border-radius:var(--radius);padding:10px 14px;font-size:13px;color:${s.scaduto ? 'var(--text3)' : '#075985'}">
+    <div style="font-weight:800;margin-bottom:2px">📄 Contratto di manutenzione${s.scaduto ? ' — SCADUTO' + (s.perKm ? ' (km superati)' : '') : ' attivo'}</div>
+    <div>${_escF(_testoContratto(v))}</div>
+    ${v.contrattoNote ? `<div style="margin-top:2px">Copre: <b>${_escF(v.contrattoNote)}</b></div>` : ''}</div>`;
+  ref.parentNode.insertBefore(box, ref);
+}
+function _avvisoContratto(vId) {
+  const v = veicoli.find(x => x.id === vId); const s = _contrattoStato(v); if (!s) return;
+  showToast(s.scaduto ? '📄 Il contratto di manutenzione di questo mezzo è SCADUTO' : '📄 Mezzo con contratto di manutenzione attivo · ' + _testoContratto(v));
+}
+(function () {
+  const oDet = showDetailCommessa;
+  showDetailCommessa = function (id) {
+    const r = oDet.apply(this, arguments);
+    try { _renderContrattoDC(id); } catch (e) { console.warn('[contratto]', e); }
     return r;
   };
 })();
