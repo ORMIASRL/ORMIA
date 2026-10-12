@@ -2602,6 +2602,11 @@ function init() {
           <input type="number" id="mec-ore-giorno" min="1" max="12" step="0.5" placeholder="8" style="font-family:'DM Mono',monospace;width:120px">
           <div style="font-size:11px;color:var(--text3);margin-top:3px">Es. 8 tempo pieno, 5 part-time. Se in un giorno lavora meno, la differenza va da sola nelle ore di permesso</div>
         </div>
+        <div class="form-group span-2">
+          <label>Inizio turno personale</label>
+          <input type="time" id="mec-ora-inizio" style="font-family:'DM Mono',monospace;width:120px">
+          <div style="font-size:11px;color:var(--text3);margin-top:3px">Lascia vuoto per usare l'orario dell'officina. Il ritardo scatta con la stessa tolleranza (es. 9:30 → ritardo dopo le 10:00)</div>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -5211,11 +5216,13 @@ function openModalMeccanico(editId) {
       document.getElementById('mec-badge').value = m.badge||'';
       document.getElementById('mec-ora-uscita').value = m.ora_uscita_automatica||m.oraUscitaAutomatica||'17:00';
       { const _og = document.getElementById('mec-ore-giorno'); if (_og) _og.value = m.oreGiornaliere || ''; }
+      { const _oi = document.getElementById('mec-ora-inizio'); if (_oi) _oi.value = String(m.oraInizio || '').slice(0, 5); }
       setRuoliSelezionati(m.ruoli||m.ruolo||[]);
     }
   } else {
     ['mec-nome','mec-tel','mec-email','mec-note','mec-pin','mec-badge'].forEach(id=>document.getElementById(id).value='');
     { const _og = document.getElementById('mec-ore-giorno'); if (_og) _og.value = ''; }
+    { const _oi = document.getElementById('mec-ora-inizio'); if (_oi) _oi.value = ''; }
     document.getElementById('mec-ora-uscita').value = '17:00'; // orario predefinito, non quello del dipendente precedente
     setRuoliSelezionati([]);
   }
@@ -5286,6 +5293,7 @@ async function saveMeccanico() {
     pin:    pin || null,
     badge:  (document.getElementById('mec-badge').value.trim().toUpperCase() || null),
     ora_uscita_automatica: document.getElementById('mec-ora-uscita').value || '17:00',
+    ora_inizio: document.getElementById('mec-ora-inizio')?.value || null,
     ore_giornaliere: parseFloat(String(document.getElementById('mec-ore-giorno')?.value || '').replace(',', '.')) || null,
     attivo: true,
   };
@@ -10601,7 +10609,7 @@ td{padding:7px 10px;border-bottom:1px solid #E4E2DC}.c{text-align:center;width:6
 <div class="hdr"><div><div class="on">${e(off.ragione || 'Officina')}</div><div class="om">${e(off.indirizzo || '')}<br>${off.tel ? 'Tel: ' + e(off.tel) + '  ' : ''}${e(off.email || '')}<br>${off.piva ? 'P.IVA: ' + e(off.piva) : ''}</div></div>
 <div class="di"><div class="dt">PREFATTURA</div><div class="dd">Commessa ${e(cm.numero || '')}</div><div class="dd">Data: ${fd(oggi)}</div><div class="nf">DOCUMENTO NON VALIDO AI FINI FISCALI</div></div></div>
 <div class="g2"><div class="bx"><div class="bt">Cliente</div><div class="bm">${e(cl?.ragione || 'Cliente occasionale')}</div><div class="bs">${cl?.piva ? 'P.IVA: ' + e(cl.piva) + '<br>' : ''}${cl?.cf ? 'C.F.: ' + e(cl.cf) + '<br>' : ''}${e(cl?.indirizzo || '')}</div></div>
-<div class="bx"><div class="bt">Veicolo</div><div class="bm">${e(v?.targa || '—')} ${e([v?.marca, v?.modello].filter(Boolean).join(' '))}</div><div class="bs">${v?.km ? 'Km: ' + Number(v.km).toLocaleString('it-IT') : ''}</div></div></div>
+<div class="bx"><div class="bt">Veicolo</div><div class="bm">${e(v?.targa || '—')} ${e([v?.marca, v?.modello].filter(Boolean).join(' '))}</div><div class="bs">${(v?.telaio || v?.vin) ? 'Telaio: ' + e(v.telaio || v.vin) + '<br>' : ''}${v?.km ? 'Km: ' + Number(v.km).toLocaleString('it-IT') : ''}</div></div></div>
 <table><thead><tr><th>Descrizione</th><th class="c">Q.tà</th><th class="r">Prezzo</th>${hasSc ? '<th class="c">Sconto</th>' : ''}<th class="r">Importo</th></tr></thead><tbody>${rows}</tbody></table>
 <div class="tf"><div class="tb"><div class="tr_"><span>Imponibile</span><span>${eu(imponibile)}</span></div><div class="tr_"><span>IVA ${iva}%</span><span>${eu(ivaAmt)}</span></div><div class="tr_ fin"><span>TOTALE</span><span>${eu(totale)}</span></div></div></div>
 ${pag ? `<div class="pb"><strong>Pagamento:</strong> ${e(pag)}${scad && scad !== oggi ? ' · scadenza prevista ' + fd(scad) : ''}${off.iban ? '<br><strong>IBAN:</strong> ' + e(off.iban) : ''}</div>` : ''}
@@ -11548,6 +11556,30 @@ async function pv2ModPermesso(dipId, data) {
   } catch (e) { alert('Errore salvataggio: ' + e.message); }
 }
 
+// ── Dati veicolo in fattura (anche su Fatture in Cloud): marca/modello, targa, telaio, km, commessa ──
+function _veicoloInfoFatt(f) {
+  const cm = f && f.origineId ? commesse.find(c => c.id === f.origineId) : null;
+  const v = cm ? veicoli.find(x => x.id === cm.veicoloId) : null;
+  if (!v) return { testo: (f && f.veicolo) || '', cm, v: null };
+  const tel = String(v.telaio || v.vin || '').trim();
+  const kmN = parseInt(String(v.km || '').replace(/\D/g, ''), 10);
+  const parts = [[v.marca, v.modello].filter(Boolean).join(' '), v.targa ? 'Targa ' + v.targa : '',
+    tel ? 'Telaio ' + tel : '', kmN > 0 ? 'Km ' + kmN.toLocaleString('it-IT') : ''].filter(Boolean);
+  return { testo: parts.join(' · '), cm, v };
+}
+function _ficExtra(f) {
+  const out = {};
+  try {
+    const vi = _veicoloInfoFatt(f);
+    const ogg = [vi.testo ? 'Veicolo: ' + vi.testo : '', vi.cm && vi.cm.numero ? 'Commessa ' + vi.cm.numero : ''].filter(Boolean).join(' · ');
+    if (ogg) out.visible_subject = ogg.slice(0, 200);
+    const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+    const note = [f.note ? '<b>Note:</b> ' + esc(f.note) : '', f.offNoteDoc ? esc(f.offNoteDoc) : ''].filter(Boolean).join('<br><br>');
+    if (note) out.notes = note;
+  } catch (e) { console.warn('[FiC extra]', e); }
+  return out;
+}
+
 function convertaAppInCommessa(appId) {
   const a = appuntamenti.find(x=>x.id===appId);
   if (!a) return;
@@ -12327,7 +12359,7 @@ ${f.stato==='pagata'?'<div class="ps">PAGATA</div>':''}
 <div class="bx"><div class="bt">Emittente</div><div class="bm">${f.offRagione||'—'}</div><div class="bs">${f.offPiva?'P.IVA: '+f.offPiva:''}<br>${f.offIndirizzo||''}</div></div>
 <div class="bx"><div class="bt">Destinatario</div><div class="bm">${f.clRagione||'Cliente occasionale'}</div><div class="bs">${f.clPiva?'P.IVA: '+f.clPiva+'<br>':''}${f.clCf?'C.F.: '+f.clCf+'<br>':''}${f.clIndirizzo||''}${f.clSdi?'<br>SDI: '+f.clSdi:''}</div></div>
 </div>
-${f.veicolo?`<div class="lb">Veicolo: ${f.veicolo}</div>`:''}
+${(() => { const _vi = _veicoloInfoFatt(f); const _t = [_vi.testo, _vi.cm && _vi.cm.numero ? 'Commessa ' + _vi.cm.numero : ''].filter(Boolean).join(' · '); return _t ? `<div class="lb">Veicolo: ${_escF(_t)}</div>` : ''; })()}
 <table><thead><tr><th>Descrizione</th><th>Q.tà</th><th>Prezzo unit.</th><th>Totale</th></tr></thead><tbody>${rows}</tbody></table>
 <div class="tf"><div class="tb">
 <div class="tr_"><span>Imponibile</span><span>€ ${(f.imponibile||0).toFixed(2)}</span></div>
@@ -13231,6 +13263,7 @@ async function autoInviaFIC(fatt) {
                address_street:[cl?.via, cl?.civico].filter(Boolean).join(' '), address_postal_code:cl?.cap||'', address_city:cl?.citta||'',
                address_province:cl?.provincia||'', country:'Italia' },
       ei_data:{ vat_kind:'I', payment_method:metodo, ...(metodo==='MP05' && iban ? { bank_iban: iban } : {}) },
+      ..._ficExtra(fatt),
       items_list: items,
       payments_list: [{ amount: Math.round((fatt.totale||0)*100)/100, due_date: (fatt.scadenza||fatt.data||new Date().toISOString()).split('T')[0], status: 'not_paid' }],
     }, options: { fix_payments: true } });
