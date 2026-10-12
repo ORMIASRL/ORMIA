@@ -2597,6 +2597,11 @@ function init() {
           <input type="time" id="mec-ora-uscita" value="17:00" style="font-family:'DM Mono',monospace;width:120px">
           <div style="font-size:11px;color:var(--text3);margin-top:3px">Se dimentica di timbrare l'uscita, viene chiusa automaticamente a quest'ora</div>
         </div>
+        <div class="form-group span-2">
+          <label>Ore di lavoro al giorno (contratto)</label>
+          <input type="number" id="mec-ore-giorno" min="1" max="12" step="0.5" placeholder="8" style="font-family:'DM Mono',monospace;width:120px">
+          <div style="font-size:11px;color:var(--text3);margin-top:3px">Es. 8 tempo pieno, 5 part-time. Se in un giorno lavora meno, la differenza va da sola nelle ore di permesso</div>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -3575,7 +3580,7 @@ async function pv2Dettaglio(dipId, data) {
     <div style="position:relative;height:34px;background:var(--surface2);border-radius:8px;margin-bottom:2px">${bar}</div>
     <div style="position:relative;height:14px;margin-bottom:16px">${ore}</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
-      ${box('Entrata', p ? _pv2Hm(p.entrata) : '—')}${box('Pausa', p && p.pausaInizio ? _pv2Hm(p.pausaInizio) + '–' + (_pv2Hm(p.pausaFine) || '…') : '—')}${box('Uscita', g.pUlt ? (_pv2Hm(g.pUlt.uscita) || 'in sede') : '—')}${box('Presenza', p ? _pv2Min(g.minPres) : '—')}${box('Su commesse', _pv2Min(g.minCom))}${g.minInt ? box('🧹 Interni', _pv2Min(g.minInt)) : ''}
+      ${box('Entrata', p ? _pv2Hm(p.entrata) : '—')}${box('Pausa', p && p.pausaInizio ? _pv2Hm(p.pausaInizio) + '–' + (_pv2Hm(p.pausaFine) || '…') : '—')}${box('Uscita', g.pUlt ? (_pv2Hm(g.pUlt.uscita) || 'in sede') : '—')}${box('Presenza', p ? _pv2Min(g.minPres) : '—')}${box('Su commesse', _pv2Min(g.minCom))}${g.minInt ? box('🧹 Interni', _pv2Min(g.minInt)) : ''}${p ? (() => { const pg = _permessoGiorno(dipId, data); return `<div onclick="pv2ModPermesso('${dipId}','${data}')" title="Clicca per correggere a mano" style="cursor:pointer">${box('Permesso ✎', pg ? _fmtOreP(pg.ore) + (pg.man != null ? ' a mano' : '') : '—')}</div>`; })() : ''}
       <div style="margin-left:auto">${p ? `<button class="btn btn-secondary btn-sm" onclick="apriModificaPresenza('${p.id}')">✏️ Correggi presenza</button>` : `<button class="btn btn-primary btn-sm" onclick="pv2CreaPresenza('${dipId}','${data}')">+ Crea presenza</button>`}</div>
     </div>
     ${g.ps.length > 1 ? `<div style="margin:-6px 0 14px;font-size:13px">${g.ps.map((q, i) => `<div style="display:flex;align-items:center;gap:8px;padding:3px 0"><b style="width:70px">${i ? 'Rientro' : 'Turno'}</b><span style="font-family:'DM Mono',monospace">${_pv2Hm(q.entrata)} – ${_pv2Hm(q.uscita) || 'in sede'}</span><button class="btn btn-secondary btn-sm" onclick="apriModificaPresenza('${q.id}')" title="Correggi">✏️</button></div>`).join('')}</div>` : ''}
@@ -3693,6 +3698,7 @@ function pv2RenderMese() {
     const g = _pv2Giorno(dipId, data), p = g.p;
     if (p) { tot.pres += g.minPres; tot.gg++; tot.strao += (+p.straordinario || 0); if (p.ritardo) tot.rit++; }
     tot.com += g.minCom; tot.int = (tot.int || 0) + (g.minInt || 0);
+    const pg = _permessoGiorno(dipId, data); if (pg) tot.perm = (tot.perm || 0) + pg.ore;
     righe.push(`<tr onclick="pv2Dettaglio('${dipId}','${data}')" style="cursor:pointer;${we ? 'background:var(--surface2);' : ''}" onmouseover="this.style.outline='1px solid var(--accent)'" onmouseout="this.style.outline=''">
       <td style="${td};text-transform:capitalize;${we ? 'color:var(--text3)' : ''}">${dt.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit' })}</td>
       <td style="${td};font-family:'DM Mono',monospace">${p ? _pv2Hm(p.entrata) : (g.ass ? '<span style="color:var(--warning);font-weight:700">' + _pv2Esc(g.ass.tipo) + '</span>' : '—')}</td>
@@ -3702,13 +3708,14 @@ function pv2RenderMese() {
       <td style="${td};font-family:'DM Mono',monospace">${g.tims.length ? _pv2Min(g.minCom) : ''}</td>
       <td style="${td};font-family:'DM Mono',monospace;color:#B45309">${g.minInt ? _pv2Min(g.minInt) : ''}</td>
       <td style="${td};font-family:'DM Mono',monospace">${p && +p.straordinario ? _pv2Min(p.straordinario * 60) : ''}</td>
+      <td style="${td};font-family:'DM Mono',monospace;color:#7C3AED">${pg && pg.ore ? _fmtOreP(pg.ore) + (pg.man != null ? ' ✎' : '') : ''}</td>
       <td style="${td};color:var(--danger);font-size:12px">${p && p.ritardo ? 'ritardo ' + (p.minutiRitardo || '') + 'm ' : ''}${g.anom.length ? '⚠ ' + g.anom.length : ''}</td></tr>`);
   }
   const th = 'padding:8px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border)';
   box.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-      ${[['Giorni presenti', tot.gg], ['Ore presenza', _pv2Min(tot.pres)], ['Ore su commesse', _pv2Min(tot.com)], ['Lavori interni', _pv2Min(tot.int || 0)], ['Non assegnate', _pv2Min(Math.max(0, tot.pres - tot.com - (tot.int || 0)))], ['Straordinari', _pv2Min(tot.strao * 60)], ['Ritardi', tot.rit]].map(([l, v]) => `<div style="background:var(--surface2);border-radius:var(--radius);padding:8px 14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">${l}</div><div style="font-family:'DM Mono',monospace;font-size:16px;font-weight:800">${v}</div></div>`).join('')}
+      ${[['Giorni presenti', tot.gg], ['Ore presenza', _pv2Min(tot.pres)], ['Ore su commesse', _pv2Min(tot.com)], ['Lavori interni', _pv2Min(tot.int || 0)], ['Non assegnate', _pv2Min(Math.max(0, tot.pres - tot.com - (tot.int || 0)))], ['Straordinari', _pv2Min(tot.strao * 60)], ['Ore permesso', _fmtOreP(tot.perm || 0)], ['Ritardi', tot.rit]].map(([l, v]) => `<div style="background:var(--surface2);border-radius:var(--radius);padding:8px 14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">${l}</div><div style="font-family:'DM Mono',monospace;font-size:16px;font-weight:800">${v}</div></div>`).join('')}
     </div>
-    <div class="table-wrap"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="${th}">Giorno</th><th style="${th}">Entrata</th><th style="${th}">Pausa</th><th style="${th}">Uscita</th><th style="${th}">Presenza</th><th style="${th}">Su commesse</th><th style="${th}">Interni</th><th style="${th}">Straord.</th><th style="${th}">Note</th></tr></thead><tbody>${righe.join('')}</tbody></table></div>`;
+    <div class="table-wrap"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="${th}">Giorno</th><th style="${th}">Entrata</th><th style="${th}">Pausa</th><th style="${th}">Uscita</th><th style="${th}">Presenza</th><th style="${th}">Su commesse</th><th style="${th}">Interni</th><th style="${th}">Straord.</th><th style="${th}">Permesso</th><th style="${th}">Note</th></tr></thead><tbody>${righe.join('')}</tbody></table></div>`;
 }
 
 function pv2Excel() {
@@ -4790,12 +4797,12 @@ function esportaPresenzeExcel() {
     if (p.tipo==='ferie')    { r.ferie++;    return; }
     if (p.tipo==='malattia') { r.malattia++; return; }
     if (p.tipo==='permesso') { r.permesso++; return; }
-    r.giorni++;
+    r._gg = r._gg || {}; const _dg = _dataLocaleP(p); if (!r._gg[_dg]) { r._gg[_dg] = 1; r.giorni++; }
     r.oreTot      += p.oreTotali || 0;
     r.oreStrao    += p.straordinario || 0;
-    r.orePermesso += p.orePermesso || 0;
     if (p.ritardo) { r.ritardi++; r.minRitardo += p.minutiRitardo || 0; }
   });
+  Object.keys(riepilogo).forEach(id => { riepilogo[id].orePermesso = _permessoMese(id, mese); });
   const wsR = XLSX.utils.aoa_to_sheet([
     ['Dipendente','Ruolo','Giorni presenti','Ore totali','Ore straord.','Ore permesso','N° ritardi','Min. ritardo tot.','Giorni ferie','Giorni malattia','Giorni permesso'],
     ...Object.values(riepilogo).map(r=>[r.nome,r.ruolo,r.giorni,+r.oreTot.toFixed(2),+r.oreStrao.toFixed(2),+r.orePermesso.toFixed(2),r.ritardi,r.minRitardo,r.ferie,r.malattia,r.permesso])
@@ -4804,7 +4811,7 @@ function esportaPresenzeExcel() {
   XLSX.utils.book_append_sheet(wb, wsR, 'Riepilogo');
 
   // Dettaglio giornaliero
-  const righe = [['Dipendente','Data','Entrata','Uscita','Ore','Straord.','Ritardo','Min. ritardo','Tipo','Note']];
+  const righe = [['Dipendente','Data','Entrata','Uscita','Ore','Straord.','Ore permesso','Ritardo','Min. ritardo','Tipo','Note']];
   [...presMese].sort((a,b)=>a.entrata.localeCompare(b.entrata)).forEach(p => {
     const dip = meccanici.find(m=>m.id===p.dipId);
     righe.push([
@@ -4814,6 +4821,7 @@ function esportaPresenzeExcel() {
       p.uscita  ? new Date(p.uscita).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})  : 'Aperta',
       +((p.oreTotali||0)).toFixed(2),
       +((p.straordinario||0)).toFixed(2),
+      (() => { const _pg = _permessoGiorno(p.dipId, _dataLocaleP(p)); return _pg && _pg.p === p ? _pg.ore : 0; })(),
       p.ritardo ? 'Sì' : 'No',
       p.minutiRitardo || 0,
       p.tipo || 'normale',
@@ -4821,7 +4829,7 @@ function esportaPresenzeExcel() {
     ]);
   });
   const wsD = XLSX.utils.aoa_to_sheet(righe);
-  wsD['!cols'] = [22,12,10,10,8,10,8,12,12,20].map(w=>({wch:w}));
+  wsD['!cols'] = [22,12,10,10,8,10,12,8,12,12,20].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb, wsD, 'Dettaglio giornaliero');
 
   XLSX.writeFile(wb, `Presenze_${nomeMese}_${anno}.xlsx`);
@@ -4872,7 +4880,7 @@ function renderRiepilogoPresenze() {
   el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">` +
     Object.entries(riepilogo).map(([dipId,r])=>{
       const d = meccanici.find(x=>x.id===dipId);
-      const oreContr = (d?.oreContratto||8)*r.giorni;
+      const oreContr = _oreGiornoContratto(d)*r.giorni;
       const diff = r.ore-oreContr;
       const diffStr = diff>=0?`+${diff.toFixed(1)}h`:`${diff.toFixed(1)}h`;
       const diffColor = diff>=0?'var(--success)':'var(--danger)';
@@ -5202,10 +5210,12 @@ function openModalMeccanico(editId) {
       document.getElementById('mec-pin').value   = m.pin||'';
       document.getElementById('mec-badge').value = m.badge||'';
       document.getElementById('mec-ora-uscita').value = m.ora_uscita_automatica||m.oraUscitaAutomatica||'17:00';
+      { const _og = document.getElementById('mec-ore-giorno'); if (_og) _og.value = m.oreGiornaliere || ''; }
       setRuoliSelezionati(m.ruoli||m.ruolo||[]);
     }
   } else {
     ['mec-nome','mec-tel','mec-email','mec-note','mec-pin','mec-badge'].forEach(id=>document.getElementById(id).value='');
+    { const _og = document.getElementById('mec-ore-giorno'); if (_og) _og.value = ''; }
     document.getElementById('mec-ora-uscita').value = '17:00'; // orario predefinito, non quello del dipendente precedente
     setRuoliSelezionati([]);
   }
@@ -5276,6 +5286,7 @@ async function saveMeccanico() {
     pin:    pin || null,
     badge:  (document.getElementById('mec-badge').value.trim().toUpperCase() || null),
     ora_uscita_automatica: document.getElementById('mec-ora-uscita').value || '17:00',
+    ore_giornaliere: parseFloat(String(document.getElementById('mec-ore-giorno')?.value || '').replace(',', '.')) || null,
     attivo: true,
   };
   try {
@@ -11473,6 +11484,69 @@ function _avvisoContratto(vId) {
     return r;
   };
 })();
+
+// ── Permesso automatico: ore da contratto − ore lavorate, giorno per giorno ──
+// Vale per i giorni lavorativi (lun–ven) con presenza chiusa. Non tocca ferie / malattia / permesso a giornata intera.
+// Se l'ufficio scrive un valore a mano (ore_permesso_man) vale quello.
+function _oreGiornoContratto(d) {
+  const og = parseFloat(d && (d.oreGiornaliere != null ? d.oreGiornaliere : d.ore_giornaliere));
+  if (og > 0) return og;
+  const s = parseFloat(d && (d.oreSettimanali || d.ore_settimanali));
+  return s > 0 ? s / 5 : 8;
+}
+function _permessoGiorno(dipId, data) {
+  const g = _pv2Giorno(dipId, data);
+  if (!g.ps.length) return null;
+  if (g.ps.some(q => q.tipo && q.tipo !== 'normale')) return null;            // ferie / malattia / permesso a giornata
+  if (g.ass && g.ass.tipo !== 'permesso' && !g.ass.oraDalle && !g.ass.ora_dalle) return null; // assenza approvata di giornata intera
+  const man = g.ps.map(q => q.orePermessoMan).find(v => v != null && v !== '');
+  const dow = new Date(data + 'T12:00:00').getDay();
+  const feriale = dow >= 1 && dow <= 5;
+  const chiusa = g.ps.every(q => q.uscita);
+  const d = meccanici.find(m => m.id === dipId);
+  const contratto = _oreGiornoContratto(d);
+  const lavorate = Math.round(g.minPres) / 60;
+  let auto = 0;
+  if (feriale && chiusa) {
+    const mancano = Math.round(contratto * 60 - g.minPres);              // minuti
+    auto = mancano >= 10 ? Math.round(mancano / 60 * 100) / 100 : 0;    // sotto i 10 minuti non è permesso
+  }
+  if (man == null && (!feriale || !chiusa)) return null;
+  const ore = man != null ? Math.max(0, +man || 0) : auto;
+  return { ore, auto, man: man != null ? +man : null, contratto, lavorate, p: g.ps[0] };
+}
+function _permessoMese(dipId, mese) {
+  const [y, m] = mese.split('-').map(Number); const n = new Date(y, m, 0).getDate();
+  let tot = 0;
+  for (let i = 1; i <= n; i++) { const r = _permessoGiorno(dipId, `${mese}-${String(i).padStart(2, '0')}`); if (r) tot += r.ore; }
+  return Math.round(tot * 100) / 100;
+}
+function _fmtOreP(h) { const m = Math.round((h || 0) * 60); return Math.floor(m / 60) + 'h' + String(m % 60).padStart(2, '0'); }
+async function pv2ModPermesso(dipId, data) {
+  const r = _permessoGiorno(dipId, data);
+  const g = _pv2Giorno(dipId, data);
+  if (!g.ps.length) { alert('Nessuna presenza in questo giorno.'); return; }
+  const d = meccanici.find(m => m.id === dipId);
+  const att = r ? String(r.ore).replace('.', ',') : '0';
+  const v = prompt(`Ore di permesso per ${d ? d.nome : ''} il ${new Date(data + 'T12:00:00').toLocaleDateString('it-IT')}\n\n` +
+    `Contratto ${_fmtOreP(r ? r.contratto : _oreGiornoContratto(d))} · lavorate ${_fmtOreP(g.minPres / 60)} · calcolo automatico ${_fmtOreP(r ? r.auto : 0)}\n\n` +
+    `Scrivi le ore (es. 1 oppure 1,5). Lascia vuoto per tornare al calcolo automatico.`, r && r.man != null ? att : '');
+  if (v === null) return;
+  const t = String(v).trim().replace(',', '.');
+  let val = null;
+  if (t !== '') { val = parseFloat(t); if (!(val >= 0) || val > 24) { alert('Valore non valido.'); return; } val = Math.round(val * 100) / 100; }
+  try {
+    for (const q of g.ps) {
+      const nv = q === g.ps[0] ? val : null;
+      if ((q.orePermessoMan ?? null) === nv) continue;
+      const { error } = await supa.from('presenze').update({ ore_permesso_man: nv }).eq('id', q.id);
+      if (error) throw error;
+      q.orePermessoMan = nv;
+    }
+    showToast(val == null ? 'Permesso: torna al calcolo automatico ✓' : 'Permesso impostato a ' + _fmtOreP(val) + ' ✓');
+    _pv2Refresh();
+  } catch (e) { alert('Errore salvataggio: ' + e.message); }
+}
 
 function convertaAppInCommessa(appId) {
   const a = appuntamenti.find(x=>x.id===appId);
