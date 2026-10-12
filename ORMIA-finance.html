@@ -2768,5 +2768,41 @@ initAuth();
   </div>
 </div>
 
+<script>
+// ── Aggiornamento automatico: se è stata pubblicata una nuova versione, la pagina si ricarica da sola
+//    (solo quando nessuno la sta usando: nessuna finestra aperta, nessun tasto o tocco nell'ultimo minuto)
+(function () {
+  if (window.__autoUpd) return; window.__autoUpd = true;
+  let base = null, nuova = false, ultimoUso = Date.now();
+  ['pointerdown', 'keydown', 'touchstart', 'input'].forEach(ev =>
+    document.addEventListener(ev, () => { ultimoUso = Date.now(); }, { passive: true, capture: true }));
+  async function firma() {
+    try {
+      const r = await fetch(location.pathname + '?v=' + Date.now(), { method: 'HEAD', cache: 'no-store' });
+      return r.ok ? (r.headers.get('etag') || r.headers.get('last-modified')) : null;
+    } catch (_) { return null; }
+  }
+  function modaleAperta() {
+    return [...document.querySelectorAll('[id^="modal"], .modal-overlay')].some(m => m.offsetParent !== null || getComputedStyle(m).position === 'fixed' && getComputedStyle(m).display !== 'none');
+  }
+  function libera() {
+    if (Date.now() - ultimoUso < 60000) return false;
+    const a = document.activeElement;
+    if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.value) return false;
+    return !modaleAperta();
+  }
+  function prova() { if (nuova && (document.hidden || libera())) location.reload(); }
+  async function controlla() {
+    const f = await firma(); if (!f) return;
+    if (base === null) { base = f; return; }
+    if (f !== base) nuova = true;
+    prova();
+  }
+  setTimeout(controlla, 4000);
+  setInterval(controlla, 3 * 60 * 1000);
+  setInterval(prova, 30 * 1000);
+  document.addEventListener('visibilitychange', prova);
+})();
+</script>
 </body>
 </html>
