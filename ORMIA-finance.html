@@ -827,7 +827,7 @@ function avviaRealtimeFin() {
       const idx = _fatture.findIndex(f => f.id === payload.new.id);
       const r = payload.new;
       const mapped = {...r, clienteId:r.cliente_id, commessaId:r.commessa_id, fatturaId:r.id,
-        ficId:r.fic_id, ficStato:r.fic_stato, dataPagamento:r.data_pagamento, scadenza:r.scadenza};
+        ficId:r.fic_id, ficStato:r.fic_stato, sdiStato:r.sdi_stato, dataPagamento:r.data_pagamento, scadenza:r.scadenza};
       if (idx >= 0) { Object.assign(_fatture[idx], mapped); }
       else { _fatture.unshift(mapped); }
       renderFattureFin(); renderDashboard();
@@ -1078,7 +1078,7 @@ function renderFattureFin() {
       <td style="color:${scaduta?'var(--danger)':'inherit'}">${f.scadenza?formatDateFin(f.scadenza):'—'}</td>
       <td style="font-family:'DM Mono',monospace;font-weight:700">${importoCell}</td>
       <td><span class="badge-stato badge-${scaduta?'scaduta':f.stato}">${scaduta?'Scaduta':statoFattLabel(f.stato)}</span></td>
-      <td>${f.ficId?`<span style="font-size:10px;background:#E0E7FF;color:#3730A3;padding:2px 6px;border-radius:4px;font-weight:600">FiC ✓</span>`:'<span style="font-size:10px;color:var(--text3)">—</span>'}</td>
+      <td>${f.ficId?`<span style="font-size:10px;background:#E0E7FF;color:#3730A3;padding:2px 6px;border-radius:4px;font-weight:600">FiC ✓</span>`:'<span style="font-size:10px;color:var(--text3)">—</span>'}${_badgeSdi(f)}</td>
       <td>
         <div style="display:flex;gap:4px">
           ${f.stato!=='pagata'?`<button class="btn btn-sm btn-success" onclick="segnaFatturaPagata('${f.id}')">Segna pagata</button>`:''}
@@ -1651,6 +1651,19 @@ function _aggiungiPropostaRiconciliazione(fattura, importo, ficDoc) {
 }
 
 // ── sincronizzaFIC ────────────────────────────────
+// Etichetta con l'esito SDI quando c'è un problema (scartata, errore, non consegnata)
+function _badgeSdi(f) {
+  const st = f.sdiStato || f.sdi_stato; if (!st) return '';
+  const m = {
+    discarded:     ['SCARTATA SDI',   '#FEF2F2', '#B91C1C', 'Scartata dallo SDI: correggi su Fatture in Cloud e reinvia entro 5 giorni dalla notifica, con stesso numero e data'],
+    rejected:      ['RIFIUTATA',      '#FEF2F2', '#B91C1C', 'Rifiutata dal destinatario'],
+    error:         ['ERRORE SDI',     '#FEF2F2', '#B91C1C', 'Errore di invio: controlla su Fatture in Cloud'],
+    not_delivered: ['NON CONSEGNATA', '#FFFBEB', '#92400E', 'Non recapitata: è nel cassetto fiscale del cliente ed è comunque valida'],
+  };
+  const x = m[st]; if (!x) return '';
+  return `<br><span title="${x[3]}" style="display:inline-block;margin-top:3px;font-size:10px;background:${x[1]};color:${x[2]};padding:2px 6px;border-radius:4px;font-weight:700;border:1px solid ${x[2]}33">${x[0]}</span>`;
+}
+
 async function sincronizzaFIC(silent = false) {
   if (!_ficConfig.company_id) {
     if (!silent) alert('Fatture in Cloud non configurato. Vai su Integrazioni → Fatture in Cloud.');
@@ -1668,6 +1681,13 @@ async function sincronizzaFIC(silent = false) {
     for (const f of _fatture.filter(x => x.ficId)) {
       const doc = allDocs.find(d => String(d.id) === String(f.ficId));
       if (!doc) continue;
+      // Esito SDI (consegnata, scartata…) letto da Fatture in Cloud
+      if (doc.ei_status && doc.ei_status !== (f.sdiStato || f.sdi_stato)) {
+        const updSdi = { sdi_stato: doc.ei_status };
+        if ((f.ficStato || f.fic_stato) === 'errore_sdi' && ['sent', 'processing', 'pending', 'attempt', 'accepted', 'delivered', 'not_delivered'].includes(doc.ei_status)) updSdi.fic_stato = 'inviata_sdi';
+        const { error: eSdi } = await supa.from('fatture').update(updSdi).eq('id', f.id);
+        if (!eSdi) { f.sdiStato = doc.ei_status; if (updSdi.fic_stato) f.ficStato = updSdi.fic_stato; aggiornate++; }
+      }
       if (!doc.payment_status && Array.isArray(doc.payments_list) && doc.payments_list.length) {
         const pl = doc.payments_list, pag = pl.filter(p => p.status === 'paid');
         doc.payment_status = pag.length === pl.length ? 'paid' : (pag.length ? 'partial' : 'not_paid');
