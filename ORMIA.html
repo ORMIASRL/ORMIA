@@ -1640,10 +1640,11 @@
           <div><label>Via / Piazza *</label><input type="text" id="c-indirizzo" placeholder="Via Roma" autocomplete="off"></div>
           <div><label>N. civico</label><input type="text" id="c-civico" placeholder="12/A" autocomplete="off"></div>
         </div>
-        <div class="form-group span-2" style="display:grid;grid-template-columns:110px 1fr 80px;gap:12px">
+        <div class="form-group span-2" style="display:grid;grid-template-columns:110px 1fr 80px 150px;gap:12px">
           <div><label>CAP *</label><input type="text" id="c-cap" maxlength="5" inputmode="numeric" placeholder="00100"></div>
           <div><label>Città *</label><input type="text" id="c-citta" placeholder="Roma"></div>
           <div><label>Prov.</label><input type="text" id="c-prov" maxlength="2" placeholder="RM" style="text-transform:uppercase"></div>
+          <div><label>Nazione</label><select id="c-nazione" onchange="_onNazioneCl()"><option value="IT">Italia</option><option value="AT">Austria</option><option value="DE">Germania</option><option value="FR">Francia</option><option value="CH">Svizzera</option><option value="SI">Slovenia</option><option value="HR">Croazia</option><option value="ES">Spagna</option><option value="PT">Portogallo</option><option value="BE">Belgio</option><option value="NL">Paesi Bassi</option><option value="LU">Lussemburgo</option><option value="PL">Polonia</option><option value="CZ">Repubblica Ceca</option><option value="SK">Slovacchia</option><option value="HU">Ungheria</option><option value="RO">Romania</option><option value="BG">Bulgaria</option><option value="GR">Grecia</option><option value="DK">Danimarca</option><option value="SE">Svezia</option><option value="FI">Finlandia</option><option value="IE">Irlanda</option><option value="LT">Lituania</option><option value="LV">Lettonia</option><option value="EE">Estonia</option><option value="CY">Cipro</option><option value="MT">Malta</option><option value="SM">San Marino</option><option value="GB">Regno Unito</option><option value="NO">Norvegia</option><option value="US">Stati Uniti</option></select></div>
         </div>
         <div class="form-group span-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div>
@@ -1953,6 +1954,7 @@ async function saveCliente() {
   const cap       = document.getElementById('c-cap').value.trim();
   const citta     = document.getElementById('c-citta').value.trim();
   const provincia = document.getElementById('c-prov').value.trim().toUpperCase();
+  const nazione   = (document.getElementById('c-nazione')?.value || 'IT').toUpperCase(), _est = nazione !== 'IT';
   const indirizzo = via + (civico ? ' ' + civico : '') + ', ' + cap + ' ' + citta + (provincia ? ' (' + provincia + ')' : '');
   const tel       = document.getElementById('c-tel').value.trim();
   const sdi       = document.getElementById('c-sdi').value.trim().toUpperCase();
@@ -1965,12 +1967,12 @@ async function saveCliente() {
   if (!ragione)   errs.push('• Intestazione (ragione sociale o nome)');
   if (!piva && !cf) errs.push('• P.IVA oppure Codice fiscale (almeno uno)');
   if (!via)       errs.push('• Via / Piazza');
-  if (!/^\d{5}$/.test(cap)) errs.push('• CAP (5 cifre)');
+  if (_est ? !cap : !/^\d{5}$/.test(cap)) errs.push(_est ? '• CAP' : '• CAP (5 cifre)');
   if (!citta)     errs.push('• Città');
   if (!tel)       errs.push('• Contatto telefonico');
   if (!email)     errs.push('• Email');
   if (!sdi && !pec) errs.push('• Codice SDI oppure PEC (almeno uno)');
-  if (piva && !/^\d{11}$/.test(piva)) errs.push('• P.IVA deve essere esattamente 11 cifre numeriche');
+  if (piva && !_est && !/^\d{11}$/.test(piva)) errs.push('• P.IVA deve essere esattamente 11 cifre numeriche');
   if (sdi && sdi.length !== 7) errs.push('• Codice SDI deve essere esattamente 7 caratteri (es. ABC1234)');
   if (!pagamento) errs.push('• Metodo di pagamento');
 
@@ -1981,12 +1983,13 @@ async function saveCliente() {
 
   const data = {
     ragione, tipo: document.getElementById('c-tipo').value,
-    piva, cf, sdi, pec, tel,
+    piva: _est ? piva.toUpperCase().replace(/\s/g, '') : piva, cf, sdi, pec, tel,
     email:    document.getElementById('c-email').value.trim(),
-    indirizzo, via, civico, cap, citta, provincia,
+    indirizzo: _est ? [via + (civico ? ' ' + civico : ''), [cap, citta].filter(Boolean).join(' '), _NAZ_CL[nazione] || nazione].filter(Boolean).join(', ') : indirizzo,
+    via, civico, cap, citta, provincia, nazione,
     note:     document.getElementById('c-note').value.trim(),
     pagamento,
-    iva: parseFloat(document.getElementById('c-iva').value) || 22,
+    iva: _ivaN(document.getElementById('c-iva').value),
     soglia_moroso: parseInt(document.getElementById('c-soglia-moroso').value) || null,
   };
   try {
@@ -2421,6 +2424,7 @@ function openModal(type, preselectClienteId, editId, tipoNuovo) {
         document.getElementById('c-cap').value = c.cap || '';
         document.getElementById('c-citta').value = c.citta || '';
         document.getElementById('c-prov').value = c.provincia || '';
+        document.getElementById('c-nazione').value = _nazCl(c); _onNazioneCl(true);
         document.getElementById('c-note').value = c.note||'';
         document.getElementById('c-iva').value = c.iva ?? 22;
         document.getElementById('c-pagamento').value = _normPag(c.pagamento);
@@ -2430,6 +2434,7 @@ function openModal(type, preselectClienteId, editId, tipoNuovo) {
       ['c-ragione','c-piva','c-cf','c-sdi','c-pec','c-tel','c-email','c-indirizzo','c-civico','c-cap','c-citta','c-prov','c-note','c-soglia-moroso'].forEach(id=>document.getElementById(id).value='');
       document.getElementById('c-tipo').value = 'Azienda';
       document.getElementById('c-iva').value = 22;
+      document.getElementById('c-nazione').value = 'IT'; _onNazioneCl(true);
       document.getElementById('c-pagamento').value = '';
     }
     document.getElementById('modal-cliente').style.display='flex';
@@ -9635,7 +9640,7 @@ function openModalPreventivo(editId) {
     document.getElementById('prev-data').value = p.data||'';
     document.getElementById('prev-validita').value = p.validita||30;
     document.getElementById('prev-stato').value = p.stato||'bozza';
-    document.getElementById('prev-iva').value = p.iva||22;
+    document.getElementById('prev-iva').value = p.iva ?? 22;
     document.getElementById('prev-note').value = p.note||'';
     prevVociMano=[...(p.vociMano||[])]; prevVociRic=[...(p.vociRic||[])]; prevVociExtra=[...(p.vociExtra||[])];
   } else {
@@ -9663,7 +9668,7 @@ function _creaProdottoDaPreventivo(idx) {
 }
 
 function calcTotalePreventivo() {
-  const iva = parseFloat(document.getElementById('prev-iva')?.value)||22;
+  const iva = _ivaN(document.getElementById('prev-iva')?.value);
   const imponibile = [...prevVociMano,...prevVociRic,...prevVociExtra].reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0)*(1-(v.sconto||0)/100),0);
   const ivaAmt = imponibile*iva/100;
   const totale = imponibile+ivaAmt;
@@ -9679,7 +9684,7 @@ async function salvaPreventivo() {
   const oggetto = document.getElementById('prev-oggetto').value.trim();
   if (!oggetto) { alert('Inserisci l\'oggetto del preventivo.'); return; }
   // calcTotalePreventivo restituisce solo l'imponibile: qui si calcolano IVA e totale da salvare
-  const _impPrev = calcTotalePreventivo(), _ivaPrev = parseFloat(document.getElementById('prev-iva')?.value)||22;
+  const _impPrev = calcTotalePreventivo(), _ivaPrev = _ivaN(document.getElementById('prev-iva')?.value);
   const _r2P = x => Math.round((x + Number.EPSILON) * 100) / 100;
   const tots = { imponibile: _r2P(_impPrev), ivaAmt: _r2P(_impPrev * _ivaPrev / 100), totale: _r2P(_impPrev * (1 + _ivaPrev / 100)) };
   const data = {
@@ -9688,7 +9693,7 @@ async function salvaPreventivo() {
     oggetto, data: document.getElementById('prev-data').value,
     validita: parseInt(document.getElementById('prev-validita').value)||30,
     stato: document.getElementById('prev-stato').value,
-    iva: parseFloat(document.getElementById('prev-iva').value)||22,
+    iva: _ivaN(document.getElementById('prev-iva').value),
     note: document.getElementById('prev-note').value.trim(),
     voci_mano: prevVociMano, voci_ric: prevVociRic, voci_extra: prevVociExtra,
     commessa_id: _prevCommessaId || null,
@@ -9792,7 +9797,7 @@ ${intestazioneHtml(off,'PREVENTIVO',p.numero,'Data: '+(p.data?new Date(p.data).t
 ${righeHtml(tutte)}
 <div style="display:flex;justify-content:flex-end"><div style="background:#F5F4F1;padding:16px 24px;border-radius:8px;text-align:right;min-width:260px">
   <div style="font-size:13px;color:#666;margin-bottom:4px">Imponibile: <strong>€ ${(p.imponibile||0).toFixed(2)}</strong></div>
-  <div style="font-size:13px;color:#666;margin-bottom:8px">IVA ${p.iva||22}%: <strong>€ ${(p.ivaAmt||0).toFixed(2)}</strong></div>
+  <div style="font-size:13px;color:#666;margin-bottom:8px">IVA ${p.iva??22}%: <strong>€ ${(p.ivaAmt||0).toFixed(2)}</strong></div>
   <div style="font-size:20px;font-weight:800;color:#1B4FD8">Totale: € ${(p.totale||0).toFixed(2)}</div>
 </div></div>
 ${p.note?`<div style="margin-top:24px;padding:12px 16px;background:#FFFBEB;border-left:4px solid #D97706;border-radius:4px;font-size:13px;color:#666">${p.note}</div>`:''}
@@ -10625,6 +10630,7 @@ td{padding:7px 10px;border-bottom:1px solid #E4E2DC}.c{text-align:center;width:6
 <div class="bx"><div class="bt">Veicolo</div><div class="bm">${e(v?.targa || '—')} ${e([v?.marca, v?.modello].filter(Boolean).join(' '))}</div><div class="bs">${(v?.telaio || v?.vin) ? 'Telaio: ' + e(v.telaio || v.vin) + '<br>' : ''}${v?.km ? 'Km: ' + Number(v.km).toLocaleString('it-IT') : ''}</div></div></div>
 <table><thead><tr><th>Descrizione</th><th class="c">Q.tà</th><th class="r">Prezzo</th>${hasSc ? '<th class="c">Sconto</th>' : ''}<th class="r">Importo</th></tr></thead><tbody>${rows}</tbody></table>
 <div class="tf"><div class="tb"><div class="tr_"><span>Imponibile</span><span>${eu(imponibile)}</span></div><div class="tr_"><span>IVA ${iva}%</span><span>${eu(ivaAmt)}</span></div><div class="tr_ fin"><span>TOTALE</span><span>${eu(totale)}</span></div></div></div>
+${iva === 0 && _clEstero(cl) ? `<div style="font-size:11px;font-weight:700;margin-bottom:10px">${e(_dicitura7ter(cl))}</div>` : ''}
 ${pag ? `<div class="pb"><strong>Pagamento:</strong> ${e(pag)}${scad && scad !== oggi ? ' · scadenza prevista ' + fd(scad) : ''}${off.iban ? '<br><strong>IBAN:</strong> ' + e(off.iban) : ''}</div>` : ''}
 <div class="ft">Documento provvisorio di riepilogo: la fattura elettronica verrà emessa e trasmessa tramite SDI. Importi soggetti a conferma.</div>
 </body></html>`;
@@ -11736,6 +11742,22 @@ async function _eliminaAllegatoGest(i) {
   };
 })();
 
+// ── Clienti esteri: nazione, IVA non soggetta art. 7-ter ──
+const _NAZ_CL = {IT:'Italia',AT:'Austria',DE:'Germania',FR:'Francia',CH:'Svizzera',SI:'Slovenia',HR:'Croazia',ES:'Spagna',PT:'Portogallo',BE:'Belgio',NL:'Paesi Bassi',LU:'Lussemburgo',PL:'Polonia',CZ:'Repubblica Ceca',SK:'Slovacchia',HU:'Ungheria',RO:'Romania',BG:'Bulgaria',GR:'Grecia',DK:'Danimarca',SE:'Svezia',FI:'Finlandia',IE:'Irlanda',LT:'Lituania',LV:'Lettonia',EE:'Estonia',CY:'Cipro',MT:'Malta',SM:'San Marino',GB:'Regno Unito',NO:'Norvegia',US:'Stati Uniti'};
+const _NAZ_UE = new Set(['AT','DE','FR','SI','HR','ES','PT','BE','NL','LU','PL','CZ','SK','HU','RO','BG','GR','DK','SE','FI','IE','LT','LV','EE','CY','MT']);
+function _nazCl(cl) { return String((cl && cl.nazione) || 'IT').toUpperCase(); }
+function _clEstero(cl) { return _nazCl(cl) !== 'IT'; }
+function _ivaN(v) { const n = parseFloat(v); return isNaN(n) ? 22 : n; }
+function _dicitura7ter(cl) { return _NAZ_UE.has(_nazCl(cl)) ? 'Operazione non soggetta IVA – art. 7-ter DPR 633/72 – inversione contabile' : 'Operazione non soggetta IVA – art. 7-ter DPR 633/72'; }
+function _onNazioneCl(init) {
+  const n = (document.getElementById('c-nazione')?.value || 'IT').toUpperCase(), est = n !== 'IT';
+  const cap = document.getElementById('c-cap'), sdi = document.getElementById('c-sdi'), prov = document.getElementById('c-prov'), iva = document.getElementById('c-iva');
+  if (cap) { cap.maxLength = est ? 10 : 5; cap.inputMode = est ? 'text' : 'numeric'; cap.placeholder = est ? '5020' : '00100'; }
+  if (init) return;
+  if (est) { if (sdi) sdi.value = 'XXXXXXX'; if (prov) prov.value = 'EE'; if (iva) iva.value = '0'; }
+  else { if (sdi && sdi.value === 'XXXXXXX') sdi.value = ''; if (prov && prov.value === 'EE') prov.value = ''; if (iva && iva.value === '0') iva.value = '22'; }
+}
+
 function convertaAppInCommessa(appId) {
   const a = appuntamenti.find(x=>x.id===appId);
   if (!a) return;
@@ -12379,7 +12401,7 @@ function _aggScadenzaFatt() {
 }
 
 function calcolaFattTotali(righe) {
-  const iva = parseFloat(document.getElementById('fatt-iva')?.value)||22;
+  const iva = _ivaN(document.getElementById('fatt-iva')?.value);
   const r   = (righe||_fattDraft?.righe||[]);
   const _r2 = n => Math.round((n + Number.EPSILON) * 100) / 100;   // arrotonda ai centesimi (come FiC/SDI)
   const imponibile = _r2(r.reduce((s,x)=>s+_r2((x.qta||1)*(x.prezzo||0)),0));
@@ -12519,10 +12541,11 @@ ${(() => { const _vi = _veicoloInfoFatt(f); const _t = [_vi.testo, _vi.cm && _vi
 <table><thead><tr><th>Descrizione</th><th>Q.tà</th><th>Prezzo unit.</th><th>Totale</th></tr></thead><tbody>${rows}</tbody></table>
 <div class="tf"><div class="tb">
 <div class="tr_"><span>Imponibile</span><span>€ ${(f.imponibile||0).toFixed(2)}</span></div>
-<div class="tr_"><span>IVA ${f.iva||22}%</span><span>€ ${(f.ivaAmt||0).toFixed(2)}</span></div>
+<div class="tr_"><span>IVA ${f.iva??22}%</span><span>€ ${(f.ivaAmt||0).toFixed(2)}</span></div>
 <div class="tr_ fin"><span>TOTALE</span><span>€ ${(f.totale||0).toFixed(2)}</span></div>
 ${f.stato==='pagata'&&f.dataPagamento?`<div class="tr_" style="margin-top:8px;font-size:11px;color:#276749"><span>Pagata il</span><span>${new Date(f.dataPagamento).toLocaleDateString('it-IT')}</span></div>`:''}
 </div></div>
+${(() => { const _c7 = clienti.find(x => x.id === (f.clienteId || f.cliente_id)); return (+f.iva === 0 && _clEstero(_c7)) ? `<div style="font-size:11px;font-weight:700;margin-bottom:10px">${_dicitura7ter(_c7)}</div>` : ''; })()}
 <div class="pb"><strong>Pagamento:</strong> ${_labelPag(f.pagamento)||'—'}${f.offIban?`<br><span class="ib">${f.offIban}</span>${f.offBanca?' — '+f.offBanca:''}`:''}
 </div>
 ${f.note?`<div style="font-size:11px;color:#888;margin-bottom:12px"><strong>Note:</strong> ${f.note}</div>`:''}
@@ -12849,7 +12872,7 @@ ${_impostazioni.note_doc?`<div style="margin-top:24px;padding-top:16px;border-to
 async function inviaEmailDDT(ddt, cl, off) {
   if (!cl?.email) throw new Error('Email cliente non disponibile');
   const imp = (ddt.righe||[]).reduce((s,r)=>s+(r.qta||1)*(r.prezzo||0)*(1-(r.sconto||0)/100),0);
-  const iva  = cl.iva || 22;
+  const iva  = cl.iva ?? 22;
   const tot  = imp * (1 + iva/100);
   const ogg  = encodeURIComponent(`DDT ${ddt.numero} — ${off?.ragione||'Officina'}`);
   const corpo = encodeURIComponent(
@@ -13069,7 +13092,7 @@ function renderRigheVb() {
 
 function calcTotaleVb() {
   const cl  = clienti.find(c=>c.id===document.getElementById('vb-cliente')?.value);
-  const iva = cl?.iva || 22;
+  const iva = cl?.iva ?? 22;
   const imp = vbRighe.reduce((s,r)=>s+(r.qta||1)*(r.prezzo||0)*(1-(r.sconto||0)/100), 0);
   const ivaAmt = imp * iva / 100;
   const tot    = imp + ivaAmt;
@@ -13386,11 +13409,12 @@ async function autoInviaFIC(fatt) {
   }
 
   const cl = clienti.find(x => x.id === fatt.clienteId);
+  const _ivaF = _ivaN(fatt.iva), _vatF = (_ivaF === 0 && _clEstero(cl)) ? { id: 10 } : _vatFic(_ivaF);
   const righe = (fatt.righe||[]).filter(r => r.desc||r.descrizione);
   const items = righe.length
-    ? righe.map(r => ({ name:r.desc||r.descrizione, qty:r.qta||1, ...(r.sconto && r.listino != null ? { net_price:+r.listino, discount:+r.sconto } : { net_price:r.prezzo||0 }), vat:_vatFic(fatt.iva||22) }))
+    ? righe.map(r => ({ name:r.desc||r.descrizione, qty:r.qta||1, ...(r.sconto && r.listino != null ? { net_price:+r.listino, discount:+r.sconto } : { net_price:r.prezzo||0 }), vat:_vatF }))
     : [{ name:fatt.descrizione||'Servizio officina', qty:1,
-         net_price:fatt.imponibile||(fatt.totale||0)/(1+(fatt.iva||22)/100), vat:_vatFic(fatt.iva||22) }];
+         net_price:fatt.imponibile||(fatt.totale||0)/(1+_ivaF/100), vat:_vatF }];
 
   // ── Fattura elettronica: creazione su FiC, controllo XML e invio allo SDI in automatico ──
   const cid = ficCfg.company_id;
@@ -13414,10 +13438,10 @@ async function autoInviaFIC(fatt) {
   const cr = await api(`/c/${cid}/issued_documents`, 'POST', { data: {
       type:'invoice', date:(fatt.data||new Date().toISOString()).split('T')[0], e_invoice:true,
       ...(/(\d+)\s*$/.test(String(fatt.numero||'')) ? { number: parseInt(String(fatt.numero).match(/(\d+)\s*$/)[1], 10) } : {}),
-      entity:{ name:fatt.clRagione||cl?.ragione||'Cliente', vat_number:piva, tax_code:cf||piva, e_invoice:true,
-               ei_code:String(fatt.clSdi||cl?.sdi||'').trim().toUpperCase() || '0000000', certified_email:fatt.clPec||cl?.pec||'', email:fatt.clEmail||cl?.email||'',
+      entity:{ name:fatt.clRagione||cl?.ragione||'Cliente', vat_number:_clEstero(cl) ? piva.toUpperCase().replace(new RegExp('^' + _nazCl(cl)), '') : piva, tax_code:_clEstero(cl) ? '' : (cf||piva), e_invoice:true,
+               ei_code:String(fatt.clSdi||cl?.sdi||'').trim().toUpperCase() || (_clEstero(cl) ? 'XXXXXXX' : '0000000'), certified_email:fatt.clPec||cl?.pec||'', email:fatt.clEmail||cl?.email||'',
                address_street:[cl?.via, cl?.civico].filter(Boolean).join(' '), address_postal_code:cl?.cap||'', address_city:cl?.citta||'',
-               address_province:cl?.provincia||'', country:'Italia' },
+               address_province:cl?.provincia||'', country:_clEstero(cl) ? (_NAZ_CL[_nazCl(cl)] || _nazCl(cl)) : 'Italia' },
       ei_data:{ vat_kind:'I', payment_method:metodo, ...(metodo==='MP05' && iban ? { bank_iban: iban } : {}) },
       ..._ficExtra(fatt),
       items_list: items,
