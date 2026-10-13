@@ -839,6 +839,32 @@ function goScan()   { showScreen('screen-scan');   renderScanScreen(); }
 // ══════════════════════════════════════════════════
 // HOME
 // ══════════════════════════════════════════════════
+// ── Contratto di manutenzione (mezzi Ford): etichetta sulla card e riquadro nella commessa ──
+function _escCM(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function _contrattoM(v) {
+  if (!v || !v.contratto) return null;
+  const sc = v.contrattoScadenza || v.contratto_scadenza; if (!sc) return null;
+  const scadData = new Date(String(sc).slice(0, 10) + 'T23:59:59') < new Date();
+  const kmMax = parseInt(String(v.contrattoKm || v.contratto_km || '').replace(/\D/g, ''), 10);
+  const kmNow = parseInt(String(v.km || '').replace(/\D/g, ''), 10);
+  const scadKm = kmMax > 0 && kmNow > 0 && kmNow > kmMax;
+  return { scaduto: scadData || scadKm, perKm: !scadData && scadKm, sc: String(sc).slice(0, 10), kmMax,
+    tipo: v.contrattoTipo || v.contratto_tipo || '', num: v.contrattoNum || v.contratto_num || '', note: v.contrattoNote || v.contratto_note || '' };
+}
+function _badgeContrattoM(v) {
+  const s = _contrattoM(v); if (!s) return '';
+  return s.scaduto
+    ? '<span style="flex-shrink:0;background:#F1F5F9;border:1px solid #CBD5E1;color:#64748B;font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;white-space:nowrap">📄 CONTRATTO SCADUTO</span>'
+    : '<span style="flex-shrink:0;background:#E0F2FE;border:1px solid #BAE6FD;color:#075985;font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;white-space:nowrap">📄 CONTRATTO</span>';
+}
+function _boxContrattoM(v) {
+  const s = _contrattoM(v); if (!s) return '';
+  const det = [s.tipo, s.num ? 'n. ' + s.num : '', 'scade il ' + new Date(s.sc + 'T12:00:00').toLocaleDateString('it-IT') + (s.kmMax > 0 ? ' o a ' + s.kmMax.toLocaleString('it-IT') + ' km' : '')].filter(Boolean).join(' · ');
+  return `<div style="margin-top:8px;border:1px solid ${s.scaduto ? '#CBD5E1' : '#BAE6FD'};background:${s.scaduto ? '#F8FAFC' : '#F0F9FF'};border-radius:10px;padding:8px 12px;font-size:13px;color:${s.scaduto ? '#64748B' : '#075985'}">
+    <div style="font-weight:800">📄 Contratto di manutenzione${s.scaduto ? ' — SCADUTO' + (s.perKm ? ' (km superati)' : '') : ' attivo'}</div>
+    <div>${_escCM(det)}</div>${s.note ? `<div style="margin-top:2px">Copre: <b>${_escCM(s.note)}</b></div>` : ''}</div>`;
+}
+
 function renderHome() {
   if (!mecLogged) return;
   const meccanici  = getMeccanici();
@@ -912,7 +938,7 @@ function renderHome() {
             <div class="com-num">${cm.numero||''}</div>
             <div class="com-desc">${cm.desc}</div>
           </div>
-          ${_comInGar(cm, v)?'<span style="flex-shrink:0;background:#FEF3C7;border:1px solid #FDE68A;color:#92400E;font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;white-space:nowrap">🔒 GARANZIA</span>':''}
+          <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0">${_comInGar(cm, v)?'<span style="flex-shrink:0;background:#FEF3C7;border:1px solid #FDE68A;color:#92400E;font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;white-space:nowrap">🔒 GARANZIA</span>':''}${_badgeContrattoM(v)}</div>
         </div>
         <div class="com-cli" style="margin-top:8px;display:flex;flex-direction:column;gap:5px">
           ${v ? `<div style="display:flex;align-items:center;gap:8px">
@@ -1166,6 +1192,7 @@ function renderDetail() {
        <span style="margin-left:6px;font-weight:600">${[v.marca,v.modello].filter(Boolean).join(' ')}</span>
        ${v.km?`<span style="margin-left:6px;color:var(--text3);font-size:12px">${Number(v.km).toLocaleString('it')} km</span>`:''}`
     : '—';
+  try { if (v) document.getElementById('det-veicolo').insertAdjacentHTML('beforeend', _boxContrattoM(v)); } catch (_) {}
 
   const mecAttuali = [...new Set(timbrature.filter(t=>t.comId===cm.id&&!t.uscita).map(t=>t.mecId))]
     .map(mid=>{ const m=meccanici.find(x=>x.id===mid); return m?m.nome:null; }).filter(Boolean);
