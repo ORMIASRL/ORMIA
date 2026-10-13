@@ -1742,6 +1742,11 @@
           <input type="date" id="v-garanzia-scadenza">
           <div style="font-size:11px;color:var(--text3);margin-top:3px">Il veicolo verrà segnalato come fuori garanzia dopo questa data</div>
         </div>
+        <div class="form-group">
+          <label>Garanzia catena cinematica — scadenza</label>
+          <input type="date" id="v-garanzia-cc-scad">
+          <div style="font-size:11px;color:var(--text3);margin-top:3px">Solo se il mezzo ce l'ha: copre solo alcuni interventi (lascia vuoto se non c'è)</div>
+        </div>
         <div class="form-section-title">Contratto di manutenzione</div>
         <div class="form-group span-2">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
@@ -1998,10 +2003,11 @@ async function saveCliente() {
     } else {
       const nuovoCl = await dbSaveCliente({id:initId(), createdAt:new Date().toISOString(), ...data});
       if (_postSaveClienteCallback) {
+        const _cbCl = _postSaveClienteCallback;
         _postSaveClienteCallback = false;
         closeModal('modal-cliente');
         renderTable();
-        selezionaClienteCommessa(nuovoCl.id);
+        if (typeof _cbCl === 'function') _cbCl(nuovoCl.id); else selezionaClienteCommessa(nuovoCl.id);
         showToast('Cliente creato ✓');
         return;
       }
@@ -2145,6 +2151,8 @@ function getVeicoloStato(v) {
       parts.push(`<span class="badge ${scadeFra?'badge-yellow':'badge-orange'}" style="${!scadeFra?'background:#FEF3C7;color:#92400E;border:1px solid #FDE68A':''}">🔧 Garanzia${dg!==null?' ('+dg+'gg)':''}</span>`);
     }
   }
+  { const _bAtt = v.garanzia && (!v.garanziaScadenza || daysUntil(v.garanziaScadenza) >= 0), _dcc = v.garanziaCcScadenza ? daysUntil(v.garanziaCcScadenza) : null;
+    if (!_bAtt && _dcc !== null && _dcc >= 0) parts.push(`<span class="badge" style="background:#FEF3C7;color:#92400E;border:1px solid #FDE68A">🔧 Gar. catena cinematica (${_dcc}gg)</span>`); }
   // Scadenze
   const dates = [v.revisione, v.tachigrafo].filter(Boolean);
   if (!dates.length && !parts.length) return '<span class="badge badge-gray">Nessuna scadenza</span>';
@@ -2223,6 +2231,7 @@ async function saveVeicolo() {
     tagliandoData: document.getElementById('v-tagliando-data').value || null,
     garanzia,
     garanziaScadenza: garanziaScadenza || null,
+    garanziaCcScadenza: document.getElementById('v-garanzia-cc-scad')?.value || null,
     contratto: !!document.getElementById('v-contratto')?.checked,
     contrattoScadenza: document.getElementById('v-contratto-scad')?.value || null,
     contrattoKm:   (document.getElementById('v-contratto-km')?.value || '').trim() || null,
@@ -2264,9 +2273,10 @@ function _aggGaranziaCommessa(val) {
   const row = document.getElementById('com-garanzia-row'), chk = document.getElementById('com-in-garanzia');
   if (!row || !chk) return;
   const vId = document.getElementById('com-veicolo')?.value;
-  const vg = !!vId && isVeicoloInGaranzia(vId);
-  row.style.display = vg ? '' : 'none';
-  chk.checked = vg && val !== false;
+  const vg = !!vId && isVeicoloInGaranzia(vId), vcc = !vg && !!vId && _vInGarCc(vId);
+  row.style.display = (vg || vcc) ? '' : 'none';
+  chk.checked = vg ? val !== false : (vcc && val === true);
+  _lblGarCom(vcc);
 }
 function _valGaranziaCommessa() {
   const row = document.getElementById('com-garanzia-row'), chk = document.getElementById('com-in-garanzia');
@@ -2334,6 +2344,7 @@ function showDetailVeicolo(id) {
     const dg = daysUntil(v.garanziaScadenza);
     scadenze.unshift({label:'Garanzia', val:v.garanziaScadenza, isGaranzia:true, scaduta: dg < 0});
   }
+  if (v.garanziaCcScadenza) scadenze.unshift({label:'Garanzia catena cinematica', val:v.garanziaCcScadenza, isGaranzia:true, scaduta: daysUntil(v.garanziaCcScadenza) < 0});
 
   if (v.contratto && v.contrattoScadenza) scadenze.unshift({label:'Contratto manutenzione', val:String(v.contrattoScadenza).slice(0, 10)});
 
@@ -2466,6 +2477,7 @@ function openModal(type, preselectClienteId, editId, tipoNuovo) {
         document.getElementById('v-tagliando-data').value = v.tagliandoData||'';
         document.getElementById('v-garanzia').checked = !!v.garanzia;
         document.getElementById('v-garanzia-scadenza').value = v.garanziaScadenza||'';
+        document.getElementById('v-garanzia-cc-scad').value = v.garanziaCcScadenza||'';
         document.getElementById('v-garanzia-scadenza-wrap').style.display = v.garanzia ? '' : 'none';
         { const _c = !!v.contratto; document.getElementById('v-contratto').checked = _c; document.getElementById('v-contratto-wrap').style.display = _c ? 'contents' : 'none';
           document.getElementById('v-contratto-scad').value = v.contrattoScadenza ? String(v.contrattoScadenza).slice(0, 10) : '';
@@ -2478,6 +2490,7 @@ function openModal(type, preselectClienteId, editId, tipoNuovo) {
       ['v-targa','v-marca','v-modello','v-anno','v-km','v-ore-motore','v-vin','v-revisione','v-tachigrafo','v-tagliando-km','v-tagliando-data','v-note'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
       document.getElementById('v-garanzia').checked = false;
       document.getElementById('v-garanzia-scadenza').value = '';
+      document.getElementById('v-garanzia-cc-scad').value = '';
       document.getElementById('v-garanzia-scadenza-wrap').style.display = 'none';
       document.getElementById('v-contratto').checked = false; document.getElementById('v-contratto-wrap').style.display = 'none';
       ['v-contratto-scad','v-contratto-km','v-contratto-tipo','v-contratto-num','v-contratto-note'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
@@ -2692,7 +2705,7 @@ function init() {
         <div class="form-group span-2" id="com-garanzia-row" style="display:none">
           <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#FEF3C7;border:1px solid #FDE68A;border-radius:var(--radius);cursor:pointer;font-weight:600;color:#92400E;margin:0">
             <input type="checkbox" id="com-in-garanzia" style="width:18px;height:18px;margin:0;flex-shrink:0">
-            <span>🔧 Lavoro in garanzia <span style="font-weight:400;font-size:12px;opacity:.85">— veicolo in garanzia: togli la spunta se questo lavoro è a pagamento</span></span>
+            <span id="com-garanzia-lbl">🔧 Lavoro in garanzia <span style="font-weight:400;font-size:12px;opacity:.85">— veicolo in garanzia: togli la spunta se questo lavoro è a pagamento</span></span>
           </label>
         </div>
         <div class="form-group span-2">
@@ -5799,6 +5812,7 @@ async function saveCommessa(firmaDataUrl=null) {
     inGaranzia: _valGaranziaCommessa(),
     garPagamentoFord: _valGpf(),
     fattClienteId: _valFattCl(),
+    garTipo: _valGarTipo(),
     stato: document.getElementById('com-stato').value,
     note: document.getElementById('com-note').value.trim(),
     dirittoChiamata:        document.getElementById('com-diritto-chiamata')?.checked || false,
@@ -6032,7 +6046,7 @@ function renderCommesse() {
           .map(mid=>{ const m=meccanici.find(x=>x.id===mid); return m?m.nome:null; }).filter(Boolean);
         const totFmt = cm.totale ? '€ '+cm.totale.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,'.') : '—';
         return `<div class="k-card k-${cm.stato}" onclick="showDetailCommessa('${cm.id}')">
-          <div class="k-num">${cm.numero||''} <span style="opacity:.5">·</span> ${formatDate(cm.dataApertura)||'—'}${_comInGaranzia(cm)?' <span style="color:var(--warning);font-size:10px;font-weight:700">🔧 GAR.</span>':''}${_badgeContratto(cm)}</div>
+          <div class="k-num">${cm.numero||''} <span style="opacity:.5">·</span> ${formatDate(cm.dataApertura)||'—'}${_comInGaranzia(cm)?' <span style="color:var(--warning);font-size:10px;font-weight:700">🔧 GAR.' + (cm.garTipo === 'cc' ? ' CC' : '') + '</span>':''}${_badgeContratto(cm)}</div>
           <div class="k-desc">${cm.descrizione||cm.desc}</div>
           <div class="k-cli">
             ${cl?`<span>${cl.ragione}</span>`:''}
@@ -6077,7 +6091,7 @@ function renderCommesse() {
         <div class="commessa-card-body">
           <div class="commessa-card-top">
             <div style="flex:1;min-width:0">
-              <div class="commessa-num">${v&&v.targa?`<span class="commessa-targa" style="font-size:18px;padding:3px 11px;letter-spacing:1.5px">${v.targa}</span>`:(cm.numero||'')} <span style="color:var(--border2)">·</span> <span style="color:var(--text3);font-weight:400;font-size:11px">${formatDate(cm.dataApertura)||'—'}</span>${_comInGaranzia(cm)?` <span style="background:var(--warning-light);color:var(--warning);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;border:1px solid #FDE68A">🔧 GAR.</span>`:''}${_badgeContratto(cm)}${cm.stato==='chiusa'&&!cm.controllataAt&&!cm.fatturaId?` <span style="background:#FEF3C7;color:#92400E;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;border:1px solid #FDE68A">🔍 DA CONTROLLARE</span>`:''}</div>
+              <div class="commessa-num">${v&&v.targa?`<span class="commessa-targa" style="font-size:18px;padding:3px 11px;letter-spacing:1.5px">${v.targa}</span>`:(cm.numero||'')} <span style="color:var(--border2)">·</span> <span style="color:var(--text3);font-weight:400;font-size:11px">${formatDate(cm.dataApertura)||'—'}</span>${_comInGaranzia(cm)?` <span style="background:var(--warning-light);color:var(--warning);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;border:1px solid #FDE68A">🔧 GAR.${cm.garTipo === 'cc' ? ' CC' : ''}</span>`:''}${_badgeContratto(cm)}${cm.stato==='chiusa'&&!cm.controllataAt&&!cm.fatturaId?` <span style="background:#FEF3C7;color:#92400E;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;border:1px solid #FDE68A">🔍 DA CONTROLLARE</span>`:''}</div>
               <div class="commessa-desc">${cm.descrizione||cm.desc}</div>
               <div class="commessa-cliente" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                 ${cl?`<span>${cl.ragione}</span>`:''}
@@ -6144,7 +6158,7 @@ function showDetailCommessa(id) {
     }
   }
   document.getElementById('dc-stato').innerHTML = statoLabel(cm.stato) +
-    (_comInGaranzia(cm) ? ' <span style="background:var(--warning-light);color:var(--warning);font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;border:1px solid #FDE68A;white-space:nowrap;display:inline-block">🔧 In garanzia</span>' : '');
+    (_comInGaranzia(cm) ? ' <span style="background:var(--warning-light);color:var(--warning);font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;border:1px solid #FDE68A;white-space:nowrap;display:inline-block">🔧 In garanzia' + (cm.garTipo === 'cc' ? ' catena cinematica' : '') + '</span>' : '');
 
   // Alert cliente moroso
   const alertMoroso = document.getElementById('dc-alert-moroso');
@@ -6585,7 +6599,7 @@ function stampaCommessa(comId) {
   const v   = veicoli.find(x=>x.id===cm.veicoloId);
   const off = getDatiOfficina();
   const inGar = _comInGaranzia(cm);
-  const garScad = v?.garanziaScadenza ? new Date(v.garanziaScadenza).toLocaleDateString('it-IT') : null;
+  const garScad = _garScadCom(cm, v);
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(cm.numero||comId)}&margin=4`;
   apriAnteprima(generaHtmlCommessa(cm, cl, v, off, inGar, garScad, qrUrl), `Commessa ${cm.numero}`);
 }
@@ -6687,7 +6701,7 @@ function generaHtmlCommessa(cm, cl, v, off, inGar, garScad, qrUrl) {
   <div class="com-badge">
     <div class="com-num">${cm.numero}</div>
     <div class="com-data">Aperta il ${cm.dataApertura ? new Date(cm.dataApertura).toLocaleDateString('it-IT') : '—'}</div>
-    ${inGar ? `<div class="com-gar">🔧 IN GARANZIA${garScad?' · scad. '+garScad:''}</div>` : ''}
+    ${inGar ? `<div class="com-gar">🔧 IN GARANZIA${cm.garTipo === 'cc' ? ' CATENA CINEMATICA' : ''}${garScad?' · scad. '+garScad:''}</div>` : ''}
   </div>
 </div>
 
@@ -7437,7 +7451,7 @@ async function scaricaZipGaranzia(comId) {
   const v   = veicoli.find(x=>x.id===cm.veicoloId);
   const off = getDatiOfficina();
   const inGar = _comInGaranzia(cm);
-  const garScad = v?.garanziaScadenza ? new Date(v.garanziaScadenza).toLocaleDateString('it-IT') : null;
+  const garScad = _garScadCom(cm, v);
 
   const targa   = (v?.targa || 'NESSUNA_TARGA').replace(/\s/g,'');
   const numCom  = (cm.numero || comId).replace(/\//g,'-');
@@ -7472,7 +7486,7 @@ async function scaricaZipGaranzia(comId) {
     T(cm.numero || '', pw - mr, y + 8, { size: 16, style: 'bold', align: 'right' });
     T('Aperta il ' + fmtD(cm.dataApertura || cm.createdAt), pw - mr, y + 13, { size: 8, color: GRIGIO, align: 'right' });
     if (inGar) {
-      const lab = 'IN GARANZIA' + (garScad ? '  -  scad. ' + garScad : '');
+      const lab = 'IN GARANZIA' + (cm.garTipo === 'cc' ? ' CATENA CINEMATICA' : '') + (garScad ? '  -  scad. ' + garScad : '');
       doc.setFontSize(8); doc.setFont('helvetica', 'bold');
       const w = doc.getTextWidth(lab) + 6;
       doc.setFillColor(254,243,199); doc.setDrawColor(253,230,138); doc.setLineWidth(0.3);
@@ -11829,6 +11843,53 @@ async function _setFattCl(id, val) {
   };
 })();
 
+// ── Garanzia catena cinematica: scadenza propria, copre solo alcuni interventi ──
+function _vInGarCc(vId) { const v = veicoli.find(x => x.id === vId); return !!(v && v.garanziaCcScadenza && daysUntil(v.garanziaCcScadenza) >= 0); }
+const _LBL_GAR_STD = '🔧 Lavoro in garanzia <span style="font-weight:400;font-size:12px;opacity:.85">— veicolo in garanzia: togli la spunta se questo lavoro è a pagamento</span>';
+const _LBL_GAR_CC  = '🔧 Lavoro in garanzia catena cinematica <span style="font-weight:400;font-size:12px;opacity:.85">— copre solo alcuni interventi: spunta solo se questo lavoro rientra nella garanzia</span>';
+function _lblGarCom(cc) { const l = document.getElementById('com-garanzia-lbl'); if (l) l.innerHTML = cc ? _LBL_GAR_CC : _LBL_GAR_STD; }
+function _valGarTipo() {
+  if (_valGaranziaCommessa() !== true) return null;
+  const vId = document.getElementById('com-veicolo')?.value;
+  return (vId && !isVeicoloInGaranzia(vId) && _vInGarCc(vId)) ? 'cc' : null;
+}
+function _garScadCom(cm, v) { const d = (cm && cm.garTipo === 'cc') ? v?.garanziaCcScadenza : v?.garanziaScadenza; return d ? new Date(d).toLocaleDateString('it-IT') : null; }
+
+// ── DDT: nuovo cliente con la scheda completa; ricambi cercati per codice/barcode e scaricati dal magazzino ──
+function _nuovoClienteDDTFull(q) {
+  document.getElementById('ddt-cliente-dropdown').style.display = 'none';
+  const mc = document.getElementById('modal-cliente');
+  openModal('cliente');
+  if (mc) mc.style.zIndex = '2300';
+  const rg = document.getElementById('c-ragione'); if (rg) rg.value = q || '';
+  _postSaveClienteCallback = id => {
+    if (mc) mc.style.zIndex = '';
+    if (document.getElementById('modal-ddt')?.style.display === 'flex') {
+      selezionaClienteDDT(id);
+      const s = document.getElementById('ddt-cliente-search'); if (s) s.value = '';
+    }
+  };
+}
+function _codProd(p) { return p.codInt || p.codForn || p.codice || p.cod || ''; }
+function _matchProdDDT(p, ql) {
+  return (p.descrizione || p.desc || '').toLowerCase().includes(ql)
+    || [p.codInt, p.codForn, p.codice, p.cod].some(c => String(c || '').toLowerCase().includes(ql))
+    || prodMatchBarcodePartial(p, ql);
+}
+async function _scaricoDDT(ddt) {
+  const avvisi = [];
+  for (const r of (ddt.righe || []).filter(x => x.prodId)) {
+    const pi = prodotti.findIndex(p => p.id === r.prodId); if (pi < 0) continue;
+    const qta = +r.qta || 1;
+    if ((prodotti[pi].giacenza || 0) < qta) avvisi.push((prodotti[pi].descrizione || prodotti[pi].desc || '') + ' (disp. ' + (prodotti[pi].giacenza || 0) + ')');
+    prodotti[pi].giacenza = +((prodotti[pi].giacenza || 0) - qta).toFixed(2);
+    await dbSaveMovimento({ id: initId(), prodId: r.prodId, tipo: 'scarico', qta, comId: null, note: 'Vendita ' + ddt.numero, data: new Date().toISOString(), createdAt: new Date().toISOString() });
+    await dbSaveProdotto(prodotti[pi]);
+  }
+  try { renderProdotti(); updateBadgeMagazzino(); } catch (_) {}
+  if (avvisi.length) showToast('⚠ Giacenza insufficiente: ' + avvisi.join(', '));
+}
+
 function convertaAppInCommessa(appId) {
   const a = appuntamenti.find(x=>x.id===appId);
   if (!a) return;
@@ -12095,7 +12156,7 @@ function cercaClienteDDT(q) {
       <div style="font-weight:600">${c.ragione}</div>
       <div style="font-size:11px;color:var(--text3)">${[c.piva,c.tel].filter(Boolean).join(' · ')}</div>
     </div>`).join('');
-  html += `<div onclick="mostraFormNuovoClienteDDT('${q.replace(/'/g,"\'")}')"
+  html += `<div onclick="_nuovoClienteDDTFull('${q.replace(/'/g,"\'")}')"
     style="padding:10px 14px;cursor:pointer;font-size:13px;color:var(--accent);font-weight:600;display:flex;align-items:center;gap:6px"
     onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
     <span style="font-size:18px">✚</span> Crea nuovo: <em>${q}</em>
@@ -12827,13 +12888,12 @@ function cercaProdottoDDT(q) {
   if (!q.trim()) { dd.style.display = 'none'; return; }
   const ql = q.toLowerCase();
   const matches = prodotti.filter(p =>
-    (p.descrizione||p.desc||'').toLowerCase().includes(ql) ||
-    (p.codice||p.cod||'').toLowerCase().includes(ql)
+    _matchProdDDT(p, ql)
   ).slice(0, 10);
   if (!matches.length) { dd.innerHTML = '<div style="padding:10px 14px;font-size:13px;color:var(--text3)">Nessun prodotto trovato</div>'; dd.style.display=''; return; }
   dd.innerHTML = matches.map(p => {
     const nome = p.descrizione || p.desc || '—';
-    const cod  = p.codice || p.cod || '';
+    const cod  = _codProd(p);
     const giac = p.giacenza ?? '?';
     return `<div onclick="aggiungiProdottoDDT('${p.id}')"
       style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px;display:flex;justify-content:space-between;align-items:center"
@@ -12852,7 +12912,7 @@ function aggiungiProdottoDDT(prodId) {
   const p = prodotti.find(x => x.id === prodId); if (!p) return;
   const esist = ddtRighe.findIndex(r => r.prodId === prodId);
   if (esist >= 0) { ddtRighe[esist].qta = (ddtRighe[esist].qta||1) + 1; }
-  else { ddtRighe.push({ prodId, desc: p.descrizione||p.desc||'', codice: p.codice||p.cod||'', qta: 1, prezzo: p.prezzoVend||0, um: p.um||'pz' }); }
+  else { ddtRighe.push({ prodId, desc: p.descrizione||p.desc||'', codice: _codProd(p), qta: 1, prezzo: p.prezzoVend||0, um: p.um||'pz' }); }
   document.getElementById('ddt-prod-search').value = '';
   document.getElementById('ddt-prod-dropdown').style.display = 'none';
   renderRigheDDT();
@@ -12861,7 +12921,7 @@ function aggiungiProdottoDDT(prodId) {
 function aggiungiPrimoProdottoDDT() {
   const q = document.getElementById('ddt-prod-search').value.trim(); if (!q) return;
   const ql = q.toLowerCase();
-  const p = prodotti.find(x => (x.descrizione||x.desc||'').toLowerCase().includes(ql)||(x.codice||x.cod||'').toLowerCase().includes(ql));
+  const p = prodotti.find(x => prodMatchBarcode(x, q) || [x.codInt, x.codForn].some(c => String(c || '').toLowerCase() === ql)) || prodotti.find(x => _matchProdDDT(x, ql));
   if (p) aggiungiProdottoDDT(p.id);
 }
 
@@ -12904,6 +12964,7 @@ async function salvaEStampaDDT() {
     closeModal('modal-ddt');
     renderDDT();
     showToast('DDT emesso ✓');
+    try { await _scaricoDDT(ddt); } catch (e) { console.warn('[DDT scarico]', e); }
     await checkoutDDT(ddt);
   } catch(e) { alert('Errore: '+e.message); }
 }
