@@ -420,7 +420,7 @@ function apriPadTimbra(cm) {
   }
   const v = veicoli.find(x=>x.id===cm.veicolo_id);
   const fi = cm.foto_inizio || {};
-  const garSenzaFoto = _comInGarT(cm) && !(fi.targa && fi.telaio && fi.km);
+  const garSenzaFoto = (_comInGarT(cm) || cm.gar_pagamento_ford === true) && !(fi.targa && fi.telaio && fi.km);
   const tasti = ['1','2','3','4','5','6','7','8','9','C','0','⌫'];
   ov.innerHTML = `<div style="background:var(--surface);border-radius:16px;padding:22px;width:330px;max-width:92vw;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)">
     <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Timbra su</div>
@@ -579,7 +579,7 @@ async function timbra(mec, cm) {
   // Blocco garanzia: per iniziare il lavoro servono le foto iniziali (targa, telaio, km) scattate dall'app MEC
   const _tApG = timbrature.find(t=>t.mec_id===mec.id&&t.com_id===cm.id&&!t.uscita);
   const _fiG  = cm.foto_inizio || {};
-  if (!_tApG && _comInGarT(cm) && !(_fiG.targa && _fiG.telaio && _fiG.km)) {
+  if (!_tApG && (_comInGarT(cm) || cm.gar_pagamento_ford === true) && !(_fiG.targa && _fiG.telaio && _fiG.km)) {
     mostraOverlay('📷', 'Commessa in garanzia', 'Prima di iniziare servono le foto iniziali (targa, telaio, km) dall\'app MEC', 'danger');
     setTimeout(chiudiOverlay, 4000);
     comSelezionata = null;
