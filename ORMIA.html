@@ -2814,7 +2814,7 @@ function init() {
     <div class="modal-body" style="padding:16px 20px">
       <div style="position:relative;margin-bottom:12px">
         <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--text3);pointer-events:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" id="sel-veicolo-q" placeholder="Cerca per targa, marca, modello..." oninput="filterVeicoliSel(this.value)"
+        <input type="text" id="sel-veicolo-q" placeholder="Cerca per targa, telaio, marca, modello..." oninput="filterVeicoliSel(this.value)"
           style="width:100%;padding:10px 12px 10px 34px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);color:var(--text);font-family:'DM Mono',monospace;box-sizing:border-box;outline:none;text-transform:uppercase;letter-spacing:1px" autocomplete="off">
       </div>
       <div id="sel-veicolo-list" style="max-height:240px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px"></div>
@@ -6909,7 +6909,7 @@ function selezionaVeicoloCommessa(vId) {
   if (cl && !document.getElementById('com-cliente').value) selezionaClienteCommessa(cl.id);
   document.getElementById('com-veicolo').value = vId;
   document.getElementById('com-veicolo-targa').textContent = v.targa||'—';
-  document.getElementById('com-veicolo-info').textContent = [v.marca,v.modello,v.anno].filter(Boolean).join(' ');
+  document.getElementById('com-veicolo-info').textContent = [v.marca,v.modello,v.anno].filter(Boolean).join(' ') + ((v.telaio||v.vin) ? ' · Telaio ' + (v.telaio||v.vin) : '');
   document.getElementById('com-veicolo-cliente').textContent = cl?cl.ragione:'';
   document.getElementById('com-veicolo-card').style.display = 'flex';
   document.getElementById('com-btn-sel-veicolo').style.display = 'none';
@@ -7652,7 +7652,7 @@ function filterVeicoliSel(q) {
   const qq = (q||'').toUpperCase().trim();
   const cid = document.getElementById('com-cliente').value;
   let pool = cid ? veicoli.filter(v=>v.clienteId===cid) : [...veicoli];
-  if (qq) pool = pool.filter(v => (v.targa||'').toUpperCase().includes(qq) || (v.marca||'').toUpperCase().includes(qq) || (v.modello||'').toUpperCase().includes(qq));
+  if (qq) pool = pool.filter(v => (v.targa||'').toUpperCase().includes(qq) || (v.marca||'').toUpperCase().includes(qq) || (v.modello||'').toUpperCase().includes(qq) || String(v.telaio||v.vin||'').toUpperCase().includes(qq));
   const list = document.getElementById('sel-veicolo-list');
   if (!list) return;
   if (!pool.length) {
@@ -7667,7 +7667,7 @@ function filterVeicoliSel(q) {
       <div style="font-family:'DM Mono',monospace;font-weight:800;color:var(--accent);font-size:14px;flex-shrink:0;min-width:80px">${v.targa||'—'}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600">${[v.marca,v.modello,v.anno].filter(Boolean).join(' ')||'—'}</div>
-        <div style="font-size:11px;color:var(--text3)">${cl?cl.ragione:''} ${v.km?' · '+Number(v.km).toLocaleString('it')+' km':''}</div>
+        <div style="font-size:11px;color:var(--text3)">${cl?cl.ragione:''} ${v.km?' · '+Number(v.km).toLocaleString('it')+' km':''}${(v.telaio||v.vin)?' · Telaio <span style="font-family:DM Mono,monospace">'+_escF(v.telaio||v.vin)+'</span>':''}</div>
       </div>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:var(--text3);flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
     </div>`;
