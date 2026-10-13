@@ -386,7 +386,7 @@ function renderCommessaList() {
     const inGaranzia = _comInGarT(cm);
     return `<div onclick="selezionaCommessa('${cm.id}')"
       style="background:${sel?'var(--accent-light)':'var(--surface)'};border:2px solid ${sel?'var(--accent)':'var(--border)'};border-radius:14px;padding:14px 16px;cursor:pointer;transition:border-color .15s,background .15s;position:relative">
-      ${inGaranzia?`<div style="position:absolute;top:10px;right:10px;background:#FEF3C7;border:1px solid #FDE68A;color:#92400E;font-size:11px;font-weight:800;padding:3px 8px;border-radius:20px">🔒 GARANZIA</div>`:''}
+      ${inGaranzia?`<div style="position:absolute;top:10px;right:10px;background:#FEF3C7;border:1px solid #FDE68A;color:#92400E;font-size:11px;font-weight:800;padding:3px 8px;border-radius:20px">🔒 GARANZIA${cm.gar_tipo === 'cc' ? ' CC' : ''}</div>`:''}
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
         <span style="font-size:12px;font-weight:700;color:var(--text2);font-family:monospace">${cm.numero}</span>
         <span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:${sc.bg};color:${sc.color}">${sc.label}</span>
