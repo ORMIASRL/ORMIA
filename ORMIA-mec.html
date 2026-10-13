@@ -938,7 +938,7 @@ function renderHome() {
             <div class="com-num">${cm.numero||''}</div>
             <div class="com-desc">${cm.desc}</div>
           </div>
-          <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0">${_comInGar(cm, v)?'<span style="flex-shrink:0;background:#FEF3C7;border:1px solid #FDE68A;color:#92400E;font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;white-space:nowrap">🔒 GARANZIA</span>':''}${_badgeContrattoM(v)}</div>
+          <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0">${_comInGar(cm, v)?'<span style="flex-shrink:0;background:#FEF3C7;border:1px solid #FDE68A;color:#92400E;font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;white-space:nowrap">🔒 GARANZIA</span>':''}${cm.gar_pagamento_ford === true && !_comInGar(cm, v) ? '<span style="flex-shrink:0;background:#FFFBEB;border:1px solid #FDE68A;color:#92400E;font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;white-space:nowrap">📷 FOTO FORD</span>' : ''}${_badgeContrattoM(v)}</div>
         </div>
         <div class="com-cli" style="margin-top:8px;display:flex;flex-direction:column;gap:5px">
           ${v ? `<div style="display:flex;align-items:center;gap:8px">
@@ -1211,7 +1211,7 @@ function renderDetail() {
   // Foto garanzia
   const fotoWrap = document.getElementById('det-foto-wrap');
   const fotoAccWrap = document.getElementById('det-foto-accettazione-wrap');
-  const inGaranzia = _comInGar(cm, v);
+  const inGaranzia = _comInGar(cm, v) || cm.gar_pagamento_ford === true;
   if (inGaranzia) {
     fotoWrap.style.display = '';
     if (fotoAccWrap) fotoAccWrap.style.display = 'none';
@@ -1393,7 +1393,7 @@ async function timbra(verso) {
       // Blocco garanzia: senza foto iniziali (targa, telaio, km) non si può iniziare il lavoro
       const _cmG = getCommesse().find(c=>c.id===comSelected.id) || comSelected;
       const _vG  = getVeicoli().find(x=>x.id===_cmG.veicoloId);
-      if (_comInGar(_cmG, _vG) && !fotoInizioCompleto(_cmG.fotoInizio)) {
+      if ((_comInGar(_cmG, _vG) || _cmG.gar_pagamento_ford === true) && !fotoInizioCompleto(_cmG.fotoInizio)) {
         alert('⚠️ Commessa in garanzia\n\nPrima di iniziare il lavoro scatta le foto iniziali obbligatorie (targa, telaio e km).\nLe trovi nella sezione "Foto iniziali" qui sotto.');
         return;
       }
@@ -1743,6 +1743,10 @@ async function avanzaStato() {
 
   // Blocco garanzia: foto iniziali per iniziare, foto fine per chiudere
   const _vGar = getVeicoli().find(x=>x.id===cm.veicoloId);
+  if (!_comInGar(cm, _vGar) && cm.gar_pagamento_ford === true && nuovo === 'wip' && !fotoInizioCompleto(cm.fotoInizio)) {
+    alert('⚠️ Foto iniziali mancanti\n\nGaranzia di pagamento Ford: scatta targa, telaio e km prima di iniziare la lavorazione.\nLe trovi nella sezione "Foto iniziali" qui sotto.');
+    return;
+  }
   if (_comInGar(cm, _vGar)) {
     if (nuovo === 'wip') {
       if (!fotoInizioCompleto(cm.fotoInizio)) {
