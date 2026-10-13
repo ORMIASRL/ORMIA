@@ -2685,6 +2685,10 @@ function init() {
             <span>📷 Garanzia di pagamento Ford <span style="font-weight:400;font-size:12px;opacity:.85">— foto obbligatorie (targa, telaio, km) prima di iniziare il lavoro</span></span>
           </label>
         </div>
+        <div class="form-group span-2" id="com-fattcl-row">
+          <label>Fatturare a <span style="font-size:11px;font-weight:400;color:var(--text3)">— lascia vuoto per fatturare al proprietario del veicolo</span></label>
+          <select id="com-fatt-cliente"><option value="">— Proprietario del veicolo —</option></select>
+        </div>
         <div class="form-group span-2" id="com-garanzia-row" style="display:none">
           <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#FEF3C7;border:1px solid #FDE68A;border-radius:var(--radius);cursor:pointer;font-weight:600;color:#92400E;margin:0">
             <input type="checkbox" id="com-in-garanzia" style="width:18px;height:18px;margin:0;flex-shrink:0">
@@ -5794,6 +5798,7 @@ async function saveCommessa(firmaDataUrl=null) {
     firmaData: firmaDataUrl ? new Date().toISOString() : null,
     inGaranzia: _valGaranziaCommessa(),
     garPagamentoFord: _valGpf(),
+    fattClienteId: _valFattCl(),
     stato: document.getElementById('com-stato').value,
     note: document.getElementById('com-note').value.trim(),
     dirittoChiamata:        document.getElementById('com-diritto-chiamata')?.checked || false,
@@ -10239,13 +10244,13 @@ function _rigaScontata(desc, r) {
 function emettiFatturaCommessa(comId, extra) {
   const cm = commesse.find(c=>c.id===comId);
   if (!cm) return;
-  const cl = clienti.find(c=>c.id===cm.clienteId);
+  const cl = clienti.find(c=>c.id===(_fattClId(cm) || cm.clienteId));
   const v  = veicoli.find(x=>x.id===cm.veicoloId);
   if (!cl) { alert('La commessa non ha un cliente associato.'); return; }
   const righe = _righeCommessa(cm);
   if (!righe.length) { alert('La commessa non ha voci da fatturare.'); return; }
-  apriFatturaModal({origine:'commessa',origineId:comId,clienteId:cm.clienteId,
-    descrizione:`Commessa ${cm.numero} — ${cm.descrizione||cm.desc}`,
+  apriFatturaModal({origine:'commessa',origineId:comId,clienteId:_fattClId(cm) || cm.clienteId,
+    descrizione:`Commessa ${cm.numero} — ${cm.descrizione||cm.desc}` + (_propLbl(cm) ? ' — ' + _propLbl(cm) : ''),
     veicolo:v?`${v.targa} ${[v.marca,v.modello].filter(Boolean).join(' ')}`:'',righe, ...(extra||{})});
 }
 
@@ -10456,7 +10461,7 @@ function _dfRender() {
   const oggi = new Date();
   const voci = [
     ...com.map(c => { const v = veicoli.find(x => x.id === c.veicoloId);
-      return { k: 'c:' + c.id, tipo: 'c', id: c.id, cli: c.clienteId || '', num: c.numero || '', titolo: [v?.targa, c.descrizione || c.desc].filter(Boolean).join(' · '),
+      return { k: 'c:' + c.id, tipo: 'c', id: c.id, cli: _fattClId(c) || c.clienteId || '', num: c.numero || '', titolo: [v?.targa, c.descrizione || c.desc, _propLbl(c)].filter(Boolean).join(' · '),
         data: String(c.dataApertura || '').slice(0, 10), imp: _impRigheF(_righeCommessa(c)) }; }),
     ...dd.map(d => { const dt = String(d.data || d.created_at || '').slice(0, 10); let sc = null;
       if (dt) { const x = new Date(dt + 'T12:00:00'); sc = new Date(x.getFullYear(), x.getMonth() + 1, 15, 23, 59); }
@@ -10500,7 +10505,7 @@ function _dfFattura(k) {
 }
 function _dfFatturaUnica(cli) {
   const { com, dd } = _daFatturare();
-  const cs = com.filter(c => (c.clienteId || '') === cli && _dfSel.has('c:' + c.id));
+  const cs = com.filter(c => (_fattClId(c) || c.clienteId || '') === cli && _dfSel.has('c:' + c.id));
   const ds = dd.filter(d => (d.clienteId || '') === cli && _dfSel.has('d:' + d.id));
   if (cs.length + ds.length < 2) return;
   const righe = [];
@@ -10590,7 +10595,7 @@ async function eliminaVoceCommessa(tipo, idx) {
 // Prefattura (documento non fiscale) dalla commessa
 function _htmlPrefattura(comId, _soloHtml) {
   const cm = commesse.find(c => c.id === comId); if (!cm) return;
-  const cl = clienti.find(c => c.id === cm.clienteId);
+  const cl = clienti.find(c => c.id === (_fattClId(cm) || cm.clienteId));
   const v = veicoli.find(x => x.id === cm.veicoloId);
   const off = getDatiOfficina() || {};
   const righe = _righeCommessa(cm);
@@ -10626,7 +10631,7 @@ td{padding:7px 10px;border-bottom:1px solid #E4E2DC}.c{text-align:center;width:6
 <div class="wm">PREFATTURA</div>
 <div class="hdr"><div><div class="on">${e(off.ragione || 'Officina')}</div><div class="om">${e(off.indirizzo || '')}<br>${off.tel ? 'Tel: ' + e(off.tel) + '  ' : ''}${e(off.email || '')}<br>${off.piva ? 'P.IVA: ' + e(off.piva) : ''}</div></div>
 <div class="di"><div class="dt">PREFATTURA</div><div class="dd">Commessa ${e(cm.numero || '')}</div><div class="dd">Data: ${fd(oggi)}</div><div class="nf">DOCUMENTO NON VALIDO AI FINI FISCALI</div></div></div>
-<div class="g2"><div class="bx"><div class="bt">Cliente</div><div class="bm">${e(cl?.ragione || 'Cliente occasionale')}</div><div class="bs">${cl?.piva ? 'P.IVA: ' + e(cl.piva) + '<br>' : ''}${cl?.cf ? 'C.F.: ' + e(cl.cf) + '<br>' : ''}${e(cl?.indirizzo || '')}</div></div>
+<div class="g2"><div class="bx"><div class="bt">Cliente</div><div class="bm">${e(cl?.ragione || 'Cliente occasionale')}</div><div class="bs">${cl?.piva ? 'P.IVA: ' + e(cl.piva) + '<br>' : ''}${cl?.cf ? 'C.F.: ' + e(cl.cf) + '<br>' : ''}${e(cl?.indirizzo || '')}${_propLbl(cm) ? '<br><strong>' + e(_propLbl(cm)) + '</strong>' : ''}</div></div>
 <div class="bx"><div class="bt">Veicolo</div><div class="bm">${e(v?.targa || '—')} ${e([v?.marca, v?.modello].filter(Boolean).join(' '))}</div><div class="bs">${(v?.telaio || v?.vin) ? 'Telaio: ' + e(v.telaio || v.vin) + '<br>' : ''}${v?.km ? 'Km: ' + Number(v.km).toLocaleString('it-IT') : ''}</div></div></div>
 <table><thead><tr><th>Descrizione</th><th class="c">Q.tà</th><th class="r">Prezzo</th>${hasSc ? '<th class="c">Sconto</th>' : ''}<th class="r">Importo</th></tr></thead><tbody>${rows}</tbody></table>
 <div class="tf"><div class="tb"><div class="tr_"><span>Imponibile</span><span>${eu(imponibile)}</span></div><div class="tr_"><span>IVA ${iva}%</span><span>${eu(ivaAmt)}</span></div><div class="tr_ fin"><span>TOTALE</span><span>${eu(totale)}</span></div></div></div>
@@ -11051,10 +11056,10 @@ async function _pdfDaHtml(html) {
 }
 function _firmaMail(off) { return 'Cordiali saluti\n' + (off.ragione || 'ORMIA SNC') + (off.tel ? '\nTel. ' + off.tel : ''); }
 function _mailPrefattura(cm) {
-  const cl = clienti.find(c => c.id === cm.clienteId), v = veicoli.find(x => x.id === cm.veicoloId);
+  const cl = clienti.find(c => c.id === (_fattClId(cm) || cm.clienteId)), v = veicoli.find(x => x.id === cm.veicoloId);
   const off = getDatiOfficina() || {};
   const rif = [cm.numero, v?.targa].filter(Boolean).join(' – ');
-  return { tipo: 'prefattura', f: true, clienteId: cm.clienteId, to: cl?.email || '', nome: 'Prefattura ' + (cm.numero || ''),
+  return { tipo: 'prefattura', f: true, clienteId: _fattClId(cm) || cm.clienteId, to: cl?.email || '', nome: 'Prefattura ' + (cm.numero || ''),
     subject: 'Prefattura commessa ' + rif + ' – ' + (off.ragione || 'ORMIA SNC'),
     text: 'Buongiorno,\n\nin allegato la prefattura relativa alla commessa ' + rif + '.\nSi tratta di un riepilogo provvisorio: la fattura elettronica verrà emessa e trasmessa tramite SDI.\n\n' + _firmaMail(off) };
 }
@@ -11584,6 +11589,7 @@ function _veicoloInfoFatt(f) {
   const kmN = parseInt(String(v.km || '').replace(/\D/g, ''), 10);
   const parts = [[v.marca, v.modello].filter(Boolean).join(' '), v.targa ? 'Targa ' + v.targa : '',
     tel ? 'Telaio ' + tel : '', kmN > 0 ? 'Km ' + kmN.toLocaleString('it-IT') : ''].filter(Boolean);
+  const _pr = _propLbl(cm); if (_pr) parts.push(_pr);
   return { testo: parts.join(' · '), cm, v };
 }
 function _ficExtra(f) {
@@ -11757,6 +11763,71 @@ function _onNazioneCl(init) {
   if (est) { if (sdi) sdi.value = 'XXXXXXX'; if (prov) prov.value = 'EE'; if (iva) iva.value = '0'; }
   else { if (sdi && sdi.value === 'XXXXXXX') sdi.value = ''; if (prov && prov.value === 'EE') prov.value = ''; if (iva && iva.value === '0') iva.value = '22'; }
 }
+
+// ── Fatturare a: cliente di fatturazione diverso dal proprietario del veicolo ──
+function _fattClId(cm) { return (cm && cm.fattClienteId && cm.fattClienteId !== cm.clienteId) ? cm.fattClienteId : null; }
+function _propLbl(cm) { if (!_fattClId(cm)) return ''; const p = clienti.find(c => c.id === cm.clienteId); return p ? 'Proprietario ' + p.ragione : ''; }
+function _ultFattClGpf() {
+  const c = commesse.filter(x => x.garPagamentoFord === true && _fattClId(x))
+    .sort((a, b) => new Date(b.createdAt || b.dataApertura || 0) - new Date(a.createdAt || a.dataApertura || 0))[0];
+  return c ? c.fattClienteId : '';
+}
+function _optsFattCl(sel) {
+  return '<option value="">— Proprietario del veicolo —</option>' + [...clienti]
+    .sort((a, b) => String(a.ragione || '').localeCompare(String(b.ragione || ''), 'it'))
+    .map(c => '<option value="' + c.id + '"' + (c.id === sel ? ' selected' : '') + '>' + _escF(c.ragione || '') + (_clEstero(c) ? ' (' + _nazCl(c) + ')' : '') + '</option>').join('');
+}
+function _popFattCl(val) {
+  const s = document.getElementById('com-fatt-cliente'); if (!s) return;
+  s.innerHTML = _optsFattCl(val || ''); s.value = val || '';
+  const chk = document.getElementById('com-gar-pag-ford');
+  if (chk && !chk._fattClHook) {
+    chk._fattClHook = true;
+    chk.addEventListener('change', () => { const s2 = document.getElementById('com-fatt-cliente'); if (chk.checked && s2 && !s2.value) { const u = _ultFattClGpf(); if (u) s2.value = u; } });
+  }
+}
+function _valFattCl() {
+  const v = document.getElementById('com-fatt-cliente')?.value || '', own = document.getElementById('com-cliente')?.value || '';
+  return (v && v !== own) ? v : null;
+}
+(function () {
+  const o = openModalCommessa;
+  openModalCommessa = function (editId) {
+    const r = o.apply(this, arguments);
+    try { const cm = editId ? commesse.find(c => c.id === editId) : null; _popFattCl(cm ? (_fattClId(cm) || '') : ''); } catch (e) { console.warn('[fattCl]', e); }
+    return r;
+  };
+})();
+function _renderFattClDC(id) {
+  document.getElementById('dc-fattcl')?.remove();
+  const cm = commesse.find(c => c.id === id); if (!cm) return;
+  const ref = document.getElementById('dc-foto-section'); if (!ref) return;
+  const fcId = _fattClId(cm), fc = fcId ? clienti.find(c => c.id === fcId) : null, bloc = !!cm.fatturaId;
+  const box = document.createElement('div'); box.id = 'dc-fattcl';
+  box.style.cssText = 'margin:0 0 14px;padding:10px 12px;border:1px solid ' + (fc ? '#BFDBFE' : 'var(--border)') + ';border-radius:var(--radius);background:' + (fc ? '#EFF6FF' : 'var(--surface)');
+  box.innerHTML = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:6px">🧾 Fatturare a</div>'
+    + (bloc ? '<div style="font-size:13px;font-weight:600">' + _escF(fc ? fc.ragione : 'Proprietario del veicolo') + '</div>'
+            : '<select id="dc-fattcl-sel" style="width:100%" onchange="_setFattCl(\'' + id + '\', this.value)">' + _optsFattCl(fcId || '') + '</select>')
+    + (fc ? '<div style="font-size:11px;color:var(--text3);margin-top:4px">La commessa resta del proprietario; la fattura va a ' + _escF(fc.ragione) + '.</div>' : '');
+  ref.parentNode.insertBefore(box, ref);
+}
+async function _setFattCl(id, val) {
+  const cm = commesse.find(c => c.id === id); if (!cm) return;
+  const nuovo = (val && val !== cm.clienteId) ? val : null;
+  const { error } = await supa.from('commesse').update({ fatt_cliente_id: nuovo }).eq('id', id);
+  if (error) { alert('Errore: ' + error.message); _renderFattClDC(id); return; }
+  cm.fattClienteId = nuovo;
+  showToast(nuovo ? '🧾 Fatturare a: ' + (clienti.find(c => c.id === nuovo)?.ragione || '') : 'Si fattura al proprietario');
+  _renderFattClDC(id);
+}
+(function () {
+  const oDet = showDetailCommessa;
+  showDetailCommessa = function (id) {
+    const r = oDet.apply(this, arguments);
+    try { _renderFattClDC(id); } catch (e) { console.warn('[fattCl]', e); }
+    return r;
+  };
+})();
 
 function convertaAppInCommessa(appId) {
   const a = appuntamenti.find(x=>x.id===appId);
