@@ -2257,6 +2257,7 @@ function _comInGaranzia(cm) {
   return isVeicoloInGaranzia(cm.veicoloId);
 }
 function _aggGaranziaCommessa(val) {
+  try { _aggGpf(); } catch (_) {}
   const row = document.getElementById('com-garanzia-row'), chk = document.getElementById('com-in-garanzia');
   if (!row || !chk) return;
   const vId = document.getElementById('com-veicolo')?.value;
@@ -2673,6 +2674,12 @@ function init() {
         <!-- Campi hidden -->
         <input type="hidden" id="com-cliente">
         <input type="hidden" id="com-veicolo">
+        <div class="form-group span-2" id="com-gpf-row" style="display:none">
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:var(--radius);cursor:pointer;font-weight:600;color:#92400E;margin:0">
+            <input type="checkbox" id="com-gar-pag-ford" style="width:18px;height:18px;margin:0;flex-shrink:0">
+            <span>📷 Garanzia di pagamento Ford <span style="font-weight:400;font-size:12px;opacity:.85">— foto obbligatorie (targa, telaio, km) prima di iniziare il lavoro</span></span>
+          </label>
+        </div>
         <div class="form-group span-2" id="com-garanzia-row" style="display:none">
           <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#FEF3C7;border:1px solid #FDE68A;border-radius:var(--radius);cursor:pointer;font-weight:600;color:#92400E;margin:0">
             <input type="checkbox" id="com-in-garanzia" style="width:18px;height:18px;margin:0;flex-shrink:0">
@@ -3145,7 +3152,11 @@ function init() {
     </div>
     <div id="dc-foto-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px"></div>
     <div id="dc-foto-empty" style="font-size:12px;color:var(--text3);padding:8px 0;display:none">Nessuna foto caricata ancora dal meccanico.</div>
-    <div id="dc-allegati" style="margin-top:12px"></div>
+  </div>
+
+  <!-- ALLEGATI: foto e file su tutte le commesse -->
+  <div class="detail-section" id="dc-allegati-section">
+    <div id="dc-allegati"></div>
   </div>
 
   <div style="padding:16px 24px;display:flex;gap:8px;flex-wrap:wrap">
@@ -5706,6 +5717,7 @@ function openModalCommessa(editId) {
   document.getElementById('com-ore-motore-hint').textContent = '';
   document.getElementById('com-mec-chips').innerHTML = '';
   document.getElementById('com-totale').textContent = '€ 0,00';
+  try { _aggGpf(false); } catch (_) {}
 
   if (editId) {
     const cm = commesse.find(x=>x.id===editId);
@@ -5713,7 +5725,7 @@ function openModalCommessa(editId) {
       // Ripristina cliente
       if (cm.clienteId) selezionaClienteCommessa(cm.clienteId);
       // Ripristina veicolo
-      if (cm.veicoloId) setTimeout(() => { selezionaVeicoloCommessa(cm.veicoloId); _aggGaranziaCommessa(cm.inGaranzia); }, 20);
+      if (cm.veicoloId) setTimeout(() => { selezionaVeicoloCommessa(cm.veicoloId); _aggGaranziaCommessa(cm.inGaranzia); _aggGpf(cm.garPagamentoFord === true); }, 20);
       document.getElementById('com-desc').value = cm.descrizione||cm.desc || '';
       document.getElementById('com-data-apertura').value = cm.dataApertura || '';
       document.getElementById('com-stato').value = cm.stato || 'aperta';
@@ -5776,6 +5788,7 @@ async function saveCommessa(firmaDataUrl=null) {
     firma: firmaDataUrl || null,
     firmaData: firmaDataUrl ? new Date().toISOString() : null,
     inGaranzia: _valGaranziaCommessa(),
+    garPagamentoFord: _valGpf(),
     stato: document.getElementById('com-stato').value,
     note: document.getElementById('com-note').value.trim(),
     dirittoChiamata:        document.getElementById('com-diritto-chiamata')?.checked || false,
@@ -6218,7 +6231,7 @@ function showDetailCommessa(id) {
   const fotoGrid    = document.getElementById('dc-foto-grid');
   const fotoEmpty   = document.getElementById('dc-foto-empty');
   const fotoCount   = document.getElementById('dc-foto-count');
-  if (_comInGaranzia(cm)) {
+  if (_comInGaranzia(cm) || cm.garPagamentoFord === true) {
     fotoSection.style.display = '';
     const urlsInizio = Object.values(cm.fotoInizio || {}).filter(Boolean);
     const urlsFine   = (cm.fotoFine || []).filter(Boolean);
@@ -6234,10 +6247,10 @@ function showDetailCommessa(id) {
       fotoGrid.innerHTML = '';
       fotoEmpty.style.display = '';
     }
-    _renderAllegatiGest(cm);
   } else {
     fotoSection.style.display = 'none';
   }
+  _renderAllegatiGest(cm);
 
   // Aggiorna totale live (con timbrature aperte)
   aggiornaLiveTotal(id);
@@ -7385,7 +7398,7 @@ function emettiFatturaGaranzia(id) {
 }
 
 function _escAllG(t){return String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function _disegnaAllegatiGest(allegati) {
+function _disegnaAllegatiGestOld(allegati) {
   const box = document.getElementById('dc-allegati');
   if (!box) return;
   const aa = allegati || [];
@@ -11579,6 +11592,149 @@ function _ficExtra(f) {
   } catch (e) { console.warn('[FiC extra]', e); }
   return out;
 }
+
+// ── Garanzia di pagamento Ford: foto iniziali obbligatorie (targa, telaio, km), senza pratica garanzia ──
+function _isFordV(vId) {
+  const v = veicoli.find(x => x.id === vId);
+  return !!v && /FORD/i.test(String(v.marca || '') + ' ' + String(v.modello || ''));
+}
+function _aggGpf(val) {
+  const row = document.getElementById('com-gpf-row'), chk = document.getElementById('com-gar-pag-ford');
+  if (!row || !chk) return;
+  if (val !== undefined) chk.checked = !!val;
+  const vId = document.getElementById('com-veicolo')?.value;
+  row.style.display = (_isFordV(vId) || chk.checked) ? '' : 'none';
+}
+function _valGpf() {
+  const row = document.getElementById('com-gpf-row'), chk = document.getElementById('com-gar-pag-ford');
+  if (!row || !chk || row.style.display === 'none') return false;
+  return !!chk.checked;
+}
+function _renderGpfDC(id) {
+  document.getElementById('dc-gpf')?.remove();
+  const cm = commesse.find(c => c.id === id); if (!cm) return;
+  const on = cm.garPagamentoFord === true;
+  if (!on && !_isFordV(cm.veicoloId)) return;
+  const ref = document.getElementById('dc-foto-section'); if (!ref) return;
+  const fi = cm.fotoInizio || {};
+  const fatte = ['targa', 'telaio', 'km'].filter(k => fi[k]).length;
+  const box = document.createElement('div'); box.id = 'dc-gpf'; box.className = 'detail-section';
+  box.innerHTML = on
+    ? `<div style="border:1px solid #FDE68A;background:#FFFBEB;border-radius:var(--radius);padding:10px 14px;font-size:13px;color:#92400E;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px"><div style="font-weight:800">📷 Garanzia di pagamento Ford</div>
+        <div>Foto iniziali obbligatorie: <b>${fatte}/3</b> (targa, telaio, km)${fatte < 3 ? ' — i ragazzi non possono iniziare il lavoro finché non le scattano dall\'app' : ' ✓'}</div></div>
+        <button class="btn btn-secondary btn-sm" onclick="_toggleGpf('${cm.id}')">Togli</button></div>`
+    : `<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text3)"><span style="flex:1">📷 Intervento con garanzia di pagamento Ford?</span>
+        <button class="btn btn-secondary btn-sm" onclick="_toggleGpf('${cm.id}')">Segna: foto obbligatorie</button></div>`;
+  ref.parentNode.insertBefore(box, ref);
+}
+async function _toggleGpf(id) {
+  const cm = commesse.find(c => c.id === id); if (!cm) return;
+  const nuovo = !(cm.garPagamentoFord === true);
+  if (!confirm(nuovo ? 'Segnare la commessa ' + (cm.numero || '') + ' come garanzia di pagamento Ford?\n\nI ragazzi dovranno scattare le foto di targa, telaio e km prima di iniziare il lavoro.' : 'Togliere la garanzia di pagamento Ford da questa commessa?\n\nLe foto non saranno più obbligatorie.')) return;
+  const { error } = await supa.from('commesse').update({ gar_pagamento_ford: nuovo }).eq('id', id);
+  if (error) { alert('Errore: ' + error.message); return; }
+  cm.garPagamentoFord = nuovo;
+  showToast(nuovo ? '📷 Garanzia di pagamento Ford: foto obbligatorie ✓' : 'Garanzia di pagamento Ford tolta');
+  if (selectedCommessaId === id) showDetailCommessa(id);
+}
+
+// ── Allegati dal gestionale: foto e file su tutte le commesse (stesso elenco dell'app meccanici) ──
+function _disegnaAllegatiGest(allegati) {
+  const box = document.getElementById('dc-allegati');
+  if (!box) return;
+  const aa = allegati || [];
+  const isImg = a => /\.(jpe?g|png|gif|webp|bmp)(\?|$)/i.test(String(a.nome || '') + ' ' + String(a.url || '').split('?')[0]) || /\.(jpe?g|png|gif|webp|bmp)$/i.test(String(a.url || '').split('?')[0]);
+  const tile = (a, i) => {
+    const meta = _escAllG(a.mec || '') + (a.data ? ' · ' + new Date(a.data).toLocaleDateString('it-IT') : '');
+    const del = `<button title="Elimina" onclick="event.preventDefault();event.stopPropagation();_eliminaAllegatoGest(${i})" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;border:none;background:rgba(0,0,0,.55);color:#fff;font-size:12px;line-height:22px;cursor:pointer;padding:0">✕</button>`;
+    return isImg(a)
+      ? `<a href="${_escAllG(a.url)}" target="_blank" rel="noopener" style="position:relative;display:block;border:1px solid var(--border);border-radius:8px;overflow:hidden;text-decoration:none;color:var(--text3)">
+          <img src="${_escAllG(a.url)}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;display:block">${del}
+          <div style="font-size:10px;padding:3px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${meta}</div></a>`
+      : `<a href="${_escAllG(a.url)}" target="_blank" rel="noopener" style="position:relative;display:flex;flex-direction:column;justify-content:space-between;border:1px solid var(--border);border-radius:8px;padding:8px;text-decoration:none;color:var(--accent);min-height:110px">
+          <div style="font-size:26px">📄</div><div style="font-size:11px;font-weight:600;word-break:break-all;overflow:hidden;max-height:3.6em">${_escAllG(a.nome || 'file')}</div>${del}
+          <div style="font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${meta}</div></a>`;
+  };
+  box.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
+      <div class="detail-section-title" style="margin:0">📎 Foto e file (${aa.length})</div>
+      <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0">📎 Allega foto o file
+        <input type="file" multiple accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt,.eml,.msg,.zip,.mp4,.mov" style="display:none" onchange="_allegaFileGest(this)"></label></div>
+    <div id="dc-allegati-stato" style="font-size:12px;color:var(--accent);margin-bottom:4px"></div>` +
+    (aa.length
+      ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px">${aa.map(tile).join('')}</div>`
+      : '<div style="font-size:12px;color:var(--text3)">Nessun file allegato. Puoi caricare foto, PDF e documenti: li vedono anche i ragazzi sull\'app.</div>');
+}
+async function _comprimiImg(f) {
+  try {
+    if (!/^image\/(jpeg|png|webp)$/i.test(f.type || '') || f.size < 500 * 1024) return f;
+    const bmp = await createImageBitmap(f);
+    const max = 1920, k = Math.min(1, max / Math.max(bmp.width, bmp.height));
+    const c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.82));
+    if (!blob || blob.size >= f.size) return f;
+    return new File([blob], String(f.name || 'foto').replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+  } catch (_) { return f; }
+}
+async function _allegaFileGest(input) {
+  const files = [...(input.files || [])]; input.value = '';
+  if (!files.length) return;
+  const id = selectedCommessaId; const cm = commesse.find(c => c.id === id); if (!cm) return;
+  const st = () => document.getElementById('dc-allegati-stato');
+  let utente = 'Ufficio';
+  try { const u = (await supa.auth.getUser()).data.user; utente = (meccanici.find(m => m.userId && m.userId === u?.id)?.nome) || u?.email || 'Ufficio'; } catch (_) {}
+  const nuovi = [];
+  for (let i = 0; i < files.length; i++) {
+    const f0 = files[i];
+    if (st()) st().textContent = `Caricamento ${i + 1} di ${files.length}…`;
+    try {
+      const f = await _comprimiImg(f0);
+      if (f.size > 25 * 1024 * 1024) { alert('«' + f0.name + '» è troppo grande (max 25 MB).'); continue; }
+      const safe = String(f.name || 'file').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w.\-]+/g, '_').slice(-80);
+      const path = `${id}/allegato_${Date.now()}_${i}_${safe}`;
+      const { error } = await supa.storage.from('commesse-foto').upload(path, f, { contentType: f.type || 'application/octet-stream', upsert: false });
+      if (error) throw error;
+      const url = supa.storage.from('commesse-foto').getPublicUrl(path).data.publicUrl;
+      nuovi.push({ nome: f.name, url, path, data: new Date().toISOString(), mec: utente });
+    } catch (e) { alert('Errore nel caricare «' + f0.name + '»: ' + (e.message || e)); }
+  }
+  if (!nuovi.length) { if (st()) st().textContent = ''; return; }
+  try {
+    const { data: row, error: e1 } = await supa.from('commesse').select('allegati').eq('id', id).single();
+    if (e1) throw e1;
+    const all = [...((row && row.allegati) || []), ...nuovi];
+    const { error } = await supa.from('commesse').update({ allegati: all }).eq('id', id);
+    if (error) throw error;
+    cm.allegati = all;
+    if (selectedCommessaId === id) _disegnaAllegatiGest(all);
+    showToast(`📎 ${nuovi.length} file allegat${nuovi.length === 1 ? 'o' : 'i'} ✓`);
+  } catch (e) { alert('Errore salvataggio allegati: ' + (e.message || e)); if (st()) st().textContent = ''; }
+}
+async function _eliminaAllegatoGest(i) {
+  const id = selectedCommessaId; const cm = commesse.find(c => c.id === id); if (!cm) return;
+  const a = (cm.allegati || [])[i]; if (!a) return;
+  if (!confirm('Eliminare «' + (a.nome || 'file') + '»?')) return;
+  try {
+    const { data: row, error: e1 } = await supa.from('commesse').select('allegati').eq('id', id).single();
+    if (e1) throw e1;
+    const all = ((row && row.allegati) || []).filter(x => !(x.url === a.url && (x.path || '') === (a.path || '')));
+    const { error } = await supa.from('commesse').update({ allegati: all }).eq('id', id);
+    if (error) throw error;
+    if (a.path) supa.storage.from('commesse-foto').remove([a.path]).catch(() => {});
+    cm.allegati = all;
+    if (selectedCommessaId === id) _disegnaAllegatiGest(all);
+    showToast('File eliminato');
+  } catch (e) { alert('Errore: ' + (e.message || e)); }
+}
+(function () {
+  const oDet = showDetailCommessa;
+  showDetailCommessa = function (id) {
+    const r = oDet.apply(this, arguments);
+    try { _renderGpfDC(id); } catch (e) { console.warn('[gpf]', e); }
+    return r;
+  };
+})();
 
 function convertaAppInCommessa(appId) {
   const a = appuntamenti.find(x=>x.id===appId);
