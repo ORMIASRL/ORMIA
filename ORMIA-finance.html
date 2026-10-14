@@ -1725,6 +1725,20 @@ async function sincronizzaFIC(silent = false) {
 
 // ── inviaSuFIC ────────────────────────────────────
 // Aliquote IVA standard di Fatture in Cloud (id interni): 22% → 0, 10% → 3, 4% → 4
+// ── Clienti esteri e IVA 0% (come nel gestionale): nazione, VAT, SDI XXXXXXX, aliquota 7-ter ──
+const _NAZ_F = {IT:'Italia',AT:'Austria',DE:'Germania',FR:'Francia',CH:'Svizzera',SI:'Slovenia',HR:'Croazia',ES:'Spagna',PT:'Portogallo',BE:'Belgio',NL:'Paesi Bassi',LU:'Lussemburgo',PL:'Polonia',CZ:'Repubblica Ceca',SK:'Slovacchia',HU:'Ungheria',RO:'Romania',BG:'Bulgaria',GR:'Grecia',DK:'Danimarca',SE:'Svezia',FI:'Finlandia',IE:'Irlanda',LT:'Lituania',LV:'Lettonia',EE:'Estonia',CY:'Cipro',MT:'Malta',SM:'San Marino',GB:'Regno Unito',NO:'Norvegia',US:'Stati Uniti'};
+const _NAZ_UE_F = new Set(['AT','DE','FR','SI','HR','ES','PT','BE','NL','LU','PL','CZ','SK','HU','RO','BG','GR','DK','SE','FI','IE','LT','LV','EE','CY','MT']);
+function _nazF(cl) { return String((cl && cl.nazione) || 'IT').toUpperCase(); }
+function _esteroF(cl) { return _nazF(cl) !== 'IT'; }
+function _ivaNF(v) { const n = parseFloat(v); return isNaN(n) ? 22 : n; }
+function _vatDoc(iva, cl) { return (_ivaNF(iva) === 0 && _esteroF(cl)) ? { id: 10 } : _vatFicFin(_ivaNF(iva)); }
+function _entEst(cl) {
+  if (!_esteroF(cl)) return {};
+  const n = _nazF(cl);
+  return { vat_number: String(cl.piva || '').toUpperCase().replace(/\s/g, '').replace(new RegExp('^' + n), ''), tax_code: '', ei_code: 'XXXXXXX', country: _NAZ_F[n] || n };
+}
+function _dic7terF(cl) { return _NAZ_UE_F.has(_nazF(cl)) ? 'Operazione non soggetta IVA – art. 7-ter DPR 633/72 – inversione contabile' : 'Operazione non soggetta IVA – art. 7-ter DPR 633/72'; }
+
 function _vatFicFin(v) { const id = { 22:0, 10:3, 4:4 }[Number(v)]; return id != null ? { id } : { value: Number(v) }; }
 
 // ══════════════════════════════════════════════════
@@ -2008,9 +2022,9 @@ async function inviaSuFIC(fatturaId) {
   try {
     const righe = (f.righe||[]).filter(r => r.desc||r.descrizione);
     const items = righe.length
-      ? righe.map(r => ({ name:r.desc||r.descrizione, qty:r.qta||1, ...(r.sconto && r.listino != null ? { net_price:+r.listino, discount:+r.sconto } : { net_price:r.prezzo||0 }), vat:_vatFicFin(f.iva||22) }))
+      ? righe.map(r => ({ name:r.desc||r.descrizione, qty:r.qta||1, ...(r.sconto && r.listino != null ? { net_price:+r.listino, discount:+r.sconto } : { net_price:r.prezzo||0 }), vat:_vatDoc(f.iva, cl) }))
       : [{ name:f.descrizione||'Servizio officina', qty:1,
-           net_price: f.imponibile||(f.totale||0)/(1+(f.iva||22)/100), vat:_vatFicFin(f.iva||22) }];
+           net_price: f.imponibile||(f.totale||0)/(1+_ivaNF(f.iva)/100), vat:_vatDoc(f.iva, cl) }];
     const _num = String(f.numero||'').match(/(\d+)\s*$/);
     const res = await ficFetch(`/c/${_ficConfig.company_id}/issued_documents`, {
       method: 'POST',
@@ -2022,7 +2036,7 @@ async function inviaSuFIC(fatturaId) {
                   tax_code:f.cl_cf||cl?.cf||f.cl_piva||cl?.piva||'', ei_code:String(f.cl_sdi||cl?.sdi||'').trim().toUpperCase()||'0000000',
                   certified_email:f.cl_pec||cl?.pec||'', email:f.cl_email||cl?.email||'',
                   address_street:[cl?.via, cl?.civico].filter(Boolean).join(' '), address_postal_code:cl?.cap||'',
-                  address_city:cl?.citta||'', address_province:cl?.provincia||'', country:'Italia' },
+                  address_city:cl?.citta||'', address_province:cl?.provincia||'', country:'Italia', ..._entEst(cl) },
         items_list: items,
         payments_list: [{ amount: Math.round((f.totale||0)*100)/100, due_date: (f.scadenza||f.data||new Date().toISOString()).split('T')[0], status: 'not_paid' }],
       }, options: { fix_payments: true } }),
@@ -2345,10 +2359,10 @@ async function inviaNCFiC(id) {
         entity: { name: fatt?.cl_ragione||cl?.ragione||'Cliente', vat_number: cl?.piva||'', tax_code: cl?.cf||cl?.piva||'', e_invoice: true,
                   ei_code: String(cl?.sdi||'').trim().toUpperCase()||'0000000', certified_email: cl?.pec||'', email: cl?.email||'',
                   address_street: [cl?.via, cl?.civico].filter(Boolean).join(' '), address_postal_code: cl?.cap||'',
-                  address_city: cl?.citta||'', address_province: cl?.provincia||'', country: 'Italia' },
+                  address_city: cl?.citta||'', address_province: cl?.provincia||'', country: 'Italia', ..._entEst(cl) },
         // L'importo della nota è IVA inclusa: su FiC va il netto (positivo) con l'aliquota della fattura
         items_list: [{ name: nc.motivo||'Nota di credito', qty:1,
-                       net_price: Math.round((nc.importo||0) / (1 + (fatt?.iva||22)/100) * 100) / 100, vat: _vatFicFin(fatt?.iva||22) }],
+                       net_price: Math.round((nc.importo||0) / (1 + _ivaNF(fatt?.iva)/100) * 100) / 100, vat: _vatDoc(fatt?.iva, cl) }],
         payments_list: [{ amount: Math.round((nc.importo||0)*100)/100, due_date: (nc.data||new Date().toISOString()).split('T')[0], status: 'not_paid' }],
         ...(fatt?.ficId ? { original_document_id: parseInt(fatt.ficId) } : {}),
       }, options: { fix_payments: true } }),
@@ -2410,6 +2424,7 @@ function generaHtmlNC(nc, fatt, cl) {
   <div style="font-size:13px;color:#666;margin-bottom:6px">Motivo della nota di credito:</div>
   <div style="font-size:15px;font-weight:600">${nc.motivo||'—'}</div>
 </div>
+${(fatt && _ivaNF(fatt.iva) === 0 && _esteroF(cl)) ? `<div style="font-size:12px;font-weight:700;margin-bottom:16px">${_dic7terF(cl)}</div>` : ''}
 <div style="display:flex;justify-content:flex-end">
   <div style="background:#FEF2F2;border:1px solid #FECACA;padding:20px 28px;border-radius:8px;text-align:right;min-width:260px">
     <div style="font-size:13px;color:#666;margin-bottom:8px">Importo della nota di credito:</div>
