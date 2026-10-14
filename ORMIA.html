@@ -6168,6 +6168,7 @@ function showDetailCommessa(id) {
       (f.stato === 'scaduta' || (f.stato === 'emessa' && f.scadenza && new Date(f.scadenza) < new Date()))
     );
     const totale = fattureScadute.reduce((s,f)=>s+(f.totale||0),0);
+    const soglia = 0;
     if (fattureScadute.length && totale > soglia) {
       alertMoroso.style.display = '';
       alertMoroso.innerHTML = `<div style="background:#FEF2F2;border:1.5px solid #FCA5A5;border-radius:var(--radius-lg);padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
