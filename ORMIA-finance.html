@@ -2312,7 +2312,10 @@ async function salvaNC() {
   if (!motivo)    { showToastFin('⚠ Inserisci il motivo'); return; }
   const fatt = _fatture.find(f=>f.id===fatturaId);
   const anno = new Date().getFullYear();
-  const seq  = String(_noteCredito.filter(n=>n.numero?.startsWith('NC-'+anno)).length + 1).padStart(4,'0');
+  // Progressivo dal database (Impostazioni → Prossimo n° nota credito): è anche il numero inviato a Fatture in Cloud
+  const { data: _nNc, error: _eNc } = await supa.rpc('ormia_prossimo_numero', { campo: 'num_nc' });
+  if (_eNc || !_nNc) { showToastFin('Errore numero progressivo: ' + (_eNc?.message || 'risposta vuota')); return; }
+  const seq  = String(_nNc).padStart(4,'0');
   const numero = `NC-${anno}-${seq}`;
   try {
     const row = {
