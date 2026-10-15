@@ -13384,6 +13384,7 @@ async function salvaDatiOfficina() {
     num_preventivi: Math.max(0, (parseInt(document.getElementById('off-num-prev').value)||1) - 1),
     num_ddt:        Math.max(0, (parseInt(document.getElementById('off-num-ddt').value)||1) - 1),
     num_fatture:    Math.max(0, (parseInt(document.getElementById('off-num-fatt').value)||1) - 1),
+    num_nc:         Math.max(0, (parseInt(document.getElementById('off-num-nc').value)||1) - 1),
   };
   const { error } = await supa.from('impostazioni').upsert({id:'default', ...d});
   if (error) { alert('Errore salvataggio: '+error.message); return; }
@@ -13403,7 +13404,7 @@ function caricaDatiOfficina() {
   set('off-indirizzo',d.indirizzo); set('off-tel',d.tel); set('off-email',d.email);
   set('off-pec',d.pec); set('off-sdi',d.sdi); set('off-iban',d.iban);
   set('off-banca',d.banca); set('off-note-doc',d.note_doc);
-  set('off-num-prev',(d.num_preventivi||0)+1); set('off-num-ddt',(d.num_ddt||0)+1); set('off-num-fatt',(d.num_fatture||0)+1);
+  set('off-num-prev',(d.num_preventivi||0)+1); set('off-num-ddt',(d.num_ddt||0)+1); set('off-num-fatt',(d.num_fatture||0)+1); set('off-num-nc',(d.num_nc||0)+1);
 }
 
 // Incrementa numeratori su Supabase
@@ -13851,10 +13852,11 @@ initDocumenti();
           <div style="font-size:12px;color:var(--text3);margin-top:4px">La soglia di morosità si configura per ogni singolo cliente nell'anagrafica cliente. Se non impostata, nessun controllo viene effettuato.</div>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
         <div class="form-group"><label>Prossimo n° preventivo</label><input type="number" id="off-num-prev" min="1" value="1" style="font-family:monospace"></div>
         <div class="form-group"><label>Prossimo n° DDT</label><input type="number" id="off-num-ddt" min="1" value="1" style="font-family:monospace"></div>
         <div class="form-group"><label>Prossimo n° fattura</label><input type="number" id="off-num-fatt" min="1" value="1" style="font-family:monospace"></div>
+        <div class="form-group"><label>Prossimo n° nota credito</label><input type="number" id="off-num-nc" min="1" value="1" style="font-family:monospace"></div>
       </div>
       <div style="display:flex;justify-content:flex-end;margin-top:16px">
         <button class="btn btn-primary" onclick="salvaDatiOfficina()">Salva dati officina</button>
