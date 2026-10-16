@@ -10505,7 +10505,7 @@ function _dfRender() {
           <input type="checkbox" ${_dfSel.has(v.k) ? 'checked' : ''} onchange="_dfToggle('${v.k}',this.checked)" style="width:17px;height:17px;cursor:pointer">
           <div style="min-width:0">
             <div style="font-size:13px;font-weight:700"><span style="${tag};font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:6px">${v.tipo === 'c' ? 'COMMESSA' : 'DDT'}</span>${_escF(v.num)}</div>
-            <div style="font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escF(v.titolo)}${v.data ? ' · ' + formatDate(v.data) : ''}</div>${scTxt}
+            <div style="font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escF(v.titolo)}${v.data ? ' · ' + formatDate(v.data) : ''}</div>${scTxt}${_dfCashTag(v)}
           </div>
           <div style="font-family:'DM Mono',monospace;font-weight:700;font-size:13px;white-space:nowrap">${_eurF(v.imp)}</div>
           <div style="display:flex;gap:6px">${v.tipo === 'c' ? `<button class="btn btn-ghost btn-sm" title="Vedi commessa" onclick="_vediCommessaSopra('${v.id}')">👁</button>` : ''}<button class="btn btn-secondary btn-sm" onclick="_dfFattura('${v.k}')">Fattura</button></div>
@@ -10517,7 +10517,14 @@ function _dfToggle(k, on) { if (on) _dfSel.add(k); else _dfSel.delete(k); const 
 function _dfFattura(k) {
   const [t, id] = k.split(':');
   document.getElementById('modal-dafatt')?.remove();
-  if (t === 'c') emettiFatturaCommessa(id); else converteDDTinFattura(id);
+  if (t === 'c') {
+    const _k = _cashCom(commesse.find(c => c.id === id));
+    if (_k.pp.length) {
+      const _cm = commesse.find(c => c.id === id), _tot = _totIvatoCom(_cm);
+      if (_k.totale && _k.tot >= _tot - 0.01) emettiFatturaCommessa(id, { incasso: true, pagamento: 'rd_contanti' });
+      else emettiFatturaCommessa(id, { cashParz: _k.tot });
+    } else emettiFatturaCommessa(id);
+  } else converteDDTinFattura(id);
 }
 function _dfFatturaUnica(cli) {
   const { com, dd } = _daFatturare();
@@ -11922,6 +11929,103 @@ function _checkOreFord(vId, ore, inModifica) {
   }, 300);
 })();
 
+// ── Pagamento in contanti segnato dal magazzino: l'amministrazione lo vede in "Da fatturare" e decide ──
+function _totIvatoCom(cm) {
+  const cl = clienti.find(c => c.id === (_fattClId(cm) || cm.clienteId));
+  const imp = _impRigheF(_righeCommessa(cm));
+  return Math.round(imp * (1 + _ivaN(cl?.iva) / 100) * 100) / 100;
+}
+function _cashCom(cm) {
+  const pp = (cm?.pagamenti || []).filter(p => p && p.metodo === 'contanti' && p.segnalato);
+  const tot = Math.round(pp.reduce((s, p) => s + (+p.importo || 0), 0) * 100) / 100;
+  return { pp, tot, totale: pp.some(p => p.tipo === 'totale') };
+}
+function _renderCashDC(id) {
+  document.getElementById('dc-cash')?.remove();
+  const cm = commesse.find(c => c.id === id); if (!cm || ['fatturata', 'annullata', 'interna'].includes(cm.stato)) return;
+  const ref = document.getElementById('dc-foto-section'); if (!ref) return;
+  const k = _cashCom(cm);
+  const box = document.createElement('div'); box.id = 'dc-cash';
+  box.style.cssText = 'margin:0 0 14px;padding:10px 12px;border:1px solid ' + (k.pp.length ? '#A7F3D0' : 'var(--border)') + ';border-radius:var(--radius);background:' + (k.pp.length ? '#ECFDF5' : 'var(--surface)');
+  box.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3)">💶 Pagamento in contanti</div>'
+    + '<button class="btn btn-secondary btn-sm" onclick="_apriCashCom(\'' + id + '\')">💶 Contanti</button></div>'
+    + (k.pp.length ? k.pp.map(p => '<div style="font-size:13px;margin-top:6px"><b>' + _eurF(p.importo) + '</b> · ' + (p.tipo === 'totale' ? 'totale' : 'parziale') + ' · ' + formatDate(p.data) + (p.da ? ' · ' + _escF(p.da) : '') + (p.note ? '<div style="font-size:11px;color:var(--text3)">' + _escF(p.note) + '</div>' : '') + '</div>').join('') : '<div style="font-size:11px;color:var(--text3);margin-top:4px">Se il cliente paga in contanti, segnalo qui: l\'amministrazione lo vede in «Da fatturare».</div>');
+  ref.parentNode.insertBefore(box, ref);
+}
+function _apriCashCom(id) {
+  const cm = commesse.find(c => c.id === id); if (!cm) return;
+  const tot = _totIvatoCom(cm), gia = _cashCom(cm).tot;
+  document.getElementById('modal-cash')?.remove();
+  const ov = document.createElement('div'); ov.id = 'modal-cash';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2500;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.onclick = e => { if (e.target === ov) ov.remove(); };
+  const inp = 'width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;box-sizing:border-box;background:var(--surface);color:var(--text)';
+  ov.innerHTML = '<div style="background:var(--surface);border-radius:var(--radius-lg);width:420px;max-width:100%;box-shadow:var(--shadow-lg);padding:18px 20px">'
+    + '<div style="font-size:17px;font-weight:800;margin-bottom:2px">💶 Pagamento in contanti</div>'
+    + '<div style="font-size:12px;color:var(--text3);margin-bottom:12px">Commessa ' + _escF(cm.numero || '') + ' · totale IVA inclusa ' + _eurF(tot) + (gia ? ' · già segnati ' + _eurF(gia) : '') + '</div>'
+    + '<label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-bottom:8px;cursor:pointer"><input type="radio" name="cash-tipo" value="totale" ' + (gia ? '' : 'checked') + ' onchange="document.getElementById(\'cash-imp\').value=this.checked?\'' + Math.max(0, tot - gia).toFixed(2) + '\':document.getElementById(\'cash-imp\').value"> Pagamento <b>totale</b></label>'
+    + '<label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-bottom:10px;cursor:pointer"><input type="radio" name="cash-tipo" value="parziale" ' + (gia ? 'checked' : '') + ' onchange="if(this.checked){const i=document.getElementById(\'cash-imp\');i.value=\'\';i.focus();}"> Pagamento <b>parziale</b> (acconto)</label>'
+    + '<label style="font-size:12px;font-weight:700;color:var(--text2)">Importo incassato (€) *</label><input type="number" id="cash-imp" min="0.01" step="0.01" value="' + (gia ? '' : Math.max(0, tot - gia).toFixed(2)) + '" style="' + inp + ';margin:4px 0 10px">'
+    + '<label style="font-size:12px;font-weight:700;color:var(--text2)">Note</label><input type="text" id="cash-note" placeholder="facoltative" style="' + inp + ';margin:4px 0 14px">'
+    + '<div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn btn-secondary" onclick="document.getElementById(\'modal-cash\').remove()">Annulla</button><button class="btn btn-primary" id="cash-ok" onclick="_salvaCashCom(\'' + id + '\')">Segna contanti</button></div></div>';
+  document.body.appendChild(ov);
+}
+async function _salvaCashCom(id) {
+  const cm = commesse.find(c => c.id === id); if (!cm) return;
+  const tipo = document.querySelector('input[name="cash-tipo"]:checked')?.value || 'parziale';
+  const imp = Math.round((parseFloat(String(document.getElementById('cash-imp').value).replace(',', '.')) || 0) * 100) / 100;
+  if (!(imp > 0)) { alert('Inserisci l\'importo incassato.'); return; }
+  const btn = document.getElementById('cash-ok'); if (btn) btn.disabled = true;
+  try {
+    const da = await _chiSonoCtrl();
+    const entry = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), data: new Date().toISOString().split('T')[0], importo: imp, metodo: 'contanti', tipo, segnalato: true, da: da || '', note: document.getElementById('cash-note').value.trim() };
+    const pagamenti = [...(cm.pagamenti || []), entry];
+    const { error } = await supa.from('commesse').update({ pagamenti }).eq('id', id);
+    if (error) throw error;
+    cm.pagamenti = pagamenti;
+    document.getElementById('modal-cash')?.remove();
+    showToast('💶 Contanti ' + _eurF(imp) + ' (' + tipo + ') segnati ✓');
+    try { _renderCashDC(id); } catch (_) {}
+    try { if (typeof renderPagamentiCommessa === 'function' && selectedCommessaId === id) renderPagamentiCommessa(cm); } catch (_) {}
+  } catch (e) { alert('Errore: ' + e.message); if (btn) btn.disabled = false; }
+}
+function _dfCashTag(v) {
+  if (v.tipo !== 'c') return '';
+  const cm = commesse.find(c => c.id === v.id); const k = _cashCom(cm); if (!k.pp.length) return '';
+  const tot = _totIvatoCom(cm), resta = Math.round((tot - k.tot) * 100) / 100;
+  const ult = k.pp[k.pp.length - 1];
+  return '<div style="display:inline-flex;align-items:center;gap:6px;margin-top:3px;font-size:11px;font-weight:700;color:#065F46;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:10px;padding:2px 8px">💶 Contanti ' + _eurF(k.tot) + ' – ' + (k.totale && resta <= 0.01 ? 'totale' : 'parziale · resta ' + _eurF(Math.max(0, resta))) + '<span style="font-weight:400;color:#047857">' + (ult.data ? ' · ' + formatDate(ult.data) : '') + (ult.da ? ' · ' + _escF(ult.da) : '') + '</span>'
+    + '<button title="Togli: era un errore" onclick="event.stopPropagation();_dfTogliCash(\'' + v.id + '\')" style="background:none;border:none;cursor:pointer;color:#B91C1C;font-size:13px;padding:0 2px">✕</button></div>';
+}
+async function _dfTogliCash(id) {
+  const cm = commesse.find(c => c.id === id); if (!cm) return;
+  if (!confirm('Togliere il pagamento in contanti segnato sulla commessa ' + (cm.numero || '') + '?\n(Da usare se era un errore.)')) return;
+  const pagamenti = (cm.pagamenti || []).filter(p => !(p && p.metodo === 'contanti' && p.segnalato));
+  const { error } = await supa.from('commesse').update({ pagamenti }).eq('id', id);
+  if (error) { alert('Errore: ' + error.message); return; }
+  cm.pagamenti = pagamenti; showToast('Contanti tolti dalla commessa ' + (cm.numero || ''));
+  try { const b = document.getElementById('df-body'); const st = b ? b.scrollTop : 0; _dfRender(); if (b) b.scrollTop = st; } catch (_) {}
+}
+async function _registraIncassoParz(fatt, importo) {
+  try {
+    const imp = Math.min(+importo || 0, +fatt.totale || 0); if (!(imp > 0)) return;
+    const { error } = await supa.from('incassi').insert({ id: crypto.randomUUID(), cliente_id: fatt.clienteId || null, importo: imp, metodo: 'contanti', data: new Date().toISOString(), riconciliato: true, fattura_id: fatt.id, note: 'Acconto in contanti – fattura ' + fatt.numero });
+    if (error) throw error;
+    const pagata = imp >= (+fatt.totale || 0) - 0.01, oggi = new Date().toISOString().split('T')[0];
+    await supa.from('fatture').update(pagata ? { stato: 'pagata', data_pagamento: oggi } : { stato: 'parziale' }).eq('id', fatt.id);
+    fatt.stato = pagata ? 'pagata' : 'parziale';
+    showToast('💶 Acconto ' + _eurF(imp) + ' registrato sulla fattura ' + fatt.numero);
+  } catch (e) { _dialogoOrmia('Fattura ' + fatt.numero + ' emessa, ma l\'acconto in contanti NON è stato registrato.\n\nMotivo: ' + (e.message || e) + '\n\nRegistralo da Finance.', { ok: 'OK' }); }
+}
+(function () {
+  const oDet = showDetailCommessa;
+  showDetailCommessa = function (id) {
+    const r = oDet.apply(this, arguments);
+    try { _renderCashDC(id); } catch (e) { console.warn('[cash]', e); }
+    return r;
+  };
+})();
+
 function convertaAppInCommessa(appId) {
   const a = appuntamenti.find(x=>x.id===appId);
   if (!a) return;
@@ -12644,10 +12748,11 @@ async function salvaFattura() {
       _garFatture[fatt.id] = fatt;
       if (currentSection === 'garanzie') renderGaranzie();
     }
-    const _incasso = !!_fattDraft.incasso;
+    const _incasso = !!_fattDraft.incasso, _cashP = +_fattDraft.cashParz || 0;
     closeModal('modal-fattura');
     showToast(`Fattura ${numero} emessa ✓`);
     if (_incasso) await _registraIncassoBanco(fatt);
+    else if (_cashP > 0) await _registraIncassoParz(fatt, _cashP);
     try {
       _aggBadgeDaFatt();
       if (currentSection === 'commesse') renderCommesse();
