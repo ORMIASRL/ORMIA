@@ -2695,7 +2695,7 @@ function init() {
         <div class="form-group span-2" id="com-gpf-row" style="display:none">
           <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:var(--radius);cursor:pointer;font-weight:600;color:#92400E;margin:0">
             <input type="checkbox" id="com-gar-pag-ford" style="width:18px;height:18px;margin:0;flex-shrink:0">
-            <span>📷 Garanzia di pagamento Ford <span style="font-weight:400;font-size:12px;opacity:.85">— foto obbligatorie (targa, telaio, km) prima di iniziare il lavoro</span></span>
+            <span>🛡 Garanzia di pagamento <span style="font-weight:400;font-size:12px;opacity:.85">— chi paga è un garante (Ford o altro): serve il n° ordine</span></span>
           </label>
         </div>
         <div class="form-group span-2" id="com-fattcl-row">
@@ -5747,7 +5747,7 @@ function openModalCommessa(editId) {
       // Ripristina cliente
       if (cm.clienteId) selezionaClienteCommessa(cm.clienteId);
       // Ripristina veicolo
-      if (cm.veicoloId) setTimeout(() => { selezionaVeicoloCommessa(cm.veicoloId); _aggGaranziaCommessa(cm.inGaranzia); _aggGpf(cm.garPagamentoFord === true); if (cm.oreMotore) document.getElementById('com-ore-motore').value = cm.oreMotore; }, 20);
+      if (cm.veicoloId) setTimeout(() => { selezionaVeicoloCommessa(cm.veicoloId); _aggGaranziaCommessa(cm.inGaranzia); _aggGpf(cm.garPagamentoFord === true || !!cm.gpfTipo); if (cm.oreMotore) document.getElementById('com-ore-motore').value = cm.oreMotore; }, 20);
       document.getElementById('com-desc').value = cm.descrizione||cm.desc || '';
       document.getElementById('com-data-apertura').value = cm.dataApertura || '';
       document.getElementById('com-stato').value = cm.stato || 'aperta';
@@ -5795,6 +5795,7 @@ async function saveCommessa(firmaDataUrl=null) {
   const veicoloSel = veicoli.find(x=>x.id===vId);
   const isFordCom  = (veicoloSel?.marca||'').toLowerCase().includes('ford');
   if (isFordCom && !_checkOreFord(vId, oreMotore, !!editingCommessaId)) return;
+  if (!_valGpfCampi()) return;
   const clienteId = document.getElementById('com-cliente').value;
 
   const nuoveRic = comVociRic.filter(v=>v.desc||v.prezzo);
@@ -5810,7 +5811,11 @@ async function saveCommessa(firmaDataUrl=null) {
     firma: firmaDataUrl || null,
     firmaData: firmaDataUrl ? new Date().toISOString() : null,
     inGaranzia: _valGaranziaCommessa(),
-    garPagamentoFord: _valGpf(),
+    garPagamentoFord: _valGpf() && _gpfSel().tipo === 'ford',
+    gpfTipo:       _valGpf() ? _gpfSel().tipo : null,
+    gpfGaranteId:  _valGpf() ? _gpfSel().garante : null,
+    gpfOrdine:     _valGpf() ? _gpfSel().ordine : null,
+    gpfOrdineData: _valGpf() ? _gpfSel().data : null,
     fattClienteId: _valFattCl(),
     garTipo: _valGarTipo(),
     oreMotore: parseInt(oreMotore, 10) || null,
@@ -10441,7 +10446,7 @@ const _impRigheF = rr => rr.reduce((s, r) => s + Math.round((r.qta || 1) * (r.pr
 // ── Coda "Da fatturare" (solo amministrazione) ──
 let _dfSel = new Set();
 function _daFatturare() {
-  const com = commesse.filter(c => c.stato === 'chiusa' && !c.fatturaId && !_isPraticaGar(c) && !!c.controllataAt);
+  const com = commesse.filter(c => c.stato === 'chiusa' && !!c.controllataAt && (_haQuote(c) ? _quotePend(c).length > 0 : (!c.fatturaId && !_isPraticaGar(c))));
   const dd = (typeof ddts !== 'undefined' ? ddts : []).filter(d => !['fatturato', 'annullato'].includes(d.stato || 'aperto'));
   return { com, dd };
 }
@@ -10476,9 +10481,7 @@ function _dfRender() {
   const { com, dd } = _daFatturare();
   const oggi = new Date();
   const voci = [
-    ...com.map(c => { const v = veicoli.find(x => x.id === c.veicoloId);
-      return { k: 'c:' + c.id, tipo: 'c', id: c.id, cli: _fattClId(c) || c.clienteId || '', num: c.numero || '', titolo: [v?.targa, c.descrizione || c.desc, _propLbl(c)].filter(Boolean).join(' · '),
-        data: String(c.dataApertura || '').slice(0, 10), imp: _impRigheF(_righeCommessa(c)) }; }),
+    ...com.flatMap(c => _dfVociCom(c)),
     ...dd.map(d => { const dt = String(d.data || d.created_at || '').slice(0, 10); let sc = null;
       if (dt) { const x = new Date(dt + 'T12:00:00'); sc = new Date(x.getFullYear(), x.getMonth() + 1, 15, 23, 59); }
       return { k: 'd:' + d.id, tipo: 'd', id: d.id, cli: d.clienteId || '', num: d.numero || '', titolo: d.causale || 'DDT', data: dt, imp: _impRigheF(_righeDDT(d)), scad: sc }; }),
@@ -10515,8 +10518,9 @@ function _dfRender() {
 }
 function _dfToggle(k, on) { if (on) _dfSel.add(k); else _dfSel.delete(k); const b = document.getElementById('df-body'); const st = b ? b.scrollTop : 0; _dfRender(); if (b) b.scrollTop = st; }
 function _dfFattura(k) {
-  const [t, id] = k.split(':');
+  const [t, id, _q] = k.split(':');
   document.getElementById('modal-dafatt')?.remove();
+  if (t === 'c' && _q && _q !== 'cliente') { emettiFatturaCommessa(id, { quota: _q }); return; }
   if (t === 'c') {
     const _k = _cashCom(commesse.find(c => c.id === id));
     if (_k.pp.length) {
@@ -10528,12 +10532,12 @@ function _dfFattura(k) {
 }
 function _dfFatturaUnica(cli) {
   const { com, dd } = _daFatturare();
-  const cs = com.filter(c => (_fattClId(c) || c.clienteId || '') === cli && _dfSel.has('c:' + c.id));
+  const cs = com.filter(c => (_fattClId(c) || c.clienteId || '') === cli && (_dfSel.has('c:' + c.id) || _dfSel.has('c:' + c.id + ':cliente')));
   const ds = dd.filter(d => (d.clienteId || '') === cli && _dfSel.has('d:' + d.id));
   if (cs.length + ds.length < 2) return;
   const righe = [];
   cs.forEach(c => { const v = veicoli.find(x => x.id === c.veicoloId); const pre = '[' + [c.numero, v?.targa].filter(Boolean).join(' ') + '] ';
-    _righeCommessa(c).forEach(r => righe.push({ ...r, desc: pre + r.desc })); });
+    _righeCommessa(c, 'cliente').forEach(r => righe.push({ ...r, desc: pre + r.desc })); });
   ds.forEach(d => _righeDDT(d).forEach(r => righe.push({ ...r, desc: '[' + d.numero + '] ' + r.desc })));
   if (!righe.length) { alert('Le voci selezionate non hanno righe da fatturare.'); return; }
   const targhe = cs.map(c => veicoli.find(x => x.id === c.veicoloId)?.targa).filter(Boolean);
@@ -11638,7 +11642,8 @@ function _aggGpf(val) {
   if (!row || !chk) return;
   if (val !== undefined) chk.checked = !!val;
   const vId = document.getElementById('com-veicolo')?.value;
-  row.style.display = (_isFordV(vId) || chk.checked) ? '' : 'none';
+  row.style.display = (vId || chk.checked) ? '' : 'none';
+  try { _aggGpfExtra(); } catch (_) {}
 }
 function _valGpf() {
   const row = document.getElementById('com-gpf-row'), chk = document.getElementById('com-gar-pag-ford');
@@ -11806,7 +11811,7 @@ function _popFattCl(val) {
   const chk = document.getElementById('com-gar-pag-ford');
   if (chk && !chk._fattClHook) {
     chk._fattClHook = true;
-    chk.addEventListener('change', () => { const s2 = document.getElementById('com-fatt-cliente'); if (chk.checked && s2 && !s2.value) { const u = _ultFattClGpf(); if (u) s2.value = u; } });
+    chk.addEventListener('change', () => { const s2 = document.getElementById('com-fatt-cliente'); if (chk.checked && s2 && !s2.value) { /* il garante si sceglie nella garanzia di pagamento */ } });
   }
 }
 function _valFattCl() {
@@ -11932,7 +11937,7 @@ function _checkOreFord(vId, ore, inModifica) {
 // ── Pagamento in contanti segnato dal magazzino: l'amministrazione lo vede in "Da fatturare" e decide ──
 function _totIvatoCom(cm) {
   const cl = clienti.find(c => c.id === (_fattClId(cm) || cm.clienteId));
-  const imp = _impRigheF(_righeCommessa(cm));
+  const imp = _impRigheF(_righeCommessa(cm, 'cliente'));
   return Math.round(imp * (1 + _ivaN(cl?.iva) / 100) * 100) / 100;
 }
 function _cashCom(cm) {
@@ -11990,7 +11995,7 @@ async function _salvaCashCom(id) {
   } catch (e) { alert('Errore: ' + e.message); if (btn) btn.disabled = false; }
 }
 function _dfCashTag(v) {
-  if (v.tipo !== 'c') return '';
+  if (v.tipo !== 'c' || (v.quota && v.quota !== 'cliente')) return '';
   const cm = commesse.find(c => c.id === v.id); const k = _cashCom(cm); if (!k.pp.length) return '';
   const tot = _totIvatoCom(cm), resta = Math.round((tot - k.tot) * 100) / 100;
   const ult = k.pp[k.pp.length - 1];
@@ -12139,6 +12144,276 @@ function anteprimaFattura() {
     + '<div style="background:#FEF2F2;border:2px solid #C53030;color:#B91C1C;border-radius:6px;padding:8px 12px;margin-bottom:16px;font-size:13px;font-weight:800;text-align:center">BOZZA – NON VALIDA AI FINI FISCALI · anteprima prima dell\'emissione</div>';
   apriStampa(generaHtmlFattura(f).replace('<body>', () => '<body>' + wm));
 }
+
+// ── Ripartizione "A carico di": cliente / garante (garanzia di pagamento) / garanzia — ogni parte la sua fattura ──
+const _QLBL = { cliente: 'Cliente', garante: 'Garante pagamento', garanzia: 'Garanzia' };
+function _gpfOn(cm) { return !!cm && (!!cm.gpfTipo || cm.garPagamentoFord === true); }
+function _opzQuote(cm) { const o = ['cliente']; if (_gpfOn(cm)) o.push('garante'); if (_comInGaranzia(cm)) o.push('garanzia'); return o; }
+function _quotaDef(cm) { return _comInGaranzia(cm) ? 'garanzia' : (_gpfOn(cm) ? 'garante' : 'cliente'); }
+function _caricoV(cm, v) { const q = v && v.carico; return q && _opzQuote(cm).includes(q) ? q : _quotaDef(cm); }
+function _haQuote(cm) {
+  if (!cm) return false;
+  if (_quotaDef(cm) !== 'cliente') return true;
+  const all = [...(cm.vociMano || []), ...(cm.vociRic || []), ...(cm.vociExtra || [])];
+  if (all.some(v => _caricoV(cm, v) !== 'cliente')) return true;
+  const s = cm.timbrSplit || {};
+  return Object.keys(s).some(k => k !== 'cliente' && _opzQuote(cm).includes(k) && +s[k] > 0);
+}
+function _timbrQuote(cm) {
+  const T = _oreTimbrate(cm.id), I = _importoTimbrature(cm.id), def = _quotaDef(cm), s = cm.timbrSplit || {}, out = {};
+  let oreRes = T, impUsato = 0;
+  _opzQuote(cm).filter(q => q !== def).forEach(q => {
+    const h = Math.min(Math.max(+s[q] || 0, 0), oreRes);
+    const imp = T > 0 ? Math.round(I * h / T * 100) / 100 : 0;
+    out[q] = { ore: h, imp }; oreRes -= h; impUsato += imp;
+  });
+  out[def] = { ore: Math.max(0, oreRes), imp: Math.round((I - impUsato) * 100) / 100 };
+  return out;
+}
+function _righeCommessaQ(cm, q) {
+  const def = _quotaDef(cm);
+  const f = arr => (arr || []).filter(v => _caricoV(cm, v) === q);
+  const man = f(cm.vociMano).filter(r => r.desc || r.prezzo);
+  const impMan = man.reduce((s, v) => s + (v.qta || 1) * (v.prezzo || 0) * (1 - (v.sconto || 0) / 100), 0);
+  const imp = +(impMan + ((_timbrQuote(cm)[q] || {}).imp || 0)).toFixed(2);
+  const out = [];
+  if (imp > 0) out.push({ desc: 'Manodopera', qta: 1, prezzo: imp });
+  f(cm.vociRic).filter(r => r.desc).forEach(r => out.push(_rigaScontata(_descRic(r), r)));
+  f(cm.vociExtra).filter(r => r.desc).forEach(r => out.push(_rigaScontata(r.desc, r)));
+  out.push(..._righeAutoCommessa({ ...cm, vociMano: f(cm.vociMano), vociRic: f(cm.vociRic), dirittoChiamata: q === def ? cm.dirittoChiamata : false }));
+  return out;
+}
+(function () {
+  const o = _righeCommessa;
+  _righeCommessa = function (cm, q) {
+    if (!q || !cm || !_haQuote(cm)) return (!q || q === 'cliente') ? o.call(this, cm) : [];
+    return _righeCommessaQ(cm, q);
+  };
+})();
+function _impQ(c, q) { return _impRigheF(_righeCommessa(c, q)); }
+function _quotePend(c) {
+  const out = [];
+  if (!c.fatturaId && (_quotaDef(c) === 'cliente' || _impQ(c, 'cliente') > 0)) out.push('cliente');
+  if (_gpfOn(c) && !c.gpfFatturaId && _impQ(c, 'garante') > 0) out.push('garante');
+  return out;
+}
+function _quotePendTutte(c) {
+  const out = _quotePend(c);
+  if (_comInGaranzia(c) && !c.garFatturaId && c.garStato !== 'respinta' && _impQ(c, 'garanzia') > 0) out.push('garanzia');
+  return out;
+}
+function _segnaQuotaFatt(cm, fid, q) {
+  if (q === 'garante') cm.gpfFatturaId = fid; else cm.fatturaId = fid;
+  if (!_quotePendTutte(cm).length) cm.stato = 'fatturata';
+  else if (cm.stato !== 'fatturata') cm.stato = 'chiusa';
+}
+function _dfVociCom(c) {
+  const v = veicoli.find(x => x.id === c.veicoloId);
+  const base = { tipo: 'c', id: c.id, titolo: [v?.targa, c.descrizione || c.desc, _propLbl(c)].filter(Boolean).join(' · '), data: String(c.dataApertura || '').slice(0, 10) };
+  if (!_haQuote(c)) return [{ ...base, k: 'c:' + c.id, cli: _fattClId(c) || c.clienteId || '', num: c.numero || '', imp: _impRigheF(_righeCommessa(c)) }];
+  return _quotePend(c).map(q => {
+    const g = q === 'garante';
+    const warn = g ? [!c.gpfGaranteId ? '⚠ manca il garante' : '', !String(c.gpfOrdine || '').trim() ? '⚠ manca n° ordine' : 'ordine ' + c.gpfOrdine].filter(Boolean).join(' · ') : '';
+    return { ...base, k: 'c:' + c.id + ':' + q, quota: q, cli: g ? (c.gpfGaranteId || '') : (_fattClId(c) || c.clienteId || ''),
+      num: (c.numero || '') + ' · quota ' + _QLBL[q].toLowerCase(), titolo: base.titolo + (warn ? ' · ' + warn : ''), imp: _impQ(c, q) };
+  });
+}
+(function () {
+  const o = emettiFatturaCommessa;
+  emettiFatturaCommessa = function (comId, extra) {
+    const cm = commesse.find(c => c.id === comId);
+    if (!cm || !_haQuote(cm)) return o.apply(this, arguments);
+    const pend = _quotePend(cm);
+    let q = extra && extra.quota;
+    if (!q) q = pend.includes('cliente') ? 'cliente' : (pend[0] || 'cliente');
+    if (!pend.includes(q)) { alert('Commessa ' + (cm.numero || '') + ': la parte «' + _QLBL[q] + '» è già fatturata o non ha righe.' + (_quotePendTutte(cm).includes('garanzia') ? '\n\nLa parte in garanzia si fattura da «Garanzie» quando arrivano Claim e RDG.' : '')); return; }
+    const g = q === 'garante';
+    const cliId = g ? cm.gpfGaranteId : (_fattClId(cm) || cm.clienteId);
+    if (!cliId || !clienti.find(c => c.id === cliId)) { alert(g ? 'Manca il garante della garanzia di pagamento: impostalo nel dettaglio commessa («A carico di»).' : 'La commessa non ha un cliente associato.'); return; }
+    if (g && !String(cm.gpfOrdine || '').trim()) { alert('Manca il numero ordine della garanzia di pagamento: inseriscilo nel dettaglio commessa («A carico di») prima di fatturare.'); return; }
+    const righe = _righeCommessa(cm, q);
+    if (!righe.length) { alert('Nessuna riga a carico di: ' + _QLBL[q] + '.'); return; }
+    const v = veicoli.find(x => x.id === cm.veicoloId), own = clienti.find(c => c.id === cm.clienteId);
+    const ex = { ...(extra || {}) }; delete ex.quota;
+    apriFatturaModal({ origine: 'commessa', origineId: comId, clienteId: cliId, quota: q,
+      descrizione: 'Commessa ' + cm.numero + ' — ' + (cm.descrizione || cm.desc) + (g ? ' — garanzia di pagamento' + (own ? ' — Proprietario ' + own.ragione : '') : (_propLbl(cm) ? ' — ' + _propLbl(cm) : '')),
+      veicolo: v ? v.targa + ' ' + [v.marca, v.modello].filter(Boolean).join(' ') : '', righe,
+      ...(g ? { odNumero: String(cm.gpfOrdine).trim(), odData: cm.gpfOrdineData || null } : {}), ...ex });
+    const rest = _quotePendTutte(cm).filter(x => x !== q);
+    if (rest.length) showToast('Dopo questa fattura resta: ' + rest.map(x => _QLBL[x]).join(', '));
+  };
+})();
+(function () {
+  const o = _oggettoDraftF;
+  _oggettoDraftF = function (d) {
+    const base = o.apply(this, arguments);
+    if (!d || d.quota !== 'garante') return base;
+    const cm = commesse.find(c => c.id === d.origineId), own = cm ? clienti.find(c => c.id === cm.clienteId) : null;
+    const rif = d.odNumero ? 'Rif. ordine n. ' + d.odNumero + (d.odData ? ' del ' + formatDate(d.odData) : '') : '';
+    return [rif, base, own && !base.includes('Proprietario') ? 'Proprietario ' + own.ragione : ''].filter(Boolean).join(' · ').slice(0, 200);
+  };
+})();
+// ── Garanzia di pagamento nel modulo commessa: tipo (Ford con foto / Altra), garante, n° ordine obbligatorio ──
+function _ensureGpfExtra() {
+  const row = document.getElementById('com-gpf-row'); if (!row) return null;
+  let ex = document.getElementById('com-gpf-extra');
+  if (!ex) {
+    ex = document.createElement('div'); ex.id = 'com-gpf-extra';
+    ex.style.cssText = 'display:none;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;padding:10px 12px;border:1px solid #FDE68A;border-radius:var(--radius);background:#FFFDF5';
+    const L = s => '<label style="font-size:12px;font-weight:700;color:var(--text2)">' + s + '</label>';
+    ex.innerHTML = '<div>' + L('Tipo') + '<select id="com-gpf-tipo" onchange="_aggGpfExtra()"><option value="ford">Ford — foto obbligatorie</option><option value="altro">Altra — senza foto</option></select></div>'
+      + '<div>' + L('Garante (chi paga) *') + '<select id="com-gpf-garante"><option value="">— scegli il garante —</option></select></div>'
+      + '<div>' + L('N° ordine *') + '<input id="com-gpf-ordine" placeholder="numero ordine del garante"></div>'
+      + '<div>' + L('Data ordine') + '<input type="date" id="com-gpf-data"></div>'
+      + '<div id="com-gpf-hint" style="grid-column:1/-1;font-size:11px;color:#92400E"></div>';
+    row.appendChild(ex);
+    const chk = document.getElementById('com-gar-pag-ford');
+    if (chk) chk.addEventListener('change', () => { try { _aggGpfExtra(true); } catch (_) {} });
+  }
+  return ex;
+}
+function _ultGarante(tipo) {
+  const c = commesse.filter(x => x.gpfGaranteId && (x.gpfTipo || (x.garPagamentoFord ? 'ford' : '')) === tipo)
+    .sort((a, b) => new Date(b.createdAt || b.dataApertura || 0) - new Date(a.createdAt || a.dataApertura || 0))[0];
+  return c ? c.gpfGaranteId : '';
+}
+function _optsGarante(sel) {
+  return '<option value="">— scegli il garante —</option>' + [...clienti].sort((a, b) => String(a.ragione || '').localeCompare(String(b.ragione || ''), 'it'))
+    .map(c => '<option value="' + c.id + '"' + (c.id === sel ? ' selected' : '') + '>' + _escF(c.ragione || '') + '</option>').join('');
+}
+function _aggGpfExtra(suggerisci) {
+  const ex = _ensureGpfExtra(); if (!ex) return;
+  const chk = document.getElementById('com-gar-pag-ford'), row = document.getElementById('com-gpf-row');
+  const on = !!(chk && chk.checked && row && row.style.display !== 'none');
+  ex.style.display = on ? 'grid' : 'none';
+  if (!on) return;
+  const tEl = document.getElementById('com-gpf-tipo'), gEl = document.getElementById('com-gpf-garante'), oEl = document.getElementById('com-gpf-ordine');
+  if (gEl.options.length < 2) gEl.innerHTML = _optsGarante(gEl.value);
+  if (suggerisci && !gEl.value && !oEl.value) {
+    tEl.value = _isFordV(document.getElementById('com-veicolo')?.value) ? 'ford' : 'altro';
+    const u = _ultGarante(tEl.value); if (u) gEl.value = u;
+  }
+  document.getElementById('com-gpf-hint').textContent = tEl.value === 'ford' ? '📷 Ford: i ragazzi dovranno scattare le foto di targa, telaio e km prima di iniziare il lavoro.' : 'Nessuna foto obbligatoria.';
+}
+function _fillGpf(cm) {
+  if (!_ensureGpfExtra()) return;
+  document.getElementById('com-gpf-garante').innerHTML = _optsGarante(cm?.gpfGaranteId || '');
+  document.getElementById('com-gpf-tipo').value = cm && cm.gpfTipo === 'altro' ? 'altro' : 'ford';
+  document.getElementById('com-gpf-ordine').value = cm?.gpfOrdine || '';
+  document.getElementById('com-gpf-data').value = cm?.gpfOrdineData || '';
+  _aggGpfExtra(false);
+}
+function _gpfSel() {
+  return { tipo: document.getElementById('com-gpf-tipo')?.value === 'altro' ? 'altro' : 'ford', garante: document.getElementById('com-gpf-garante')?.value || null,
+    ordine: (document.getElementById('com-gpf-ordine')?.value || '').trim() || null, data: document.getElementById('com-gpf-data')?.value || null };
+}
+function _valGpfCampi() {
+  if (!_valGpf()) return true;
+  const s = _gpfSel();
+  if (!s.garante) { alert('Garanzia di pagamento: scegli il garante (chi paga).'); document.getElementById('com-gpf-garante')?.focus(); return false; }
+  if (!s.ordine) { alert('Garanzia di pagamento: il numero ordine è obbligatorio.'); document.getElementById('com-gpf-ordine')?.focus(); return false; }
+  return true;
+}
+(function () {
+  const o = openModalCommessa;
+  openModalCommessa = function (editId) {
+    const r = o.apply(this, arguments);
+    const cm = editId ? commesse.find(c => c.id === editId) : null;
+    setTimeout(() => { try { _fillGpf(cm); } catch (e) { console.warn('[gpf]', e); } }, 60);
+    return r;
+  };
+})();
+(function () {
+  const o = _toggleGpf;
+  _toggleGpf = async function (id) {
+    const r = await o.apply(this, arguments);
+    try {
+      const cm = commesse.find(c => c.id === id);
+      if (cm) {
+        const nt = cm.garPagamentoFord === true ? 'ford' : (cm.gpfTipo === 'ford' ? null : (cm.gpfTipo || null));
+        if (nt !== (cm.gpfTipo || null)) { await supa.from('commesse').update({ gpf_tipo: nt }).eq('id', id); cm.gpfTipo = nt; }
+        _renderQuoteDC(id);
+      }
+    } catch (e) { console.warn('[gpf]', e); }
+    return r;
+  };
+})();
+// ── Dettaglio commessa: box «A carico di» (solo amministrazione) ──
+function _renderQuoteDC(id) {
+  document.getElementById('dc-quote')?.remove();
+  const cm = commesse.find(c => c.id === id); if (!cm || cm.stato === 'annullata') return;
+  const opz = _opzQuote(cm); if (opz.length < 2) return;
+  const ref = document.getElementById('dc-foto-section'); if (!ref) return;
+  const def = _quotaDef(cm);
+  const fattOf = q => q === 'garante' ? cm.gpfFatturaId : q === 'garanzia' ? cm.garFatturaId : cm.fatturaId;
+  const numF = fid => { const f = (typeof fatture !== 'undefined' ? fatture : []).find(x => x.id === fid); return f ? f.numero : 'emessa'; };
+  const lock = q => !!fattOf(q);
+  const impV = v => Math.round((+v.qta || 1) * (+v.prezzo || 0) * (1 - (+v.sconto || 0) / 100) * 100) / 100;
+  const sel = (tipo, i, v) => { const q = _caricoV(cm, v);
+    return '<select ' + (lock(q) ? 'disabled title="parte già fatturata"' : '') + ' onchange="_setCarico(\'' + id + '\',\'' + tipo + '\',' + i + ',this.value)" style="font-size:12px;padding:3px 6px;width:auto">'
+      + opz.map(o => '<option value="' + o + '"' + (o === q ? ' selected' : '') + (lock(o) && o !== q ? ' disabled' : '') + '>' + _QLBL[o] + '</option>').join('') + '</select>'; };
+  const riga = (tipo, i, v, desc) => '<div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--border);font-size:12px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + _escF(desc) + '">' + _escF(desc) + '</span><span style="font-family:\'DM Mono\',monospace">' + _eurF(impV(v)) + '</span>' + sel(tipo, i, v) + '</div>';
+  const righe = [
+    ...(cm.vociMano || []).map((v, i) => (v.desc || v.prezzo) ? riga('mano', i, v, 'Manodopera ' + (v.desc || '') + ' · ' + (v.qta || 1) + ' h') : ''),
+    ...(cm.vociRic || []).map((v, i) => v.desc ? riga('ric', i, v, _descRic(v) + ' × ' + (v.qta || 1)) : ''),
+    ...(cm.vociExtra || []).map((v, i) => v.desc ? riga('extra', i, v, v.desc) : '')].filter(Boolean).join('');
+  const T = _oreTimbrate(cm.id), tq = _timbrQuote(cm);
+  const timbr = T > 0 ? '<div style="padding:6px 0;border-top:1px solid var(--border);font-size:12px"><b>Ore timbrate</b> ' + (Math.round(T * 100) / 100).toLocaleString('it-IT') + ' h · ' + _eurF(_importoTimbrature(cm.id)) + ' — a carico di ' + _QLBL[def] + ', tranne:'
+    + opz.filter(o => o !== def).map(o => ' <label style="white-space:nowrap;font-weight:400">' + _QLBL[o] + ' <input type="number" min="0" step="0.25" value="' + (tq[o].ore || '') + '" ' + (lock(o) || lock(def) ? 'disabled' : '') + ' onchange="_setTimbrSplit(\'' + id + '\',\'' + o + '\',this.value)" style="width:70px;font-size:12px;padding:2px 4px;display:inline-block"> h</label>').join('') + '</div>' : '';
+  const stato = q => { const fid = fattOf(q); if (fid) return '<span style="color:#047857;font-weight:700">✓ fattura ' + _escF(numF(fid)) + '</span>';
+    return q === 'garanzia' ? '<span style="color:#B45309">⏳ pratica garanzia' + (cm.garStato ? ' (' + _escF(cm.garStato) + ')' : '') + '</span>' : '<span style="color:#B45309">⏳ da fatturare</span>'; };
+  const dest = q => { if (q === 'garante') { const g = clienti.find(c => c.id === cm.gpfGaranteId); return g ? _escF(g.ragione) : '<span style="color:var(--danger)">⚠ garante non indicato</span>'; }
+    if (q === 'cliente') { const c = clienti.find(x => x.id === (_fattClId(cm) || cm.clienteId)); return c ? _escF(c.ragione) : '—'; } return 'Claim / RDG'; };
+  const riep = opz.map(q => { const imp = _impQ(cm, q); if (!(imp > 0) && q !== def && !fattOf(q)) return '';
+    return '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;padding:3px 0"><span><b>' + _QLBL[q] + '</b> · ' + dest(q) + '</span><span style="white-space:nowrap"><span style="font-family:\'DM Mono\',monospace;font-weight:700">' + _eurF(imp) + '</span> + IVA · ' + stato(q) + '</span></div>'; }).join('');
+  const ord = _gpfOn(cm) ? '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:8px 0;padding:8px 10px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;font-size:12px;color:#92400E">🛡 <b>Garanzia di pagamento' + (cm.garPagamentoFord === true ? ' Ford' : '') + '</b>'
+    + '<select id="dcq-gar" ' + (lock('garante') ? 'disabled' : '') + ' style="font-size:12px;max-width:220px;width:auto">' + _optsGarante(cm.gpfGaranteId || '') + '</select>'
+    + 'N° ordine <input id="dcq-ord" value="' + _escF(cm.gpfOrdine || '') + '" ' + (lock('garante') ? 'disabled' : '') + ' style="width:130px;font-size:12px;padding:3px 6px;display:inline-block' + (!String(cm.gpfOrdine || '').trim() ? ';border-color:var(--danger)' : '') + '">'
+    + 'del <input type="date" id="dcq-od" value="' + _escF(cm.gpfOrdineData || '') + '" ' + (lock('garante') ? 'disabled' : '') + ' style="font-size:12px;padding:3px 6px;width:auto;display:inline-block">'
+    + (lock('garante') ? '' : '<button class="btn btn-secondary btn-sm" onclick="_salvaOrdineDC(\'' + id + '\')">Salva</button>') + '</div>' : '';
+  const box = document.createElement('div'); box.id = 'dc-quote'; box.className = 'solo-admin';
+  box.style.cssText = 'margin:0 0 14px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)';
+  box.innerHTML = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:6px">💼 A carico di <span style="font-weight:400;text-transform:none;letter-spacing:0">— ogni parte ha la sua fattura</span></div>'
+    + riep + ord + (righe || timbr ? '<details style="margin-top:6px"' + (_haQuote(cm) && def !== 'cliente' ? '' : '') + '><summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--accent)">Cambia chi paga riga per riga</summary>' + righe + timbr
+    + '<div style="font-size:11px;color:var(--text3);margin-top:6px">Diritto di chiamata, smaltimento e materiale di consumo seguono la parte principale (' + _QLBL[def] + ') e le relative righe.</div></details>' : '');
+  ref.parentNode.insertBefore(box, ref);
+}
+async function _setCarico(id, tipo, i, q) {
+  const cm = commesse.find(c => c.id === id); if (!cm) return;
+  const key = tipo === 'mano' ? 'vociMano' : tipo === 'ric' ? 'vociRic' : 'vociExtra';
+  const col = { vociMano: 'voci_mano', vociRic: 'voci_ric', vociExtra: 'voci_extra' }[key];
+  const arr = (cm[key] || []).map(v => ({ ...v })); if (!arr[i]) return;
+  if (q === _quotaDef(cm)) delete arr[i].carico; else arr[i].carico = q;
+  const { error } = await supa.from('commesse').update({ [col]: arr }).eq('id', id);
+  if (error) { alert('Errore: ' + error.message); _renderQuoteDC(id); return; }
+  cm[key] = arr; showToast('A carico di: ' + _QLBL[q] + ' ✓'); _renderQuoteDC(id);
+  try { _aggBadgeDaFatt(); } catch (_) {}
+}
+async function _setTimbrSplit(id, q, val) {
+  const cm = commesse.find(c => c.id === id); if (!cm) return;
+  const s = { ...(cm.timbrSplit || {}) }, h = Math.max(0, parseFloat(String(val).replace(',', '.')) || 0);
+  if (h > 0) s[q] = h; else delete s[q];
+  const { error } = await supa.from('commesse').update({ timbr_split: Object.keys(s).length ? s : null }).eq('id', id);
+  if (error) { alert('Errore: ' + error.message); _renderQuoteDC(id); return; }
+  cm.timbrSplit = Object.keys(s).length ? s : null; showToast('Ore timbrate ripartite ✓'); _renderQuoteDC(id);
+}
+async function _salvaOrdineDC(id) {
+  const cm = commesse.find(c => c.id === id); if (!cm) return;
+  const gar = document.getElementById('dcq-gar')?.value || null, ord = (document.getElementById('dcq-ord')?.value || '').trim() || null, od = document.getElementById('dcq-od')?.value || null;
+  if (!ord) { alert('Il numero ordine è obbligatorio.'); return; }
+  const { error } = await supa.from('commesse').update({ gpf_garante_id: gar, gpf_ordine: ord, gpf_ordine_data: od, ...(cm.gpfTipo ? {} : { gpf_tipo: cm.garPagamentoFord === true ? 'ford' : 'altro' }) }).eq('id', id);
+  if (error) { alert('Errore: ' + error.message); return; }
+  cm.gpfGaranteId = gar; cm.gpfOrdine = ord; cm.gpfOrdineData = od; if (!cm.gpfTipo) cm.gpfTipo = cm.garPagamentoFord === true ? 'ford' : 'altro';
+  showToast('Garanzia di pagamento aggiornata ✓'); _renderQuoteDC(id);
+}
+(function () {
+  const oDet = showDetailCommessa;
+  showDetailCommessa = function (id) {
+    const r = oDet.apply(this, arguments);
+    try { _renderQuoteDC(id); } catch (e) { console.warn('[quote]', e); }
+    return r;
+  };
+})();
 
 function convertaAppInCommessa(appId) {
   const a = appuntamenti.find(x=>x.id===appId);
@@ -12837,6 +13112,8 @@ async function salvaFattura() {
     cl_indirizzo:cl?.indirizzo||null, cl_sdi:cl?.sdi||null, cl_pec:cl?.pec||null,
     oggetto:    (document.getElementById('fatt-oggetto')?.value || '').trim() || null,
     lavori:     (document.getElementById('fatt-lavori')?.value || '').trim() || null,
+    od_numero:  _fattDraft.odNumero || null,
+    od_data:    _fattDraft.odData || null,
   };
   try {
     const { data:r, error } = await supa.from('fatture').insert(row).select().single();
@@ -12850,7 +13127,7 @@ async function salvaFattura() {
     const _comIds = [...new Set([...(_fattDraft.origine==='commessa' && _fattDraft.origineId ? [_fattDraft.origineId] : []), ...(_fattDraft.commesseIds||[])])];
     for (const oid of _comIds) {
       const ci = commesse.findIndex(c=>c.id===oid);
-      if (ci>=0) { commesse[ci].stato='fatturata'; commesse[ci].fatturaId=fatt.id; await dbSaveCommessa({...commesse[ci]}); }
+      if (ci>=0) { _segnaQuotaFatt(commesse[ci], fatt.id, _fattDraft.quota); await dbSaveCommessa({...commesse[ci]}); }
     }
     const _ddtIds = [...new Set([...(['ddt','ddt-cumulativa'].includes(_fattDraft.origine) && _fattDraft.origineId ? [_fattDraft.origineId] : []), ...(_fattDraft.ddtIds||[])])];
     for (const oid of _ddtIds) {
@@ -12859,9 +13136,11 @@ async function salvaFattura() {
       if (di>=0) { ddts[di].stato='fatturato'; ddts[di].fatturaId=fatt.id; }
     }
     if (_fattDraft.origine==='garanzia' && _fattDraft.origineId) {
-      await supa.from('commesse').update({ gar_fattura_id: fatt.id, stato: 'fatturata' }).eq('id', _fattDraft.origineId);
       const ci = commesse.findIndex(c=>c.id===_fattDraft.origineId);
-      if (ci>=0) { commesse[ci].garFatturaId = fatt.id; commesse[ci].stato = 'fatturata'; }
+      const _cmG = ci>=0 ? commesse[ci] : null; if (_cmG) _cmG.garFatturaId = fatt.id;
+      const _stG = (_cmG && _quotePend(_cmG).length) ? 'chiusa' : 'fatturata';
+      await supa.from('commesse').update({ gar_fattura_id: fatt.id, stato: _stG }).eq('id', _fattDraft.origineId);
+      if (_cmG) _cmG.stato = _stG;
       _garFatture[fatt.id] = fatt;
       if (currentSection === 'garanzie') renderGaranzie();
     }
@@ -13829,7 +14108,7 @@ async function autoInviaFIC(fatt) {
                ei_code:String(fatt.clSdi||cl?.sdi||'').trim().toUpperCase() || (_clEstero(cl) ? 'XXXXXXX' : '0000000'), certified_email:fatt.clPec||cl?.pec||'', email:fatt.clEmail||cl?.email||'',
                address_street:[cl?.via, cl?.civico].filter(Boolean).join(' '), address_postal_code:cl?.cap||'', address_city:cl?.citta||'',
                address_province:cl?.provincia||'', country:_clEstero(cl) ? (_NAZ_CL[_nazCl(cl)] || _nazCl(cl)) : 'Italia' },
-      ei_data:{ vat_kind:'I', payment_method:metodo, ...(metodo==='MP05' && iban ? { bank_iban: iban } : {}) },
+      ei_data:{ vat_kind:'I', payment_method:metodo, ...(metodo==='MP05' && iban ? { bank_iban: iban } : {}), ...(fatt.od_numero ? { od_number: String(fatt.od_numero), ...(fatt.od_data ? { od_date: fatt.od_data } : {}) } : {}) },
       ...(await _ficDettaglio(fatt, cl)),
       items_list: items,
       payments_list: [{ amount: Math.round((fatt.totale||0)*100)/100, due_date: (fatt.scadenza||fatt.data||new Date().toISOString()).split('T')[0], status: 'not_paid' }],
