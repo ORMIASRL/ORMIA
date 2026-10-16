@@ -5786,8 +5786,9 @@ function openModalCommessa(editId) {
 async function saveCommessa(firmaDataUrl=null) {
   const desc = document.getElementById('com-desc').value.trim();
   const vId  = document.getElementById('com-veicolo').value;
-  const km   = document.getElementById('com-km').value.trim();
-  const oreMotore = document.getElementById('com-ore-motore').value.trim();
+  let km   = document.getElementById('com-km').value.trim();
+  let oreMotore = document.getElementById('com-ore-motore').value.trim();
+  { const _ko = _kmOreNorm(km, oreMotore); if (_ko.stop) return; km = _ko.km; oreMotore = _ko.ore; }
   if (!desc) { alert('Inserisci una descrizione del lavoro.'); return; }
   if (!vId)  { alert('Cerca e seleziona un veicolo per targa.'); return; }
   if (!km && !editingCommessaId && veicoli.find(x=>x.id===vId)?.tipo !== 'rimorchio')   { alert('I km attuali del veicolo sono obbligatori.'); document.getElementById('com-km').focus(); return; }
@@ -5820,6 +5821,7 @@ async function saveCommessa(firmaDataUrl=null) {
     fattClienteId: _valFattCl(),
     garTipo: _valGarTipo(),
     oreMotore: parseInt(oreMotore, 10) || null,
+    km: _numKO(km) > 0 ? String(km).trim() : null,
     stato: document.getElementById('com-stato').value,
     note: document.getElementById('com-note').value.trim(),
     dirittoChiamata:        document.getElementById('com-diritto-chiamata')?.checked || false,
@@ -5901,7 +5903,7 @@ async function saveCommessa(firmaDataUrl=null) {
       const vi = veicoli.findIndex(v=>v.id===data.veicoloId);
       if (vi >= 0) {
         let changed = false;
-        if (nuoviKm && veicoli[vi].km !== nuoviKm) { veicoli[vi].km = nuoviKm; changed = true; }
+        if (nuoviKm && _numKO(nuoviKm) > 0 && nuoviKm !== window.__kmPrefill && veicoli[vi].km !== nuoviKm) { veicoli[vi].km = nuoviKm; changed = true; }
         if (nuoveOre && (parseInt(nuoveOre, 10) || 0) > (parseInt(veicoli[vi].oreMotore, 10) || 0)) { veicoli[vi].oreMotore = nuoveOre; changed = true; }
         if (changed) await dbSaveVeicolo({...veicoli[vi]});
       }
@@ -11614,7 +11616,7 @@ function _veicoloInfoFatt(f) {
   const v = cm ? veicoli.find(x => x.id === cm.veicoloId) : null;
   if (!v) return { testo: (f && f.veicolo) || '', cm, v: null };
   const tel = String(v.telaio || v.vin || '').trim();
-  const kmN = parseInt(String(v.km || '').replace(/\D/g, ''), 10);
+  const kmN = parseInt(String((cm && _numKO(cm.km) > 0 ? cm.km : v.km) || '').replace(/\D/g, ''), 10);
   const parts = [[v.marca, v.modello].filter(Boolean).join(' '), v.targa ? 'Targa ' + v.targa : '',
     tel ? 'Telaio ' + tel : '', kmN > 0 ? 'Km ' + kmN.toLocaleString('it-IT') : ''].filter(Boolean);
   const _pr = _propLbl(cm); if (_pr) parts.push(_pr);
@@ -12668,6 +12670,37 @@ async function _segnaPraticaFatt(d, fatt) {
     const vi = c ? _veicoloInfoFatt({ origineId: c.id, veicolo: d.veicolo }) : { testo: d.veicolo || '' };
     return [(p ? (p.tipo === 'fsa' ? 'Campagna FSA ' + (p.codice || '') : 'Manutenzione programmata') + ' – Claim n. ' + (p.claim || '') + ' – RDG n. ' + (p.rdg || '') : d.descrizione),
       c ? 'Commessa ' + (c.numero || '') : '', vi.testo ? 'Veicolo: ' + vi.testo : ''].filter(Boolean).join(' · ').slice(0, 200);
+  };
+})();
+
+// ── Km e ore motore in modifica commessa: vuoto o 0 = restano quelli di prima ──
+const _numKO = s => parseInt(String(s || '').replace(/\D/g, ''), 10) || 0;
+function _kmOreNorm(km, ore) {
+  const cm = editingCommessaId ? commesse.find(c => c.id === editingCommessaId) : null;
+  const v = veicoli.find(x => x.id === document.getElementById('com-veicolo')?.value);
+  if (!(_numKO(km) > 0)) km = cm && _numKO(cm.km) > 0 ? String(cm.km) : '';
+  if (!(_numKO(ore) > 0)) ore = cm ? String(cm.oreMotore || (v && v.oreMotore) || '') : '';
+  const kmV = _numKO(v && v.km);
+  if (_numKO(km) > 0 && km !== window.__kmPrefill && kmV > 0 && _numKO(km) < kmV
+      && !confirm('Km inseriti (' + _numKO(km).toLocaleString('it') + ') inferiori a quelli già registrati sul veicolo (' + kmV.toLocaleString('it') + ').\n\nConfermi?')) return { stop: true };
+  return { km, ore };
+}
+(function () {
+  const o = openModalCommessa;
+  openModalCommessa = function (editId) {
+    window.__kmPrefill = null;
+    const r = o.apply(this, arguments);
+    const cm = editId ? commesse.find(c => c.id === editId) : null;
+    if (cm) setTimeout(() => {
+      try {
+        const v = veicoli.find(x => x.id === cm.veicoloId);
+        const kEl = document.getElementById('com-km'), oEl = document.getElementById('com-ore-motore'), h = document.getElementById('com-km-hint');
+        if (kEl && !kEl.value && _numKO(cm.km) > 0) { kEl.value = String(cm.km); window.__kmPrefill = String(cm.km); }
+        if (h && v && _numKO(v.km) > 0) h.textContent = 'Km attuali del veicolo: ' + _numKO(v.km).toLocaleString('it') + ' — lascia vuoto per non cambiarli';
+        if (oEl && !oEl.value) { const ov = cm.oreMotore || (v && v.oreMotore); if (_numKO(ov) > 0) oEl.value = String(ov); }
+      } catch (e) { console.warn('[km/ore]', e); }
+    }, 120);
+    return r;
   };
 })();
 
