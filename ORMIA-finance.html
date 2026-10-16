@@ -2300,7 +2300,7 @@ async function _apriComDaFatt(fattId) {
   const { data, error } = await supa.from('commesse').select('id,numero,descrizione').or('fattura_id.eq.' + fattId + ',gar_fattura_id.eq.' + fattId + ',gpf_fattura_id.eq.' + fattId);
   if (error) { showToastFin('Errore: ' + error.message); return; }
   let lista = data || [];
-  if (!lista.length && ['commessa', 'garanzia'].includes(f.origine) && f.origine_id) lista = [{ id: f.origine_id, numero: '', descrizione: f.descrizione }];
+  if (!lista.length && ['commessa', 'garanzia', 'pratica'].includes(f.origine) && f.origine_id) lista = [{ id: f.origine_id, numero: '', descrizione: f.descrizione }];
   if (!lista.length) { showToastFin(/^ddt/.test(String(f.origine || '')) ? 'Fattura da DDT: nessuna commessa collegata' : 'Fattura ' + (f.numero || '') + ': nessuna commessa collegata'); return; }
   _pannelloCom(lista, f);
 }
