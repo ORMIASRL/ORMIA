@@ -579,7 +579,7 @@ async function timbra(mec, cm) {
   // Blocco garanzia: per iniziare il lavoro servono le foto iniziali (targa, telaio, km) scattate dall'app MEC
   const _tApG = timbrature.find(t=>t.mec_id===mec.id&&t.com_id===cm.id&&!t.uscita);
   const _fiG  = cm.foto_inizio || {};
-  if (!_tApG && (_comInGarT(cm) || cm.gar_pagamento_ford === true) && !(_fiG.targa && _fiG.telaio && _fiG.km)) {
+  if (!_tApG && (_comInGarT(cm) || cm.gar_pagamento_ford === true || (cm.pratiche||[]).length > 0) && !(_fiG.targa && _fiG.telaio && _fiG.km)) {
     mostraOverlay('📷', 'Commessa in garanzia', 'Prima di iniziare servono le foto iniziali (targa, telaio, km) dall\'app MEC', 'danger');
     setTimeout(chiudiOverlay, 4000);
     comSelezionata = null;
@@ -604,12 +604,18 @@ async function timbra(mec, cm) {
       suonaSegnale('uscita');
     } else {
       // Entrata — chiudi altre timbrature aperte dello stesso meccanico
+      const _opT = _partiT(cm); let _parte = null;
+      if (_opT.length > 1) {
+        const _lt = timbrature.filter(t=>t.mec_id===mec.id&&t.com_id===cm.id&&t.parte).sort((a,b)=>new Date(b.entrata)-new Date(a.entrata))[0];
+        _parte = await _sceltaParte(mec.nome + ' — ' + (cm.numero||'') + ': su cosa lavori?', _opT, (_lt && _lt.parte) || _opT[0].k);
+        if (!_parte) { comSelezionata = null; aggiornaBanner(); return; }
+      }
       // Entrata presenze dimenticata → chiede se registrarla
       if (!(await _presenzaOggi(mec)) && await _chiediEntrata(mec)) await registraPresenza(mec, 'entrata');
       // Chiude il lavoro sulle altre commesse (con verifica pausa pranzo) e le mette in standby se restano vuote
       const altreAperte = timbrature.filter(t=>t.mec_id===mec.id&&!t.uscita&&t.com_id!==cm.id);
       for (const t of altreAperte) { await _chiudiTim(t, ora, await _verificaPausa(mec, t.entrata, ora), false); await _standbySeVuota(t.com_id, t.id); }
-      await supa.from('timbrature').insert({ id:crypto.randomUUID(), mec_id:mec.id, com_id:cm.id, entrata:ora, uscita:null, created_at:ora });
+      await supa.from('timbrature').insert({ id:crypto.randomUUID(), mec_id:mec.id, com_id:cm.id, entrata:ora, uscita:null, created_at:ora, ...(_parte ? { parte: _parte } : {}) });
       if (cm.stato==='aperta'||cm.stato==='standby') await supa.from('commesse').update({stato:'wip'}).eq('id',cm.id);
       mostraOverlay('✅', mec.nome, `ENTRATA su ${cm.numero} — ${oraStr}`, 'success');
       suonaSegnale('entrata');
@@ -620,6 +626,29 @@ async function timbra(mec, cm) {
     await loadAll();
     setTimeout(chiudiOverlay, 3000);
   } catch(e) { mostraOverlay('❌', 'Errore', e.message, 'danger'); setTimeout(chiudiOverlay, 3000); }
+}
+
+// ── Pratiche Ford: "su cosa stai lavorando?" alla timbratura ──
+function _escPP(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function _sceltaParte(titolo, opts, sugg) {
+  return new Promise(res => {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.innerHTML = '<div style="background:#fff;color:#111;border-radius:16px;padding:20px;width:440px;max-width:100%;max-height:92vh;overflow:auto;font-family:inherit">'
+      + '<div style="font-size:19px;font-weight:800;margin-bottom:4px">' + _escPP(titolo) + '</div><div style="font-size:13px;color:#666;margin-bottom:14px">Scegli la pratica: ore e ricambi vanno su questa.</div>'
+      + opts.map(o => '<button type="button" data-k="' + _escPP(o.k) + '" style="display:block;width:100%;text-align:left;padding:16px;margin-bottom:8px;border-radius:12px;border:2px solid ' + (o.k === sugg ? '#1B4FD8' : '#ddd') + ';background:' + (o.k === sugg ? '#EEF2FF' : '#fff') + ';color:#111;font-size:17px;font-weight:700;cursor:pointer">' + _escPP(o.l) + '</button>').join('')
+      + '<button type="button" data-k="" style="display:block;width:100%;padding:12px;border:none;background:none;color:#888;font-size:14px;cursor:pointer">Annulla</button></div>';
+    ov.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; ov.remove(); res(b.dataset.k || false); });
+    document.body.appendChild(ov);
+  });
+}
+function _partiT(cm) {
+  const o = [];
+  if (_comInGarT(cm)) o.push({ k: 'garanzia', l: '🔧 Garanzia' });
+  (cm.pratiche || []).forEach(p => o.push({ k: 'p:' + p.id, l: p.tipo === 'fsa' ? '📣 FSA ' + (p.codice || '') : '🛠 Manutenzione' }));
+  if (cm.gpf_tipo || cm.gar_pagamento_ford === true) o.push({ k: 'garante', l: '🛡 Garanzia di pagamento' });
+  o.push({ k: 'cliente', l: '👤 Lavoro extra (cliente)' });
+  return o;
 }
 
 // ── TIMBRATURA SOLO PRESENZA ──────────────────────────
