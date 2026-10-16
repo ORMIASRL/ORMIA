@@ -2044,7 +2044,7 @@ async function inviaSuFIC(fatturaId) {
       body: JSON.stringify({ data: {
         type:'invoice', date:(f.data||new Date().toISOString()).split('T')[0], e_invoice:true,
         ...(_num ? { number: parseInt(_num[1], 10) } : {}),
-        ei_data: _eiDataFin(f.pagamento, f.off_iban),
+        ei_data: { ..._eiDataFin(f.pagamento, f.off_iban), ...(f.od_numero ? { od_number: String(f.od_numero), ...(f.od_data ? { od_date: f.od_data } : {}) } : {}) },
         entity: { name:f.cl_ragione||cl?.ragione||'Cliente', vat_number:f.cl_piva||cl?.piva||'', e_invoice:true,
                   tax_code:f.cl_cf||cl?.cf||f.cl_piva||cl?.piva||'', ei_code:String(f.cl_sdi||cl?.sdi||'').trim().toUpperCase()||'0000000',
                   certified_email:f.cl_pec||cl?.pec||'', email:f.cl_email||cl?.email||'',
@@ -2297,7 +2297,7 @@ function renderNoteCredito() {
 // ── Dalla riga fattura: apri la commessa nel gestionale (sola consultazione) e nota di credito rapida ──
 async function _apriComDaFatt(fattId) {
   const f = _fatture.find(x => x.id === fattId); if (!f) return;
-  const { data, error } = await supa.from('commesse').select('id,numero,descrizione').or('fattura_id.eq.' + fattId + ',gar_fattura_id.eq.' + fattId);
+  const { data, error } = await supa.from('commesse').select('id,numero,descrizione').or('fattura_id.eq.' + fattId + ',gar_fattura_id.eq.' + fattId + ',gpf_fattura_id.eq.' + fattId);
   if (error) { showToastFin('Errore: ' + error.message); return; }
   let lista = data || [];
   if (!lista.length && ['commessa', 'garanzia'].includes(f.origine) && f.origine_id) lista = [{ id: f.origine_id, numero: '', descrizione: f.descrizione }];
