@@ -2014,6 +2014,18 @@ async function _ficInviaSDI(ficId) {
   return { ok:true };
 }
 
+// ── Fatture dettagliate anche quando si inviano da Finance (→ FiC): oggetto, lavori eseguiti, dicitura 7-ter ──
+function _ficDetFin(f, cl, items) {
+  const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+  const ogg = String(f.oggetto || '').trim() || [f.descrizione, f.veicolo ? 'Veicolo: ' + f.veicolo : ''].filter(Boolean).join(' · ');
+  const lav = String(f.lavori || '').trim();
+  const it = lav ? items.find(i => /^manodopera/i.test(String(i.name || ''))) : null;
+  if (it) it.description = lav;
+  const notes = [lav && !it ? '<b>Lavori eseguiti:</b><br>' + esc(lav) : '', _ivaNF(f.iva) === 0 && _esteroF(cl) ? '<b>' + esc(_dic7terF(cl)) + '</b>' : '',
+    f.note ? '<b>Note:</b> ' + esc(f.note) : '', f.off_note_doc ? esc(f.off_note_doc) : ''].filter(Boolean).join('<br><br>');
+  return { ...(ogg ? { visible_subject: ogg.slice(0, 200) } : {}), ...(notes ? { notes } : {}) };
+}
+
 async function inviaSuFIC(fatturaId) {
   if (!_ficConfig.company_id) { alert('Configura prima Fatture in Cloud.'); return; }
   const f = _fatture.find(x => x.id === fatturaId);
@@ -2038,6 +2050,7 @@ async function inviaSuFIC(fatturaId) {
                   certified_email:f.cl_pec||cl?.pec||'', email:f.cl_email||cl?.email||'',
                   address_street:[cl?.via, cl?.civico].filter(Boolean).join(' '), address_postal_code:cl?.cap||'',
                   address_city:cl?.citta||'', address_province:cl?.provincia||'', country:'Italia', ..._entEst(cl) },
+        ..._ficDetFin(f, cl, items),
         items_list: items,
         payments_list: [{ amount: Math.round((f.totale||0)*100)/100, due_date: (f.scadenza||f.data||new Date().toISOString()).split('T')[0], status: 'not_paid' }],
       }, options: { fix_payments: true } }),
