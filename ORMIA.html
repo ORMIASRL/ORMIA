@@ -12026,6 +12026,97 @@ async function _registraIncassoParz(fatt, importo) {
   };
 })();
 
+// ── Fatture sempre dettagliate: oggetto e lavori eseguiti scelti all'emissione, salvati in fattura e inviati a FiC ──
+function _cmsDraftF(d) {
+  const ids = [...new Set([...((['commessa', 'garanzia'].includes(d.origine) && d.origineId) ? [d.origineId] : []), ...(d.commesseIds || [])])];
+  return ids.map(id => commesse.find(c => c.id === id)).filter(Boolean);
+}
+function _ddtDraftF(d) {
+  const ids = [...new Set([...((['ddt', 'ddt-cumulativa'].includes(d.origine) && d.origineId) ? [d.origineId] : []), ...(d.ddtIds || [])])];
+  const all = typeof ddts !== 'undefined' ? ddts : [];
+  return ids.map(id => all.find(x => x.id === id)).filter(Boolean);
+}
+function _oggettoDraftF(d) {
+  const cs = _cmsDraftF(d), dd = _ddtDraftF(d), parts = [];
+  if (d.origine === 'garanzia' && cs[0]) {
+    const c = cs[0];
+    parts.push('Riparazione in garanzia' + (c.garTipo === 'cc' ? ' catena cinematica' : '') + (c.garClaim ? ' – Claim n. ' + c.garClaim : '') + (c.garRdg ? ' – RDG n. ' + c.garRdg : ''));
+  }
+  if (cs.length === 1) {
+    const vi = _veicoloInfoFatt({ origineId: cs[0].id, veicolo: d.veicolo });
+    parts.push('Commessa ' + (cs[0].numero || ''));
+    if (vi.testo) parts.push('Veicolo: ' + vi.testo);
+  } else if (cs.length > 1) {
+    parts.push('Commesse ' + cs.map(c => { const v = veicoli.find(x => x.id === c.veicoloId); return (c.numero || '') + (v && v.targa ? ' (targa ' + v.targa + ')' : ''); }).join(', '));
+  }
+  if (dd.length) parts.push('Rif. DDT ' + dd.map(x => (x.numero || '') + (x.data ? ' del ' + formatDate(x.data) : '')).join(', '));
+  if (!parts.length) { if (d.descrizione) parts.push(d.descrizione); if (d.veicolo) parts.push('Veicolo: ' + d.veicolo); }
+  return parts.filter(Boolean).join(' · ').slice(0, 200);
+}
+function _lavoriDraftF(d) {
+  const cs = _cmsDraftF(d);
+  const one = c => [c.descrizione || c.desc ? 'Intervento: ' + String(c.descrizione || c.desc).trim() : '', String(c.notaMec || '').trim()].filter(Boolean).join('\n');
+  if (cs.length === 1) return one(cs[0]);
+  return cs.map(c => (c.numero || '') + ': ' + one(c).replace(/\n+/g, ' – ')).join('\n');
+}
+function _lavoriObblF(d) { return _cmsDraftF(d).length > 0; }
+function _renderDetFatt(d) {
+  let box = document.getElementById('fatt-det-box');
+  if (!box) {
+    const ref = document.getElementById('fatt-righe-box'); if (!ref) return;
+    box = document.createElement('div'); box.id = 'fatt-det-box';
+    box.style.cssText = 'margin-bottom:12px;border:1px solid #FDE68A;background:#FFFBEB;border-radius:var(--radius);padding:10px 12px';
+    const inp = 'width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;background:var(--surface);color:var(--text);font-family:inherit';
+    box.innerHTML = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#92400E;margin-bottom:8px">📄 Dettaglio in fattura — lo legge il cliente: controllalo</div>'
+      + '<label style="font-size:12px;font-weight:700;color:var(--text2)">Oggetto *</label><input id="fatt-oggetto" maxlength="200" style="' + inp + ';margin:4px 0 10px">'
+      + '<div id="fatt-lavori-wrap"><label style="font-size:12px;font-weight:700;color:var(--text2)">Lavori eseguiti <span id="fatt-lavori-obb">*</span> <span style="font-weight:400;color:var(--text3)">(compare sotto la riga Manodopera; togli le note interne)</span></label><textarea id="fatt-lavori" style="' + inp + ';height:90px;margin-top:4px;resize:vertical"></textarea></div>';
+    ref.parentNode.insertBefore(box, ref.nextSibling);
+  }
+  document.getElementById('fatt-oggetto').value = _oggettoDraftF(d);
+  document.getElementById('fatt-lavori').value = _lavoriDraftF(d);
+  document.getElementById('fatt-lavori-obb').style.display = _lavoriObblF(d) ? '' : 'none';
+}
+function _valDetFatt() {
+  const o = document.getElementById('fatt-oggetto'), l = document.getElementById('fatt-lavori');
+  if (!o) return true;
+  o.value = o.value.trim(); if (l) l.value = l.value.trim();
+  if (!o.value) { alert('Manca l\'oggetto della fattura (veicolo, commessa o riferimento): il cliente deve capire a cosa si riferisce.'); o.focus(); return false; }
+  if (_fattDraft && _lavoriObblF(_fattDraft) && l && !l.value) { alert('Scrivi i lavori eseguiti: compaiono in fattura sotto la manodopera.'); l.focus(); return false; }
+  return true;
+}
+async function _ficDettaglio(fatt, cl) {
+  const out = _ficExtra(fatt);
+  let ogg = String(fatt.oggetto || '').trim() || out.visible_subject || [fatt.descrizione, fatt.veicolo ? 'Veicolo: ' + fatt.veicolo : ''].filter(Boolean).join(' · ');
+  ogg = String(ogg || '').trim().slice(0, 200);
+  if (!ogg) {
+    _dialogoOrmia('Fattura ' + fatt.numero + ' NON inviata allo SDI: manca l\'oggetto (veicolo / commessa / riferimento).\n\nCompletala e inviala da Finance con «→ FiC».', { ok: 'OK' });
+    throw new Error('oggetto mancante: fattura non inviata');
+  }
+  out.visible_subject = ogg;
+  const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+  const lav = String(fatt.lavori || '').trim();
+  const hasMan = (fatt.righe || []).some(r => /^manodopera/i.test(String(r.desc || r.descrizione || '')));
+  const pre = [];
+  if (lav && !hasMan) pre.push('<b>Lavori eseguiti:</b><br>' + esc(lav));
+  if (_ivaN(fatt.iva) === 0 && _clEstero(cl)) pre.push('<b>' + esc(_dicitura7ter(cl)) + '</b>');
+  const notes = [...pre, out.notes || ''].filter(Boolean).join('<br><br>');
+  if (notes) out.notes = notes; else delete out.notes;
+  return out;
+}
+function _ficLavoriItems(items, fatt) {
+  const lav = String(fatt.lavori || '').trim(); if (!lav) return;
+  const it = items.find(i => /^manodopera/i.test(String(i.name || '')));
+  if (it) it.description = lav;
+}
+(function () {
+  const oApri = apriFatturaModal;
+  apriFatturaModal = function (draft) {
+    const r = oApri.apply(this, arguments);
+    try { _renderDetFatt(draft); } catch (e) { console.warn('[det fatt]', e); }
+    return r;
+  };
+})();
+
 function convertaAppInCommessa(appId) {
   const a = appuntamenti.find(x=>x.id===appId);
   if (!a) return;
@@ -12690,6 +12781,7 @@ async function salvaFattura() {
     if (_lordo > 0 && _dF / _lordo > 0.5 && !confirm('Stai applicando uno sconto del ' + Math.round(_dF / _lordo * 100) + '% (− ' + _eurF(_dF) + ' su ' + _eurF(_lordo) + ').\n\nConfermi?')) return;
   }
   if (!(_fattDraft.righe||[]).length) { alert('La fattura non ha righe.'); return; }
+  if (!_valDetFatt()) return;
   const _bSalva = document.getElementById('fatt-btn-salva');
   if (_bSalva?.disabled) return;
   if (_fattDraft.incasso) {
@@ -12720,6 +12812,8 @@ async function salvaFattura() {
     off_banca:  off.banca||null, off_note_doc:off.note_doc||null,
     cl_ragione: cl?.ragione||null, cl_piva:cl?.piva||null, cl_cf:cl?.cf||null,
     cl_indirizzo:cl?.indirizzo||null, cl_sdi:cl?.sdi||null, cl_pec:cl?.pec||null,
+    oggetto:    (document.getElementById('fatt-oggetto')?.value || '').trim() || null,
+    lavori:     (document.getElementById('fatt-lavori')?.value || '').trim() || null,
   };
   try {
     const { data:r, error } = await supa.from('fatture').insert(row).select().single();
@@ -12777,7 +12871,7 @@ function stampaFattura(id) {
 }
 
 function generaHtmlFattura(f) {
-  const rows=(f.righe||[]).map((r,i)=>`<tr style="background:${i%2?'#FAFAF8':'#FFF'}"><td style="padding:7px 10px;border-bottom:1px solid #E4E2DC">${r.desc||'—'}</td><td style="padding:7px 10px;border-bottom:1px solid #E4E2DC;text-align:center;font-family:monospace">${r.qta||1}</td><td style="padding:7px 10px;border-bottom:1px solid #E4E2DC;text-align:right;font-family:monospace">€ ${(+(r.listino ?? r.prezzo) || 0).toFixed(2)}${r.sconto ? '<br><span style="font-size:11px;color:#888">sconto ' + String(r.sconto).replace('.', ',') + '%</span>' : ''}</td><td style="padding:7px 10px;border-bottom:1px solid #E4E2DC;text-align:right;font-family:monospace;font-weight:500">€ ${((r.qta||1)*(r.prezzo||0)).toFixed(2)}</td></tr>`).join('');
+  const rows=(f.righe||[]).map((r,i)=>`<tr style="background:${i%2?'#FAFAF8':'#FFF'}"><td style="padding:7px 10px;border-bottom:1px solid #E4E2DC">${r.desc||'—'}${f.lavori && /^manodopera/i.test(String(r.desc||'')) ? '<div style="font-size:11px;color:#555;margin-top:3px;white-space:pre-line">' + _escF(f.lavori) + '</div>' : ''}</td><td style="padding:7px 10px;border-bottom:1px solid #E4E2DC;text-align:center;font-family:monospace">${r.qta||1}</td><td style="padding:7px 10px;border-bottom:1px solid #E4E2DC;text-align:right;font-family:monospace">€ ${(+(r.listino ?? r.prezzo) || 0).toFixed(2)}${r.sconto ? '<br><span style="font-size:11px;color:#888">sconto ' + String(r.sconto).replace('.', ',') + '%</span>' : ''}</td><td style="padding:7px 10px;border-bottom:1px solid #E4E2DC;text-align:right;font-family:monospace;font-weight:500">€ ${((r.qta||1)*(r.prezzo||0)).toFixed(2)}</td></tr>`).join('');
   const sc={emessa:'#1B4FD8',pagata:'#276749',scaduta:'#C53030'}[f.stato]||'#1B4FD8';
   const sl={emessa:'EMESSA',pagata:'PAGATA',scaduta:'SCADUTA'}[f.stato]||'';
   return `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>Fattura ${f.numero}</title>
@@ -12806,7 +12900,7 @@ ${f.stato==='pagata'?'<div class="ps">PAGATA</div>':''}
 <div class="bx"><div class="bt">Emittente</div><div class="bm">${f.offRagione||'—'}</div><div class="bs">${f.offPiva?'P.IVA: '+f.offPiva:''}<br>${f.offIndirizzo||''}</div></div>
 <div class="bx"><div class="bt">Destinatario</div><div class="bm">${f.clRagione||'Cliente occasionale'}</div><div class="bs">${f.clPiva?'P.IVA: '+f.clPiva+'<br>':''}${f.clCf?'C.F.: '+f.clCf+'<br>':''}${f.clIndirizzo||''}${f.clSdi?'<br>SDI: '+f.clSdi:''}</div></div>
 </div>
-${(() => { const _vi = _veicoloInfoFatt(f); const _t = [_vi.testo, _vi.cm && _vi.cm.numero ? 'Commessa ' + _vi.cm.numero : ''].filter(Boolean).join(' · '); return _t ? `<div class="lb">Veicolo: ${_escF(_t)}</div>` : ''; })()}
+${(() => { const _vi = _veicoloInfoFatt(f); const _t = [_vi.testo, _vi.cm && _vi.cm.numero ? 'Commessa ' + _vi.cm.numero : ''].filter(Boolean).join(' · '); const _hm = (f.righe || []).some(r => /^manodopera/i.test(String(r.desc || ''))); const _lv = f.lavori && !_hm ? `<div style="margin-top:6px;font-weight:400;color:#1A1917;white-space:pre-line"><b>Lavori eseguiti:</b>\n${_escF(f.lavori)}</div>` : ''; if (f.oggetto) return `<div class="lb">${_escF(f.oggetto)}${_lv}</div>`; return (_t || _lv) ? `<div class="lb">${_t ? 'Veicolo: ' + _escF(_t) : ''}${_lv}</div>` : ''; })()}
 <table><thead><tr><th>Descrizione</th><th>Q.tà</th><th>Prezzo unit.</th><th>Totale</th></tr></thead><tbody>${rows}</tbody></table>
 <div class="tf"><div class="tb">
 <div class="tr_"><span>Imponibile</span><span>€ ${(f.imponibile||0).toFixed(2)}</span></div>
@@ -13685,6 +13779,7 @@ async function autoInviaFIC(fatt) {
     : [{ name:fatt.descrizione||'Servizio officina', qty:1,
          net_price:fatt.imponibile||(fatt.totale||0)/(1+_ivaF/100), vat:_vatF }];
 
+  _ficLavoriItems(items, fatt);
   // ── Fattura elettronica: creazione su FiC, controllo XML e invio allo SDI in automatico ──
   const cid = ficCfg.company_id;
   const api = async (path, method, body) => {
@@ -13712,7 +13807,7 @@ async function autoInviaFIC(fatt) {
                address_street:[cl?.via, cl?.civico].filter(Boolean).join(' '), address_postal_code:cl?.cap||'', address_city:cl?.citta||'',
                address_province:cl?.provincia||'', country:_clEstero(cl) ? (_NAZ_CL[_nazCl(cl)] || _nazCl(cl)) : 'Italia' },
       ei_data:{ vat_kind:'I', payment_method:metodo, ...(metodo==='MP05' && iban ? { bank_iban: iban } : {}) },
-      ..._ficExtra(fatt),
+      ...(await _ficDettaglio(fatt, cl)),
       items_list: items,
       payments_list: [{ amount: Math.round((fatt.totale||0)*100)/100, due_date: (fatt.scadenza||fatt.data||new Date().toISOString()).split('T')[0], status: 'not_paid' }],
     }, options: { fix_payments: true } });
