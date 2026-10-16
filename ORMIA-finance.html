@@ -2289,20 +2289,71 @@ async function _apriComDaFatt(fattId) {
   let lista = data || [];
   if (!lista.length && ['commessa', 'garanzia'].includes(f.origine) && f.origine_id) lista = [{ id: f.origine_id, numero: '', descrizione: f.descrizione }];
   if (!lista.length) { showToastFin(/^ddt/.test(String(f.origine || '')) ? 'Fattura da DDT: nessuna commessa collegata' : 'Fattura ' + (f.numero || '') + ': nessuna commessa collegata'); return; }
-  const apri = id => window.open('/ormia?commessa=' + encodeURIComponent(id), '_blank');
-  if (lista.length === 1) { apri(lista[0].id); return; }
-  document.getElementById('modal-scegli-com')?.remove();
-  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const ov = document.createElement('div'); ov.id = 'modal-scegli-com';
-  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:3000';
-  ov.onclick = e => { if (e.target === ov) ov.remove(); };
-  ov.innerHTML = '<div style="background:var(--surface,#fff);border-radius:12px;padding:18px;min-width:320px;max-width:520px;box-shadow:0 20px 60px rgba(0,0,0,.2)">'
-    + '<div style="font-weight:800;margin-bottom:10px">Commesse della fattura ' + esc(f.numero) + '</div>'
-    + lista.map(c => '<div class="_scom" data-id="' + esc(c.id) + '" style="padding:10px 12px;border:1px solid var(--border,#E4E2DC);border-radius:8px;margin-bottom:6px;cursor:pointer"><b>' + esc(c.numero) + '</b> — ' + esc(String(c.descrizione || '').slice(0, 90)) + '</div>').join('')
-    + '<div style="text-align:right;margin-top:8px"><button class="btn btn-secondary btn-sm" onclick="document.getElementById(\'modal-scegli-com\').remove()">Chiudi</button></div></div>';
-  ov.querySelectorAll('._scom').forEach(el => { el.onclick = () => { apri(el.dataset.id); ov.remove(); }; });
-  document.body.appendChild(ov);
+  _pannelloCom(lista, f);
 }
+// ── Pannello laterale commessa in sola consultazione (stesso stile del gestionale) ──
+const _escP = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const _eurP = n => '€ ' + (+n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const _STATI_COM = { aperta: 'Aperta', wip: 'In lavorazione', standby: 'Standby', chiusa: 'Chiusa', fatturata: 'Fatturata', annullata: 'Annullata', interna: 'Interna' };
+function _chiudiPannelloCom() { document.getElementById('pnl-com')?.remove(); document.getElementById('pnl-com-bg')?.remove(); document.getElementById('pnl-com-img')?.remove(); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('pnl-com')) { if (document.getElementById('pnl-com-img')) document.getElementById('pnl-com-img').remove(); else _chiudiPannelloCom(); } });
+async function _pannelloCom(lista, f) {
+  _chiudiPannelloCom();
+  const bg = document.createElement('div'); bg.id = 'pnl-com-bg';
+  bg.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.12);z-index:149';
+  bg.onclick = _chiudiPannelloCom;
+  const p = document.createElement('div'); p.id = 'pnl-com';
+  p.style.cssText = 'position:fixed;top:0;right:0;bottom:0;width:420px;max-width:100vw;background:var(--surface);border-left:1px solid var(--border);box-shadow:var(--shadow-md);z-index:150;overflow-y:auto;overflow-x:hidden';
+  p._lista = lista; p._f = f;
+  document.body.append(bg, p);
+  await _mostraComPnl(lista[0].id);
+}
+function _imgPnl(url) {
+  document.getElementById('pnl-com-img')?.remove();
+  const o = document.createElement('div'); o.id = 'pnl-com-img';
+  o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;display:flex;align-items:center;justify-content:center;cursor:zoom-out';
+  o.onclick = () => o.remove();
+  o.innerHTML = '<img src="' + _escP(url) + '" style="max-width:94vw;max-height:92vh;border-radius:6px">';
+  document.body.appendChild(o);
+}
+async function _mostraComPnl(id) {
+  const p = document.getElementById('pnl-com'); if (!p) return;
+  p.innerHTML = '<div style="padding:24px;color:var(--text3);font-size:13px">Caricamento…</div>';
+  const { data: cm, error } = await supa.from('commesse').select('id,numero,stato,descrizione,note,nota_mec,data_apertura,cliente_id,veicolo_id,fatt_cliente_id,ore_motore,in_garanzia,gar_tipo,gar_pagamento_ford,voci_mano,voci_ric,voci_extra,diritto_chiamata,diritto_chiamata_importo,totale,foto_inizio,foto_fine,allegati').eq('id', id).single();
+  if (!document.getElementById('pnl-com')) return;
+  if (error || !cm) { p.innerHTML = '<div style="padding:24px;font-size:13px">Commessa non trovata. <button class="btn btn-secondary btn-sm" onclick="_chiudiPannelloCom()">Chiudi</button></div>'; return; }
+  const { data: v } = cm.veicolo_id ? await supa.from('veicoli').select('targa,marca,modello,telaio,vin,km').eq('id', cm.veicolo_id).maybeSingle() : { data: null };
+  const cl = _clienti.find(c => c.id === cm.cliente_id), fc = cm.fatt_cliente_id ? _clienti.find(c => c.id === cm.fatt_cliente_id) : null;
+  const f = p._f, lista = p._lista || [];
+  const e = _escP, sez = (t, h) => h ? '<div style="padding:14px 20px;border-bottom:1px solid var(--border)"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:8px">' + t + '</div>' + h + '</div>' : '';
+  const riga = (k, val) => val ? '<div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:3px 0"><span style="color:var(--text3)">' + k + '</span><span style="text-align:right;font-weight:600">' + val + '</span></div>' : '';
+  const imp = x => Math.round((+x.qta || 1) * (+x.prezzo || 0) * (1 - (+x.sconto || 0) / 100) * 100) / 100;
+  const voci = (arr, um) => (arr || []).filter(x => x && (x.desc || x.prezzo)).map(x => '<div style="display:grid;grid-template-columns:1fr auto;gap:8px;font-size:13px;padding:5px 0;border-bottom:1px dashed var(--border)"><div>' + e(x.desc || '—') + '<div style="font-size:11px;color:var(--text3)">' + (+x.qta || 1) + ' ' + um + ' × ' + _eurP(x.prezzo) + (+x.sconto ? ' · sconto ' + (+x.sconto) + '%' : '') + '</div></div><div style="font-family:\'DM Mono\',monospace;font-weight:600">' + _eurP(imp(x)) + '</div></div>').join('');
+  const garLbl = (cm.in_garanzia === true ? '<span style="background:#FEF3C7;color:#92400E;border:1px solid #FDE68A;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px">🔧 Garanzia' + (cm.gar_tipo === 'cc' ? ' catena cinematica' : '') + '</span> ' : '') + (cm.gar_pagamento_ford ? '<span style="background:#FFFBEB;color:#92400E;border:1px solid #FDE68A;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px">📷 Garanzia pag. Ford</span>' : '');
+  const fi = Object.entries(cm.foto_inizio || {}).filter(([, u]) => u), ff = (cm.foto_fine || []).filter(Boolean), all = (cm.allegati || []).filter(a => a && a.url);
+  const thumb = (u, t) => '<div onclick="_imgPnl(\'' + e(u) + '\')" title="' + e(t) + '" style="width:84px;height:84px;border-radius:8px;overflow:hidden;border:1px solid var(--border);cursor:zoom-in;background:var(--surface2)"><img src="' + e(u) + '" loading="lazy" style="width:100%;height:100%;object-fit:cover"></div>';
+  const isImg = u => /\.(jpe?g|png|webp|gif|heic)(\?|$)/i.test(u);
+  const fotoHtml = (fi.length || ff.length) ? '<div style="display:flex;flex-wrap:wrap;gap:6px">' + fi.map(([k, u]) => thumb(u, 'Inizio ' + k)).join('') + ff.map(u => thumb(u, 'Fine lavoro')).join('') + '</div>' : '';
+  const allHtml = all.length ? all.map(a => isImg(a.url) ? '<div onclick="_imgPnl(\'' + e(a.url) + '\')" style="font-size:13px;padding:4px 0;cursor:zoom-in;color:var(--accent)">🖼 ' + e(a.nome || 'Foto') + '</div>' : '<a href="' + e(a.url) + '" target="_blank" rel="noopener" style="display:block;font-size:13px;padding:4px 0;color:var(--accent)">📎 ' + e(a.nome || 'Allegato') + '</a>').join('') : '';
+  const vociHtml = voci(cm.voci_mano, 'h') + voci(cm.voci_ric, 'pz') + voci(cm.voci_extra, 'pz') + (cm.diritto_chiamata && +cm.diritto_chiamata_importo ? '<div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px dashed var(--border)"><span>Diritto di chiamata</span><span style="font-family:\'DM Mono\',monospace;font-weight:600">' + _eurP(cm.diritto_chiamata_importo) + '</span></div>' : '');
+  p.innerHTML =
+    '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:12px;position:sticky;top:0;background:var(--surface);z-index:1">'
+    + '<div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' + (v?.targa ? '<span style="background:#111;color:#fff;font-family:\'DM Mono\',monospace;font-weight:800;padding:3px 8px;border-radius:5px;font-size:13px">' + e(v.targa) + '</span>' : '') + '<span style="font-size:16px;font-weight:800">' + e(cm.numero || 'Commessa') + '</span></div>'
+    + '<div style="font-size:12px;color:var(--text3);margin-top:4px">' + e(_STATI_COM[cm.stato] || cm.stato || '') + (cm.data_apertura ? ' · aperta il ' + formatDateFin(cm.data_apertura) : '') + '</div>' + (garLbl ? '<div style="margin-top:6px">' + garLbl + '</div>' : '') + '</div>'
+    + '<button onclick="_chiudiPannelloCom()" title="Chiudi" style="background:none;border:1px solid var(--border);border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:15px;color:var(--text2)">✕</button></div>'
+    + (lista.length > 1 ? '<div style="padding:10px 20px;border-bottom:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap">' + lista.map(c => '<button class="btn btn-sm ' + (c.id === cm.id ? 'btn-primary' : 'btn-secondary') + '" onclick="_mostraComPnl(\'' + e(c.id) + '\')">' + e(c.numero || 'Commessa') + '</button>').join('') + '</div>' : '')
+    + (f ? '<div style="margin:12px 20px 0;padding:8px 12px;border-radius:var(--radius);background:#ECFDF5;border:1px solid #A7F3D0;font-size:12px;color:#065F46">📁 Fattura <b>' + e(f.numero || '') + '</b>' + (f.data ? ' del ' + formatDateFin(f.data) : '') + ' · sola consultazione</div>' : '')
+    + sez('Cliente', riga('Proprietario', e(cl?.ragione || '—')) + (fc && fc.id !== cm.cliente_id ? riga('Fatturata a', e(fc.ragione)) : '') + riga('Telefono', e(cl?.tel || '')))
+    + sez('Veicolo', riga('Mezzo', e([v?.marca, v?.modello].filter(Boolean).join(' '))) + riga('Telaio', e(v?.telaio || v?.vin || '')) + riga('Km', v?.km ? (+String(v.km).replace(/\D/g, '')).toLocaleString('it-IT') : '') + riga('Ore motore', cm.ore_motore ? (+cm.ore_motore).toLocaleString('it-IT') : ''))
+    + sez('Lavoro richiesto', '<div style="font-size:13px;white-space:pre-wrap">' + e(cm.descrizione || '—') + '</div>')
+    + sez('Note meccanico', cm.nota_mec ? '<div style="font-size:13px;white-space:pre-wrap">' + e(cm.nota_mec) + '</div>' : '')
+    + sez('Note', cm.note ? '<div style="font-size:13px;white-space:pre-wrap">' + e(cm.note) + '</div>' : '')
+    + sez('Lavorazioni e ricambi', vociHtml ? vociHtml + '<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:800;padding-top:8px"><span>Totale commessa</span><span style="font-family:\'DM Mono\',monospace">' + _eurP(cm.totale) + '</span></div>' : '<div style="font-size:13px;color:var(--text3)">Nessuna voce</div>')
+    + sez('Foto', fotoHtml)
+    + sez('Allegati', allHtml)
+    + '<div style="padding:14px 20px 24px;text-align:right"><a href="/ormia?commessa=' + encodeURIComponent(cm.id) + '" target="_blank" rel="noopener" style="font-size:12px;color:var(--text3)">Apri nel gestionale ↗</a></div>';
+}
+
 function _ncDaFattura(fattId) {
   apriNuovaNC();
   const sel = document.getElementById('nc-fattura'); if (!sel) return;
