@@ -9446,9 +9446,9 @@ function _selectConvert(el, tipo) {
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-fattura')">Annulla</button>
-      <button class="btn btn-secondary" onclick="salvaEStampaFattura()">
+      <button class="btn btn-secondary" onclick="anteprimaFattura()" title="Vedi o stampa la bozza: non salva, non numera, non invia">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-        Salva e stampa
+        Anteprima / Stampa
       </button>
       <button class="btn btn-primary" id="fatt-btn-salva" onclick="salvaFattura()">Emetti fattura</button>
     </div>
@@ -12116,6 +12116,29 @@ function _ficLavoriItems(items, fatt) {
     return r;
   };
 })();
+
+// ── Anteprima / stampa della fattura PRIMA di emetterla: bozza, non salva, non numera, non invia ──
+function anteprimaFattura() {
+  if (!_fattDraft) return;
+  const v = id => document.getElementById(id)?.value || '';
+  const tots = calcolaFattTotali();
+  const cl = clienti.find(c => c.id === _fattDraft.clienteId);
+  const off = getDatiOfficina();
+  const f = {
+    numero: 'BOZZA', stato: 'bozza', data: v('fatt-data') || null, scadenza: v('fatt-scadenza') || null, pagamento: v('fatt-pagamento'),
+    origine: _fattDraft.origine, origineId: _fattDraft.origineId || null, clienteId: _fattDraft.clienteId || null,
+    descrizione: _fattDraft.descrizione, veicolo: _fattDraft.veicolo, righe: _fattDraft.righe || [],
+    iva: tots.iva, imponibile: tots.imponibile, ivaAmt: tots.ivaAmt, totale: tots.totale,
+    note: v('fatt-note').trim(), clEmail: v('fatt-email').trim(),
+    oggetto: v('fatt-oggetto').trim() || null, lavori: v('fatt-lavori').trim() || null,
+    offRagione: off.ragione || null, offPiva: off.piva || null, offIndirizzo: off.indirizzo || null, offTel: off.tel || null,
+    offEmail: off.email || null, offIban: off.iban || null, offBanca: off.banca || null, offNoteDoc: off.note_doc || null,
+    clRagione: cl?.ragione || null, clPiva: cl?.piva || null, clCf: cl?.cf || null, clIndirizzo: cl?.indirizzo || null, clSdi: cl?.sdi || null,
+  };
+  const wm = '<div style="position:fixed;top:40%;left:0;right:0;text-align:center;transform:rotate(-25deg);font-size:110px;font-weight:900;color:#C53030;opacity:.12;pointer-events:none;z-index:9">BOZZA</div>'
+    + '<div style="background:#FEF2F2;border:2px solid #C53030;color:#B91C1C;border-radius:6px;padding:8px 12px;margin-bottom:16px;font-size:13px;font-weight:800;text-align:center">BOZZA – NON VALIDA AI FINI FISCALI · anteprima prima dell\'emissione</div>';
+  apriStampa(generaHtmlFattura(f).replace('<body>', () => '<body>' + wm));
+}
 
 function convertaAppInCommessa(appId) {
   const a = appuntamenti.find(x=>x.id===appId);
