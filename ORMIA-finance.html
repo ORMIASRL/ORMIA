@@ -1071,7 +1071,7 @@ function renderFattureFin() {
       ? `<div style="font-family:'DM Mono',monospace;font-weight:700">€ ${(f.totale||0).toFixed(2)}</div>
          <div style="font-size:11px;color:var(--warning);font-family:'DM Mono',monospace">residuo: € ${residuo.toFixed(2)}</div>`
       : `€ ${(f.totale||0).toFixed(2)}`;
-    return `<tr>
+    return `<tr onclick="_apriComDaFatt('${f.id}')" style="cursor:pointer" title="Apri la commessa">
       <td style="font-family:'DM Mono',monospace;font-size:12px;font-weight:700">${f.numero||'—'}</td>
       <td>${cl?cl.ragione:'—'}</td>
       <td>${formatDateFin(f.data||f.created_at)}</td>
@@ -1079,9 +1079,10 @@ function renderFattureFin() {
       <td style="font-family:'DM Mono',monospace;font-weight:700">${importoCell}</td>
       <td><span class="badge-stato badge-${scaduta?'scaduta':f.stato}">${scaduta?'Scaduta':statoFattLabel(f.stato)}</span></td>
       <td>${f.ficId?`<span style="font-size:10px;background:#E0E7FF;color:#3730A3;padding:2px 6px;border-radius:4px;font-weight:600">FiC ✓</span>`:'<span style="font-size:10px;color:var(--text3)">—</span>'}${_badgeSdi(f)}</td>
-      <td>
+      <td onclick="event.stopPropagation()" style="cursor:default">
         <div style="display:flex;gap:4px">
           ${f.stato!=='pagata'?`<button class="btn btn-sm btn-success" onclick="segnaFatturaPagata('${f.id}')">Segna pagata</button>`:''}
+          ${['emessa','scaduta','pagata'].includes(f.stato)?`<button class="btn btn-sm btn-secondary" title="Nota di credito su questa fattura (totale o parziale)" onclick="_ncDaFattura('${f.id}')">↩︎ Nota credito</button>`:''}
           ${!f.ficId?`<button class="btn btn-sm btn-secondary" onclick="inviaSuFIC('${f.id}')">→ FiC</button>`:''}
           ${f.ficId?`<button class="btn btn-sm btn-secondary" title="Reinvia la fattura al cliente via email da Fatture in Cloud" onclick="_ficEmailFin('${f.id}')">📧 Reinvia email</button>`:''}
         </div>
@@ -2280,6 +2281,37 @@ function renderNoteCredito() {
   }).join('');
 }
 
+// ── Dalla riga fattura: apri la commessa nel gestionale (sola consultazione) e nota di credito rapida ──
+async function _apriComDaFatt(fattId) {
+  const f = _fatture.find(x => x.id === fattId); if (!f) return;
+  const { data, error } = await supa.from('commesse').select('id,numero,descrizione').or('fattura_id.eq.' + fattId + ',gar_fattura_id.eq.' + fattId);
+  if (error) { showToastFin('Errore: ' + error.message); return; }
+  let lista = data || [];
+  if (!lista.length && ['commessa', 'garanzia'].includes(f.origine) && f.origine_id) lista = [{ id: f.origine_id, numero: '', descrizione: f.descrizione }];
+  if (!lista.length) { showToastFin(/^ddt/.test(String(f.origine || '')) ? 'Fattura da DDT: nessuna commessa collegata' : 'Fattura ' + (f.numero || '') + ': nessuna commessa collegata'); return; }
+  const apri = id => window.open('/ormia?commessa=' + encodeURIComponent(id), '_blank');
+  if (lista.length === 1) { apri(lista[0].id); return; }
+  document.getElementById('modal-scegli-com')?.remove();
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const ov = document.createElement('div'); ov.id = 'modal-scegli-com';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:3000';
+  ov.onclick = e => { if (e.target === ov) ov.remove(); };
+  ov.innerHTML = '<div style="background:var(--surface,#fff);border-radius:12px;padding:18px;min-width:320px;max-width:520px;box-shadow:0 20px 60px rgba(0,0,0,.2)">'
+    + '<div style="font-weight:800;margin-bottom:10px">Commesse della fattura ' + esc(f.numero) + '</div>'
+    + lista.map(c => '<div class="_scom" data-id="' + esc(c.id) + '" style="padding:10px 12px;border:1px solid var(--border,#E4E2DC);border-radius:8px;margin-bottom:6px;cursor:pointer"><b>' + esc(c.numero) + '</b> — ' + esc(String(c.descrizione || '').slice(0, 90)) + '</div>').join('')
+    + '<div style="text-align:right;margin-top:8px"><button class="btn btn-secondary btn-sm" onclick="document.getElementById(\'modal-scegli-com\').remove()">Chiudi</button></div></div>';
+  ov.querySelectorAll('._scom').forEach(el => { el.onclick = () => { apri(el.dataset.id); ov.remove(); }; });
+  document.body.appendChild(ov);
+}
+function _ncDaFattura(fattId) {
+  apriNuovaNC();
+  const sel = document.getElementById('nc-fattura'); if (!sel) return;
+  sel.value = fattId;
+  if (sel.value !== fattId) { document.getElementById('modal-nc').style.display = 'none'; showToastFin('Su questa fattura non si può fare una nota di credito'); return; }
+  onNCFatturaChange();
+  setTimeout(() => { const i = document.getElementById('nc-importo'); if (i) { i.focus(); i.select(); } }, 50);
+}
+
 function apriNuovaNC() {
   const opzFatture = _fatture
     .filter(f=>f.stato==='emessa'||f.stato==='scaduta'||f.stato==='pagata')
@@ -2312,8 +2344,8 @@ async function salvaNC() {
   if (!motivo)    { showToastFin('⚠ Inserisci il motivo'); return; }
   const fatt = _fatture.find(f=>f.id===fatturaId);
   const anno = new Date().getFullYear();
-  // Progressivo dal database (Impostazioni → Prossimo n° nota credito): è anche il numero inviato a Fatture in Cloud
-  const { data: _nNc, error: _eNc } = await supa.rpc('ormia_prossimo_numero', { campo: 'num_nc' });
+  // Progressivo unico con le fatture (Impostazioni → Prossimo n° fattura): è anche il numero inviato a Fatture in Cloud
+  const { data: _nNc, error: _eNc } = await supa.rpc('ormia_prossimo_numero', { campo: 'num_fatture' });   // su FiC fatture e note di credito hanno la stessa numerazione
   if (_eNc || !_nNc) { showToastFin('Errore numero progressivo: ' + (_eNc?.message || 'risposta vuota')); return; }
   const seq  = String(_nNc).padStart(4,'0');
   const numero = `NC-${anno}-${seq}`;
