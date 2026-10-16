@@ -1761,6 +1761,8 @@
           <div class="form-group"><label>N. contratto</label><input autocomplete="off" type="text" id="v-contratto-num"></div>
           <div class="form-group span-2"><label>Cosa copre</label><input autocomplete="off" type="text" id="v-contratto-note" placeholder="Es. solo tagliandi / manutenzione e usura"></div>
         </div>
+        <div class="form-section-title">Campagne FSA (Ford)</div>
+        <div class="form-group span-2"><div id="v-fsa-list" style="display:flex;flex-direction:column;gap:6px"></div><button type="button" class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="_fsaAdd()">+ Aggiungi campagna FSA</button></div>
         <div class="form-group span-2">
           <label>Note</label>
           <textarea autocomplete="off" id="v-note" placeholder="Difetti noti, particolarità..."></textarea>
@@ -2238,6 +2240,7 @@ async function saveVeicolo() {
     contrattoTipo: (document.getElementById('v-contratto-tipo')?.value || '').trim() || null,
     contrattoNum:  (document.getElementById('v-contratto-num')?.value || '').trim() || null,
     contrattoNote: (document.getElementById('v-contratto-note')?.value || '').trim() || null,
+    ...(_fsaVal() !== undefined ? { fsa: _fsaVal() } : {}),
     note: document.getElementById('v-note').value.trim(),
   };
   // Il tipo si salva solo per i rimorchi (i veicoli usano il valore predefinito del database)
@@ -5816,6 +5819,7 @@ async function saveCommessa(firmaDataUrl=null) {
     gpfGaranteId:  _valGpf() ? _gpfSel().garante : null,
     gpfOrdine:     _valGpf() ? _gpfSel().ordine : null,
     gpfOrdineData: _valGpf() ? _gpfSel().data : null,
+    pratiche:      _praticheVal(),
     fattClienteId: _valFattCl(),
     garTipo: _valGarTipo(),
     oreMotore: parseInt(oreMotore, 10) || null,
@@ -12146,10 +12150,12 @@ function anteprimaFattura() {
 }
 
 // ── Ripartizione "A carico di": cliente / garante (garanzia di pagamento) / garanzia — ogni parte la sua fattura ──
-const _QLBL = { cliente: 'Cliente', garante: 'Garante pagamento', garanzia: 'Garanzia' };
+const _QLBL = new Proxy({ cliente: 'Cliente', garante: 'Garante pagamento', garanzia: 'Garanzia' }, { get(t, k) {
+  if (typeof k === 'string' && k.startsWith('p:')) { const id = k.slice(2), c = typeof commesse !== 'undefined' ? commesse.find(x => (x.pratiche || []).some(p => p.id === id)) : null, p = c ? c.pratiche.find(x => x.id === id) : null; return p ? (p.tipo === 'fsa' ? 'FSA ' + (p.codice || '') : 'Manutenzione') : 'Pratica'; }
+  return t[k]; } });
 function _gpfOn(cm) { return !!cm && (!!cm.gpfTipo || cm.garPagamentoFord === true); }
-function _opzQuote(cm) { const o = ['cliente']; if (_gpfOn(cm)) o.push('garante'); if (_comInGaranzia(cm)) o.push('garanzia'); return o; }
-function _quotaDef(cm) { return _comInGaranzia(cm) ? 'garanzia' : (_gpfOn(cm) ? 'garante' : 'cliente'); }
+function _opzQuote(cm) { const o = ['cliente']; if (_gpfOn(cm)) o.push('garante'); if (_comInGaranzia(cm)) o.push('garanzia'); ((cm && cm.pratiche) || []).forEach(p => o.push('p:' + p.id)); return o; }
+function _quotaDef(cm) { return _comInGaranzia(cm) ? 'garanzia' : (((cm && cm.pratiche) || []).length ? 'p:' + cm.pratiche[0].id : (_gpfOn(cm) ? 'garante' : 'cliente')); }
 function _caricoV(cm, v) { const q = v && v.carico; return q && _opzQuote(cm).includes(q) ? q : _quotaDef(cm); }
 function _haQuote(cm) {
   if (!cm) return false;
@@ -12160,14 +12166,15 @@ function _haQuote(cm) {
   return Object.keys(s).some(k => k !== 'cliente' && _opzQuote(cm).includes(k) && +s[k] > 0);
 }
 function _timbrQuote(cm) {
-  const T = _oreTimbrate(cm.id), I = _importoTimbrature(cm.id), def = _quotaDef(cm), s = cm.timbrSplit || {}, out = {};
-  let oreRes = T, impUsato = 0;
-  _opzQuote(cm).filter(q => q !== def).forEach(q => {
-    const h = Math.min(Math.max(+s[q] || 0, 0), oreRes);
-    const imp = T > 0 ? Math.round(I * h / T * 100) / 100 : 0;
-    out[q] = { ore: h, imp }; oreRes -= h; impUsato += imp;
-  });
-  out[def] = { ore: Math.max(0, oreRes), imp: Math.round((I - impUsato) * 100) / 100 };
+  const tims = _timCommessa(cm.id), T = tims.reduce((s, t) => s + _minTim(t), 0) / 60, I = _importoTimbrature(cm.id);
+  const opz = _opzQuote(cm), def = _quotaDef(cm), s = cm.timbrSplit || {}, ore = {}, out = {};
+  tims.forEach(t => { const k = t.parte && opz.includes(t.parte) ? t.parte : def; ore[k] = (ore[k] || 0) + _minTim(t) / 60; });
+  let oreDef = ore[def] || 0;
+  opz.filter(q => q !== def).forEach(q => { const mv = Math.min(Math.max(+s[q] || 0, 0), oreDef); ore[q] = (ore[q] || 0) + mv; oreDef -= mv; });
+  ore[def] = Math.max(0, oreDef);
+  let impUsato = 0;
+  opz.filter(q => q !== def).forEach(q => { const h = ore[q] || 0, imp = T > 0 ? Math.round(I * h / T * 100) / 100 : 0; out[q] = { ore: h, imp }; impUsato += imp; });
+  out[def] = { ore: ore[def], imp: Math.round((I - impUsato) * 100) / 100 };
   return out;
 }
 function _righeCommessaQ(cm, q) {
@@ -12200,6 +12207,7 @@ function _quotePend(c) {
 function _quotePendTutte(c) {
   const out = _quotePend(c);
   if (_comInGaranzia(c) && !c.garFatturaId && c.garStato !== 'respinta' && _impQ(c, 'garanzia') > 0) out.push('garanzia');
+  (c.pratiche || []).forEach(p => { if (!p.fatturaId && p.stato !== 'respinta') out.push('p:' + p.id); });
   return out;
 }
 function _segnaQuotaFatt(cm, fid, q) {
@@ -12345,7 +12353,7 @@ function _renderQuoteDC(id) {
   const opz = _opzQuote(cm); if (opz.length < 2) return;
   const ref = document.getElementById('dc-foto-section'); if (!ref) return;
   const def = _quotaDef(cm);
-  const fattOf = q => q === 'garante' ? cm.gpfFatturaId : q === 'garanzia' ? cm.garFatturaId : cm.fatturaId;
+  const fattOf = q => q === 'garante' ? cm.gpfFatturaId : q === 'garanzia' ? cm.garFatturaId : String(q).startsWith('p:') ? (_praticaDi(cm, q) || {}).fatturaId : cm.fatturaId;
   const numF = fid => { const f = (typeof fatture !== 'undefined' ? fatture : []).find(x => x.id === fid); return f ? f.numero : 'emessa'; };
   const lock = q => !!fattOf(q);
   const impV = v => Math.round((+v.qta || 1) * (+v.prezzo || 0) * (1 - (+v.sconto || 0) / 100) * 100) / 100;
@@ -12358,20 +12366,21 @@ function _renderQuoteDC(id) {
     ...(cm.vociRic || []).map((v, i) => v.desc ? riga('ric', i, v, _descRic(v) + ' × ' + (v.qta || 1)) : ''),
     ...(cm.vociExtra || []).map((v, i) => v.desc ? riga('extra', i, v, v.desc) : '')].filter(Boolean).join('');
   const T = _oreTimbrate(cm.id), tq = _timbrQuote(cm);
-  const timbr = T > 0 ? '<div style="padding:6px 0;border-top:1px solid var(--border);font-size:12px"><b>Ore timbrate</b> ' + (Math.round(T * 100) / 100).toLocaleString('it-IT') + ' h · ' + _eurF(_importoTimbrature(cm.id)) + ' — a carico di ' + _QLBL[def] + ', tranne:'
-    + opz.filter(o => o !== def).map(o => ' <label style="white-space:nowrap;font-weight:400">' + _QLBL[o] + ' <input type="number" min="0" step="0.25" value="' + (tq[o].ore || '') + '" ' + (lock(o) || lock(def) ? 'disabled' : '') + ' onchange="_setTimbrSplit(\'' + id + '\',\'' + o + '\',this.value)" style="width:70px;font-size:12px;padding:2px 4px;display:inline-block"> h</label>').join('') + '</div>' : '';
+  const timbr = T > 0 ? '<div style="padding:6px 0;border-top:1px solid var(--border);font-size:12px"><b>Ore timbrate</b> ' + (Math.round(T * 100) / 100).toLocaleString('it-IT') + ' h · ' + _eurF(_importoTimbrature(cm.id)) + ' — per parte: ' + opz.filter(o => tq[o] && tq[o].ore > 0).map(o => _QLBL[o] + ' ' + (Math.round(tq[o].ore * 100) / 100).toLocaleString('it-IT') + ' h').join(', ') + '<br><span style="color:var(--text3)">Sposta ore da ' + _QLBL[def] + ' a:</span>'
+    + opz.filter(o => o !== def).map(o => ' <label style="white-space:nowrap;font-weight:400">' + _QLBL[o] + ' <input type="number" min="0" step="0.25" value="' + ((cm.timbrSplit || {})[o] || '') + '" ' + (lock(o) || lock(def) ? 'disabled' : '') + ' onchange="_setTimbrSplit(\'' + id + '\',\'' + o + '\',this.value)" style="width:70px;font-size:12px;padding:2px 4px;display:inline-block"> h</label>').join('') + '</div>' : '';
   const stato = q => { const fid = fattOf(q); if (fid) return '<span style="color:#047857;font-weight:700">✓ fattura ' + _escF(numF(fid)) + '</span>';
+    if (String(q).startsWith('p:')) { const p = _praticaDi(cm, q) || {}; return '<span style="color:' + (p.stato === 'respinta' ? 'var(--danger)' : '#B45309') + '">' + (p.stato === 'respinta' ? '✕ respinta' : '⏳ pratica ' + (p.stato || 'in attesa')) + (p.claim ? ' · Claim ' + _escF(p.claim) : '') + (p.rdg ? ' · RDG ' + _escF(p.rdg) : '') + '</span>'; }
     return q === 'garanzia' ? '<span style="color:#B45309">⏳ pratica garanzia' + (cm.garStato ? ' (' + _escF(cm.garStato) + ')' : '') + '</span>' : '<span style="color:#B45309">⏳ da fatturare</span>'; };
   const dest = q => { if (q === 'garante') { const g = clienti.find(c => c.id === cm.gpfGaranteId); return g ? _escF(g.ragione) : '<span style="color:var(--danger)">⚠ garante non indicato</span>'; }
     if (q === 'cliente') { const c = clienti.find(x => x.id === (_fattClId(cm) || cm.clienteId)); return c ? _escF(c.ragione) : '—'; } return 'Claim / RDG'; };
-  const riep = opz.map(q => { const imp = _impQ(cm, q); if (!(imp > 0) && q !== def && !fattOf(q)) return '';
+  const riep = opz.map(q => { const imp = _impQ(cm, q); if (!(imp > 0) && q !== def && !String(q).startsWith('p:') && !fattOf(q)) return '';
     return '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;padding:3px 0"><span><b>' + _QLBL[q] + '</b> · ' + dest(q) + '</span><span style="white-space:nowrap"><span style="font-family:\'DM Mono\',monospace;font-weight:700">' + _eurF(imp) + '</span> + IVA · ' + stato(q) + '</span></div>'; }).join('');
   const ord = _gpfOn(cm) ? '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:8px 0;padding:8px 10px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;font-size:12px;color:#92400E">🛡 <b>Garanzia di pagamento' + (cm.garPagamentoFord === true ? ' Ford' : '') + '</b>'
     + '<select id="dcq-gar" ' + (lock('garante') ? 'disabled' : '') + ' style="font-size:12px;max-width:220px;width:auto">' + _optsGarante(cm.gpfGaranteId || '') + '</select>'
     + 'N° ordine <input id="dcq-ord" value="' + _escF(cm.gpfOrdine || '') + '" ' + (lock('garante') ? 'disabled' : '') + ' style="width:130px;font-size:12px;padding:3px 6px;display:inline-block' + (!String(cm.gpfOrdine || '').trim() ? ';border-color:var(--danger)' : '') + '">'
     + 'del <input type="date" id="dcq-od" value="' + _escF(cm.gpfOrdineData || '') + '" ' + (lock('garante') ? 'disabled' : '') + ' style="font-size:12px;padding:3px 6px;width:auto;display:inline-block">'
     + (lock('garante') ? '' : '<button class="btn btn-secondary btn-sm" onclick="_salvaOrdineDC(\'' + id + '\')">Salva</button>') + '</div>' : '';
-  const box = document.createElement('div'); box.id = 'dc-quote'; box.className = 'solo-admin';
+  const box = document.createElement('div'); box.id = 'dc-quote'; box.className = '';
   box.style.cssText = 'margin:0 0 14px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)';
   box.innerHTML = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:6px">💼 A carico di <span style="font-weight:400;text-transform:none;letter-spacing:0">— ogni parte ha la sua fattura</span></div>'
     + riep + ord + (righe || timbr ? '<details style="margin-top:6px"' + (_haQuote(cm) && def !== 'cliente' ? '' : '') + '><summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--accent)">Cambia chi paga riga per riga</summary>' + righe + timbr
@@ -12412,6 +12421,194 @@ async function _salvaOrdineDC(id) {
     const r = oDet.apply(this, arguments);
     try { _renderQuoteDC(id); } catch (e) { console.warn('[quote]', e); }
     return r;
+  };
+})();
+
+// ── Pratiche Ford (contratto di manutenzione / campagne FSA) dentro la commessa: claim, RDG, foto e fattura propri ──
+function _praticaDi(cm, q) { return q && String(q).startsWith('p:') ? (cm.pratiche || []).find(p => p.id === String(q).slice(2)) || null : null; }
+function _lblPrat(p) { return p ? (p.tipo === 'fsa' ? 'FSA ' + (p.codice || '') : 'Manutenzione') : 'Pratica'; }
+function _praticheDisp(v) {
+  const out = [];
+  if (v && v.contratto) { const cs = typeof _contrattoStato === 'function' ? _contrattoStato(v) : null;
+    out.push({ key: 'man', tipo: 'manutenzione', lbl: '🛠 Contratto di manutenzione' + (v.contrattoNum ? ' n. ' + v.contrattoNum : '') + (cs && cs.scaduto ? ' (SCADUTO)' : '') }); }
+  ((v && v.fsa) || []).forEach(f => { if (f.stato !== 'eseguita') out.push({ key: 'fsa:' + f.id, tipo: 'fsa', fsaId: f.id, codice: f.codice, descr: f.descrizione,
+    lbl: '📣 FSA ' + (f.codice || '') + (f.descrizione ? ' — ' + f.descrizione : '') + (f.scadenza ? ' (scad. ' + formatDate(f.scadenza) + ')' : '') }); });
+  return out;
+}
+const _pKey = p => p.tipo === 'fsa' ? 'fsa:' + p.fsaId : 'man';
+let _praticheEdit = [];
+function _renderPraticheForm() {
+  const gr = document.getElementById('com-garanzia-row'); if (!gr) return;
+  let row = document.getElementById('com-pratiche-row');
+  if (!row) { row = document.createElement('div'); row.id = 'com-pratiche-row'; row.className = 'form-group span-2'; gr.parentNode.insertBefore(row, gr.nextSibling); }
+  const v = veicoli.find(x => x.id === document.getElementById('com-veicolo')?.value);
+  const cur = _praticheEdit || [], disp = _praticheDisp(v);
+  const extra = cur.filter(p => !disp.some(d => d.key === _pKey(p))).map(p => ({ key: _pKey(p), tipo: p.tipo, fsaId: p.fsaId, codice: p.codice, descr: p.descr, lbl: p.tipo === 'fsa' ? '📣 FSA ' + (p.codice || '') : '🛠 Manutenzione' }));
+  const all = [...disp, ...extra];
+  if (!all.length) { row.style.display = 'none'; row.innerHTML = ''; return; }
+  row.style.display = '';
+  row.innerHTML = '<div style="padding:10px 12px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:var(--radius)"><div style="font-size:12px;font-weight:700;color:#075985;margin-bottom:6px">Pratiche Ford su questa commessa <span style="font-weight:400">— spunta quelle da fare: ognuna avrà foto lavorazione, Claim, RDG e fattura propri</span></div>'
+    + all.map(d => { const ex = cur.find(p => _pKey(p) === d.key), lock = !!(ex && ex.fatturaId);
+      return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;padding:3px 0;cursor:pointer;font-weight:500"><input type="checkbox" class="com-pratica-chk" data-key="' + _escF(d.key) + '" data-tipo="' + d.tipo + '" data-fsa="' + _escF(d.fsaId || '') + '" data-codice="' + _escF(d.codice || '') + '" data-descr="' + _escF(d.descr || '') + '"' + (ex ? ' checked' : '') + (lock ? ' disabled' : '') + ' style="width:16px;height:16px;margin:0;flex-shrink:0"> ' + _escF(d.lbl) + (lock ? ' <span style="font-size:11px;color:#047857">✓ fatturata</span>' : '') + '</label>'; }).join('') + '</div>';
+}
+function _praticheVal() {
+  const row = document.getElementById('com-pratiche-row'), cur = _praticheEdit || [];
+  if (!row) return cur.length ? cur : null;
+  const out = [];
+  row.querySelectorAll('.com-pratica-chk').forEach(ch => {
+    const ex = cur.find(p => _pKey(p) === ch.dataset.key);
+    if (ex && (ch.checked || ex.fatturaId)) out.push(ex);
+    else if (ch.checked) out.push({ id: initId(), tipo: ch.dataset.tipo, ...(ch.dataset.fsa ? { fsaId: ch.dataset.fsa } : {}), ...(ch.dataset.codice ? { codice: ch.dataset.codice } : {}), ...(ch.dataset.descr ? { descr: ch.dataset.descr } : {}), stato: 'attesa', foto: [] });
+  });
+  return out.length ? out : null;
+}
+(function () {
+  const o = _aggGaranziaCommessa;
+  _aggGaranziaCommessa = function () { const r = o.apply(this, arguments); try { _renderPraticheForm(); } catch (e) { console.warn('[pratiche]', e); } return r; };
+})();
+(function () {
+  const o = openModalCommessa;
+  openModalCommessa = function (editId) {
+    const cm = editId ? commesse.find(c => c.id === editId) : null;
+    _praticheEdit = cm ? (cm.pratiche || []).map(p => ({ ...p })) : [];
+    const r = o.apply(this, arguments);
+    setTimeout(() => { try { _renderPraticheForm(); } catch (e) { console.warn('[pratiche]', e); } }, 80);
+    return r;
+  };
+})();
+// ── Anagrafica veicolo: campagne FSA ──
+let _fsaEdit;
+function _fsaInit(list) { _fsaEdit = (list || []).map(f => ({ ...f })); _fsaRender(); }
+function _fsaRender() {
+  const el = document.getElementById('v-fsa-list'); if (!el) return;
+  const inp = 'padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;width:100%;box-sizing:border-box;background:var(--surface);color:var(--text)';
+  el.innerHTML = (_fsaEdit || []).map((f, i) => '<div style="display:grid;grid-template-columns:110px minmax(0,1fr) 140px 120px 30px;gap:6px;align-items:center">'
+    + '<input placeholder="Codice FSA" value="' + _escF(f.codice || '') + '" oninput="_fsaSet(' + i + ',\'codice\',this.value)" style="' + inp + '">'
+    + '<input placeholder="Descrizione" value="' + _escF(f.descrizione || '') + '" oninput="_fsaSet(' + i + ',\'descrizione\',this.value)" style="' + inp + '">'
+    + '<input type="date" title="Scadenza" value="' + _escF(f.scadenza || '') + '" onchange="_fsaSet(' + i + ',\'scadenza\',this.value)" style="' + inp + '">'
+    + '<select onchange="_fsaSet(' + i + ',\'stato\',this.value)" style="' + inp + '"><option value="da_fare"' + (f.stato !== 'eseguita' ? ' selected' : '') + '>Da fare</option><option value="eseguita"' + (f.stato === 'eseguita' ? ' selected' : '') + '>Eseguita</option></select>'
+    + '<button type="button" class="btn btn-ghost btn-sm" title="Togli" onclick="_fsaDel(' + i + ')">✕</button></div>').join('')
+    || '<div style="font-size:12px;color:var(--text3)">Nessuna campagna FSA</div>';
+}
+function _fsaSet(i, k, val) { if (_fsaEdit && _fsaEdit[i]) _fsaEdit[i][k] = val; }
+function _fsaAdd() { if (!_fsaEdit) _fsaEdit = []; _fsaEdit.push({ id: initId(), codice: '', descrizione: '', scadenza: '', stato: 'da_fare' }); _fsaRender(); }
+function _fsaDel(i) { if (_fsaEdit) { _fsaEdit.splice(i, 1); _fsaRender(); } }
+function _fsaVal() {
+  if (!_fsaEdit) return undefined;
+  const l = _fsaEdit.map(f => ({ ...f, codice: String(f.codice || '').trim().toUpperCase(), descrizione: String(f.descrizione || '').trim(), scadenza: f.scadenza || null })).filter(f => f.codice);
+  return l.length ? l : null;
+}
+(function () {
+  const o = openModal;
+  openModal = function (type, preselectClienteId, editId) {
+    const r = o.apply(this, arguments);
+    if (type === 'veicolo') { try { const v = editId ? veicoli.find(x => x.id === editId) : null; _fsaInit(v ? v.fsa : []); } catch (e) { console.warn('[fsa]', e); } }
+    return r;
+  };
+})();
+// ── Garanzie: elenco pratiche manutenzione / FSA (ognuna con Claim, RDG, importo e fattura a Ford) ──
+const _PX_ST = { attesa: ['In attesa', 'badge-yellow'], inserita: ['Inserita', 'badge-blue'], accettata: ['Accettata', 'badge-blue'], fatturata: ['Fatturata', 'badge-green'], respinta: ['Respinta', 'badge-red'] };
+function _statoPX(p) { return p.fatturaId ? 'fatturata' : (p.stato || 'attesa'); }
+function _renderPraticheX() {
+  const sec = document.getElementById('section-garanzie'); if (!sec) return;
+  let box = document.getElementById('gar-pratiche-x');
+  if (!box) { box = document.createElement('div'); box.id = 'gar-pratiche-x'; box.style.marginTop = '22px'; sec.appendChild(box); }
+  const q = (document.getElementById('search-garanzie')?.value || '').toLowerCase();
+  const ord = { attesa: 0, inserita: 0.5, accettata: 1, fatturata: 2, respinta: 3 };
+  const lista = [];
+  commesse.forEach(c => { if (!['chiusa', 'fatturata'].includes(c.stato)) return; (c.pratiche || []).forEach(p => lista.push({ c, p })); });
+  const vis = lista.filter(({ c, p }) => { const v = veicoli.find(x => x.id === c.veicoloId), cl = clienti.find(x => x.id === c.clienteId);
+    return !q || [c.numero, v?.targa, cl?.ragione, p.claim, p.rdg, p.codice].some(t => String(t || '').toLowerCase().includes(q)); })
+    .sort((a, b) => (ord[_statoPX(a.p)] - ord[_statoPX(b.p)]) || (new Date(b.c.dataApertura || b.c.createdAt) - new Date(a.c.dataApertura || a.c.createdAt)));
+  box.innerHTML = '<div style="font-size:15px;font-weight:800;margin-bottom:8px">🛠 Pratiche manutenzione e FSA <span style="font-size:12px;font-weight:400;color:var(--text3)">— ognuna si fattura a Ford con il suo Claim e RDG</span></div>'
+    + (vis.length ? '<div class="table-wrap"><table><thead><tr><th>Commessa</th><th>Targa</th><th>Pratica</th><th>N. Claim</th><th>N. RDG</th><th style="text-align:right">Valore lavoro</th><th style="text-align:right">Riconosciuto</th><th>Stato</th></tr></thead><tbody>'
+      + vis.map(({ c, p }) => { const v = veicoli.find(x => x.id === c.veicoloId), st = _PX_ST[_statoPX(p)] || _PX_ST.attesa;
+        return '<tr onclick="_apriPraticaX(\'' + c.id + '\',\'' + p.id + '\')" style="cursor:pointer"><td><div class="td-main" style="font-family:\'DM Mono\',monospace">' + _escF(c.numero || '—') + '</div><div style="font-size:11px;color:var(--text3);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _escF(c.descrizione || '') + '</div></td>'
+          + '<td><span class="badge badge-gray" style="font-family:\'DM Mono\',monospace">' + _escF(v?.targa || '—') + '</span></td><td style="font-size:12px;font-weight:600">' + _escF(_lblPrat(p)) + '</td>'
+          + '<td style="font-family:\'DM Mono\',monospace;font-size:12px">' + _escF(p.claim || '—') + '</td><td style="font-family:\'DM Mono\',monospace;font-size:12px">' + _escF(p.rdg || '—') + '</td>'
+          + '<td style="text-align:right;font-family:\'DM Mono\',monospace;font-size:12px">' + _eurF(_impQ(c, 'p:' + p.id)) + '</td><td style="text-align:right;font-family:\'DM Mono\',monospace;font-size:12px;font-weight:600">' + (+p.importo > 0 ? _eurF(p.importo) : '—') + '</td>'
+          + '<td><span class="badge ' + st[1] + '">' + st[0] + '</span></td></tr>'; }).join('') + '</tbody></table></div>'
+      : '<div style="font-size:13px;color:var(--text3);padding:10px 0">Nessuna pratica manutenzione/FSA: arrivano qui quando la commessa viene chiusa.</div>');
+}
+(function () {
+  const o = _disegnaGaranzie;
+  _disegnaGaranzie = function () { const r = o.apply(this, arguments); try { _renderPraticheX(); } catch (e) { console.warn('[praticheX]', e); } return r; };
+})();
+function _cliPraticaDef(c) {
+  const prec = commesse.flatMap(x => (x.pratiche || []).filter(p => p.clienteId)).pop();
+  return (prec && prec.clienteId) || _cliGarDefault(c) || '';
+}
+function _apriPraticaX(cid, pid) {
+  const c = commesse.find(x => x.id === cid), p = c && (c.pratiche || []).find(x => x.id === pid); if (!p) return;
+  const v = veicoli.find(x => x.id === c.veicoloId), cl = clienti.find(x => x.id === c.clienteId), lock = !!p.fatturaId;
+  const cliDef = p.clienteId || _cliPraticaDef(c);
+  const f = lock ? (typeof fatture !== 'undefined' ? fatture.find(x => x.id === p.fatturaId) : null) : null;
+  const inp = (lab, idc, val, extra) => '<label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--text2)">' + lab + '<input id="' + idc + '" value="' + _escF(val == null ? '' : val) + '" ' + (lock ? 'disabled ' : '') + (extra || '') + ' style="padding:9px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:\'DM Mono\',monospace;background:var(--surface)"></label>';
+  document.getElementById('modal-praticax')?.remove();
+  const ov = document.createElement('div'); ov.id = 'modal-praticax';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.onclick = e => { if (e.target === ov) ov.remove(); };
+  const foto = (p.foto || []);
+  ov.innerHTML = '<div style="background:var(--surface);border-radius:var(--radius-lg);padding:24px;width:520px;max-width:100%;max-height:92vh;overflow:auto;box-shadow:var(--shadow-lg)">'
+    + '<div style="font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.5px">PRATICA ' + _escF(_lblPrat(p).toUpperCase()) + '</div>'
+    + '<div style="font-size:18px;font-weight:800;font-family:\'DM Mono\',monospace">' + _escF(c.numero || '') + '</div>'
+    + '<div style="font-size:13px;color:var(--text2);margin:6px 0 12px;line-height:1.5"><span class="badge badge-gray" style="font-family:\'DM Mono\',monospace">' + _escF(v?.targa || '—') + '</span> ' + _escF([v?.marca, v?.modello].filter(Boolean).join(' ')) + ' · ' + _escF(cl?.ragione || '—') + (p.descr ? '<br><span style="color:var(--text3)">' + _escF(p.descr) + '</span>' : '') + '</div>'
+    + '<div style="display:flex;justify-content:space-between;padding:10px 12px;background:var(--surface2);border-radius:var(--radius);font-size:13px;margin-bottom:14px"><span>Valore lavoro di questa pratica</span><strong style="font-family:\'DM Mono\',monospace">' + _eurF(_impQ(c, 'p:' + p.id)) + '</strong></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' + inp('N. Claim', 'px-claim', p.claim) + inp('N. RDG', 'px-rdg', p.rdg) + inp('Importo riconosciuto (imponibile €)', 'px-imp', p.importo, 'type="number" step="0.01" min="0"')
+    + '<label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--text2)">Fatturare a<select id="px-cli" ' + (lock ? 'disabled' : '') + ' style="padding:9px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface)">' + _optsGarante(cliDef) + '</select></label>'
+    + '<label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--text2)">Stato<select id="px-st" ' + (lock ? 'disabled' : '') + ' style="padding:9px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface)">' + ['attesa', 'inserita', 'accettata', 'respinta'].map(s => '<option value="' + s + '"' + ((p.stato || 'attesa') === s ? ' selected' : '') + '>' + _PX_ST[s][0] + '</option>').join('') + '</select></label>'
+    + '<div style="font-size:12px;color:var(--text3);align-self:end">📷 Foto lavorazione: <b>' + foto.length + '</b>' + (foto.length ? ' — ' + foto.map((u, i) => '<a href="' + _escF(u) + '" target="_blank" rel="noopener">' + (i + 1) + '</a>').join(' ') : '') + '</div></div>'
+    + (lock ? '<div style="margin-top:12px;font-size:13px;color:#047857;font-weight:700">✓ Fatturata' + (f ? ' — ' + _escF(f.numero) : '') + '</div>' : '')
+    + '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px"><button class="btn btn-secondary" onclick="document.getElementById(\'modal-praticax\').remove()">Chiudi</button>'
+    + (lock ? '' : '<button class="btn btn-secondary" onclick="_salvaPraticaX(\'' + cid + '\',\'' + pid + '\')">Salva</button><button class="btn btn-primary" onclick="_salvaPraticaX(\'' + cid + '\',\'' + pid + '\',true)">🧾 Fattura a Ford</button>') + '</div></div>';
+  document.body.appendChild(ov);
+}
+async function _salvaPraticaX(cid, pid, fattura) {
+  const c = commesse.find(x => x.id === cid); if (!c) return;
+  const val = id => (document.getElementById(id)?.value || '').trim();
+  const imp = parseFloat(val('px-imp').replace(',', '.'));
+  const pr = (c.pratiche || []).map(p => p.id === pid ? { ...p, claim: val('px-claim') || null, rdg: val('px-rdg') || null, importo: isNaN(imp) ? null : Math.round(imp * 100) / 100, clienteId: val('px-cli') || null, stato: val('px-st') || 'attesa' } : p);
+  const st = _quotePendTutte({ ...c, pratiche: pr }).length ? c.stato : 'fatturata';
+  const { error } = await supa.from('commesse').update({ pratiche: pr, stato: st }).eq('id', cid);
+  if (error) { alert('Errore: ' + error.message); return; }
+  c.pratiche = pr; c.stato = st;
+  showToast('Pratica salvata ✓'); try { _disegnaGaranzie(); } catch (_) {}
+  if (fattura) emettiFatturaPratica(cid, pid); else document.getElementById('modal-praticax')?.remove();
+}
+function emettiFatturaPratica(cid, pid) {
+  const c = commesse.find(x => x.id === cid), p = c && (c.pratiche || []).find(x => x.id === pid); if (!p) return;
+  if (p.fatturaId) { alert('Pratica già fatturata.'); return; }
+  if (p.stato === 'respinta') { alert('Pratica respinta: non si fattura.'); return; }
+  if (!p.claim || !p.rdg || !(+p.importo > 0)) { alert('Per fatturare servono N. Claim, N. RDG e importo riconosciuto.'); return; }
+  if (!p.clienteId || !clienti.find(x => x.id === p.clienteId)) { alert('Scegli a chi fatturare (Ford).'); return; }
+  const v = veicoli.find(x => x.id === c.veicoloId);
+  const testo = (p.tipo === 'fsa' ? 'Campagna FSA ' + (p.codice || '') : 'Manutenzione programmata (contratto)') + ' — Claim n. ' + p.claim + ' — RDG n. ' + p.rdg;
+  document.getElementById('modal-praticax')?.remove();
+  apriFatturaModal({ origine: 'pratica', origineId: cid, praticaId: pid, clienteId: p.clienteId,
+    descrizione: testo + (v?.targa ? ' — targa ' + v.targa : '') + ' — commessa ' + (c.numero || ''),
+    veicolo: v ? v.targa + ' ' + [v.marca, v.modello].filter(Boolean).join(' ') : '', righe: [{ desc: testo, qta: 1, prezzo: +p.importo }] });
+}
+async function _segnaPraticaFatt(d, fatt) {
+  const c = commesse.find(x => x.id === d.origineId); if (!c) return;
+  const pr = (c.pratiche || []).map(p => p.id === d.praticaId ? { ...p, fatturaId: fatt.id } : p);
+  const st = _quotePendTutte({ ...c, pratiche: pr }).length ? c.stato : 'fatturata';
+  const { error } = await supa.from('commesse').update({ pratiche: pr, stato: st }).eq('id', c.id); if (error) throw error;
+  c.pratiche = pr; c.stato = st;
+  const p = pr.find(x => x.id === d.praticaId);
+  if (p && p.tipo === 'fsa' && p.fsaId) {
+    const v = veicoli.find(x => x.id === c.veicoloId);
+    if (v) { const fsa = (v.fsa || []).map(f => f.id === p.fsaId ? { ...f, stato: 'eseguita', commessaId: c.id } : f); await supa.from('veicoli').update({ fsa }).eq('id', v.id); v.fsa = fsa; }
+  }
+  try { _disegnaGaranzie(); } catch (_) {}
+}
+(function () {
+  const o = _oggettoDraftF;
+  _oggettoDraftF = function (d) {
+    if (!d || d.origine !== 'pratica') return o.apply(this, arguments);
+    const c = commesse.find(x => x.id === d.origineId), p = c && (c.pratiche || []).find(x => x.id === d.praticaId);
+    const vi = c ? _veicoloInfoFatt({ origineId: c.id, veicolo: d.veicolo }) : { testo: d.veicolo || '' };
+    return [(p ? (p.tipo === 'fsa' ? 'Campagna FSA ' + (p.codice || '') : 'Manutenzione programmata') + ' – Claim n. ' + (p.claim || '') + ' – RDG n. ' + (p.rdg || '') : d.descrizione),
+      c ? 'Commessa ' + (c.numero || '') : '', vi.testo ? 'Veicolo: ' + vi.testo : ''].filter(Boolean).join(' · ').slice(0, 200);
   };
 })();
 
@@ -13138,12 +13335,13 @@ async function salvaFattura() {
     if (_fattDraft.origine==='garanzia' && _fattDraft.origineId) {
       const ci = commesse.findIndex(c=>c.id===_fattDraft.origineId);
       const _cmG = ci>=0 ? commesse[ci] : null; if (_cmG) _cmG.garFatturaId = fatt.id;
-      const _stG = (_cmG && _quotePend(_cmG).length) ? 'chiusa' : 'fatturata';
+      const _stG = (_cmG && _quotePendTutte(_cmG).length) ? 'chiusa' : 'fatturata';
       await supa.from('commesse').update({ gar_fattura_id: fatt.id, stato: _stG }).eq('id', _fattDraft.origineId);
       if (_cmG) _cmG.stato = _stG;
       _garFatture[fatt.id] = fatt;
       if (currentSection === 'garanzie') renderGaranzie();
     }
+    if (_fattDraft.origine === 'pratica') { try { await _segnaPraticaFatt(_fattDraft, fatt); } catch (e) { console.warn('[pratica]', e); alert('Fattura emessa, ma la pratica non è stata aggiornata: ' + e.message); } }
     const _incasso = !!_fattDraft.incasso, _cashP = +_fattDraft.cashParz || 0;
     closeModal('modal-fattura');
     showToast(`Fattura ${numero} emessa ✓`);
