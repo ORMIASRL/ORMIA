@@ -1065,9 +1065,10 @@ async function confermaScan() {
     // Aggiorna voci commessa
     const { data: cmFresh } = await supa.from('commesse').select(await _colsComT()).eq('id', comSelected.id).single();
     const vociRic = [...(cmFresh?.voci_ric||[])];
-    const ve = vociRic.find(v=>v.prodId===scanProdId);
+    const _cq = window.__caricoSel || null;
+    const ve = vociRic.find(v=>v.prodId===scanProdId && (v.carico||null)===_cq);
     if (ve) ve.qta = (ve.qta||1)+qta;
-    else vociRic.push({prodId:scanProdId, desc:p.descrizione||'—', qta, prezzo:p.prezzoVend||0});
+    else vociRic.push({prodId:scanProdId, desc:p.descrizione||'—', qta, prezzo:p.prezzoVend||0, ...(_cq ? { carico: _cq } : {})});
     const totale = [...(cmFresh?.voci_mano||[]),...vociRic,...(cmFresh?.voci_extra||[])].reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0);
     await supa.from('commesse').update({voci_ric:vociRic, totale}).eq('id', comSelected.id);
 
@@ -1108,7 +1109,7 @@ async function creaNuovoRicambio() {
     await supa.from('movimenti').insert({id:crypto.randomUUID(),prod_id:npId,tipo:'scarico',qta,com_id:comSelected.id,note:'Utilizzo in '+comSelected.numero,data:ora,created_at:ora});
     const { data: cmFresh } = await supa.from('commesse').select(await _colsComT()).eq('id', comSelected.id).single();
     const vociRic = [...(cmFresh?.voci_ric||[])];
-    vociRic.push({prodId:npId, desc, qta, prezzo:0});
+    vociRic.push({prodId:npId, desc, qta, prezzo:0, ...(window.__caricoSel ? { carico: window.__caricoSel } : {})});
     const totale = [...(cmFresh?.voci_mano||[]),...vociRic,...(cmFresh?.voci_extra||[])].reduce((s,v)=>s+(v.qta||1)*(v.prezzo||0),0);
     await supa.from('commesse').update({voci_ric:vociRic, totale}).eq('id', comSelected.id);
     showToast(`✓ "${desc}" creato e aggiunto`);
@@ -1119,6 +1120,52 @@ async function creaNuovoRicambio() {
     resetScan();
   } catch(e) { showToast('Errore: '+e.message); }
 }
+
+// ── Pratiche Ford: il magazziniere sceglie su quale pratica va il ricambio ──
+function _escPP(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function _sceltaParte(titolo, opts, sugg) {
+  return new Promise(res => {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.innerHTML = '<div style="background:#fff;color:#111;border-radius:16px;padding:20px;width:440px;max-width:100%;max-height:92vh;overflow:auto;font-family:inherit">'
+      + '<div style="font-size:19px;font-weight:800;margin-bottom:4px">' + _escPP(titolo) + '</div><div style="font-size:13px;color:#666;margin-bottom:14px">Scegli la pratica: ore e ricambi vanno su questa.</div>'
+      + opts.map(o => '<button type="button" data-k="' + _escPP(o.k) + '" style="display:block;width:100%;text-align:left;padding:16px;margin-bottom:8px;border-radius:12px;border:2px solid ' + (o.k === sugg ? '#1B4FD8' : '#ddd') + ';background:' + (o.k === sugg ? '#EEF2FF' : '#fff') + ';color:#111;font-size:17px;font-weight:700;cursor:pointer">' + _escPP(o.l) + '</button>').join('')
+      + '<button type="button" data-k="" style="display:block;width:100%;padding:12px;border:none;background:none;color:#888;font-size:14px;cursor:pointer">Annulla</button></div>';
+    ov.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; ov.remove(); res(b.dataset.k || false); });
+    document.body.appendChild(ov);
+  });
+}
+function _partiG(cm) {
+  const v = getVeicoli().find(x => x.id === (cm.veicoloId || cm.veicolo_id));
+  const vg = !!(v && v.garanzia && (!v.garanzia_scadenza || new Date(String(v.garanzia_scadenza).slice(0, 10) + 'T23:59:59') >= new Date()));
+  const gar = cm.in_garanzia === true ? true : cm.in_garanzia === false ? false : vg;
+  const o = [];
+  if (gar) o.push({ k: 'garanzia', l: '🔧 Garanzia' });
+  (cm.pratiche || []).forEach(p => o.push({ k: 'p:' + p.id, l: p.tipo === 'fsa' ? '📣 FSA ' + (p.codice || '') : '🛠 Manutenzione' }));
+  if (cm.gpf_tipo || cm.gar_pagamento_ford === true) o.push({ k: 'garante', l: '🛡 Garanzia di pagamento' });
+  o.push({ k: 'cliente', l: '👤 Lavoro extra (cliente)' });
+  return o;
+}
+async function _chiediCaricoMag() {
+  const cm = getCommesse().find(c => c.id === comSelected.id) || comSelected, opts = _partiG(cm);
+  if (opts.length < 2) return null;
+  let sugg = opts[0].k;
+  try { const { data } = await supa.from('timbrature').select('parte,entrata').eq('com_id', cm.id).is('uscita', null);
+    const t = (data || []).filter(x => x.parte).sort((a, b) => new Date(b.entrata) - new Date(a.entrata))[0]; if (t && opts.some(o => o.k === t.parte)) sugg = t.parte; } catch (_) {}
+  const k = await _sceltaParte((cm.numero || '') + ': per quale pratica è il ricambio?', opts, sugg);
+  if (!k) return false;
+  return k === opts[0].k ? null : k;
+}
+(function () {
+  ['confermaScan', 'creaNuovoRicambio'].forEach(n => {
+    const o = window[n]; if (typeof o !== 'function') return;
+    window[n] = async function () {
+      window.__caricoSel = null;
+      if (comSelected && (n !== 'confermaScan' || scanProdId)) { const k = await _chiediCaricoMag(); if (k === false) return; window.__caricoSel = k; }
+      try { return await o.apply(this, arguments); } finally { window.__caricoSel = null; }
+    };
+  });
+})();
 
 // ── LISTA RICAMBI ────────────────────────────
 function renderListaRicambi() {
