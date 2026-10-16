@@ -1761,8 +1761,6 @@
           <div class="form-group"><label>N. contratto</label><input autocomplete="off" type="text" id="v-contratto-num"></div>
           <div class="form-group span-2"><label>Cosa copre</label><input autocomplete="off" type="text" id="v-contratto-note" placeholder="Es. solo tagliandi / manutenzione e usura"></div>
         </div>
-        <div class="form-section-title">Campagne FSA (Ford)</div>
-        <div class="form-group span-2"><div id="v-fsa-list" style="display:flex;flex-direction:column;gap:6px"></div><button type="button" class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="_fsaAdd()">+ Aggiungi campagna FSA</button></div>
         <div class="form-group span-2">
           <label>Note</label>
           <textarea autocomplete="off" id="v-note" placeholder="Difetti noti, particolarità..."></textarea>
@@ -2240,7 +2238,6 @@ async function saveVeicolo() {
     contrattoTipo: (document.getElementById('v-contratto-tipo')?.value || '').trim() || null,
     contrattoNum:  (document.getElementById('v-contratto-num')?.value || '').trim() || null,
     contrattoNote: (document.getElementById('v-contratto-note')?.value || '').trim() || null,
-    ...(_fsaVal() !== undefined ? { fsa: _fsaVal() } : {}),
     note: document.getElementById('v-note').value.trim(),
   };
   // Il tipo si salva solo per i rimorchi (i veicoli usano il valore predefinito del database)
@@ -12431,37 +12428,99 @@ function _praticheDisp(v) {
   const out = [];
   if (v && v.contratto) { const cs = typeof _contrattoStato === 'function' ? _contrattoStato(v) : null;
     out.push({ key: 'man', tipo: 'manutenzione', lbl: '🛠 Contratto di manutenzione' + (v.contrattoNum ? ' n. ' + v.contrattoNum : '') + (cs && cs.scaduto ? ' (SCADUTO)' : '') }); }
-  ((v && v.fsa) || []).forEach(f => { if (f.stato !== 'eseguita') out.push({ key: 'fsa:' + f.id, tipo: 'fsa', fsaId: f.id, codice: f.codice, descr: f.descrizione,
-    lbl: '📣 FSA ' + (f.codice || '') + (f.descrizione ? ' — ' + f.descrizione : '') + (f.scadenza ? ' (scad. ' + formatDate(f.scadenza) + ')' : '') }); });
   return out;
 }
-const _pKey = p => p.tipo === 'fsa' ? 'fsa:' + p.fsaId : 'man';
+const _pKey = p => p.tipo === 'fsa' ? 'fsa:' + (p.fsaId || p.id) : 'man';
+const _isFordVe = v => !!v && /FORD/i.test(String(v.marca || '') + ' ' + String(v.modello || ''));
 let _praticheEdit = [];
+function _syncPraticheChk() {
+  const row = document.getElementById('com-pratiche-row'); if (!row) return;
+  row.querySelectorAll('.com-pratica-chk').forEach(ch => {
+    const i = _praticheEdit.findIndex(p => _pKey(p) === ch.dataset.key);
+    if (i >= 0 && !ch.checked && !_praticheEdit[i].fatturaId) _praticheEdit.splice(i, 1);
+    else if (i < 0 && ch.checked) _praticheEdit.push({ id: initId(), tipo: ch.dataset.tipo, stato: 'attesa', foto: [] });
+  });
+}
 function _renderPraticheForm() {
   const gr = document.getElementById('com-garanzia-row'); if (!gr) return;
   let row = document.getElementById('com-pratiche-row');
   if (!row) { row = document.createElement('div'); row.id = 'com-pratiche-row'; row.className = 'form-group span-2'; gr.parentNode.insertBefore(row, gr.nextSibling); }
   const v = veicoli.find(x => x.id === document.getElementById('com-veicolo')?.value);
   const cur = _praticheEdit || [], disp = _praticheDisp(v);
-  const extra = cur.filter(p => !disp.some(d => d.key === _pKey(p))).map(p => ({ key: _pKey(p), tipo: p.tipo, fsaId: p.fsaId, codice: p.codice, descr: p.descr, lbl: p.tipo === 'fsa' ? '📣 FSA ' + (p.codice || '') : '🛠 Manutenzione' }));
+  const extra = cur.filter(p => !disp.some(d => d.key === _pKey(p))).map(p => ({ key: _pKey(p), tipo: p.tipo, lbl: p.tipo === 'fsa' ? '📣 FSA ' + (p.codice || '') + (p.descr ? ' — ' + p.descr : '') : '🛠 Manutenzione' }));
   const all = [...disp, ...extra];
-  if (!all.length) { row.style.display = 'none'; row.innerHTML = ''; return; }
+  if (!all.length && !_isFordVe(v)) { row.style.display = 'none'; row.innerHTML = ''; return; }
   row.style.display = '';
-  row.innerHTML = '<div style="padding:10px 12px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:var(--radius)"><div style="font-size:12px;font-weight:700;color:#075985;margin-bottom:6px">Pratiche Ford su questa commessa <span style="font-weight:400">— spunta quelle da fare: ognuna avrà foto lavorazione, Claim, RDG e fattura propri</span></div>'
+  row.innerHTML = '<div style="padding:10px 12px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:var(--radius)"><div style="font-size:12px;font-weight:700;color:#075985;margin-bottom:6px">Pratiche Ford su questa commessa <span style="font-weight:400">— ognuna avrà foto lavorazione, Claim, RDG e fattura propri</span></div>'
     + all.map(d => { const ex = cur.find(p => _pKey(p) === d.key), lock = !!(ex && ex.fatturaId);
-      return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;padding:3px 0;cursor:pointer;font-weight:500"><input type="checkbox" class="com-pratica-chk" data-key="' + _escF(d.key) + '" data-tipo="' + d.tipo + '" data-fsa="' + _escF(d.fsaId || '') + '" data-codice="' + _escF(d.codice || '') + '" data-descr="' + _escF(d.descr || '') + '"' + (ex ? ' checked' : '') + (lock ? ' disabled' : '') + ' style="width:16px;height:16px;margin:0;flex-shrink:0"> ' + _escF(d.lbl) + (lock ? ' <span style="font-size:11px;color:#047857">✓ fatturata</span>' : '') + '</label>'; }).join('') + '</div>';
+      return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;padding:3px 0;cursor:pointer;font-weight:500"><input type="checkbox" class="com-pratica-chk" data-key="' + _escF(d.key) + '" data-tipo="' + d.tipo + '"' + (ex ? ' checked' : '') + (lock ? ' disabled' : '') + ' style="width:16px;height:16px;margin:0;flex-shrink:0"> ' + _escF(d.lbl) + (lock ? ' <span style="font-size:11px;color:#047857">✓ fatturata</span>' : '') + '</label>'; }).join('')
+    + '<div style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap"><input id="com-fsa-cod" placeholder="Codice FSA (dal portale Ford)" style="width:200px;flex:none"><input id="com-fsa-descr" placeholder="Descrizione (facoltativa)" style="flex:1;min-width:140px"><button type="button" class="btn btn-secondary btn-sm" onclick="_addFsaForm()">+ Aggiungi FSA</button></div></div>';
+}
+function _addFsaForm() {
+  const cod = (document.getElementById('com-fsa-cod')?.value || '').trim().toUpperCase();
+  if (!cod) { alert('Scrivi il codice FSA che vedi sul portale Ford.'); return; }
+  _syncPraticheChk();
+  if (_praticheEdit.some(p => p.tipo === 'fsa' && String(p.codice || '').toUpperCase() === cod)) { alert('FSA ' + cod + ' già presente.'); return; }
+  _praticheEdit.push({ id: initId(), tipo: 'fsa', codice: cod, descr: (document.getElementById('com-fsa-descr')?.value || '').trim() || null, stato: 'attesa', foto: [] });
+  _renderPraticheForm();
 }
 function _praticheVal() {
-  const row = document.getElementById('com-pratiche-row'), cur = _praticheEdit || [];
-  if (!row) return cur.length ? cur : null;
-  const out = [];
-  row.querySelectorAll('.com-pratica-chk').forEach(ch => {
-    const ex = cur.find(p => _pKey(p) === ch.dataset.key);
-    if (ex && (ch.checked || ex.fatturaId)) out.push(ex);
-    else if (ch.checked) out.push({ id: initId(), tipo: ch.dataset.tipo, ...(ch.dataset.fsa ? { fsaId: ch.dataset.fsa } : {}), ...(ch.dataset.codice ? { codice: ch.dataset.codice } : {}), ...(ch.dataset.descr ? { descr: ch.dataset.descr } : {}), stato: 'attesa', foto: [] });
-  });
-  return out.length ? out : null;
+  if (document.getElementById('com-pratiche-row')) _syncPraticheChk();
+  const out = _praticheEdit || [];
+  return out.length ? out.map(p => ({ ...p })) : null;
 }
+// ── Dettaglio commessa: aggiungi / togli FSA (si vede sul portale Ford dal telaio) ──
+function _renderFsaDC(id) {
+  document.getElementById('dc-fsa')?.remove();
+  const cm = commesse.find(c => c.id === id); if (!cm || ['fatturata', 'annullata'].includes(cm.stato)) return;
+  const v = veicoli.find(x => x.id === cm.veicoloId), fsa = (cm.pratiche || []).filter(p => p.tipo === 'fsa');
+  if (!_isFordVe(v) && !fsa.length) return;
+  const ref = document.getElementById('dc-foto-section'); if (!ref) return;
+  const box = document.createElement('div'); box.id = 'dc-fsa';
+  box.style.cssText = 'margin:0 0 14px;padding:10px 12px;border:1px solid #BAE6FD;border-radius:var(--radius);background:#F0F9FF';
+  box.innerHTML = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#075985;margin-bottom:6px">📣 Campagne FSA <span style="font-weight:400;text-transform:none;letter-spacing:0">— controlla il telaio sul portale Ford</span></div>'
+    + fsa.map(p => '<div style="display:flex;align-items:center;gap:8px;font-size:13px;padding:3px 0"><b>FSA ' + _escF(p.codice || '') + '</b>' + (p.descr ? '<span style="color:var(--text2)">— ' + _escF(p.descr) + '</span>' : '') + '<span style="flex:1"></span>'
+      + (p.fatturaId ? '<span style="font-size:11px;color:#047857">✓ fatturata</span>' : '<button class="btn btn-ghost btn-sm" title="Togli FSA" onclick="_togliFsaDC(\'' + id + '\',\'' + p.id + '\')">✕</button>') + '</div>').join('')
+    + '<div style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap"><input id="dc-fsa-cod" placeholder="Codice FSA" style="width:150px;font-size:12px;padding:5px 8px"><input id="dc-fsa-descr" placeholder="Descrizione (facoltativa)" style="flex:1;min-width:120px;font-size:12px;padding:5px 8px"><button class="btn btn-secondary btn-sm" onclick="_aggiungiFsaDC(\'' + id + '\')">+ Aggiungi FSA</button></div>';
+  ref.parentNode.insertBefore(box, ref);
+}
+async function _aggiungiFsaDC(id) {
+  const cm = commesse.find(c => c.id === id); if (!cm) return;
+  const cod = (document.getElementById('dc-fsa-cod')?.value || '').trim().toUpperCase();
+  if (!cod) { alert('Scrivi il codice FSA che vedi sul portale Ford.'); return; }
+  if ((cm.pratiche || []).some(p => p.tipo === 'fsa' && String(p.codice || '').toUpperCase() === cod)) { alert('FSA ' + cod + ' già presente.'); return; }
+  const pr = [...(cm.pratiche || []), { id: initId(), tipo: 'fsa', codice: cod, descr: (document.getElementById('dc-fsa-descr')?.value || '').trim() || null, stato: 'attesa', foto: [] }];
+  const { error } = await supa.from('commesse').update({ pratiche: pr }).eq('id', id);
+  if (error) { alert('Errore: ' + error.message); return; }
+  cm.pratiche = pr; showToast('FSA ' + cod + ' aggiunta ✓'); showDetailCommessa(id);
+}
+async function _togliFsaDC(id, pid) {
+  const cm = commesse.find(c => c.id === id); if (!cm) return;
+  const p = (cm.pratiche || []).find(x => x.id === pid); if (!p || p.fatturaId) return;
+  if (!confirm('Togliere la FSA ' + (p.codice || '') + ' da questa commessa?\n\nOre e ricambi segnati su questa FSA tornano sulla parte principale.')) return;
+  const pr = (cm.pratiche || []).filter(x => x.id !== pid);
+  const { error } = await supa.from('commesse').update({ pratiche: pr.length ? pr : null }).eq('id', id);
+  if (error) { alert('Errore: ' + error.message); return; }
+  cm.pratiche = pr.length ? pr : null; showToast('FSA tolta'); showDetailCommessa(id);
+}
+// ── Scheda veicolo: storico FSA (dalle commesse) ──
+function _renderFsaVeicolo(id) {
+  document.getElementById('dv-fsa')?.remove();
+  const list = document.getElementById('dv-commesse-list'), sec = list && list.parentElement; if (!sec) return;
+  const items = commesse.filter(c => c.veicoloId === id && c.stato !== 'annullata').flatMap(c => (c.pratiche || []).filter(p => p.tipo === 'fsa').map(p => ({ c, p })));
+  if (!items.length) return;
+  const box = document.createElement('div'); box.id = 'dv-fsa'; box.style.cssText = 'margin-bottom:14px';
+  box.innerHTML = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:6px">📣 FSA su questo mezzo</div>'
+    + items.map(({ c, p }) => '<div style="font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)"><b>FSA ' + _escF(p.codice || '') + '</b>' + (p.descr ? ' — ' + _escF(p.descr) : '') + ' · ' + _escF(c.numero || '') + (c.dataApertura ? ' · ' + formatDate(c.dataApertura) : '') + ' · '
+      + (p.fatturaId ? '<span style="color:#047857;font-weight:600">eseguita ✓</span>' : p.stato === 'respinta' ? '<span style="color:var(--danger)">respinta</span>' : '<span style="color:#B45309">in corso</span>') + '</div>').join('');
+  sec.parentNode.insertBefore(box, sec);
+}
+(function () {
+  const oV = showDetailVeicolo;
+  showDetailVeicolo = function (id) { const r = oV.apply(this, arguments); try { _renderFsaVeicolo(id); } catch (e) { console.warn('[fsa veicolo]', e); } return r; };
+  const oD = showDetailCommessa;
+  showDetailCommessa = function (id) { const r = oD.apply(this, arguments); try { _renderFsaDC(id); } catch (e) { console.warn('[fsa dc]', e); } return r; };
+})();
 (function () {
   const o = _aggGaranziaCommessa;
   _aggGaranziaCommessa = function () { const r = o.apply(this, arguments); try { _renderPraticheForm(); } catch (e) { console.warn('[pratiche]', e); } return r; };
