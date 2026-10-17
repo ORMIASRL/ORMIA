@@ -1,6 +1,65 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
+<script>
+/* ORMIA — registro errori automatico: salva su Supabase (errori_app) errori del programma, salvataggi falliti e avvisi d'errore */
+(function () {
+  if (window.__ormiaErrLog) return; window.__ormiaErrLog = true;
+  var APP = 'finance', inviati = 0, ultimi = {};
+  window.__ormiaAzione = '';
+  function chi() {
+    try { if (typeof currentUser !== 'undefined' && currentUser) return currentUser.email || currentUser.id || ''; } catch (_) {}
+    try { if (typeof mecLogged !== 'undefined' && mecLogged) return 'meccanico: ' + (mecLogged.nome || mecLogged.id); } catch (_) {}
+    return '';
+  }
+  function invia(tipo, msg, stack) {
+    try {
+      msg = String(msg == null ? '' : msg).slice(0, 600); if (!msg) return;
+      if (/ResizeObserver loop|^Script error\.?$|Load failed$|NetworkError when attempting|Failed to fetch$/i.test(msg)) return;
+      var firma = APP + '|' + tipo + '|' + msg.replace(/[0-9a-f]{8}-[0-9a-f-]{27}/gi, '#').replace(/\d{3,}/g, '#').slice(0, 250);
+      var ora = Date.now(); if (ultimi[firma] && ora - ultimi[firma] < 60000) return; ultimi[firma] = ora;
+      if (++inviati > 30) return;
+      var s = (typeof supa !== 'undefined') ? supa : null; if (!s || !s.rpc) return;
+      s.rpc('ormia_log_errore', { p: { app: APP, tipo: tipo, utente: chi(), azione: window.__ormiaAzione || '', messaggio: msg, stack: String(stack || '').slice(0, 2000),
+        url: location.pathname + location.search, ua: navigator.userAgent.slice(0, 200), firma: firma } }).then(function () {}, function () {});
+    } catch (_) {}
+  }
+  window.__logErroreOrmia = function (msg, stack) { invia('app', msg, stack); };
+  window.addEventListener('error', function (e) { invia('js', e.message, e.error && e.error.stack); });
+  window.addEventListener('unhandledrejection', function (e) { var r = e.reason; invia('promise', r && (r.message || r), r && r.stack); });
+  document.addEventListener('click', function (e) {
+    try { var b = e.target.closest('button,a,[onclick],.nav-item,label'); if (!b) return;
+      var t = (b.innerText || b.title || b.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+      if (t) window.__ormiaAzione = t + ' (' + new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) + ')'; } catch (_) {}
+  }, true);
+  var of = window.fetch;
+  if (of) window.fetch = function (input, init) {
+    var p = of.apply(this, arguments);
+    try {
+      var url = typeof input === 'string' ? input : (input && input.url) || '';
+      var m = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+      p.then(function (res) {
+        try {
+          if (res.ok || /ormia_log_errore/.test(url)) return;
+          if (/\/rest\/v1\//.test(url) && res.status !== 406) res.clone().text().then(function (t) { invia('db', m + ' ' + url.split('/rest/v1/')[1].split('?')[0] + ' → ' + res.status + ' ' + String(t).slice(0, 300)); }, function () {});
+          else if (/\.netlify\/functions\//.test(url)) res.clone().text().then(function (t) { invia('server', url.split('/.netlify/functions/')[1].split('?')[0] + ' → ' + res.status + ' ' + String(t).slice(0, 300)); }, function () {});
+        } catch (_) {}
+      }, function () {});
+    } catch (_) {}
+    return p;
+  };
+  var oa = window.alert;
+  window.alert = function (m) { try { if (/errore|non riuscit|fallit|non è stat[oa] (registrat|salvat|inviat)/i.test(String(m || ''))) invia('avviso', m); } catch (_) {} return oa.apply(this, arguments); };
+  window.addEventListener('load', function () {
+    ['showToast', 'showToastFin', '_dialogoOrmia', 'mostraOverlay'].forEach(function (n) {
+      var o = window[n]; if (typeof o !== 'function') return;
+      window[n] = function () { try { var t = Array.prototype.slice.call(arguments).filter(function (x) { return typeof x === 'string'; }).join(' — ');
+        if (/(^|\W)(❌|⚠\s*)?errore|non riuscit|fallit|NON (è|e') stat[oa] (registrat|salvat|inviat)|NON inviata/i.test(t)) invia('avviso', t); } catch (_) {}
+        return o.apply(this, arguments); };
+    });
+  });
+})();
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ORMIA Finance</title>
