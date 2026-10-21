@@ -593,7 +593,7 @@ document.addEventListener('keydown', e => {
   const pad   = document.getElementById('pad-timbra');
   if (modal.style.display==='flex' || pin.style.display==='flex' || (pad && pad.style.display==='flex')) return;
   if (e.key==='Enter') { elaboraBadge(); return; }
-  if (e.key.length===1 && !e.ctrlKey && !e.metaKey) {
+  if (e.key && e.key.length===1 && !e.ctrlKey && !e.metaKey) {
     const inp = document.getElementById('input-badge');
     inp.focus();
   }
