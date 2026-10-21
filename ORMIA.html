@@ -2281,8 +2281,8 @@ async function saveVeicolo() {
     marca:     document.getElementById('v-marca').value.trim(),
     modello:   document.getElementById('v-modello').value.trim(),
     anno:      document.getElementById('v-anno').value.trim(),
-    km,
-    oreMotore,
+    km: km || null,
+    oreMotore: oreMotore || null,
     vin,
     revisione:   document.getElementById('v-revisione').value || null,
     tachigrafo:  document.getElementById('v-tachigrafo').value || null,
@@ -12826,6 +12826,9 @@ async function _caricaErrori() {
 async function _errRisolto(id) { const { error } = await supa.from('errori_app').update({ risolto: true }).eq('id', id); if (error) { alert('Errore: ' + error.message); return; } _caricaErrori(); _errBadge(); }
 async function _errTuttiRisolti() { if (!confirm('Segnare tutti gli errori come risolti?')) return; const { error } = await supa.from('errori_app').update({ risolto: true }).eq('risolto', false); if (error) { alert('Errore: ' + error.message); return; } _caricaErrori(); _errBadge(); }
 
+// La vecchia vista kanban non c'è più: le chiamate rimaste non devono bloccare (riapri commessa, standby automatico)
+function renderKanban() {}
+
 function convertaAppInCommessa(appId) {
   const a = appuntamenti.find(x=>x.id===appId);
   if (!a) return;
@@ -14567,8 +14570,9 @@ function chiudiDocumenti() {
 function initDocumenti() {
   caricaDatiOfficina();
   caricaTariffe();
-  initVendita();
-  renderDDT();
+  // all'avvio la sezione Documenti non è ancora nella pagina: vendita e DDT si preparano quando la apri
+  try { initVendita(); } catch (_) {}
+  try { renderDDT(); } catch (_) {}
   const _bp2=document.getElementById('badge-preventivi'); if(_bp2) _bp2.textContent=preventivi.filter(p=>p.stato==='bozza'||p.stato==='inviato').length;
 }
 
