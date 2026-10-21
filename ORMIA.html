@@ -3212,11 +3212,11 @@ function init() {
   <div class="detail-section" id="dc-checkout-section" style="display:none">
     <div class="detail-section-title">Incassa</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-      <button class="btn btn-primary" style="flex-direction:column;padding:14px 10px;height:auto;gap:4px" onclick="incassaRapido('contanti')">
+      <button class="btn btn-primary" style="flex-direction:column;padding:14px 10px;height:auto;gap:4px" onclick="_apriCashCom(selectedCommessaId,'contanti')">
         <span style="font-size:20px">💵</span>
         <span style="font-size:13px;font-weight:600">Contanti</span>
       </button>
-      <button class="btn btn-primary" style="flex-direction:column;padding:14px 10px;height:auto;gap:4px" onclick="incassaRapido('carta')">
+      <button class="btn btn-primary" style="flex-direction:column;padding:14px 10px;height:auto;gap:4px" onclick="_apriCashCom(selectedCommessaId,'carta')">
         <span style="font-size:20px">💳</span>
         <span style="font-size:13px;font-weight:600">Carta / POS</span>
       </button>
@@ -3492,7 +3492,7 @@ function applicaPermessiRuolo() {
     document.head.appendChild(st);
   }
   ['#nav-presenze','#nav-garanzie','#nav-documenti','a[href="/ormia-finance"]',"[onclick=\"setSection('impostazioni')\"]",
-   '#dc-checkout-section','#dc-btn-fattura','#dc-btn-fattura-checkout'].forEach(sel => document.querySelectorAll(sel).forEach(el => el.classList.add('solo-admin')));
+   '#dc-btn-fattura','#dc-btn-fattura-checkout'].forEach(sel => document.querySelectorAll(sel).forEach(el => el.classList.add('solo-admin')));
   document.body.classList.toggle('ruolo-magazzino', _ruolo === 'magazzino');
 }
 
@@ -6282,7 +6282,7 @@ function showDetailCommessa(id) {
 
   // Sezione checkout: visibile solo se chiusa o fatturata
   const checkoutSec = document.getElementById('dc-checkout-section');
-  if (checkoutSec) checkoutSec.style.display = (cm.stato==='chiusa'||cm.stato==='fatturata') ? '' : 'none';
+  if (checkoutSec) checkoutSec.style.display = ['aperta','wip','standby','chiusa'].includes(cm.stato) ? '' : 'none';
   try { _aggFattBanco(cm); } catch(_) {}
   try { _renderPrevExtra(cm); } catch(_) {}
   try { _renderControllo(cm); } catch(_) {}
@@ -10601,8 +10601,8 @@ function _dfFattura(k) {
     const _k = _cashCom(commesse.find(c => c.id === id));
     if (_k.pp.length) {
       const _cm = commesse.find(c => c.id === id), _tot = _totIvatoCom(_cm);
-      if (_k.totale && _k.tot >= _tot - 0.01) emettiFatturaCommessa(id, { incasso: true, pagamento: 'rd_contanti' });
-      else emettiFatturaCommessa(id, { cashParz: _k.tot });
+      if (_k.totale && _k.tot >= _tot - 0.01) emettiFatturaCommessa(id, { incasso: true, pagamento: _k.metodo === 'carta' ? 'rd_carta' : 'rd_contanti' });
+      else emettiFatturaCommessa(id, { cashParz: _k.tot, cashMetodo: _k.metodo });
     } else emettiFatturaCommessa(id);
   } else converteDDTinFattura(id);
 }
@@ -12017,55 +12017,58 @@ function _totIvatoCom(cm) {
   return Math.round(imp * (1 + _ivaN(cl?.iva) / 100) * 100) / 100;
 }
 function _cashCom(cm) {
-  const pp = (cm?.pagamenti || []).filter(p => p && p.metodo === 'contanti' && p.segnalato);
+  const pp = (cm?.pagamenti || []).filter(p => p && (p.metodo === 'contanti' || p.metodo === 'carta') && p.segnalato);
   const tot = Math.round(pp.reduce((s, p) => s + (+p.importo || 0), 0) * 100) / 100;
-  return { pp, tot, totale: pp.some(p => p.tipo === 'totale') };
+  return { pp, tot, totale: pp.some(p => p.tipo === 'totale'), metodo: pp.length && pp[pp.length - 1].metodo === 'carta' ? 'carta' : 'contanti' };
 }
 function _renderCashDC(id) {
+  // I pagamenti segnalati si vedono nel riquadro "Incassa" in alto (i pulsanti Contanti / Carta aprono la finestra)
   document.getElementById('dc-cash')?.remove();
-  const cm = commesse.find(c => c.id === id); if (!cm || ['fatturata', 'annullata', 'interna'].includes(cm.stato)) return;
-  const ref = document.getElementById('dc-foto-section'); if (!ref) return;
-  const k = _cashCom(cm);
-  const box = document.createElement('div'); box.id = 'dc-cash';
-  box.style.cssText = 'margin:0 0 14px;padding:10px 12px;border:1px solid ' + (k.pp.length ? '#A7F3D0' : 'var(--border)') + ';border-radius:var(--radius);background:' + (k.pp.length ? '#ECFDF5' : 'var(--surface)');
-  box.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3)">💶 Pagamento in contanti</div>'
-    + '<button class="btn btn-secondary btn-sm" onclick="_apriCashCom(\'' + id + '\')">💶 Contanti</button></div>'
-    + (k.pp.length ? k.pp.map(p => '<div style="font-size:13px;margin-top:6px"><b>' + _eurF(p.importo) + '</b> · ' + (p.tipo === 'totale' ? 'totale' : 'parziale') + ' · ' + formatDate(p.data) + (p.da ? ' · ' + _escF(p.da) : '') + (p.note ? '<div style="font-size:11px;color:var(--text3)">' + _escF(p.note) + '</div>' : '') + '</div>').join('') : '<div style="font-size:11px;color:var(--text3);margin-top:4px">Se il cliente paga in contanti, segnalo qui: l\'amministrazione lo vede in «Da fatturare».</div>');
-  ref.parentNode.insertBefore(box, ref);
-}
-function _apriCashCom(id) {
   const cm = commesse.find(c => c.id === id); if (!cm) return;
-  const tot = _totIvatoCom(cm), gia = _cashCom(cm).tot;
+  const sec = document.getElementById('dc-checkout-section'); if (!sec) return;
+  const k = _cashCom(cm); if (!k.pp.length) return;
+  const box = document.createElement('div'); box.id = 'dc-cash';
+  box.style.cssText = 'margin:0 0 8px;padding:8px 10px;border:1px solid #A7F3D0;border-radius:var(--radius);background:#ECFDF5';
+  box.innerHTML = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#065F46;margin-bottom:2px">Pagamenti segnalati <span style="font-weight:400;text-transform:none;letter-spacing:0">— l\'amministrazione li vede in «Da fatturare»</span></div>'
+    + k.pp.map(p => '<div style="font-size:13px;margin-top:4px">' + (p.metodo === 'carta' ? '💳' : '💶') + ' <b>' + _eurF(p.importo) + '</b> · ' + (p.tipo === 'totale' ? 'totale' : 'parziale') + ' · ' + formatDate(p.data) + (p.da ? ' · ' + _escF(p.da) : '') + (p.note ? ' — ' + _escF(p.note) : '') + '</div>').join('');
+  const grid = sec.querySelector('div[style*="grid-template-columns"]');
+  if (grid && grid.nextSibling) sec.insertBefore(box, grid.nextSibling); else sec.appendChild(box);
+}
+function _apriCashCom(id, metodo) {
+  const cm = commesse.find(c => c.id === id); if (!cm) return;
+  metodo = metodo === 'carta' ? 'carta' : 'contanti';
+  const tot = _totIvatoCom(cm), gia = _cashCom(cm).tot, ico = metodo === 'carta' ? '💳' : '💶', nome = metodo === 'carta' ? 'con carta / POS' : 'in contanti';
   document.getElementById('modal-cash')?.remove();
-  const ov = document.createElement('div'); ov.id = 'modal-cash';
+  const ov = document.createElement('div'); ov.id = 'modal-cash'; ov.dataset.metodo = metodo;
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2500;display:flex;align-items:center;justify-content:center;padding:16px';
   ov.onclick = e => { if (e.target === ov) ov.remove(); };
   const inp = 'width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;box-sizing:border-box;background:var(--surface);color:var(--text)';
   ov.innerHTML = '<div style="background:var(--surface);border-radius:var(--radius-lg);width:420px;max-width:100%;box-shadow:var(--shadow-lg);padding:18px 20px">'
-    + '<div style="font-size:17px;font-weight:800;margin-bottom:2px">💶 Pagamento in contanti</div>'
-    + '<div style="font-size:12px;color:var(--text3);margin-bottom:12px">Commessa ' + _escF(cm.numero || '') + ' · totale IVA inclusa ' + _eurF(tot) + (gia ? ' · già segnati ' + _eurF(gia) : '') + '</div>'
+    + '<div style="font-size:17px;font-weight:800;margin-bottom:2px">' + ico + ' Pagamento ' + nome + '</div>'
+    + '<div style="font-size:12px;color:var(--text3);margin-bottom:12px">Commessa ' + _escF(cm.numero || '') + ' · totale IVA inclusa ' + _eurF(tot) + (gia ? ' · già segnati ' + _eurF(gia) : '') + '<br>Viene segnalato all\'amministrazione: l\'incasso si registra quando si emette la fattura.</div>'
     + '<label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-bottom:8px;cursor:pointer"><input type="radio" name="cash-tipo" value="totale" ' + (gia ? '' : 'checked') + ' onchange="document.getElementById(\'cash-imp\').value=this.checked?\'' + Math.max(0, tot - gia).toFixed(2) + '\':document.getElementById(\'cash-imp\').value"> Pagamento <b>totale</b></label>'
     + '<label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-bottom:10px;cursor:pointer"><input type="radio" name="cash-tipo" value="parziale" ' + (gia ? 'checked' : '') + ' onchange="if(this.checked){const i=document.getElementById(\'cash-imp\');i.value=\'\';i.focus();}"> Pagamento <b>parziale</b> (acconto)</label>'
     + '<label style="font-size:12px;font-weight:700;color:var(--text2)">Importo incassato (€) *</label><input type="number" id="cash-imp" min="0.01" step="0.01" value="' + (gia ? '' : Math.max(0, tot - gia).toFixed(2)) + '" style="' + inp + ';margin:4px 0 10px">'
     + '<label style="font-size:12px;font-weight:700;color:var(--text2)">Note</label><input type="text" id="cash-note" placeholder="facoltative" style="' + inp + ';margin:4px 0 14px">'
-    + '<div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn btn-secondary" onclick="document.getElementById(\'modal-cash\').remove()">Annulla</button><button class="btn btn-primary" id="cash-ok" onclick="_salvaCashCom(\'' + id + '\')">Segna contanti</button></div></div>';
+    + '<div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn btn-secondary" onclick="document.getElementById(\'modal-cash\').remove()">Annulla</button><button class="btn btn-primary" id="cash-ok" onclick="_salvaCashCom(\'' + id + '\')">Segna pagamento</button></div></div>';
   document.body.appendChild(ov);
 }
 async function _salvaCashCom(id) {
   const cm = commesse.find(c => c.id === id); if (!cm) return;
+  const metodo = document.getElementById('modal-cash')?.dataset.metodo === 'carta' ? 'carta' : 'contanti';
   const tipo = document.querySelector('input[name="cash-tipo"]:checked')?.value || 'parziale';
   const imp = Math.round((parseFloat(String(document.getElementById('cash-imp').value).replace(',', '.')) || 0) * 100) / 100;
   if (!(imp > 0)) { alert('Inserisci l\'importo incassato.'); return; }
   const btn = document.getElementById('cash-ok'); if (btn) btn.disabled = true;
   try {
     const da = await _chiSonoCtrl();
-    const entry = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), data: new Date().toISOString().split('T')[0], importo: imp, metodo: 'contanti', tipo, segnalato: true, da: da || '', note: document.getElementById('cash-note').value.trim() };
+    const entry = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), data: new Date().toISOString().split('T')[0], importo: imp, metodo, tipo, segnalato: true, da: da || '', note: document.getElementById('cash-note').value.trim() };
     const pagamenti = [...(cm.pagamenti || []), entry];
     const { error } = await supa.from('commesse').update({ pagamenti }).eq('id', id);
     if (error) throw error;
     cm.pagamenti = pagamenti;
     document.getElementById('modal-cash')?.remove();
-    showToast('💶 Contanti ' + _eurF(imp) + ' (' + tipo + ') segnati ✓');
+    showToast((metodo === 'carta' ? '💳 Carta ' : '💶 Contanti ') + _eurF(imp) + ' (' + tipo + ') segnati ✓');
     try { _renderCashDC(id); } catch (_) {}
     try { if (typeof renderPagamentiCommessa === 'function' && selectedCommessaId === id) renderPagamentiCommessa(cm); } catch (_) {}
   } catch (e) { alert('Errore: ' + e.message); if (btn) btn.disabled = false; }
@@ -12075,22 +12078,22 @@ function _dfCashTag(v) {
   const cm = commesse.find(c => c.id === v.id); const k = _cashCom(cm); if (!k.pp.length) return '';
   const tot = _totIvatoCom(cm), resta = Math.round((tot - k.tot) * 100) / 100;
   const ult = k.pp[k.pp.length - 1];
-  return '<div style="display:inline-flex;align-items:center;gap:6px;margin-top:3px;font-size:11px;font-weight:700;color:#065F46;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:10px;padding:2px 8px">💶 Contanti ' + _eurF(k.tot) + ' – ' + (k.totale && resta <= 0.01 ? 'totale' : 'parziale · resta ' + _eurF(Math.max(0, resta))) + '<span style="font-weight:400;color:#047857">' + (ult.data ? ' · ' + formatDate(ult.data) : '') + (ult.da ? ' · ' + _escF(ult.da) : '') + '</span>'
+  return '<div style="display:inline-flex;align-items:center;gap:6px;margin-top:3px;font-size:11px;font-weight:700;color:#065F46;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:10px;padding:2px 8px">' + (k.metodo === 'carta' ? '💳 Carta/POS ' : '💶 Contanti ') + _eurF(k.tot) + ' – ' + (k.totale && resta <= 0.01 ? 'totale' : 'parziale · resta ' + _eurF(Math.max(0, resta))) + '<span style="font-weight:400;color:#047857">' + (ult.data ? ' · ' + formatDate(ult.data) : '') + (ult.da ? ' · ' + _escF(ult.da) : '') + '</span>'
     + '<button title="Togli: era un errore" onclick="event.stopPropagation();_dfTogliCash(\'' + v.id + '\')" style="background:none;border:none;cursor:pointer;color:#B91C1C;font-size:13px;padding:0 2px">✕</button></div>';
 }
 async function _dfTogliCash(id) {
   const cm = commesse.find(c => c.id === id); if (!cm) return;
   if (!confirm('Togliere il pagamento in contanti segnato sulla commessa ' + (cm.numero || '') + '?\n(Da usare se era un errore.)')) return;
-  const pagamenti = (cm.pagamenti || []).filter(p => !(p && p.metodo === 'contanti' && p.segnalato));
+  const pagamenti = (cm.pagamenti || []).filter(p => !(p && (p.metodo === 'contanti' || p.metodo === 'carta') && p.segnalato));
   const { error } = await supa.from('commesse').update({ pagamenti }).eq('id', id);
   if (error) { alert('Errore: ' + error.message); return; }
   cm.pagamenti = pagamenti; showToast('Contanti tolti dalla commessa ' + (cm.numero || ''));
   try { const b = document.getElementById('df-body'); const st = b ? b.scrollTop : 0; _dfRender(); if (b) b.scrollTop = st; } catch (_) {}
 }
-async function _registraIncassoParz(fatt, importo) {
+async function _registraIncassoParz(fatt, importo, metodo) {
   try {
     const imp = Math.min(+importo || 0, +fatt.totale || 0); if (!(imp > 0)) return;
-    const { error } = await supa.from('incassi').insert({ id: crypto.randomUUID(), cliente_id: fatt.clienteId || null, importo: imp, metodo: 'contanti', data: new Date().toISOString(), riconciliato: true, fattura_id: fatt.id, note: 'Acconto in contanti – fattura ' + fatt.numero });
+    const { error } = await supa.from('incassi').insert({ id: crypto.randomUUID(), cliente_id: fatt.clienteId || null, importo: imp, metodo: metodo === 'carta' ? 'carta' : 'contanti', data: new Date().toISOString(), riconciliato: true, fattura_id: fatt.id, note: 'Acconto ' + (metodo === 'carta' ? 'carta/POS' : 'in contanti') + ' – fattura ' + fatt.numero });
     if (error) throw error;
     const pagata = imp >= (+fatt.totale || 0) - 0.01, oggi = new Date().toISOString().split('T')[0];
     await supa.from('fatture').update(pagata ? { stato: 'pagata', data_pagamento: oggi } : { stato: 'parziale' }).eq('id', fatt.id);
@@ -13659,11 +13662,11 @@ async function salvaFattura() {
       if (currentSection === 'garanzie') renderGaranzie();
     }
     if (_fattDraft.origine === 'pratica') { try { await _segnaPraticaFatt(_fattDraft, fatt); } catch (e) { console.warn('[pratica]', e); alert('Fattura emessa, ma la pratica non è stata aggiornata: ' + e.message); } }
-    const _incasso = !!_fattDraft.incasso, _cashP = +_fattDraft.cashParz || 0;
+    const _incasso = !!_fattDraft.incasso, _cashP = +_fattDraft.cashParz || 0, _cashM = _fattDraft.cashMetodo || 'contanti';
     closeModal('modal-fattura');
     showToast(`Fattura ${numero} emessa ✓`);
     if (_incasso) await _registraIncassoBanco(fatt);
-    else if (_cashP > 0) await _registraIncassoParz(fatt, _cashP);
+    else if (_cashP > 0) await _registraIncassoParz(fatt, _cashP, _cashM);
     try {
       _aggBadgeDaFatt();
       if (currentSection === 'commesse') renderCommesse();
