@@ -2829,6 +2829,18 @@ function init() {
             </div>
           </div>
         </div>
+        <!-- USCITA SU STRADA: trasferta km -->
+        <div class="form-group span-2" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:0;flex-wrap:wrap">
+            <input type="checkbox" id="com-trasf" onchange="_aggTrasfForm()" style="width:16px;height:16px;cursor:pointer">
+            <span style="font-size:13px;font-weight:600">Uscita su strada — trasferta km</span>
+            <span id="com-trasf-hint" style="font-size:11px;color:var(--text3);font-weight:400"></span>
+          </label>
+          <div id="com-trasf-campi" style="display:none;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+            <div class="form-group" style="margin:0"><label>Km totali (andata e ritorno)</label><input type="number" id="com-trasf-km" min="0" step="1" style="font-family:'DM Mono',monospace;font-size:13px"></div>
+            <div class="form-group" style="margin:0"><label>Tariffa €/km <span style="font-weight:400;color:var(--text3)">— vuoto = da Impostazioni</span></label><input type="number" id="com-trasf-tar" min="0" step="0.01" style="font-family:'DM Mono',monospace;font-size:13px"></div>
+          </div>
+        </div>
         <!-- campi nascosti per compatibilità JS -->
         <div style="display:none">
           <select id="com-mec-select"></select>
@@ -5856,6 +5868,7 @@ async function saveCommessa(firmaDataUrl=null) {
   const isFordCom  = (veicoloSel?.marca||'').toLowerCase().includes('ford');
   if (isFordCom && !_checkOreFord(vId, oreMotore, !!editingCommessaId)) return;
   if (!_valGpfCampi()) return;
+  if (document.getElementById('com-trasf')?.checked && !(parseFloat(document.getElementById('com-trasf-km')?.value) > 0)) { alert('Uscita su strada: scrivi i km totali.'); document.getElementById('com-trasf-km')?.focus(); return; }
   const clienteId = document.getElementById('com-cliente').value;
 
   const nuoveRic = comVociRic.filter(v=>v.desc||v.prezzo);
@@ -5877,6 +5890,7 @@ async function saveCommessa(firmaDataUrl=null) {
     gpfOrdine:     _valGpf() ? _gpfSel().ordine : null,
     gpfOrdineData: _valGpf() ? _gpfSel().data : null,
     pratiche:      _praticheVal(),
+    trasferta:     _trasfVal((editingCommessaId && (commesse.find(c => c.id === editingCommessaId) || {}).trasferta) || null),
     fattClienteId: _valFattCl(),
     garTipo: _valGarTipo(),
     oreMotore: parseInt(oreMotore, 10) || null,
@@ -12220,6 +12234,7 @@ function _haQuote(cm) {
   if (_quotaDef(cm) !== 'cliente') return true;
   const all = [...(cm.vociMano || []), ...(cm.vociRic || []), ...(cm.vociExtra || [])];
   if (all.some(v => _caricoV(cm, v) !== 'cliente')) return true;
+  if (cm.trasferta && +cm.trasferta.km > 0 && _trasfCarico(cm) !== 'cliente') return true;
   const s = cm.timbrSplit || {};
   return Object.keys(s).some(k => k !== 'cliente' && _opzQuote(cm).includes(k) && +s[k] > 0);
 }
@@ -12245,7 +12260,7 @@ function _righeCommessaQ(cm, q) {
   if (imp > 0) out.push({ desc: 'Manodopera', qta: 1, prezzo: imp });
   f(cm.vociRic).filter(r => r.desc).forEach(r => out.push(_rigaScontata(_descRic(r), r)));
   f(cm.vociExtra).filter(r => r.desc).forEach(r => out.push(_rigaScontata(r.desc, r)));
-  out.push(..._righeAutoCommessa({ ...cm, vociMano: f(cm.vociMano), vociRic: f(cm.vociRic), dirittoChiamata: q === def ? cm.dirittoChiamata : false }));
+  out.push(..._righeAutoCommessa({ ...cm, vociMano: f(cm.vociMano), vociRic: f(cm.vociRic), dirittoChiamata: q === def ? cm.dirittoChiamata : false, __quota: q }));
   return out;
 }
 (function () {
@@ -12828,6 +12843,91 @@ async function _errTuttiRisolti() { if (!confirm('Segnare tutti gli errori come 
 
 // La vecchia vista kanban non c'è più: le chiamate rimaste non devono bloccare (riapri commessa, standby automatico)
 function renderKanban() {}
+
+// ── Trasferta (uscita su strada): km totali × tariffa (clienti, oppure Ford per garanzia e pratiche) ──
+function _tarKm(q) { const ford = q === 'garanzia' || String(q || '').startsWith('p:'); return +(ford ? _impostazioni.tariffa_km_ford : _impostazioni.tariffa_km_cli) || 0; }
+function _trasfCarico(cm) { const q = cm && cm.trasferta && cm.trasferta.carico; return q && _opzQuote(cm).includes(q) ? q : _quotaDef(cm); }
+function _rigaTrasf(cm, q) {
+  const t = cm && cm.trasferta, km = +(t && t.km) || 0; if (!(km > 0)) return null;
+  const tar = (t.tariffa != null && t.tariffa !== '' && +t.tariffa >= 0) ? +t.tariffa : _tarKm(q);
+  if (!(tar > 0)) return null;
+  return { desc: 'Trasferta – uscita su strada: ' + km.toLocaleString('it-IT') + ' km', qta: km, prezzo: Math.round(tar * 10000) / 10000 };
+}
+(function () {
+  const o = _righeAutoCommessa;
+  _righeAutoCommessa = function (cm) {
+    const r = o.apply(this, arguments);
+    try { const cq = _trasfCarico(cm); if (!cm.__quota || cm.__quota === cq) { const rt = _rigaTrasf(cm, cq); if (rt) r.push(rt); } } catch (e) { console.warn('[trasferta]', e); }
+    return r;
+  };
+})();
+function _eurKm(n) { return n > 0 ? '€ ' + (+n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) + '/km' : 'non impostata'; }
+function _aggTrasfForm() {
+  const on = !!document.getElementById('com-trasf')?.checked, c = document.getElementById('com-trasf-campi'); if (c) c.style.display = on ? 'grid' : 'none';
+  const h = document.getElementById('com-trasf-hint'); if (h) h.textContent = '(clienti ' + _eurKm(+_impostazioni.tariffa_km_cli) + ' · Ford garanzia/pratiche ' + _eurKm(+_impostazioni.tariffa_km_ford) + ')';
+}
+function _fillTrasfForm(cm) {
+  const t = cm && cm.trasferta, chk = document.getElementById('com-trasf'); if (!chk) return;
+  chk.checked = !!(t && +t.km > 0);
+  document.getElementById('com-trasf-km').value = t && +t.km > 0 ? t.km : '';
+  document.getElementById('com-trasf-tar').value = t && t.tariffa != null ? t.tariffa : '';
+  _aggTrasfForm();
+}
+function _trasfVal(prev) {
+  const chk = document.getElementById('com-trasf'); if (!chk) return prev || null;
+  if (!chk.checked) return null;
+  const km = Math.round(parseFloat(String(document.getElementById('com-trasf-km')?.value || '').replace(',', '.')) || 0); if (!(km > 0)) return null;
+  const tv = String(document.getElementById('com-trasf-tar')?.value || '').trim().replace(',', '.');
+  return { km, tariffa: tv === '' || isNaN(parseFloat(tv)) ? null : Math.round(parseFloat(tv) * 10000) / 10000, ...(prev && prev.carico ? { carico: prev.carico } : {}) };
+}
+(function () {
+  const o = openModalCommessa;
+  openModalCommessa = function (editId) {
+    const r = o.apply(this, arguments);
+    const cm = editId ? commesse.find(c => c.id === editId) : null;
+    setTimeout(() => { try { _fillTrasfForm(cm); } catch (e) { console.warn('[trasferta]', e); } }, 90);
+    return r;
+  };
+})();
+(function () {
+  const oC = caricaTariffe;
+  caricaTariffe = function () { const r = oC.apply(this, arguments); try { const a = document.getElementById('off-km-cli'), b = document.getElementById('off-km-ford'); if (a) a.value = _impostazioni.tariffa_km_cli ?? ''; if (b) b.value = _impostazioni.tariffa_km_ford ?? ''; } catch (_) {} return r; };
+  const oS = salvaVociAuto;
+  salvaVociAuto = async function () {
+    const r = await oS.apply(this, arguments);
+    const num = id => { const v = parseFloat(String(document.getElementById(id)?.value || '').replace(',', '.')); return isNaN(v) ? null : v; };
+    const data = { tariffa_km_cli: num('off-km-cli'), tariffa_km_ford: num('off-km-ford') };
+    const { error } = await supa.from('impostazioni').upsert({ id: 'default', ...data });
+    if (error) showToast('Errore tariffe km: ' + error.message); else Object.assign(_impostazioni, data);
+    return r;
+  };
+})();
+async function _setCaricoTrasf(id, q) {
+  const cm = commesse.find(c => c.id === id); if (!cm || !cm.trasferta) return;
+  const tr = { ...cm.trasferta }; if (q === _quotaDef(cm)) delete tr.carico; else tr.carico = q;
+  const { error } = await supa.from('commesse').update({ trasferta: tr }).eq('id', id);
+  if (error) { alert('Errore: ' + error.message); return; }
+  cm.trasferta = tr; showToast('Trasferta a carico di: ' + _QLBL[q] + ' ✓'); _renderQuoteDC(id);
+}
+(function () {
+  const o = _renderQuoteDC;
+  _renderQuoteDC = function (id) {
+    const r = o.apply(this, arguments);
+    try {
+      const cm = commesse.find(c => c.id === id), det = document.querySelector('#dc-quote details');
+      if (cm && det && cm.trasferta && +cm.trasferta.km > 0) {
+        const q = _trasfCarico(cm), rt = _rigaTrasf(cm, q), opz = _opzQuote(cm);
+        const fattOf = x => x === 'garante' ? cm.gpfFatturaId : x === 'garanzia' ? cm.garFatturaId : String(x).startsWith('p:') ? (_praticaDi(cm, x) || {}).fatturaId : cm.fatturaId;
+        const row = document.createElement('div');
+        row.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--border);font-size:12px';
+        row.innerHTML = '<span>Trasferta ' + (+cm.trasferta.km).toLocaleString('it-IT') + ' km</span><span style="font-family:\'DM Mono\',monospace">' + _eurF(rt ? Math.round(rt.qta * rt.prezzo * 100) / 100 : 0) + '</span>'
+          + '<select ' + (fattOf(q) ? 'disabled' : '') + ' onchange="_setCaricoTrasf(\'' + id + '\',this.value)" style="font-size:12px;padding:3px 6px;width:auto">' + opz.map(o2 => '<option value="' + o2 + '"' + (o2 === q ? ' selected' : '') + (fattOf(o2) && o2 !== q ? ' disabled' : '') + '>' + _QLBL[o2] + '</option>').join('') + '</select>';
+        const sum = det.querySelector('summary'); (sum && sum.nextSibling) ? det.insertBefore(row, sum.nextSibling) : det.appendChild(row);
+      }
+    } catch (e) { console.warn('[trasferta quote]', e); }
+    return r;
+  };
+})();
 
 function convertaAppInCommessa(appId) {
   const a = appuntamenti.find(x=>x.id===appId);
@@ -14842,6 +14942,8 @@ initDocumenti();
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="form-group"><label>Smaltimento rifiuti (% sui ricambi)</label><input type="number" id="off-smaltimento" min="0" max="100" step="0.1" placeholder="Es. 2" style="font-family:monospace"></div>
         <div class="form-group"><label>Materiale di consumo (% su man.+ric.)</label><input type="number" id="off-mat-consumo" min="0" max="100" step="0.1" placeholder="Es. 3" style="font-family:monospace"></div>
+        <div class="form-group"><label>Tariffa km clienti (€/km)</label><input type="number" id="off-km-cli" min="0" step="0.01" placeholder="Es. 0.80" style="font-family:monospace"></div>
+        <div class="form-group"><label>Tariffa km Ford — garanzia e pratiche (€/km)</label><input type="number" id="off-km-ford" min="0" step="0.01" placeholder="Es. 0.60" style="font-family:monospace"></div>
       </div>
       <div style="display:flex;justify-content:flex-end"><button class="btn btn-primary" onclick="salvaVociAuto()">Salva voci automatiche</button></div>
     </div>
