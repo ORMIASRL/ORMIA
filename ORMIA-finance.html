@@ -442,6 +442,7 @@ tr:hover td { background:var(--surface2); }
             <button class="tab-btn" data-fstato="parziale" onclick="setFattStatoFil(this,'parziale')">Parziali</button>
             <button class="tab-btn" data-fstato="pagata" onclick="setFattStatoFil(this,'pagata')">Pagate</button>
             <button class="tab-btn" data-fstato="scaduta" onclick="setFattStatoFil(this,'scaduta')">Scadute</button>
+            <button class="tab-btn" data-fstato="scartata" onclick="setFattStatoFil(this,'scartata')" title="Scartate o rifiutate dallo SDI">Scartate</button>
           </div>
           <button class="btn btn-primary" onclick="apriFatturaLibera()" style="background:var(--success,#276749);border-color:var(--success,#276749)">+ Fattura libera</button>
           <button class="btn btn-primary" onclick="sincronizzaFIC()">
@@ -1111,15 +1112,23 @@ function setFattStatoFil(btn, stato) {
 
 function renderFattureFin() {
   const q = (document.getElementById('fatt-search')?.value||'').toLowerCase();
-  const filtered = _fatture.filter(f => {
+  const _qn = q.replace(',', '.');
+  const filtered0 = _fatture.filter(f => {
     const cl = _clienti.find(c=>c.id===f.clienteId);
-    const mQ = !q || (f.numero||'').toLowerCase().includes(q) || (cl?.ragione||'').toLowerCase().includes(q);
-    const mS = !_fattStatoFil || f.stato===_fattStatoFil;
-    return mQ && mS;
+    const mQ = !q || (f.numero||'').toLowerCase().includes(q) || (cl?.ragione||'').toLowerCase().includes(q) || (/\d/.test(_qn) && (f.totale||0).toFixed(2).includes(_qn));
+    const mS = !_fattStatoFil || (_fattStatoFil==='scartata' ? _fattScartata(f) : f.stato===_fattStatoFil);
+    return mQ && mS && (q || _fattStatoFil || _fattInVista(f));
   });
+  // Vista base: aperte/scartate sempre; le altre max 20 (+ "Mostra altre"). Ricerca/filtri: tutte, 20 alla volta
+  const _interr = !!(q || _fattStatoFil);
+  const _fk = q + '|' + _fattStatoFil; if (_fk !== window.__fattKey) { window.__fattKey = _fk; window.__fattLim = 20; }
+  let filtered;
+  if (_interr) filtered = filtered0.slice(0, window.__fattLim);
+  else { const alt = new Set(filtered0.filter(f => !_fattAperta(f)).slice(0, window.__fattLim)); filtered = filtered0.filter(f => _fattAperta(f) || alt.has(f)); }
+  const _fFoot = _fattFooter(filtered0.length - filtered.length, _interr ? 0 : _fatture.length - filtered0.length);
   const tbody = document.getElementById('tb-fatture');
   const empty = document.getElementById('empty-fatture-fin');
-  if (!filtered.length) { tbody.innerHTML=''; empty.style.display=''; return; }
+  if (!filtered.length) { tbody.innerHTML=_fFoot; empty.style.display=''; return; }
   empty.style.display='none';
   tbody.innerHTML = filtered.map(f => {
     const cl = _clienti.find(c=>c.id===f.clienteId);
@@ -1147,7 +1156,27 @@ function renderFattureFin() {
         </div>
       </td>
     </tr>`;
-  }).join('');
+  }).join('') + _fFoot;
+}
+
+// ── Lista fatture: vista base limitata, il resto si interroga ──
+function _fattScartata(f) {
+  const s = f.sdiStato || f.sdi_stato;
+  return ['discarded', 'rejected', 'error'].includes(s) || (f.ficStato || f.fic_stato) === 'errore_sdi';
+}
+function _fattAperta(f) { return f.stato !== 'pagata' || _fattScartata(f); }
+function _fattRiconciliata(f) {
+  return f.stato === 'pagata' && !_incassi.some(i => (i.fattura_id || i.fatturaId) === f.id && !i.riconciliato);
+}
+function _fattInVista(f) {
+  if (_fattAperta(f)) return true;
+  if (_fattRiconciliata(f)) return false;
+  const d = new Date(f.data || f.created_at);
+  return !(Date.now() - d.getTime() > 30 * 864e5);
+}
+function _fattFooter(nascoste, archivio) {
+  if (!nascoste && !archivio) return '';
+  return `<tr><td colspan="8" style="text-align:center;padding:12px;color:var(--text3);font-size:12px">${nascoste ? `<button class="btn btn-sm btn-secondary" onclick="window.__fattLim+=20;renderFattureFin()">Mostra altre 20 (${nascoste} rimanenti)</button>` : ''}${archivio ? `<div style="margin-top:${nascoste?8:0}px">🗄️ ${archivio} fatture in archivio (pagate e riconciliate o pagate da più di 30 giorni): cerca o usa i filtri per vederle</div>` : ''}</td></tr>`;
 }
 
 // Quando una fattura risulta pagata senza un incasso registrato, crea l'incasso per quanto mancava
@@ -2317,7 +2346,7 @@ function configuraPollingSinc() { avviaPollingFIC(); showToastFin('Polling FiC a
 
 function renderNoteCredito() {
   const q = (document.getElementById('nc-search')?.value||'').toLowerCase();
-  const filtered = _noteCredito.filter(nc => {
+  const filtered0 = _noteCredito.filter(nc => {
     const cl = _clienti.find(c=>c.id===nc.clienteId);
     const fatt = _fatture.find(f=>f.id===nc.fatturaId);
     return !q
@@ -2325,6 +2354,9 @@ function renderNoteCredito() {
       || (cl?.ragione||'').toLowerCase().includes(q)
       || (fatt?.numero||'').toLowerCase().includes(q);
   });
+  if (q !== window.__ncKey) { window.__ncKey = q; window.__ncLim = 20; }
+  const filtered = filtered0.slice(0, window.__ncLim);
+  const _ncRest = filtered0.length - filtered.length;
   const tbody = document.getElementById('tb-note-credito');
   const empty = document.getElementById('empty-note-credito');
   if (!filtered.length) { tbody.innerHTML=''; empty.style.display=''; return; }
@@ -2350,7 +2382,7 @@ function renderNoteCredito() {
         </div>
       </td>
     </tr>`;
-  }).join('');
+  }).join('') + (_ncRest ? `<tr><td colspan="8" style="text-align:center;padding:12px"><button class="btn btn-sm btn-secondary" onclick="window.__ncLim+=20;renderNoteCredito()">Mostra altre 20 (${_ncRest} rimanenti)</button> <span style="font-size:12px;color:var(--text3);margin-left:8px">oppure cerca</span></td></tr>` : '');
 }
 
 // ── Dalla riga fattura: apri la commessa nel gestionale (sola consultazione) e nota di credito rapida ──
