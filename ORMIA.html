@@ -3183,6 +3183,10 @@ function init() {
         <span style="font-size:12px;color:var(--text3)">📞 Diritto di chiamata (<span id="dc-diritto-tipo"></span>)</span>
         <span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--text3)" id="dc-diritto-importo">€ 0,00</span>
       </div>
+      <div id="dc-row-trasf" style="display:none;justify-content:space-between;align-items:center;padding:4px 0">
+        <span style="font-size:12px;color:var(--text3)">🚚 Trasferta – uscita su strada (<span id="dc-trasf-det"></span>)</span>
+        <span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--text3)" id="dc-trasf-importo">€ 0,00</span>
+      </div>
       <div id="dc-tot-live-row" style="display:none;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--warning-light);border-radius:var(--radius);border:1px solid #FDE68A">
         <span style="font-size:12px;color:var(--warning);display:flex;align-items:center;gap:5px">
           <span style="width:7px;height:7px;border-radius:50%;background:var(--warning);animation:pulse 1.5s infinite;display:inline-block"></span>
@@ -6382,6 +6386,17 @@ function showDetailCommessa(id) {
     document.getElementById('dc-diritto-tipo').textContent    = cm.dirittoChiamataTipo||'standard';
     document.getElementById('dc-diritto-importo').textContent = '€ '+(cm.dirittoChiamataImporto||0).toFixed(2).replace('.',',');
   } else if (rowDC) { rowDC.style.display = 'none'; }
+  // Trasferta km (stessa riga che va in fattura)
+  try {
+    const rowTr = document.getElementById('dc-row-trasf'), rtr = _rigaTrasf(cm, _trasfCarico(cm));
+    if (rowTr) {
+      rowTr.style.display = rtr ? 'flex' : 'none';
+      if (rtr) {
+        document.getElementById('dc-trasf-det').textContent = rtr.qta.toLocaleString('it-IT') + ' km × € ' + rtr.prezzo.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+        document.getElementById('dc-trasf-importo').textContent = '€ ' + _r2C(rtr.qta * rtr.prezzo).toFixed(2).replace('.', ',');
+      }
+    }
+  } catch (e) { console.warn('[trasferta]', e); }
 
   // Avvia timer aggiornamento ogni 30 secondi
   if (window._liveTotalTimer) clearInterval(window._liveTotalTimer);
@@ -8138,7 +8153,17 @@ function calcTotale() {
   const matPerc = parseFloat(imp.materiale_consumo_perc || imp.materialeConsumoPerc || 0);
   const matCons = +((totMano + totRic) * matPerc / 100).toFixed(2);
 
-  const totale = totMano + totRic + totExtra + dc + smalt + matCons;
+  // Trasferta km (uscita su strada)
+  let trasf = 0;
+  try {
+    const tv = typeof _trasfVal === 'function' ? _trasfVal(null) : null;
+    if (tv) {
+      const cmE = editingCommessaId ? commesse.find(c => c.id === editingCommessaId) : null;
+      const tar = tv.tariffa != null ? +tv.tariffa : _tarKm(cmE ? _trasfCarico({ ...cmE, trasferta: { ...tv, ...(cmE.trasferta && cmE.trasferta.carico ? { carico: cmE.trasferta.carico } : {}) } }) : 'cliente');
+      trasf = tar > 0 ? +(tv.km * tar).toFixed(2) : 0;
+    }
+  } catch (e) { console.warn('[trasferta]', e); }
+  const totale = totMano + totRic + totExtra + dc + smalt + matCons + trasf;
 
   // Aggiorna display voci automatiche
   const elSmalt = document.getElementById('com-voce-smaltimento');
@@ -9805,6 +9830,7 @@ async function salvaPreventivo() {
     if (editingPreventivoId) {
       const { data: r, error: e } = await supa.from('preventivi').update(data).eq('id', editingPreventivoId).select().single();
       console.log('[PREV] update:', r, e);
+      if (e || !r) { alert('Errore: il preventivo non è stato salvato (' + (e?.message || 'nessuna risposta dal database') + ').\nSe l\'accesso è scaduto, ricarica la pagina (Ctrl+F5) e rifai il login.'); return; }
       const i = preventivi.findIndex(p=>p.id===editingPreventivoId);
       if (i>=0) preventivi[i] = {...preventivi[i], ...r, clienteId:r.cliente_id, veicoloId:r.veicolo_id, vociMano:r.voci_mano||[], vociRic:r.voci_ric||[], vociExtra:r.voci_extra||[], ivaAmt:r.iva_amt, createdAt:r.created_at};
     } else {
@@ -9861,7 +9887,7 @@ function renderPreventivi() {
         <div style="font-family:'DM Mono',monospace;font-size:18px;font-weight:700">€ ${(p.totale||0).toFixed(2)}</div>
         <div style="display:flex;gap:6px">
           <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();stampaPreventivo('${p.id}')">PDF</button>
-          ${p.stato==='accettato'?(p.commessa_id?`<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();apriInserisciPrev('${p.id}')">➕ In commessa</button>`:`<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();apriConvertPrev('${p.id}')">→ Converti</button>`):''}
+          ${['accettato','bozza','inviato'].includes(p.stato)?(p.commessa_id?`<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();apriInserisciPrev('${p.id}')">➕ In commessa</button>`:`<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();apriConvertPrev('${p.id}')">→ Converti</button>`):''}
           ${p.stato==='convertito'?'<span class="badge badge-gray" style="align-self:center">✓ Convertito</span>':''}
           <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();eliminaPreventivo('${p.id}')">Elimina</button>
         </div>
@@ -10512,7 +10538,7 @@ function _righeAutoCommessa(cm) {
 }
 function _totaleCommessa(cm) {
   const t = [...(cm.vociMano || []), ...(cm.vociRic || []), ...(cm.vociExtra || [])].reduce((s, v) => s + _impVoceC(v), 0);
-  return _r2C(t + _righeAutoCommessa(cm).reduce((s, x) => s + x.prezzo, 0));
+  return _r2C(t + _righeAutoCommessa(cm).reduce((s, x) => s + _r2C((x.qta || 1) * x.prezzo), 0));
 }
 function _righeDDT(d) {
   return (d.righe || []).filter(r => r.desc).map(r => _rigaScontata(r.desc, r));
@@ -10937,7 +10963,7 @@ function _renderPrevExtra(cm) {
     </div>
     ${lista.length ? lista.map(p => {
       const s = _PREV_ST[p.stato] || [p.stato, '#6B7280', '#F3F4F6'];
-      const az = p.stato === 'accettato'
+      const az = ['accettato', 'bozza', 'inviato'].includes(p.stato)
         ? `<button class="btn btn-primary btn-sm" onclick="apriInserisciPrev('${p.id}')">➕ Aggiungi in commessa</button>`
         : '';
       return `<div style="border:1px solid var(--border);border-radius:var(--radius);padding:9px 11px;margin-bottom:6px">
@@ -10951,7 +10977,7 @@ function _renderPrevExtra(cm) {
           <button class="btn btn-ghost btn-sm" onclick="openModalPreventivo('${p.id}')">Apri</button>
           <button class="btn btn-ghost btn-sm" onclick="stampaPreventivo('${p.id}')">PDF</button>
           ${az}
-          ${['bozza', 'inviato'].includes(p.stato) ? '<span style="font-size:11px;color:var(--text3);align-self:center">quando il cliente accetta, apri e metti lo stato "Accettato"</span>' : ''}
+          ${['bozza', 'inviato'].includes(p.stato) ? '<span style="font-size:11px;color:var(--text3);align-self:center">inserendolo in commessa diventa "Accettato"</span>' : ''}
         </div></div>`;
     }).join('') : '<div style="font-size:12px;color:var(--text3)">Nessun preventivo extra. Usalo per i lavori in più da far accettare al cliente.</div>'}`;
 }
@@ -12930,6 +12956,107 @@ async function _setCaricoTrasf(id, q) {
     } catch (e) { console.warn('[trasferta quote]', e); }
     return r;
   };
+})();
+
+// ── Preventivi: si caricano in commessa anche da Bozza/Inviato (caricarlo = accettato) ──
+async function _prevAccetta(p, extra) {
+  if (!p) return false;
+  const upd = { ...(extra || {}) }; if (p.stato !== 'accettato') upd.stato = 'accettato';
+  if (!Object.keys(upd).length) return true;
+  const { error } = await supa.from('preventivi').update(upd).eq('id', p.id);
+  if (error) { alert('Errore: il preventivo ' + (p.numero || '') + ' non è stato aggiornato (' + error.message + ').\nSe l\'accesso è scaduto, ricarica la pagina (Ctrl+F5) e rifai il login.'); return false; }
+  Object.assign(p, upd); return true;
+}
+(function () {
+  const oI = apriInserisciPrev, oC = apriConvertPrev;
+  apriInserisciPrev = async function (prevId) {
+    const p = preventivi.find(x => x.id === prevId);
+    if (p && ['bozza', 'inviato'].includes(p.stato)) { if (!(await _prevAccetta(p))) return; try { renderPreventivi(); } catch (_) {} }
+    return oI.apply(this, arguments);
+  };
+  apriConvertPrev = async function (prevId) {
+    const p = preventivi.find(x => x.id === prevId);
+    if (p && ['bozza', 'inviato'].includes(p.stato)) { if (!(await _prevAccetta(p))) return; try { renderPreventivi(); } catch (_) {} }
+    return oC.apply(this, arguments);
+  };
+})();
+// Preventivi dello stesso veicolo/cliente non ancora inseriti, da caricare in una commessa già aperta
+function _prevCaricabili(cm) {
+  if (!cm || typeof preventivi === 'undefined') return [];
+  return preventivi.filter(p => !['convertito', 'rifiutato'].includes(p.stato) && p.commessa_id !== cm.id
+      && !(p.commessa_id && commesse.some(c => c.id === p.commessa_id && c.stato !== 'annullata'))
+      && ((cm.veicoloId && p.veicoloId === cm.veicoloId) || (cm.clienteId && p.clienteId === cm.clienteId)))
+    .sort((a, b) => ((b.veicoloId === cm.veicoloId) - (a.veicoloId === cm.veicoloId)) || (new Date(b.createdAt || b.created_at) - new Date(a.createdAt || a.created_at)));
+}
+function _sceltaPrevCom(comId) {
+  const cm = commesse.find(c => c.id === comId); if (!cm) return;
+  const lista = _prevCaricabili(cm); if (!lista.length) { alert('Nessun preventivo da caricare per questo cliente/veicolo.'); return; }
+  const eur = n => '€ ' + (+n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  document.getElementById('modal-scelta-prev')?.remove();
+  const ov = document.createElement('div'); ov.id = 'modal-scelta-prev';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1100;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML = `<div style="background:var(--surface);border-radius:var(--radius-lg);width:560px;max-width:100%;max-height:90vh;overflow:auto;box-shadow:var(--shadow-lg);padding:18px 20px">
+    <div style="font-size:17px;font-weight:800">📄 Carica preventivo in ${_escF(cm.numero || '')}</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Scegli il preventivo: viene segnato come accettato e poi scegli le voci da inserire.</div>
+    ${lista.map(p => { const v = veicoli.find(x => x.id === p.veicoloId), s = _PREV_ST[p.stato] || [p.stato, '#6B7280', '#F3F4F6'];
+      return `<div onclick="_caricaPrevInCom('${p.id}','${cm.id}')" style="border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px;cursor:pointer" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:var(--text3)">${_escF(p.numero || '')}</span>
+          <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;color:${s[1]};background:${s[2]}">${s[0]}</span>
+          ${v ? `<span style="font-size:11px;color:var(--text2)">${_escF(v.targa || '')}</span>` : ''}
+          <span style="margin-left:auto;font-family:'DM Mono',monospace;font-weight:700;font-size:13px">${eur(p.imponibile ?? 0)} + IVA</span>
+        </div>
+        <div style="font-size:13px;margin-top:4px">${_escF(p.oggetto || '')}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${p.data ? formatDate(p.data) : ''}</div>
+      </div>`; }).join('')}
+    <div style="display:flex;justify-content:flex-end;margin-top:6px"><button class="btn btn-secondary" onclick="document.getElementById('modal-scelta-prev').remove()">Annulla</button></div>
+  </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+async function _caricaPrevInCom(prevId, comId) {
+  const p = preventivi.find(x => x.id === prevId); if (!p) return;
+  if (!(await _prevAccetta(p, { commessa_id: comId }))) return;
+  document.getElementById('modal-scelta-prev')?.remove();
+  try { renderPreventivi(); } catch (_) {}
+  try { const cm = commesse.find(c => c.id === comId); if (cm && selectedCommessaId === comId) _renderPrevExtra(cm); } catch (_) {}
+  apriInserisciPrev(prevId);
+}
+(function () {
+  const oR = _renderPrevExtra;
+  _renderPrevExtra = function (cm) {
+    const r = oR.apply(this, arguments);
+    try {
+      const box = document.getElementById('dc-prev-extra');
+      if (!box || !cm || cm.stato === 'fatturata') return r;
+      const n = _prevCaricabili(cm).length; if (!n) return r;
+      const tit = box.querySelector('.detail-section-title'), nb = tit && tit.querySelector('button');
+      const b = document.createElement('button'); b.className = 'btn btn-primary btn-sm'; b.style.marginLeft = 'auto';
+      b.textContent = '📄 Carica preventivo (' + n + ')'; b.title = 'Preventivi di questo cliente/veicolo non ancora inseriti in commessa';
+      b.onclick = () => _sceltaPrevCom(cm.id);
+      if (nb) nb.before(b); else if (tit) tit.appendChild(b);
+    } catch (e) { console.warn('[carica preventivo]', e); }
+    return r;
+  };
+})();
+
+// ── Avviso nuova versione: se il gestionale viene aggiornato, propone di ricaricare ──
+(function () {
+  let base = null;
+  async function chk() {
+    try {
+      const r = await fetch(location.pathname + '?v=' + Date.now(), { method: 'HEAD', cache: 'no-store' });
+      const et = r.ok && (r.headers.get('etag') || r.headers.get('last-modified')); if (!et) return;
+      if (base === null) { base = et; return; }
+      if (et !== base && !document.getElementById('ormia-new-ver')) {
+        const d = document.createElement('div'); d.id = 'ormia-new-ver';
+        d.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:99999;background:#1B4FD8;color:#fff;padding:10px 16px;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:14px;display:flex;gap:12px;align-items:center';
+        d.innerHTML = '🔄 È disponibile una nuova versione del gestionale <button style="background:#fff;color:#1B4FD8;border:none;border-radius:6px;padding:5px 12px;font-weight:700;cursor:pointer" onclick="location.reload()">Ricarica</button>';
+        document.body.appendChild(d);
+      }
+    } catch (_) {}
+  }
+  chk(); setInterval(chk, 5 * 60 * 1000);
 })();
 
 function convertaAppInCommessa(appId) {
