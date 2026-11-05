@@ -2368,7 +2368,7 @@ function renderNoteCredito() {
     const statoLabel = nc.stato==='contabilizzata' ? 'Contabilizzata' : 'Emessa';
     return `<tr>
       <td style="font-family:'DM Mono',monospace;font-size:12px;font-weight:700">${nc.numero||'—'}</td>
-      <td style="font-size:12px;color:var(--text2)">${fatt?fatt.numero:'—'}</td>
+      <td style="font-size:12px;color:var(--text2)">${fatt?fatt.numero:(_ncRif(nc)?String(_ncRif(nc).num).replace(/</g,'&lt;')+' <span style="font-size:10px;color:var(--text3)">(vecchio gest.)</span>':'—')}</td>
       <td>${cl?cl.ragione:'—'}</td>
       <td>${formatDateFin(nc.data||nc.created_at)}</td>
       <td style="font-family:'DM Mono',monospace;font-weight:700;color:var(--danger)">- € ${(nc.importo||0).toFixed(2)}</td>
@@ -2475,6 +2475,7 @@ function apriNuovaNC() {
       return `<option value="${f.id}" data-totale="${f.totale||0}">${f.numero} — ${cl?cl.ragione:'Cliente'} — € ${(f.totale||0).toFixed(2)}</option>`;
     }).join('');
   document.getElementById('nc-fattura').innerHTML = '<option value="">— Seleziona fattura —</option>' + opzFatture;
+  try { _ncLiberaReset(); } catch (_) {}
   document.getElementById('nc-importo').value = '';
   document.getElementById('nc-motivo').value = '';
   document.getElementById('nc-data').value = new Date().toISOString().split('T')[0];
@@ -2489,12 +2490,49 @@ function onNCFatturaChange() {
   }
 }
 
+// ── Nota di credito libera: fattura emessa col vecchio gestionale (non presente qui) ──
+function _ncLiberaReset() {
+  const chk = document.getElementById('nc-libera'); if (chk) chk.checked = false;
+  const sc = document.getElementById('nc-cliente');
+  if (sc) sc.innerHTML = '<option value="">— Seleziona cliente —</option>' + [..._clienti].sort((a, b) => String(a.ragione || '').localeCompare(String(b.ragione || ''))).map(c => `<option value="${c.id}">${String(c.ragione || '').replace(/</g, '&lt;')}</option>`).join('');
+  ['nc-rif-num', 'nc-rif-data'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  const iv = document.getElementById('nc-iva'); if (iv) iv.value = '22';
+  _ncLiberaToggle();
+}
+function _ncLiberaToggle() {
+  const on = !!document.getElementById('nc-libera')?.checked;
+  const bf = document.getElementById('nc-box-fatt'), bl = document.getElementById('nc-box-libera');
+  if (bf) bf.style.display = on ? 'none' : '';
+  if (bl) bl.style.display = on ? 'grid' : 'none';
+  if (on) { const sf = document.getElementById('nc-fattura'); if (sf) sf.value = ''; }
+}
+function _ncLiberaVal() {
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const clienteId = v('nc-cliente'), num = v('nc-rif-num'), data = v('nc-rif-data'), iva = parseFloat(v('nc-iva'));
+  if (!clienteId) { showToastFin('⚠ Seleziona il cliente'); return null; }
+  if (!num)       { showToastFin('⚠ Inserisci il numero della fattura originale'); return null; }
+  if (!data)      { showToastFin('⚠ Inserisci la data della fattura originale'); return null; }
+  const dIt = data.split('-').reverse().join('/');
+  return { clienteId, num, data, iva: isNaN(iva) ? 22 : iva, rifTxt: '(rif. fattura n. ' + num + ' del ' + dIt + ')' };
+}
+// Riferimento alla vecchia fattura: dai dati appena inseriti o dal motivo salvato
+function _ncRif(nc) {
+  if (!nc) return null;
+  if (nc.rifNum) return { num: String(nc.rifNum), data: nc.rifData };
+  const m = String(nc.motivo || '').match(/\(rif\. fattura n\. (.+?) del (\d{2})\/(\d{2})\/(\d{4})\)/);
+  return m ? { num: m[1], data: m[4] + '-' + m[3] + '-' + m[2] } : null;
+}
+function _ncIva(nc, cl) { return nc && nc.ivaLib != null ? nc.ivaLib : (_esteroF(cl) ? 0 : 22); }
+
 async function salvaNC() {
   const fatturaId = document.getElementById('nc-fattura').value;
   const importo   = parseFloat(document.getElementById('nc-importo').value)||0;
   const motivo    = document.getElementById('nc-motivo').value.trim();
   const data      = document.getElementById('nc-data').value;
-  if (!fatturaId) { showToastFin('⚠ Seleziona la fattura di riferimento'); return; }
+  const _lib = !!document.getElementById('nc-libera')?.checked;
+  const _ncL = _lib ? _ncLiberaVal() : null;
+  if (_lib && !_ncL) return;
+  if (!_lib && !fatturaId) { showToastFin('⚠ Seleziona la fattura di riferimento'); return; }
   if (!importo)   { showToastFin('⚠ Inserisci l\'importo'); return; }
   if (!motivo)    { showToastFin('⚠ Inserisci il motivo'); return; }
   const fatt = _fatture.find(f=>f.id===fatturaId);
@@ -2509,9 +2547,9 @@ async function salvaNC() {
       id: crypto.randomUUID(),
       numero,
       data: data||null,
-      fattura_id: fatturaId,
-      cliente_id: fatt?.clienteId||null,
-      motivo,
+      fattura_id: _lib ? null : fatturaId,
+      cliente_id: _lib ? _ncL.clienteId : (fatt?.clienteId||null),
+      motivo: _lib ? motivo + ' ' + _ncL.rifTxt : motivo,
       importo,
       stato: 'emessa',
       created_at: new Date().toISOString(),
@@ -2519,6 +2557,7 @@ async function salvaNC() {
     const { data:r, error } = await supa.from('note_credito').insert(row).select().single();
     if (error) throw error;
     const nc = {...r, clienteId:r.cliente_id, fatturaId:r.fattura_id};
+    if (_ncL) { nc.ivaLib = _ncL.iva; nc.rifNum = _ncL.num; nc.rifData = _ncL.data; }
     _noteCredito.unshift(nc);
     document.getElementById('modal-nc').style.display = 'none';
     renderNoteCredito();
@@ -2538,13 +2577,14 @@ async function inviaNCFiC(id) {
   const fatt = _fatture.find(f=>f.id===nc.fatturaId);
   const cl   = _clienti.find(c=>c.id===nc.clienteId);
   showToastFin('Invio nota credito a FiC…');
+  const _rif = fatt ? null : _ncRif(nc), _ivaNc = fatt ? fatt.iva : _ncIva(nc, cl);
   try {
     const res = await ficFetch(`/c/${_ficConfig.company_id}/issued_documents`, {
       method: 'POST',
       body: JSON.stringify({ data: {
         type: 'credit_note', e_invoice: true,
         date: (nc.data||new Date().toISOString()).split('T')[0],
-        ei_data: _eiDataFin(fatt?.pagamento, fatt?.off_iban),
+        ei_data: { ..._eiDataFin(fatt ? fatt.pagamento : cl?.pagamento, fatt?.off_iban), ...(_rif ? { invoice_number: _rif.num, invoice_date: _rif.data } : {}) },
         ...(/(\d+)\s*$/.test(String(nc.numero||'')) ? { number: parseInt(String(nc.numero).match(/(\d+)\s*$/)[1], 10) } : {}),
         entity: { name: fatt?.cl_ragione||cl?.ragione||'Cliente', vat_number: cl?.piva||'', tax_code: cl?.cf||cl?.piva||'', e_invoice: true,
                   ei_code: String(cl?.sdi||'').trim().toUpperCase()||'0000000', certified_email: cl?.pec||'', email: cl?.email||'',
@@ -2552,7 +2592,7 @@ async function inviaNCFiC(id) {
                   address_city: cl?.citta||'', address_province: cl?.provincia||'', country: 'Italia', ..._entEst(cl) },
         // L'importo della nota è IVA inclusa: su FiC va il netto (positivo) con l'aliquota della fattura
         items_list: [{ name: nc.motivo||'Nota di credito', qty:1,
-                       net_price: Math.round((nc.importo||0) / (1 + _ivaNF(fatt?.iva)/100) * 100) / 100, vat: _vatDoc(fatt?.iva, cl) }],
+                       net_price: Math.round((nc.importo||0) / (1 + _ivaNF(_ivaNc)/100) * 100) / 100, vat: _vatDoc(_ivaNc, cl) }],
         payments_list: [{ amount: Math.round((nc.importo||0)*100)/100, due_date: (nc.data||new Date().toISOString()).split('T')[0], status: 'not_paid' }],
         ...(fatt?.ficId ? { original_document_id: parseInt(fatt.ficId) } : {}),
       }, options: { fix_payments: true } }),
@@ -2604,7 +2644,7 @@ function generaHtmlNC(nc, fatt, cl) {
     <div style="font-size:12px;color:#666;margin-top:4px">Data: ${nc.data?new Date(nc.data).toLocaleDateString('it-IT'):'—'}</div>
   </div>
   <div style="text-align:right;font-size:12px;color:#666">
-    ${fatt?`<div>Riferimento fattura: <strong>${fatt.numero}</strong></div>`:''}
+    ${fatt?`<div>Riferimento fattura: <strong>${fatt.numero}</strong></div>`:(_ncRif(nc)?`<div>Riferimento fattura: <strong>${_ncRif(nc).num}</strong> del ${_ncRif(nc).data.split('-').reverse().join('/')}</div>`:'')}
     ${cl?`<div style="margin-top:8px;font-size:14px;font-weight:600">${cl.ragione}</div>`:''}
     ${cl?.piva?`<div>P.IVA: ${cl.piva}</div>`:''}
     ${cl?.indirizzo?`<div>${cl.indirizzo}</div>`:''}
@@ -2614,7 +2654,7 @@ function generaHtmlNC(nc, fatt, cl) {
   <div style="font-size:13px;color:#666;margin-bottom:6px">Motivo della nota di credito:</div>
   <div style="font-size:15px;font-weight:600">${nc.motivo||'—'}</div>
 </div>
-${(fatt && _ivaNF(fatt.iva) === 0 && _esteroF(cl)) ? `<div style="font-size:12px;font-weight:700;margin-bottom:16px">${_dic7terF(cl)}</div>` : ''}
+${(_ivaNF(fatt ? fatt.iva : _ncIva(nc, cl)) === 0 && _esteroF(cl)) ? `<div style="font-size:12px;font-weight:700;margin-bottom:16px">${_dic7terF(cl)}</div>` : ''}
 <div style="display:flex;justify-content:flex-end">
   <div style="background:#FEF2F2;border:1px solid #FECACA;padding:20px 28px;border-radius:8px;text-align:right;min-width:260px">
     <div style="font-size:13px;color:#666;margin-bottom:8px">Importo della nota di credito:</div>
@@ -2967,9 +3007,25 @@ initAuth();
       <button onclick="document.getElementById('modal-nc').style.display='none'" style="background:rgba(255,255,255,.2);border:none;color:white;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:18px;line-height:1">✕</button>
     </div>
     <div style="padding:24px;display:grid;gap:14px">
-      <div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;background:#FEF2F2;border:1px solid #FECACA;border-radius:var(--radius);padding:8px 10px">
+        <input type="checkbox" id="nc-libera" onchange="_ncLiberaToggle()" style="width:16px;height:16px">
+        <span><b>Fattura non presente nel gestionale</b> <span style="color:var(--text3);font-size:12px">(emessa col vecchio gestionale)</span></span>
+      </label>
+      <div id="nc-box-fatt">
         <label style="font-size:12px;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">Fattura di riferimento *</label>
         <select id="nc-fattura" onchange="onNCFatturaChange()" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'DM Sans',sans-serif"></select>
+      </div>
+      <div id="nc-box-libera" style="display:none;gap:12px">
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">Cliente *</label>
+          <select id="nc-cliente" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;box-sizing:border-box"></select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+          <div><label style="font-size:12px;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">N° fattura originale *</label><input type="text" id="nc-rif-num" placeholder="Es. 245" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;box-sizing:border-box"></div>
+          <div><label style="font-size:12px;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">Data fattura originale *</label><input type="date" id="nc-rif-data" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;box-sizing:border-box"></div>
+          <div><label style="font-size:12px;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">IVA *</label><select id="nc-iva" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;box-sizing:border-box"><option value="22">22%</option><option value="10">10%</option><option value="4">4%</option><option value="0">0% (estero)</option></select></div>
+        </div>
+        <div style="font-size:11px;color:var(--text3)">Numero e data della vecchia fattura vanno nella nota elettronica come fattura collegata. L'importo qui sotto è IVA inclusa.</div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div>
