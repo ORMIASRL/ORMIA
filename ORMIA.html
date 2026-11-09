@@ -7537,9 +7537,12 @@ function _renderAllegatiGest(cm) {
   });
 }
 
-async function scaricaZipGaranzia(comId) {
+async function scaricaZipGaranzia(comId, praticaId) {
   const cm  = commesse.find(c=>c.id===comId);
   if (!cm) return;
+  // ZIP di una pratica manutenzione/FSA: foto comuni (targa, km, telaio) + solo le foto di quella pratica
+  const _prX = praticaId ? (cm.pratiche || []).find(p => p.id === praticaId) : null;
+  if (praticaId && !_prX) { alert('Pratica non trovata.'); return; }
   // La firma del cliente è obbligatoria nel PDF della garanzia
   if (!cm.firma) {
     if (confirm('⚠️ La commessa ' + (cm.numero||'') + ' non è firmata dal cliente.\n\nLa firma è obbligatoria nel PDF della garanzia.\nVuoi farla firmare adesso?')) faiFirmareCommessa(comId);
@@ -7553,7 +7556,7 @@ async function scaricaZipGaranzia(comId) {
 
   const targa   = (v?.targa || 'NESSUNA_TARGA').replace(/\s/g,'');
   const numCom  = (cm.numero || comId).replace(/\//g,'-');
-  const dirName = `${targa}_${numCom}`;
+  const dirName = `${targa}_${numCom}` + (_prX ? '_' + _lblPrat(_prX).trim().replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '').replace(/^FSA-FSA-/i, 'FSA-') : '');
 
   showToast('Preparazione ZIP in corso…');
 
@@ -7721,7 +7724,7 @@ async function scaricaZipGaranzia(comId) {
   }
 
   // ── Foto fine (array di url) ────────────────────────
-  const urlsFine = cm.fotoFine || [];
+  const urlsFine = _prX ? (_prX.foto || []) : (cm.fotoFine || []);
   for (let i = 0; i < urlsFine.length; i++) {
     const url = urlsFine[i];
     if (!url) continue;
@@ -7729,7 +7732,7 @@ async function scaricaZipGaranzia(comId) {
       const resp = await fetch(url);
       const blob = await resp.blob();
       const ext  = blob.type.includes('video') ? 'mp4' : (url.split('.').pop().split('?')[0] || 'jpg');
-      folder.file(`foto_fine_${i+1}.${ext}`, blob);
+      folder.file(`${_prX ? 'foto_lavorazione_' : 'foto_fine_'}${i+1}.${ext}`, blob);
     } catch(e) { console.warn('Foto fine non scaricabile:', url, e); }
   }
 
@@ -12721,9 +12724,12 @@ function _apriPraticaX(cid, pid) {
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' + inp('N. Claim', 'px-claim', p.claim) + inp('N. RDG', 'px-rdg', p.rdg) + inp('Importo riconosciuto (imponibile €)', 'px-imp', p.importo, 'type="number" step="0.01" min="0"')
     + '<label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--text2)">Fatturare a<select id="px-cli" ' + (lock ? 'disabled' : '') + ' style="padding:9px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface)">' + _optsGarante(cliDef) + '</select></label>'
     + '<label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--text2)">Stato<select id="px-st" ' + (lock ? 'disabled' : '') + ' style="padding:9px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface)">' + ['attesa', 'inserita', 'accettata', 'respinta'].map(s => '<option value="' + s + '"' + ((p.stato || 'attesa') === s ? ' selected' : '') + '>' + _PX_ST[s][0] + '</option>').join('') + '</select></label>'
-    + '<div style="font-size:12px;color:var(--text3);align-self:end">📷 Foto lavorazione: <b>' + foto.length + '</b>' + (foto.length ? ' — ' + foto.map((u, i) => '<a href="' + _escF(u) + '" target="_blank" rel="noopener">' + (i + 1) + '</a>').join(' ') : '') + '</div></div>'
+    + '<div style="font-size:12px;color:var(--text3);align-self:end">📷 Foto lavorazione: <b>' + foto.length + '</b></div></div>'
+    + (foto.length ? '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;margin-top:12px">' + foto.map((u, i) => /\.(mp4|mov|webm|m4v)(\?|$)/i.test(u)
+        ? '<a href="' + _escF(u) + '" target="_blank" rel="noopener" title="Video ' + (i + 1) + '" style="aspect-ratio:1;border-radius:8px;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;text-decoration:none">▶</a>'
+        : '<a href="' + _escF(u) + '" target="_blank" rel="noopener" title="Foto ' + (i + 1) + '" style="aspect-ratio:1;border-radius:8px;overflow:hidden;display:block;border:1px solid var(--border)"><img src="' + _escF(u) + '" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block"></a>').join('') + '</div>' : '')
     + (lock ? '<div style="margin-top:12px;font-size:13px;color:#047857;font-weight:700">✓ Fatturata' + (f ? ' — ' + _escF(f.numero) : '') + '</div>' : '')
-    + '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px"><button class="btn btn-secondary" onclick="document.getElementById(\'modal-praticax\').remove()">Chiudi</button>'
+    + '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="_vediCommessaSopra(\'' + cid + '\')">👁 Vedi commessa</button><button class="btn btn-secondary btn-sm" onclick="scaricaZipGaranzia(\'' + cid + '\',\'' + pid + '\')">⬇ ZIP pratica</button><span style="flex:1"></span><button class="btn btn-secondary" onclick="document.getElementById(\'modal-praticax\').remove()">Chiudi</button>'
     + (lock ? '' : '<button class="btn btn-secondary" onclick="_salvaPraticaX(\'' + cid + '\',\'' + pid + '\')">Salva</button><button class="btn btn-primary" onclick="_salvaPraticaX(\'' + cid + '\',\'' + pid + '\',true)">🧾 Fattura a Ford</button>') + '</div></div>';
   document.body.appendChild(ov);
 }
