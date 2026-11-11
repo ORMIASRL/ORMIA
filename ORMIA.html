@@ -1685,7 +1685,7 @@
         </div>
         <div class="form-group">
           <label>Metodo di pagamento *</label>
-          <select id="c-pagamento"><option value="">— Seleziona —</option><option value="rd_bonifico">Rimessa diretta – bonifico istantaneo</option><option value="rd_carta">Rimessa diretta – carta / POS</option><option value="rd_contanti">Rimessa diretta – contanti</option><option value="bon30fm">Bonifico 30 gg fine mese</option><option value="bon60fm">Bonifico 60 gg fine mese</option><option value="riba30fm">RiBa 30 gg fine mese</option><option value="riba30fm5">RiBa 30 gg fine mese + 5</option><option value="riba30fm10">RiBa 30 gg fine mese + 10</option><option value="riba30fm15">RiBa 30 gg fine mese + 15</option><option value="riba60fm">RiBa 60 gg fine mese</option><option value="riba60fm5">RiBa 60 gg fine mese + 5</option><option value="riba60fm10">RiBa 60 gg fine mese + 10</option><option value="riba60fm15">RiBa 60 gg fine mese + 15</option></select>
+          <select id="c-pagamento"><option value="">— Seleziona —</option><option value="rd_bonifico">Rimessa diretta – bonifico istantaneo</option><option value="rd_carta">Rimessa diretta – carta / POS</option><option value="rd_contanti">Rimessa diretta – contanti</option><option value="bon30fm">Bonifico 30 gg fine mese</option><option value="bon60fm">Bonifico 60 gg fine mese</option><option value="riba30fm">RiBa 30 gg fine mese</option><option value="riba30fm5">RiBa 30 gg fine mese + 5</option><option value="riba30fm10">RiBa 30 gg fine mese + 10</option><option value="riba30fm15">RiBa 30 gg fine mese + 15</option><option value="riba60fm">RiBa 60 gg fine mese</option><option value="riba60fm5">RiBa 60 gg fine mese + 5</option><option value="riba60fm10">RiBa 60 gg fine mese + 10</option><option value="riba60fm15">RiBa 60 gg fine mese + 15</option><option value="riba60fm20">RiBa 60 gg fine mese + 20</option></select>
         </div>
         <div class="form-group">
           <label>Codice SDI <span style="font-size:10px;color:var(--text3);font-weight:400">* (o PEC)</span></label>
@@ -9522,15 +9522,16 @@ function _selectConvert(el, tipo) {
         </div>
         <div class="form-group" style="margin:0">
           <label>Modalità pagamento</label>
-          <select id="fatt-pagamento" onchange="_aggScadenzaFatt()"><option value="rd_bonifico">Rimessa diretta – bonifico istantaneo</option><option value="rd_carta">Rimessa diretta – carta / POS</option><option value="rd_contanti">Rimessa diretta – contanti</option><option value="bon30fm">Bonifico 30 gg fine mese</option><option value="bon60fm">Bonifico 60 gg fine mese</option><option value="riba30fm">RiBa 30 gg fine mese</option><option value="riba30fm5">RiBa 30 gg fine mese + 5</option><option value="riba30fm10">RiBa 30 gg fine mese + 10</option><option value="riba30fm15">RiBa 30 gg fine mese + 15</option><option value="riba60fm">RiBa 60 gg fine mese</option><option value="riba60fm5">RiBa 60 gg fine mese + 5</option><option value="riba60fm10">RiBa 60 gg fine mese + 10</option><option value="riba60fm15">RiBa 60 gg fine mese + 15</option></select>
+          <select id="fatt-pagamento" onchange="_aggScadenzaFatt()"><option value="rd_bonifico">Rimessa diretta – bonifico istantaneo</option><option value="rd_carta">Rimessa diretta – carta / POS</option><option value="rd_contanti">Rimessa diretta – contanti</option><option value="bon30fm">Bonifico 30 gg fine mese</option><option value="bon60fm">Bonifico 60 gg fine mese</option><option value="riba30fm">RiBa 30 gg fine mese</option><option value="riba30fm5">RiBa 30 gg fine mese + 5</option><option value="riba30fm10">RiBa 30 gg fine mese + 10</option><option value="riba30fm15">RiBa 30 gg fine mese + 15</option><option value="riba60fm">RiBa 60 gg fine mese</option><option value="riba60fm5">RiBa 60 gg fine mese + 5</option><option value="riba60fm10">RiBa 60 gg fine mese + 10</option><option value="riba60fm15">RiBa 60 gg fine mese + 15</option><option value="riba60fm20">RiBa 60 gg fine mese + 20</option></select>
         </div>
         <div class="form-group" style="margin:0">
           <label>IVA %</label>
-          <select id="fatt-iva" onchange="calcolaFattTotali()">
+          <select id="fatt-iva" onchange="calcolaFattTotali();_rc74Note(this,'fatt-note')">
             <option value="22">22%</option>
             <option value="10">10%</option>
             <option value="4">4%</option>
             <option value="0">Esente IVA</option>
+            <option value="rc74">0% – Reverse charge rottami/batterie (art. 74 c. 7-8)</option>
           </select>
         </div>
         <div class="form-group span-2" style="margin:0;grid-column:span 2">
@@ -12242,7 +12243,7 @@ function anteprimaFattura() {
     origine: _fattDraft.origine, origineId: _fattDraft.origineId || null, clienteId: _fattDraft.clienteId || null,
     descrizione: _fattDraft.descrizione, veicolo: _fattDraft.veicolo, righe: _fattDraft.righe || [],
     iva: tots.iva, imponibile: tots.imponibile, ivaAmt: tots.ivaAmt, totale: tots.totale,
-    note: v('fatt-note').trim(), clEmail: v('fatt-email').trim(),
+    note: _rc74NoteVal('fatt-iva', v('fatt-note').trim()), clEmail: v('fatt-email').trim(),
     oggetto: v('fatt-oggetto').trim() || null, lavori: v('fatt-lavori').trim() || null,
     offRagione: off.ragione || null, offPiva: off.piva || null, offIndirizzo: off.indirizzo || null, offTel: off.tel || null,
     offEmail: off.email || null, offIban: off.iban || null, offBanca: off.banca || null, offNoteDoc: off.note_doc || null,
@@ -13676,6 +13677,7 @@ const PAGAMENTI = [
   ['riba60fm5',   'RiBa 60 gg fine mese + 5',              'MP12', 60, 5],
   ['riba60fm10',  'RiBa 60 gg fine mese + 10',             'MP12', 60, 10],
   ['riba60fm15',  'RiBa 60 gg fine mese + 15',             'MP12', 60, 15],
+  ['riba60fm20',  'RiBa 60 gg fine mese + 20',             'MP12', 60, 20],
 ];
 // Vecchi valori → nuovi codici
 const _PAG_VECCHI = { contanti: 'rd_contanti', bonifico: 'rd_bonifico', carta: 'rd_carta', pos: 'rd_carta', assegno: 'rd_bonifico',
@@ -13690,8 +13692,10 @@ function _scadenzaPag(v, dataIso) {
   if (!dataIso) return '';
   if (!p || !p[3]) return dataIso;
   const d = new Date(dataIso + 'T12:00:00');
-  let s = new Date(d.getFullYear(), d.getMonth() + 1, 0, 12);
-  s.setDate(s.getDate() + p[3]);
+  // "30/60 gg fine mese" = fine del 1°/2° mese successivo (convenzione commerciale), non +30/+60 giorni di calendario
+  let s;
+  if (p[3] % 30 === 0) s = new Date(d.getFullYear(), d.getMonth() + 1 + p[3] / 30, 0, 12);
+  else { s = new Date(d.getFullYear(), d.getMonth() + 1, 0, 12); s.setDate(s.getDate() + p[3]); }
   if (p[4]) s = new Date(s.getFullYear(), s.getMonth() + 1, p[4], 12);
   const z = n => String(n).padStart(2, '0');
   return s.getFullYear() + '-' + z(s.getMonth() + 1) + '-' + z(s.getDate());
@@ -13708,7 +13712,8 @@ function _aggScadenzaFatt() {
 }
 
 function calcolaFattTotali(righe) {
-  const iva = _ivaN(document.getElementById('fatt-iva')?.value);
+  const _ivSel = document.getElementById('fatt-iva')?.value;
+  const iva = _ivSel === 'rc74' ? 0 : _ivaN(_ivSel);
   const r   = (righe||_fattDraft?.righe||[]);
   const _r2 = n => Math.round((n + Number.EPSILON) * 100) / 100;   // arrotonda ai centesimi (come FiC/SDI)
   const imponibile = _r2(r.reduce((s,x)=>s+_r2((x.qta||1)*(x.prezzo||0)),0));
@@ -13753,7 +13758,7 @@ async function salvaFattura() {
     descrizione:_fattDraft.descrizione, veicolo:_fattDraft.veicolo,
     righe:      _fattDraft.righe,
     iva:        tots.iva, imponibile:tots.imponibile, iva_amt:tots.ivaAmt, totale:tots.totale,
-    note:       document.getElementById('fatt-note').value.trim(),
+    note:       _rc74NoteVal('fatt-iva', document.getElementById('fatt-note').value.trim()),
     cl_email:   document.getElementById('fatt-email').value.trim(),
     off_ragione:off.ragione||null, off_piva:off.piva||null, off_indirizzo:off.indirizzo||null,
     off_tel:    off.tel||null, off_email:off.email||null, off_iban:off.iban||null,
@@ -14693,6 +14698,32 @@ function apriStampa(html) {
 
 // ── Auto-invio su Fatture in Cloud (chiamato da salvaFattura) ─────────────────
 // Aliquote IVA standard di Fatture in Cloud (id interni): 22% → 0, 10% → 3, 4% → 4
+// ── Reverse charge rottami / batterie esauste (art. 74 c. 7-8 DPR 633/72, natura N6.1) ──
+// La fattura ha IVA 0 e la dicitura nelle note: la dicitura fa da segno anche per gli invii successivi a FiC
+const _DIC_RC74 = "Operazione soggetta a inversione contabile (reverse charge) ai sensi dell'art. 74, commi 7 e 8, DPR 633/72 – cessione di rottami e materiali di recupero.";
+function _isRC74(f) { return !!f && _ivaN(f.iva) === 0 && /art\.\s*74,?\s*comm[ai]\s*7\s*e\s*8/i.test(String(f.note || '')); }
+function _rc74Note(sel, noteId) {
+  const n = document.getElementById(noteId); if (!n || !sel) return;
+  let t = String(n.value || '').split(_DIC_RC74).join('').trim();
+  if (sel.value === 'rc74') t = (t ? t + '\n' : '') + _DIC_RC74;
+  n.value = t;
+}
+function _rc74NoteVal(selId, note) {
+  note = String(note || '');
+  if (document.getElementById(selId)?.value !== 'rc74') return note;
+  return note.includes(_DIC_RC74) ? note : (note ? note + '\n' : '') + _DIC_RC74;
+}
+// Aliquota FiC con natura N6.1: la cerca tra quelle dell'account, se manca la crea
+async function _ficVatN61(api, cid) {
+  const r = await api(`/c/${cid}/info/vat_types`, 'GET');
+  const l = (r && r.j && r.j.data) || [];
+  const v = l.find(x => String(x.ei_type || '').toUpperCase() === 'N6.1' && !x.is_disabled && !(+x.value));
+  if (v) return v.id;
+  const c = await api(`/c/${cid}/settings/vat_types`, 'POST', { data: { value: 0, description: 'Inversione contabile rottami – art. 74 c. 7-8', notes: _DIC_RC74,
+    e_invoice: true, ei_type: 'N6.1', ei_description: 'Inversione contabile - cessione di rottami e altri materiali di recupero' } });
+  if (c && c.ok && c.j && c.j.data && c.j.data.id != null) return c.j.data.id;
+  throw new Error('aliquota N6.1 (reverse charge rottami) non trovata su Fatture in Cloud: creala in Impostazioni → Aliquote IVA e reinvia la fattura');
+}
 function _vatFic(v) { const id = { 22:0, 10:3, 4:4 }[Number(v)]; return id != null ? { id } : { value: Number(v) }; }
 
 async function autoInviaFIC(fatt) {
@@ -14742,6 +14773,7 @@ async function autoInviaFIC(fatt) {
     });
     return { ok: r.ok, status: r.status, j: await r.json().catch(() => ({})) };
   };
+  if (_isRC74(fatt)) { const _vtN61 = await _ficVatN61(api, cid); items.forEach(it => { it.vat = { id: _vtN61 }; }); }
   const errMsg = j => { const e = j?.error || {}; const v = e.validation_result; return v ? (Array.isArray(v) ? v.join(' · ') : (typeof v === 'string' ? v : JSON.stringify(v))) : (e.message || 'errore sconosciuto'); };
   const setStato = async (stato, ficId) => {
     const upd = { fic_stato: stato }; if (ficId) upd.fic_id = ficId;
