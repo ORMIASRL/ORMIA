@@ -1851,6 +1851,7 @@ const PAGAMENTI = [
   ['riba60fm5',   'RiBa 60 gg fine mese + 5',              'MP12', 60, 5],
   ['riba60fm10',  'RiBa 60 gg fine mese + 10',             'MP12', 60, 10],
   ['riba60fm15',  'RiBa 60 gg fine mese + 15',             'MP12', 60, 15],
+  ['riba60fm20',  'RiBa 60 gg fine mese + 20',             'MP12', 60, 20],
 ];
 // Vecchi valori → nuovi codici
 const _PAG_VECCHI = { contanti: 'rd_contanti', bonifico: 'rd_bonifico', carta: 'rd_carta', pos: 'rd_carta', assegno: 'rd_bonifico',
@@ -1865,8 +1866,10 @@ function _scadenzaPag(v, dataIso) {
   if (!dataIso) return '';
   if (!p || !p[3]) return dataIso;
   const d = new Date(dataIso + 'T12:00:00');
-  let s = new Date(d.getFullYear(), d.getMonth() + 1, 0, 12);
-  s.setDate(s.getDate() + p[3]);
+  // "30/60 gg fine mese" = fine del 1°/2° mese successivo (convenzione commerciale), non +30/+60 giorni di calendario
+  let s;
+  if (p[3] % 30 === 0) s = new Date(d.getFullYear(), d.getMonth() + 1 + p[3] / 30, 0, 12);
+  else { s = new Date(d.getFullYear(), d.getMonth() + 1, 0, 12); s.setDate(s.getDate() + p[3]); }
   if (p[4]) s = new Date(s.getFullYear(), s.getMonth() + 1, p[4], 12);
   const z = n => String(n).padStart(2, '0');
   return s.getFullYear() + '-' + z(s.getMonth() + 1) + '-' + z(s.getDate());
@@ -1900,8 +1903,8 @@ function apriFatturaLibera() {
     <div id="fl-righe"></div>
     <button class="btn btn-sm btn-secondary" onclick="flAggiungiRiga()" style="margin:6px 0 14px">+ Aggiungi riga</button>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">
-      <div><label style="${lab}">IVA (su tutta la fattura)</label><select id="fl-iva" onchange="flTotali()" style="${inp}">
-        <option value="22">22%</option><option value="10">10%</option><option value="5">5%</option><option value="4">4%</option><option value="0">0% (esente / non imponibile)</option></select></div>
+      <div><label style="${lab}">IVA (su tutta la fattura)</label><select id="fl-iva" onchange="flTotali();_rc74Note(this,'fl-note')" style="${inp}">
+        <option value="22">22%</option><option value="10">10%</option><option value="5">5%</option><option value="4">4%</option><option value="0">0% (esente / non imponibile)</option><option value="rc74">0% – Reverse charge rottami/batterie (art. 74 c. 7-8)</option></select></div>
       <div><label style="${lab}">Data</label><input type="date" id="fl-data" value="${oggi}" onchange="flScadenza()" style="${inp}"></div>
       <div><label style="${lab}">Scadenza</label><input type="date" id="fl-scad" style="${inp}"></div>
       <div><label style="${lab}">Pagamento</label><select id="fl-pag" onchange="flScadenza()" style="${inp}">${_opzioniPag('rd_bonifico')}</select></div>
@@ -2070,7 +2073,7 @@ async function salvaFatturaLibera() {
       numero, data: document.getElementById('fl-data').value || null, scadenza: document.getElementById('fl-scad').value || null,
       pagamento: document.getElementById('fl-pag').value, stato: 'emessa', origine: 'libera', origine_id: null, cliente_id: cl.id,
       descrizione: t.righe[0].desc, righe: t.righe, iva: t.iva, imponibile: t.imponibile, iva_amt: t.ivaAmt, totale: t.totale,
-      note: document.getElementById('fl-note').value.trim(), cl_email: cl.email || null,
+      note: _rc74NoteVal('fl-iva', document.getElementById('fl-note').value.trim()), cl_email: cl.email || null,
       off_ragione: o.ragione || null, off_piva: o.piva || null, off_indirizzo: o.indirizzo || null, off_tel: o.tel || null,
       off_email: o.email || null, off_iban: o.iban || null, off_banca: o.banca || null, off_note_doc: o.note_doc || null,
       cl_ragione: cl.ragione || null, cl_piva: cl.piva || null, cl_cf: cl.cf || null, cl_indirizzo: cl.indirizzo || null, cl_sdi: cl.sdi || null, cl_pec: cl.pec || null,
@@ -2114,6 +2117,34 @@ function _ficDetFin(f, cl, items) {
   return { ...(ogg ? { visible_subject: ogg.slice(0, 200) } : {}), ...(notes ? { notes } : {}) };
 }
 
+// ── Reverse charge rottami / batterie esauste (art. 74 c. 7-8 DPR 633/72, natura N6.1) ──
+// La fattura ha IVA 0 e la dicitura nelle note: la dicitura fa da segno anche per gli invii successivi a FiC
+const _DIC_RC74 = "Operazione soggetta a inversione contabile (reverse charge) ai sensi dell'art. 74, commi 7 e 8, DPR 633/72 – cessione di rottami e materiali di recupero.";
+function _isRC74(f) { return !!f && _ivaNF(f.iva) === 0 && /art\.\s*74,?\s*comm[ai]\s*7\s*e\s*8/i.test(String(f.note || '')); }
+function _rc74Note(sel, noteId) {
+  const n = document.getElementById(noteId); if (!n || !sel) return;
+  let t = String(n.value || '').split(_DIC_RC74).join('').trim();
+  if (sel.value === 'rc74') t = (t ? t + '\n' : '') + _DIC_RC74;
+  n.value = t;
+}
+function _rc74NoteVal(selId, note) {
+  note = String(note || '');
+  if (document.getElementById(selId)?.value !== 'rc74') return note;
+  return note.includes(_DIC_RC74) ? note : (note ? note + '\n' : '') + _DIC_RC74;
+}
+// Aliquota FiC con natura N6.1: la cerca tra quelle dell'account, se manca la crea
+async function _ficVatN61(api, cid) {
+  const r = await api(`/c/${cid}/info/vat_types`, 'GET');
+  const l = (r && r.j && r.j.data) || [];
+  const v = l.find(x => String(x.ei_type || '').toUpperCase() === 'N6.1' && !x.is_disabled && !(+x.value));
+  if (v) return v.id;
+  const c = await api(`/c/${cid}/settings/vat_types`, 'POST', { data: { value: 0, description: 'Inversione contabile rottami – art. 74 c. 7-8', notes: _DIC_RC74,
+    e_invoice: true, ei_type: 'N6.1', ei_description: 'Inversione contabile - cessione di rottami e altri materiali di recupero' } });
+  if (c && c.ok && c.j && c.j.data && c.j.data.id != null) return c.j.data.id;
+  throw new Error('aliquota N6.1 (reverse charge rottami) non trovata su Fatture in Cloud: creala in Impostazioni → Aliquote IVA e reinvia la fattura');
+}
+const _apiFicF = async (p, m, b) => { try { return { ok: true, j: await ficFetch(p, m && m !== 'GET' ? { method: m, body: JSON.stringify(b) } : {}) }; } catch (e) { return { ok: false, j: { error: { message: e.message } } }; } };
+
 async function inviaSuFIC(fatturaId) {
   if (!_ficConfig.company_id) { alert('Configura prima Fatture in Cloud.'); return; }
   const f = _fatture.find(x => x.id === fatturaId);
@@ -2126,6 +2157,7 @@ async function inviaSuFIC(fatturaId) {
       ? righe.map(r => ({ name:r.desc||r.descrizione, qty:r.qta||1, ...(r.sconto && r.listino != null ? { net_price:+r.listino, discount:+r.sconto } : { net_price:r.prezzo||0 }), vat:_vatDoc(f.iva, cl) }))
       : [{ name:f.descrizione||'Servizio officina', qty:1,
            net_price: f.imponibile||(f.totale||0)/(1+_ivaNF(f.iva)/100), vat:_vatDoc(f.iva, cl) }];
+    if (_isRC74(f)) { const _vtN61 = await _ficVatN61(_apiFicF, _ficConfig.company_id); items.forEach(it => { it.vat = { id: _vtN61 }; }); }
     const _num = String(f.numero||'').match(/(\d+)\s*$/);
     const res = await ficFetch(`/c/${_ficConfig.company_id}/issued_documents`, {
       method: 'POST',
