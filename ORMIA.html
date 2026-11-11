@@ -14715,12 +14715,12 @@ function _rc74NoteVal(selId, note) {
 }
 // Aliquota FiC con natura N6.1: la cerca tra quelle dell'account, se manca la crea
 async function _ficVatN61(api, cid) {
-  const r = await api(`/c/${cid}/info/vat_types`, 'GET');
+  const r = await api(`/c/${cid}/info/vat_types?fieldset=detailed`, 'GET');
   const l = (r && r.j && r.j.data) || [];
-  const v = l.find(x => String(x.ei_type || '').toUpperCase() === 'N6.1' && !x.is_disabled && !(+x.value));
+  const v = l.find(x => String(x.ei_type || '').toUpperCase().replace(/^N/, '') === '6.1' && !x.is_disabled && !(+x.value));
   if (v) return v.id;
   const c = await api(`/c/${cid}/settings/vat_types`, 'POST', { data: { value: 0, description: 'Inversione contabile rottami – art. 74 c. 7-8', notes: _DIC_RC74,
-    e_invoice: true, ei_type: 'N6.1', ei_description: 'Inversione contabile - cessione di rottami e altri materiali di recupero' } });
+    e_invoice: true, ei_type: '6.1', ei_description: 'Inversione contabile - cessione di rottami e altri materiali di recupero' } });
   if (c && c.ok && c.j && c.j.data && c.j.data.id != null) return c.j.data.id;
   throw new Error('aliquota N6.1 (reverse charge rottami) non trovata su Fatture in Cloud: creala in Impostazioni → Aliquote IVA e reinvia la fattura');
 }
