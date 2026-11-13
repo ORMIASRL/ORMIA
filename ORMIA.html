@@ -13741,7 +13741,7 @@ async function salvaFattura() {
     const _t = calcolaFattTotali();
     if (!confirm(`Emettere la fattura e registrare l'incasso di € ${_t.totale.toFixed(2).replace('.',',')} (${_labelPag(document.getElementById('fatt-pagamento').value)})?`)) return;
   }
-  if (_bSalva) { _bSalva.disabled = true; setTimeout(() => { _bSalva.disabled = false; }, 5000); }
+  if (_bSalva) { _bSalva.disabled = true; _bSalva.textContent = '⏳ Emissione in corso…'; }
   const tots = calcolaFattTotali();
   const cl   = clienti.find(c=>c.id===_fattDraft.clienteId);
   const off  = getDatiOfficina();
@@ -13822,6 +13822,34 @@ async function salvaFattura() {
 async function salvaEStampaFattura()  { const f=await salvaFattura(); if(f) setTimeout(()=>stampaFattura(f.id),100); }
 
 async function salvaEInviaFattura()   { const f=await salvaFattura(); if(f) setTimeout(()=>inviaEmailFattura(f.id),200); }
+
+// ── Anti doppia fattura: un'emissione alla volta (bottone bloccato finché non finisce) e niente seconda fattura sullo stesso DDT ──
+(function () {
+  const _oSF = salvaFattura;
+  salvaFattura = async function () {
+    if (window._fattInCorso) { try { showToast('⏳ Emissione già in corso, attendi…'); } catch (_) {} return; }
+    window._fattInCorso = true;
+    const b = document.getElementById('fatt-btn-salva'), t = b ? b.textContent : '';
+    try {
+      const d = _fattDraft;
+      if (d && ['ddt', 'ddt-cumulativa'].includes(d.origine)) {
+        const ids = [...new Set([d.origineId, ...(d.ddtIds || [])].filter(Boolean))];
+        if (ids.length) {
+          const { data: dd, error: eD } = await supa.from('ddt').select('numero,stato,fattura_id').in('id', ids);
+          if (eD) { alert('Errore: non riesco a controllare il DDT (' + eD.message + '). Riprova.'); return; }
+          const gia = (dd || []).filter(x => x.stato === 'fatturato');
+          if (gia.length) {
+            const fn = (fatture.find(f => f.id === gia[0].fattura_id) || {}).numero || '';
+            alert('Il DDT ' + gia.map(x => x.numero).join(', ') + ' è già fatturato' + (fn ? ' con ' + fn : '') + ': non emetto un\'altra fattura.');
+            try { closeModal('modal-fattura'); } catch (_) {}
+            return;
+          }
+        }
+      }
+      return await _oSF.apply(this, arguments);
+    } finally { window._fattInCorso = false; if (b) { b.disabled = false; b.textContent = t; } }
+  };
+})();
 
 function stampaFattura(id) {
   const f=fatture.find(x=>x.id===id); if(!f) return;
