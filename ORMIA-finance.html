@@ -1132,7 +1132,8 @@ function renderFattureFin() {
   empty.style.display='none';
   tbody.innerHTML = filtered.map(f => {
     const cl = _clienti.find(c=>c.id===f.clienteId);
-    const scaduta = (f.stato==='emessa'||f.stato==='parziale') && f.scadenza && new Date(f.scadenza)<new Date();
+    const _storn = _fattStornata(f);
+    const scaduta = !_storn && (f.stato==='emessa'||f.stato==='parziale') && f.scadenza && new Date(f.scadenza)<new Date();
     const residuo = residuoFattura(f.id);
     const isParziale = f.stato==='parziale';
     const importoCell = isParziale
@@ -1145,11 +1146,11 @@ function renderFattureFin() {
       <td>${formatDateFin(f.data||f.created_at)}</td>
       <td style="color:${scaduta?'var(--danger)':'inherit'}">${f.scadenza?formatDateFin(f.scadenza):'—'}</td>
       <td style="font-family:'DM Mono',monospace;font-weight:700">${importoCell}</td>
-      <td><span class="badge-stato badge-${scaduta?'scaduta':f.stato}">${scaduta?'Scaduta':statoFattLabel(f.stato)}</span></td>
+      <td>${_storn?'<span class="badge-stato" style="background:#F3F4F6;color:#6B7280" title="Annullata da nota di credito">Stornata</span>':`<span class="badge-stato badge-${scaduta?'scaduta':f.stato}">${scaduta?'Scaduta':statoFattLabel(f.stato)}</span>`}</td>
       <td>${f.ficId?`<span style="font-size:10px;background:#E0E7FF;color:#3730A3;padding:2px 6px;border-radius:4px;font-weight:600">FiC ✓</span>`:'<span style="font-size:10px;color:var(--text3)">—</span>'}${_badgeSdi(f)}</td>
       <td onclick="event.stopPropagation()" style="cursor:default">
         <div style="display:flex;gap:4px">
-          ${f.stato!=='pagata'?`<button class="btn btn-sm btn-success" onclick="segnaFatturaPagata('${f.id}')">Segna pagata</button>`:''}
+          ${f.stato!=='pagata'&&!_storn?`<button class="btn btn-sm btn-success" onclick="segnaFatturaPagata('${f.id}')">Segna pagata</button>`:''}
           ${['emessa','scaduta','pagata'].includes(f.stato)?`<button class="btn btn-sm btn-secondary" title="Nota di credito su questa fattura (totale o parziale)" onclick="_ncDaFattura('${f.id}')">↩︎ Nota credito</button>`:''}
           ${!f.ficId?`<button class="btn btn-sm btn-secondary" onclick="inviaSuFIC('${f.id}')">→ FiC</button>`:''}
           ${f.ficId?`<button class="btn btn-sm btn-secondary" title="Reinvia la fattura al cliente via email da Fatture in Cloud" onclick="_ficEmailFin('${f.id}')">📧 Reinvia email</button>`:''}
@@ -1164,19 +1165,25 @@ function _fattScartata(f) {
   const s = f.sdiStato || f.sdi_stato;
   return ['discarded', 'rejected', 'error'].includes(s) || (f.ficStato || f.fic_stato) === 'errore_sdi';
 }
-function _fattAperta(f) { return f.stato !== 'pagata' || _fattScartata(f); }
+// Stornata: le note di credito collegate coprono tutto il totale della fattura
+function _fattStornata(f) {
+  const nc = (_noteCredito || []).filter(n => (n.fatturaId || n.fattura_id) === f.id).reduce((s, n) => s + (+n.importo || 0), 0);
+  return nc > 0 && nc >= (+f.totale || 0) - 0.01;
+}
+function _fattAperta(f) { return (f.stato !== 'pagata' && !_fattStornata(f)) || _fattScartata(f); }
 function _fattRiconciliata(f) {
   return f.stato === 'pagata' && !_incassi.some(i => (i.fattura_id || i.fatturaId) === f.id && !i.riconciliato);
 }
 function _fattInVista(f) {
+  if (String(f.data || f.created_at || '').slice(0, 10) === new Date().toLocaleDateString('sv-SE')) return true;   // quelle di oggi sempre in vista
   if (_fattAperta(f)) return true;
-  if (_fattRiconciliata(f)) return false;
+  if (_fattStornata(f) || _fattRiconciliata(f)) return false;
   const d = new Date(f.data || f.created_at);
   return !(Date.now() - d.getTime() > 30 * 864e5);
 }
 function _fattFooter(nascoste, archivio) {
   if (!nascoste && !archivio) return '';
-  return `<tr><td colspan="8" style="text-align:center;padding:12px;color:var(--text3);font-size:12px">${nascoste ? `<button class="btn btn-sm btn-secondary" onclick="window.__fattLim+=20;renderFattureFin()">Mostra altre 20 (${nascoste} rimanenti)</button>` : ''}${archivio ? `<div style="margin-top:${nascoste?8:0}px">🗄️ ${archivio} fatture in archivio (pagate e riconciliate o pagate da più di 30 giorni): cerca o usa i filtri per vederle</div>` : ''}</td></tr>`;
+  return `<tr><td colspan="8" style="text-align:center;padding:12px;color:var(--text3);font-size:12px">${nascoste ? `<button class="btn btn-sm btn-secondary" onclick="window.__fattLim+=20;renderFattureFin()">Mostra altre 20 (${nascoste} rimanenti)</button>` : ''}${archivio ? `<div style="margin-top:${nascoste?8:0}px">🗄️ ${archivio} fatture in archivio (pagate e riconciliate, stornate o pagate da più di 30 giorni): cerca o usa i filtri per vederle</div>` : ''}</td></tr>`;
 }
 
 // Quando una fattura risulta pagata senza un incasso registrato, crea l'incasso per quanto mancava
