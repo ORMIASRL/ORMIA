@@ -14752,6 +14752,8 @@ async function _ficVatN61(api, cid) {
   if (c && c.ok && c.j && c.j.data && c.j.data.id != null) return c.j.data.id;
   throw new Error('aliquota N6.1 (reverse charge rottami) non trovata su Fatture in Cloud: creala in Impostazioni → Aliquote IVA e reinvia la fattura');
 }
+// Codice fiscale per lo SDI: solo se c'è ed è diverso dalla P.IVA (mai la P.IVA al posto del CF: per ditte individuali e alcune società non coincidono e lo SDI scarta)
+function _cfFic(cf, piva) { const c = String(cf || '').toUpperCase().replace(/\s/g, ''), p = String(piva || '').toUpperCase().replace(/\s/g, '').replace(/^IT/, ''); return c && c !== p ? c : ''; }
 function _vatFic(v) { const id = { 22:0, 10:3, 4:4 }[Number(v)]; return id != null ? { id } : { value: Number(v) }; }
 
 async function autoInviaFIC(fatt) {
@@ -14815,7 +14817,7 @@ async function autoInviaFIC(fatt) {
   const cr = await api(`/c/${cid}/issued_documents`, 'POST', { data: {
       type:'invoice', date:(fatt.data||new Date().toISOString()).split('T')[0], e_invoice:true,
       ...(/(\d+)\s*$/.test(String(fatt.numero||'')) ? { number: parseInt(String(fatt.numero).match(/(\d+)\s*$/)[1], 10) } : {}),
-      entity:{ name:fatt.clRagione||cl?.ragione||'Cliente', vat_number:_clEstero(cl) ? piva.toUpperCase().replace(new RegExp('^' + _nazCl(cl)), '') : piva, tax_code:_clEstero(cl) ? '' : (cf||piva), e_invoice:true,
+      entity:{ name:fatt.clRagione||cl?.ragione||'Cliente', vat_number:_clEstero(cl) ? piva.toUpperCase().replace(new RegExp('^' + _nazCl(cl)), '') : piva, tax_code:_clEstero(cl) ? '' : _cfFic(cf, piva), e_invoice:true,
                ei_code:String(fatt.clSdi||cl?.sdi||'').trim().toUpperCase() || (_clEstero(cl) ? 'XXXXXXX' : '0000000'), certified_email:fatt.clPec||cl?.pec||'', email:fatt.clEmail||cl?.email||'',
                address_street:[cl?.via, cl?.civico].filter(Boolean).join(' '), address_postal_code:cl?.cap||'', address_city:cl?.citta||'',
                address_province:cl?.provincia||'', country:_clEstero(cl) ? (_NAZ_CL[_nazCl(cl)] || _nazCl(cl)) : 'Italia' },
