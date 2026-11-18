@@ -305,6 +305,11 @@ tr:hover td { background:var(--surface2); }
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="11" y2="17"/></svg>
         Note credito
       </div>
+      <div class="nav-item" id="nav-passive" onclick="setSection('passive')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 12 18 15 15"/><line x1="12" y1="11" x2="12" y2="18"/></svg>
+        Fatture passive
+        <span id="badge-passive" title="In arrivo, da registrare su Fatture in Cloud" style="margin-left:auto;background:var(--warning);color:white;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;display:none">0</span>
+      </div>
       <div class="nav-item" id="nav-riconciliazione" onclick="setSection('riconciliazione')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
         Riconciliazione
@@ -486,6 +491,36 @@ tr:hover td { background:var(--surface2); }
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             <p>Nessuna nota di credito emessa</p>
           </div>
+        </div>
+      </div>
+
+      <!-- ══ SEZIONE FATTURE PASSIVE (fornitori, in diretta da Fatture in Cloud) ══ -->
+      <div id="section-passive" style="display:none">
+        <div style="display:flex;gap:12px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
+          <div style="background:white;border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 12px;display:flex;align-items:center;gap:8px;flex:1;min-width:220px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="passive-search" placeholder="Cerca fornitore, numero, importo…" oninput="renderPassive()" style="border:none;outline:none;font-size:14px;width:100%">
+          </div>
+          <div class="tabs" id="passive-fil" style="margin-bottom:0;border-bottom:none;gap:4px">
+            <button class="tab-btn active" onclick="setPassFil(this,'')">Tutte</button>
+            <button class="tab-btn" onclick="setPassFil(this,'dapagare')">Da pagare</button>
+            <button class="tab-btn" onclick="setPassFil(this,'scadute')">Scadute</button>
+            <button class="tab-btn" onclick="setPassFil(this,'pagate')">Pagate</button>
+            <button class="tab-btn" onclick="setPassFil(this,'inarrivo')">In arrivo</button>
+          </div>
+          <button class="btn btn-primary" onclick="renderPassive(true)">🔄 Aggiorna</button>
+        </div>
+        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--text3);margin-bottom:10px">
+          <span id="passive-info">—</span><span id="passive-tot"></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Fornitore</th><th>N° fattura</th><th>Data</th><th>Imponibile</th><th>Totale</th><th>Scadenza</th><th>Stato</th><th></th>
+            </tr></thead>
+            <tbody id="tb-passive"></tbody>
+          </table>
+          <div id="empty-passive" class="empty-state" style="display:none"><p>Nessuna fattura dei fornitori</p></div>
         </div>
       </div>
 
@@ -949,7 +984,7 @@ function metodoBadge(metodo) {
 // NAVIGAZIONE
 // ══════════════════════════════════════════════════
 function setSection(sec) {
-  ['dashboard','fatture','note-credito','riconciliazione','sumup','fic','presenze'].forEach(s => {
+  ['dashboard','fatture','note-credito','passive','riconciliazione','sumup','fic','presenze'].forEach(s => {
     document.getElementById('section-'+s).style.display = s===sec ? '' : 'none';
     document.getElementById('nav-'+s)?.classList.toggle('active', s===sec);
   });
@@ -957,6 +992,7 @@ function setSection(sec) {
     dashboard:     ['Dashboard','Panoramica finanziaria'],
     fatture:       ['Fatture','Lista e stato fatture'],
     'note-credito':['Note credito','Emissione e gestione note credito'],
+    passive:       ['Fatture passive','Fatture dei fornitori, aggiornate da Fatture in Cloud'],
     riconciliazione: ['Riconciliazione','Abbina pagamenti alle fatture'],
     sumup:         ['SumUp POS','Configurazione terminale'],
     fic:           ['Fatture in Cloud','Configurazione e sincronizzazione'],
@@ -968,6 +1004,7 @@ function setSection(sec) {
   if (sec==='dashboard')        renderDashboard();
   if (sec==='fatture')          renderFattureFin();
   if (sec==='note-credito')     renderNoteCredito();
+  if (sec==='passive')          renderPassive(true);
   if (sec==='riconciliazione')  renderRiconciliazione();
   if (sec==='fic')              caricaFormFIC();
   if (sec==='sumup')            caricaFormSumUp();
@@ -2154,6 +2191,211 @@ const _apiFicF = async (p, m, b) => { try { return { ok: true, j: await ficFetch
 
 // Codice fiscale per lo SDI: solo se c'è ed è diverso dalla P.IVA (mai la P.IVA al posto del CF: per ditte individuali e alcune società non coincidono e lo SDI scarta)
 function _cfFic(cf, piva) { const c = String(cf || '').toUpperCase().replace(/\s/g, ''), p = String(piva || '').toUpperCase().replace(/\s/g, '').replace(/^IT/, ''); return c && c !== p ? c : ''; }
+// ══════════════════════════════════════════════════
+// FATTURE PASSIVE (dei fornitori): lette in diretta da Fatture in Cloud a ogni apertura
+// ══════════════════════════════════════════════════
+let _passive = [], _passiveLoaded = false, _passiveLoading = false, _passFil = '';
+const _PASS_CACHE = 'ormia_passive_det_v1';
+function _passCache() { try { return JSON.parse(localStorage.getItem(_PASS_CACHE) || '{}'); } catch (_) { return {}; } }
+function _passCacheSave(c) { try { localStorage.setItem(_PASS_CACHE, JSON.stringify(c)); } catch (_) {} }
+const _passEsc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const _passEur = n => n == null || n === '' ? '—' : '€ ' + (+n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+async function _passFetchAll(path) {
+  const out = [];
+  for (let p = 1; p <= 30; p++) {
+    const r = await ficFetch(path + (path.includes('?') ? '&' : '?') + 'per_page=100&page=' + p);
+    out.push(...(r.data || []));
+    if (!r.next_page_url || p >= (r.last_page || 1)) break;
+  }
+  return out;
+}
+async function caricaPassive() {
+  if (_passiveLoading) return;
+  _passiveLoading = true;
+  const info = document.getElementById('passive-info');
+  if (info) info.textContent = '⏳ Aggiornamento da Fatture in Cloud…';
+  try {
+    const cid = _ficConfig.company_id;
+    if (!cid) throw new Error('Fatture in Cloud non configurato (Integrazioni → Fatture in Cloud)');
+    const [pend, reg] = await Promise.all([
+      _passFetchAll(`/c/${cid}/received_documents/pending`),
+      _passFetchAll(`/c/${cid}/received_documents?type=expense&fieldset=detailed&sort=-date`).catch(() => []),
+    ]);
+    // Dettagli (fornitore, numero, data, scadenza) delle fatture in arrivo: letti una volta e tenuti in memoria nel browser
+    const cache = _passCache();
+    const mancanti = pend.filter(d => !cache['p' + d.id]);
+    for (let i = 0; i < mancanti.length; i += 5) {
+      await Promise.all(mancanti.slice(i, i + 5).map(async d => {
+        try {
+          const x = (await ficFetch(`/c/${cid}/received_documents/pending/${d.id}`)).data || {};
+          const pl = x.payments_list || [];
+          cache['p' + d.id] = { fornitore: x.supplier_name || '', numero: x.ei_number || '', data: x.emission_date || '', net: x.amount_net, vat: x.amount_vat,
+            scad: pl.map(p => p.due_date).filter(Boolean).sort()[0] || null, pagata: pl.length > 0 && pl.every(p => p.status === 'paid') };
+        } catch (_) {}
+      }));
+      if (info) info.textContent = '⏳ Lettura fatture dei fornitori… ' + Math.min(i + 5, mancanti.length) + '/' + mancanti.length;
+    }
+    _passCacheSave(cache);
+    const rP = pend.map(d => {
+      const c = cache['p' + d.id] || {}, m = String(d.subject || '').match(/^Fattura\s+(.+?)\s+da\s+(.+)$/i) || [];
+      return { id: 'p' + d.id, registrata: false, fornitore: c.fornitore || m[2] || '—', numero: c.numero || m[1] || '—',
+        data: c.data || String(d.date || '').slice(0, 10), net: c.net, vat: c.vat, tot: d.amount_gross, scad: c.scad, pagata: !!c.pagata,
+        url: d.attachment_url || null };
+    });
+    const rR = reg.map(d => {
+      const pl = d.payments_list || [];
+      return { id: 'r' + d.id, registrata: true, fornitore: (d.entity && d.entity.name) || '—', numero: d.invoice_number || '—', data: d.date,
+        net: d.amount_net, vat: d.amount_vat, tot: d.amount_gross,
+        scad: pl.filter(p => p.status !== 'paid').map(p => p.due_date).filter(Boolean).sort()[0] || pl.map(p => p.due_date).filter(Boolean).sort()[0] || null,
+        pagata: pl.length > 0 && pl.every(p => p.status === 'paid'), url: d.attachment_url || null };
+    });
+    _passive = [...rP, ...rR].sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')));
+    _passiveLoaded = true;
+    const b = document.getElementById('badge-passive');
+    if (b) { b.textContent = rP.length; b.style.display = rP.length ? '' : 'none'; }
+    if (info) info.textContent = 'Aggiornato alle ' + new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) + ' da Fatture in Cloud · '
+      + rP.length + ' in arrivo (da registrare su FiC) · ' + rR.length + ' registrate';
+  } catch (e) {
+    if (info) info.textContent = '⚠ ' + e.message;
+  } finally {
+    _passiveLoading = false;
+    renderPassive();
+  }
+}
+function setPassFil(btn, f) {
+  document.querySelectorAll('#passive-fil .tab-btn').forEach(x => x.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  _passFil = f; renderPassive();
+}
+function renderPassive(ricarica) {
+  if (ricarica || (!_passiveLoaded && !_passiveLoading)) { caricaPassive(); if (!_passiveLoaded) return; }
+  const tb = document.getElementById('tb-passive'), empty = document.getElementById('empty-passive'), tot = document.getElementById('passive-tot');
+  if (!tb) return;
+  const oggi = new Date().toLocaleDateString('sv-SE');
+  const q = (document.getElementById('passive-search')?.value || '').toLowerCase().trim(), qn = q.replace(',', '.');
+  const scaduta = r => !r.pagata && r.scad && r.scad < oggi;
+  const lista = _passive.filter(r => {
+    const mQ = !q || String(r.fornitore).toLowerCase().includes(q) || String(r.numero).toLowerCase().includes(q) || (/\d/.test(qn) && (+r.tot || 0).toFixed(2).includes(qn));
+    const mF = !_passFil || (_passFil === 'dapagare' && !r.pagata) || (_passFil === 'scadute' && scaduta(r)) || (_passFil === 'pagate' && r.pagata) || (_passFil === 'inarrivo' && !r.registrata);
+    return mQ && mF;
+  });
+  const dp = lista.filter(r => !r.pagata), sc = lista.filter(scaduta);
+  if (tot) tot.innerHTML = 'Da pagare: <b>' + _passEur(dp.reduce((s, r) => s + (+r.tot || 0), 0)) + '</b> (' + dp.length + ')'
+    + (sc.length ? ' · <span style="color:var(--danger)">scadute: <b>' + _passEur(sc.reduce((s, r) => s + (+r.tot || 0), 0)) + '</b> (' + sc.length + ')</span>' : '');
+  const k = q + '|' + _passFil; if (k !== window.__passKey) { window.__passKey = k; window.__passLim = 20; }
+  const vis = lista.slice(0, window.__passLim), rest = lista.length - vis.length;
+  if (!lista.length) { tb.innerHTML = ''; if (empty) empty.style.display = ''; return; }
+  if (empty) empty.style.display = 'none';
+  tb.innerHTML = vis.map(r => {
+    const s = scaduta(r);
+    const stato = r.pagata ? '<span class="badge-stato badge-pagata">Pagata</span>' : (s ? '<span class="badge-stato badge-scaduta">Scaduta</span>' : '<span class="badge-stato badge-emessa">Da pagare</span>');
+    return `<tr>
+      <td style="font-weight:600">${_passEsc(r.fornitore)}${r.registrata ? '' : '<div style="font-size:10px;color:var(--warning);font-weight:600">in arrivo · da registrare su FiC</div>'}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px">${_passEsc(r.numero)}</td>
+      <td>${r.data ? formatDateFin(r.data) : '—'}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2)">${_passEur(r.net)}</td>
+      <td style="font-family:'DM Mono',monospace;font-weight:700">${_passEur(r.tot)}</td>
+      <td style="color:${s ? 'var(--danger)' : 'inherit'}">${r.scad ? formatDateFin(r.scad) : '—'}</td>
+      <td>${stato}</td>
+      <td><div style="display:flex;gap:4px">${r.url ? `<button class="btn btn-sm btn-secondary" onclick="vediPassiva('${r.id}')" title="Apri la fattura leggibile (stampabile o salvabile in PDF)">👁 Apri</button><a class="btn btn-sm btn-secondary" href="${_passEsc(r.url)}" target="_blank" rel="noopener" title="File originale per il commercialista">⬇ XML</a>` : '<span style="font-size:11px;color:var(--text3)">—</span>'}</div></td>
+    </tr>`;
+  }).join('') + (rest ? `<tr><td colspan="8" style="text-align:center;padding:12px"><button class="btn btn-sm btn-secondary" onclick="window.__passLim+=20;renderPassive()">Mostra altre 20 (${rest} rimanenti)</button> <span style="font-size:12px;color:var(--text3);margin-left:8px">oppure cerca</span></td></tr>` : '');
+}
+// Estrae l'XML della fattura (anche firmato .p7m) dai byte del file
+function _estraiXmlFPA(u8) {
+  const dec = b => new TextDecoder('utf-8').decode(b);
+  const trova = t => { const a = t.search(/<\?xml|<([\w-]+:)?FatturaElettronica[\s>]/), m = t.match(/<\/([\w-]+:)?FatturaElettronica\s*>/); return a >= 0 && m ? t.slice(a, m.index + m[0].length) : null; };
+  let t = dec(u8);
+  if (/FatturaElettronica/.test(t) && /^\s*(﻿)?</.test(t)) return trova(t) || t;
+  if (/^[A-Za-z0-9+/=\s]+$/.test(t.slice(0, 300))) { try { u8 = Uint8Array.from(atob(t.replace(/\s+/g, '')), c => c.charCodeAt(0)); } catch (_) {} }
+  // p7m (busta firmata DER): rimette insieme i pezzi di contenuto (OCTET STRING) e ci cerca la fattura
+  const parti = [];
+  const walk = (s, e, depth) => {
+    let i = s;
+    while (i < e - 1 && depth < 60) {
+      const tag = u8[i++]; let len = u8[i++];
+      if (len & 0x80) { const n = len & 0x7f; if (n === 0) len = -1; else { len = 0; for (let k = 0; k < n; k++) len = len * 256 + u8[i++]; } }
+      if (tag === 0 && len === 0) continue;
+      const st = i, en = len < 0 ? e : Math.min(e, st + len);
+      if (tag === 0x04) parti.push(u8.subarray(st, en));
+      else if (tag & 0x20) walk(st, en, depth + 1);
+      if (len < 0) return;
+      i = en;
+    }
+  };
+  try { walk(0, u8.length, 0); } catch (_) {}
+  const tot = parti.reduce((s, p) => s + p.length, 0), all = new Uint8Array(tot); let o = 0;
+  parti.forEach(p => { all.set(p, o); o += p.length; });
+  return trova(dec(all)) || trova(new TextDecoder('latin1').decode(u8));
+}
+async function vediPassiva(id) {
+  const r = _passive.find(x => x.id === id); if (!r || !r.url) return;
+  const w = window.open('', '_blank');
+  if (w) w.document.write('<p style="font-family:sans-serif;padding:20px">Apertura fattura ' + _passEsc(r.numero) + ' di ' + _passEsc(r.fornitore) + '…</p>');
+  try {
+    const tok = await getFicAccessToken();
+    const res = await fetch('/.netlify/functions/fic-token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file_url: r.url, access_token: tok }) });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || !j.b64) throw new Error(j.error || ('download non riuscito (' + res.status + ')'));
+    const u8 = Uint8Array.from(atob(j.b64), c => c.charCodeAt(0));
+    if (/pdf/i.test(j.ct || '') || (u8[0] === 0x25 && u8[1] === 0x50)) { const url = URL.createObjectURL(new Blob([u8], { type: 'application/pdf' })); if (w) w.location.href = url; else window.open(url, '_blank'); return; }
+    const xml = _estraiXmlFPA(u8);
+    if (!xml) throw new Error('non riesco a leggere il file della fattura: scarica l\'XML');
+    const html = _htmlFPA(xml, r);
+    if (w) { w.document.open(); w.document.write(html); w.document.close(); }
+  } catch (e) {
+    if (w) w.document.body.innerHTML = '<p style="font-family:sans-serif;padding:20px;color:#B91C1C">Errore: ' + _passEsc(e.message) + '</p>';
+    else alert('Errore: ' + e.message);
+  }
+}
+// Fattura elettronica (FatturaPA) in versione leggibile e stampabile
+function _htmlFPA(xml, r) {
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  const all = (el, n) => el ? [...el.getElementsByTagNameNS('*', n)] : [];
+  const one = (el, n) => all(el, n)[0] || null;
+  const tx = (el, n) => { const x = n ? one(el, n) : el; return x ? x.textContent.trim() : ''; };
+  const e = _passEsc, eur = v => v === '' || v == null ? '' : '€ ' + (+v).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const dt = v => v ? v.slice(0, 10).split('-').reverse().join('/') : '';
+  const sogg = el => { if (!el) return ''; const an = one(el, 'Anagrafica'), sede = one(el, 'Sede'), iva = one(el, 'IdFiscaleIVA');
+    const nome = tx(an, 'Denominazione') || [tx(an, 'Nome'), tx(an, 'Cognome')].filter(Boolean).join(' ');
+    return '<b>' + e(nome) + '</b><br>' + (iva ? 'P.IVA ' + e(tx(iva, 'IdPaese') + tx(iva, 'IdCodice')) + '<br>' : '') + (tx(el, 'CodiceFiscale') ? 'C.F. ' + e(tx(el, 'CodiceFiscale')) + '<br>' : '')
+      + (sede ? e([tx(sede, 'Indirizzo') + (tx(sede, 'NumeroCivico') ? ' ' + tx(sede, 'NumeroCivico') : ''), [tx(sede, 'CAP'), tx(sede, 'Comune'), tx(sede, 'Provincia') ? '(' + tx(sede, 'Provincia') + ')' : ''].filter(Boolean).join(' ')].filter(Boolean).join(', ')) : ''); };
+  const MP = { MP01: 'Contanti', MP02: 'Assegno', MP05: 'Bonifico', MP08: 'Carta di pagamento', MP12: 'RiBa', MP19: 'SEPA Direct Debit', MP21: 'SEPA Direct Debit B2B' };
+  const TD = { TD01: 'Fattura', TD04: 'Nota di credito', TD05: 'Nota di debito', TD06: 'Parcella', TD24: 'Fattura differita', TD25: 'Fattura differita' };
+  const corpi = all(doc, 'FatturaElettronicaBody'), ced = one(doc, 'CedentePrestatore'), ces = one(doc, 'CessionarioCommittente');
+  const allegati = [];
+  const body = corpi.map(b => {
+    const g = one(b, 'DatiGeneraliDocumento');
+    const righe = all(b, 'DettaglioLinee').map(l => `<tr><td>${e(tx(l, 'Descrizione'))}</td><td class="n">${e(tx(l, 'Quantita') ? (+tx(l, 'Quantita')).toLocaleString('it-IT') : '')} ${e(tx(l, 'UnitaMisura'))}</td><td class="n">${eur(tx(l, 'PrezzoUnitario'))}</td><td class="n">${e(tx(l, 'ScontoMaggiorazione') ? tx(l, 'Percentuale') + '%' : '')}</td><td class="n">${eur(tx(l, 'PrezzoTotale'))}</td><td class="n">${e(tx(l, 'AliquotaIVA'))}%${tx(l, 'Natura') ? ' ' + e(tx(l, 'Natura')) : ''}</td></tr>`).join('');
+    const riep = all(b, 'DatiRiepilogo').map(x => `<tr><td>${e(tx(x, 'AliquotaIVA'))}%${tx(x, 'Natura') ? ' (' + e(tx(x, 'Natura')) + ')' : ''}</td><td class="n">${eur(tx(x, 'ImponibileImporto'))}</td><td class="n">${eur(tx(x, 'Imposta'))}</td><td>${e(tx(x, 'RiferimentoNormativo'))}</td></tr>`).join('');
+    const pag = all(b, 'DettaglioPagamento').map(p => `<tr><td>${e(MP[tx(p, 'ModalitaPagamento')] || tx(p, 'ModalitaPagamento'))}</td><td>${dt(tx(p, 'DataScadenzaPagamento'))}</td><td class="n">${eur(tx(p, 'ImportoPagamento'))}</td><td>${e(tx(p, 'IBAN'))}</td></tr>`).join('');
+    all(b, 'Allegati').forEach(a => allegati.push({ nome: tx(a, 'NomeAttachment') || 'allegato', formato: tx(a, 'FormatoAttachment'), b64: tx(a, 'Attachment') }));
+    const causali = all(g, 'Causale').map(c => e(c.textContent.trim())).join('<br>');
+    return `<div class="tit">${e(TD[tx(g, 'TipoDocumento')] || tx(g, 'TipoDocumento'))} n. <b>${e(tx(g, 'Numero'))}</b> del <b>${dt(tx(g, 'Data'))}</b></div>
+      ${causali ? '<div class="box">' + causali + '</div>' : ''}
+      <table><tr><th>Descrizione</th><th class="n">Q.tà</th><th class="n">Prezzo</th><th class="n">Sconto</th><th class="n">Importo</th><th class="n">IVA</th></tr>${righe}</table>
+      <table><tr><th>Aliquota</th><th class="n">Imponibile</th><th class="n">Imposta</th><th>Norma</th></tr>${riep}</table>
+      <div class="totale">Totale documento: ${eur(tx(g, 'ImportoTotaleDocumento'))}</div>
+      ${pag ? '<table><tr><th>Pagamento</th><th>Scadenza</th><th class="n">Importo</th><th>IBAN</th></tr>' + pag + '</table>' : ''}`;
+  }).join('<hr>');
+  const btnAll = allegati.map((a, i) => `<button onclick="apriAll(${i})">📎 ${e(a.nome)}</button>`).join(' ');
+  const datiAll = JSON.stringify(allegati.map(a => ({ n: a.nome, f: a.formato, b: a.b64.replace(/\s+/g, '') }))).replace(/</g, '\\x3c');
+  return `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>${e(r.fornitore)} – ${e(r.numero)}</title><style>
+    body{font-family:Arial,sans-serif;font-size:13px;color:#111;max-width:900px;margin:20px auto;padding:0 16px}
+    .bar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}.bar button{padding:7px 12px;border:1px solid #ccc;border-radius:6px;background:#f6f6f6;cursor:pointer}
+    .parti{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px}.parti div{border:1px solid #ddd;border-radius:8px;padding:10px;line-height:1.5}
+    .lab{font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}.tit{font-size:16px;margin:10px 0}
+    table{width:100%;border-collapse:collapse;margin:10px 0}th,td{border-bottom:1px solid #e5e5e5;padding:6px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-size:11px}.n{text-align:right;white-space:nowrap}
+    .totale{text-align:right;font-size:16px;font-weight:700;margin:8px 0}.box{background:#fafafa;border:1px solid #eee;padding:8px;border-radius:6px}
+    @media print{.bar{display:none}body{margin:0}}</style></head><body>
+    <div class="bar"><button onclick="window.print()">🖨 Stampa / Salva PDF</button>${btnAll}</div>
+    <script>var _ALL=${datiAll};function apriAll(i){var a=_ALL[i];if(!a)return;var b=Uint8Array.from(atob(a.b),function(c){return c.charCodeAt(0)});var pdf=/pdf/i.test((a.f||'')+(a.n||''));var u=URL.createObjectURL(new Blob([b],{type:pdf?'application/pdf':'application/octet-stream'}));if(pdf)window.open(u,'_blank');else{var l=document.createElement('a');l.href=u;l.download=a.n||'allegato';l.click();}}<\/script>
+    <div class="parti"><div><div class="lab">Fornitore</div>${sogg(ced)}</div><div><div class="lab">Cliente</div>${sogg(ces)}</div></div>
+    ${body}
+    <div style="font-size:10px;color:#888;margin-top:16px">Versione leggibile della fattura elettronica ricevuta tramite SDI. Il documento con valore fiscale è il file XML.</div>
+  </body></html>`;
+}
+
 async function inviaSuFIC(fatturaId) {
   if (!_ficConfig.company_id) { alert('Configura prima Fatture in Cloud.'); return; }
   const f = _fatture.find(x => x.id === fatturaId);
