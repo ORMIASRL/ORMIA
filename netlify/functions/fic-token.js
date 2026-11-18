@@ -28,6 +28,24 @@ exports.handler = async (event) => {
   let body = {};
   try { body = JSON.parse(event.body || '{}'); } catch (e) {}
 
+  // ── Modalità file: scarica un allegato di Fatture in Cloud (es. XML delle fatture ricevute) dal loro archivio ──
+  if (body.file_url) {
+    let u;
+    try { u = new URL(String(body.file_url)); } catch (e) { return risposta(400, { error: 'file_url non valido' }); }
+    if (u.protocol !== 'https:' || !/^fattureincloud\.s3[.-][a-z0-9.-]*amazonaws\.com$/.test(u.hostname))
+      return risposta(400, { error: 'indirizzo non consentito' });
+    if (!body.access_token) return risposta(401, { error: 'access_token mancante' });
+    try {
+      const res = await fetch(u.toString());
+      if (!res.ok) return risposta(res.status, { error: 'download non riuscito (' + res.status + ')' });
+      const buf = Buffer.from(await res.arrayBuffer());
+      if (buf.length > 4500000) return risposta(413, { error: 'file troppo grande' });
+      return risposta(200, { b64: buf.toString('base64'), ct: res.headers.get('content-type') || '' });
+    } catch (e) {
+      return risposta(502, { error: 'proxy_error', message: e.message });
+    }
+  }
+
   // ── Modalità proxy API: { api_path, api_method, api_body, access_token } ──
   if (body.api_path) {
     const path = String(body.api_path);
